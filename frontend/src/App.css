@@ -43,6 +43,8 @@
     --wyl-danger-control-hover-bg: rgba(116, 45, 55, 0.48);
     --wyl-danger-control-hover-border: rgba(220, 53, 69, 0.68);
     --wyl-danger-control-hover-text: #ffffff;
+    --wyl-history-hour-marker: rgba(121, 175, 182, 0.45);
+    --wyl-history-day-marker: rgba(168, 139, 98, 0.7);
 }
 
 html[data-bs-theme="dark"] {
@@ -86,6 +88,8 @@ html[data-bs-theme="dark"] {
     --wyl-danger-control-hover-bg: rgba(116, 45, 55, 0.48);
     --wyl-danger-control-hover-border: rgba(220, 53, 69, 0.68);
     --wyl-danger-control-hover-text: #ffffff;
+    --wyl-history-hour-marker: rgba(121, 175, 182, 0.45);
+    --wyl-history-day-marker: rgba(168, 139, 98, 0.7);
 }
 
 html[data-bs-theme="light"] {
@@ -129,6 +133,8 @@ html[data-bs-theme="light"] {
     --wyl-danger-control-hover-bg: #EFCAD1;
     --wyl-danger-control-hover-border: rgba(155, 49, 63, 0.52);
     --wyl-danger-control-hover-text: #611C25;
+    --wyl-history-hour-marker: rgba(56, 103, 117, 0.38);
+    --wyl-history-day-marker: rgba(155, 126, 89, 0.65);
 }
 
 body {
@@ -199,9 +205,8 @@ html[data-bs-theme] body {
 }
 
 .wyl-navbar {
-    min-height: 48px;
-    padding-top: 0;
-    padding-bottom: 0;
+    min-height: 48px !important;
+    padding: 0 !important;
     background-color: var(--wyl-nav-bg) !important;
     border: 0 !important;
     border-top: 0 !important;
@@ -209,30 +214,32 @@ html[data-bs-theme] body {
     box-shadow: none !important;
 }
 .wyl-navbar .container-lg {
-    min-height: 48px;
-    align-items: stretch;
+    min-height: 48px !important;
+    align-items: stretch !important;
 }
 .wyl-navbar .navbar-brand {
     display: inline-flex;
-    align-items: center;
-    padding-top: 0;
-    padding-bottom: 0;
+    align-items: center !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
 }
 .wyl-navbar .nav-link {
     color: var(--wyl-nav-link) !important;
 }
 .wyl-nav-tabs {
     gap: 0;
-    align-items: stretch;
+    align-items: stretch !important;
+    align-self: stretch;
 }
 .wyl-nav-tabs .nav-item {
     display: flex;
+    align-items: stretch;
 }
 .wyl-navbar .wyl-nav-tab {
     display: inline-flex;
-    align-items: center;
-    height: 100%;
-    padding: 0 0.72rem;
+    align-items: center !important;
+    min-height: 48px;
+    padding: 0 0.72rem !important;
     border-radius: 0;
     font-size: 0.82rem;
     line-height: 1.1;
@@ -256,7 +263,9 @@ html[data-bs-theme] body {
 .wyl-navbar-github {
     display: inline-flex;
     align-items: center;
-    height: 100%;
+    min-height: 48px;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
     font-size: 1.3rem !important;
     line-height: 1;
     opacity: 0.62;
@@ -859,8 +868,65 @@ html[data-bs-theme] .config-panel table > tbody > tr > td {
     gap: 0.75rem;
     flex-wrap: wrap;
 }
+.history-panel-title-group {
+    flex: 0 0 auto;
+}
+.history-panel-title {
+    font-size: 1.02rem;
+    font-weight: 750;
+    line-height: 1.15;
+    font-variant-caps: all-small-caps;
+    letter-spacing: 0.04em;
+}
+.history-panel-subtitle {
+    color: var(--wyl-muted);
+    font-size: 0.76rem;
+    font-variant-caps: all-small-caps;
+    letter-spacing: 0.035em;
+}
+.history-toolbar,
+.history-filter-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+.history-toolbar {
+    justify-content: flex-end;
+}
 .history-panel-body {
     padding: 0;
+}
+.history-legend {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    flex-wrap: wrap;
+    padding: 0.62rem 0.72rem;
+    color: var(--wyl-muted);
+    background-color: var(--wyl-panel-bg);
+    border-bottom: 1px solid var(--wyl-panel-border);
+    font-size: 0.78rem;
+    line-height: 1.25;
+}
+.history-legend-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.28rem;
+    font-variant-caps: all-small-caps;
+    letter-spacing: 0.035em;
+}
+.history-legend-block {
+    display: inline-block;
+    width: 0.7rem;
+    height: 0.7rem;
+    border-radius: 2px;
+}
+.history-legend-online {
+    background-color: var(--bs-success);
+}
+.history-legend-offline {
+    background-color: var(--bs-gray-500);
 }
 .history-table {
     margin-bottom: 0;
@@ -878,7 +944,7 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     background-color: var(--wyl-table-hover-bg);
 }
 .history-table td {
-    padding: 0.45rem 0.65rem;
+    padding: 0.4rem 0.65rem;
     vertical-align: middle;
 }
 .history-table-index {
@@ -900,9 +966,21 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
 }
 .history-mac-cell {
     white-space: normal;
+    line-height: 1.05;
 }
-.history-panel .form-control {
-    width: 10rem;
+.history-samples-control {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    color: var(--wyl-muted);
+    font-size: 0.78rem;
+    font-weight: 700;
+    font-variant-caps: all-small-caps;
+    letter-spacing: 0.035em;
+    white-space: nowrap;
+}
+.history-show-input {
+    width: 5.6rem;
     max-width: 100%;
 }
 
@@ -922,7 +1000,9 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     }
     .device-toolbar,
     .device-toolbar-filters,
-    .device-toolbar-actions {
+    .device-toolbar-actions,
+    .history-toolbar,
+    .history-filter-group {
         width: 100%;
         justify-content: flex-start;
     }
@@ -933,6 +1013,9 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
         overflow-x: auto !important;
     }
     .device-toolbar-actions {
+        flex-wrap: wrap;
+    }
+    .history-samples-control {
         flex-wrap: wrap;
     }
 }
@@ -961,8 +1044,17 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
 
 /* History box */
 .my-box-on::before, .my-box-off::before {
-    content: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='18'></svg>");
+    content: "";
+}
+.my-box-on,
+.my-box-off {
+    display: inline-block;
+    width: 10px;
+    height: 18px;
+    margin-right: 2px;
     border-left: thin solid var(--wyl-panel-border);
+    border-radius: 2px;
+    vertical-align: middle;
 }
 .my-box-on {
     background-color: var(--bs-success);
@@ -972,4 +1064,12 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
 }
 .my-box-on:hover, .my-box-off:hover {
     background-color: #0000001a;
+}
+.history-sample-hour-break {
+    margin-left: 0.32rem;
+    box-shadow: -3px 0 0 var(--wyl-history-hour-marker);
+}
+.history-sample-day-break {
+    margin-left: 0.62rem;
+    box-shadow: -4px 0 0 var(--wyl-history-day-marker);
 }

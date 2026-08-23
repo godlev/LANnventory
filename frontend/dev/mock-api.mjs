@@ -83,7 +83,7 @@ const config = {
   Ifaces: 'eth0 wifi0',
   ArpArgs: '',
   ArpStrs: [],
-  Timeout: 120,
+  Timeout: 600,
   TrimHist: 48,
   ShoutURL: '',
   Version: 'dev-mock',
@@ -131,19 +131,30 @@ function readBody(req) {
 function historyFor(mac, datePrefix = '') {
   const hostEntry = fakeHosts.find((item) => item.Mac === mac) ?? fakeHosts[0];
   const rows = [];
+  const baseDate = new Date('2026-08-23T10:15:00');
 
-  for (let i = 0; i < 24; i += 1) {
-    const hour = String(23 - i).padStart(2, '0');
-    const date = `2026-08-23 ${hour}:00:00`;
+  for (let i = 0; i < 210; i += 1) {
+    const sampleDate = new Date(baseDate.getTime() - i * config.Timeout * 1000);
     rows.push({
       ...hostEntry,
       ID: i + 1,
-      Date: date,
-      Now: hostEntry.Now === 0 ? 0 : i % 7 === 0 ? 0 : 1,
+      Date: formatDate(sampleDate),
+      Now: hostEntry.Now === 0 ? 0 : i % 13 === 0 ? 0 : 1,
     });
   }
 
   return datePrefix === '' ? rows : rows.filter((item) => item.Date.startsWith(datePrefix));
+}
+
+function formatDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hour = String(date.getHours()).padStart(2, '0');
+  const minute = String(date.getMinutes()).padStart(2, '0');
+  const second = String(date.getSeconds()).padStart(2, '0');
+
+  return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
 }
 
 function routeReadOnly(req, res, url) {

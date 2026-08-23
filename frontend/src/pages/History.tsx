@@ -1,40 +1,50 @@
-import { createEffect, For, Show } from "solid-js"
-import Filter from "../components/Filter"
-import { allHosts, histUpdOnFilter, Host, setHistUpdOnFilter, setShow, show } from "../functions/exports"
+import { For, onMount, Show } from "solid-js"
+import { allHosts, appConfig, setShow } from "../functions/exports"
 import MacHistory from "../components/MacHistory"
 import HistShow from "../components/HistShow"
+import HistoryFilters from "../components/HistoryFilters"
 
 function History() {
 
-  let hosts: Host[] = [];
-  hosts.push(...allHosts);
-
-  const showStr = localStorage.getItem("histShow") as string;
-  setShow(+showStr);
-  (show() === 0 || isNaN(show())) ? setShow(200) : '';
-  
-  createEffect(() => {
-    if (histUpdOnFilter()) {
-      hosts = [];
-      hosts.push(...allHosts);
-      console.log("Upd on Filter");
-      setHistUpdOnFilter(false);
-    }
+  onMount(() => {
+    const storedShow = Number(localStorage.getItem("histShow"));
+    setShow(storedShow > 0 && !isNaN(storedShow) ? storedShow : 200);
   });
 
+  const scanIntervalHint = () => {
+    const timeout = appConfig().Timeout;
+
+    if (!Number.isFinite(timeout) || timeout <= 0) {
+      return "";
+    }
+
+    return "1 block ~= " + formatInterval(timeout) + " at current scan interval.";
+  };
+
   return (
-    <div class="card border-primary wyl-panel history-panel">
+    <div class="card wyl-panel history-panel">
       <div class="card-header history-panel-header">
-        <Filter></Filter>
-        <HistShow name="histShow"></HistShow>
+        <div class="history-panel-title-group">
+          <div class="history-panel-title">History</div>
+          <div class="history-panel-subtitle">Newest -&gt; Older</div>
+        </div>
+        <div class="history-toolbar">
+          <HistoryFilters></HistoryFilters>
+          <HistShow name="histShow"></HistShow>
+        </div>
       </div>
       <div class="card-body history-panel-body table-responsive">
+        <div class="history-legend">
+          <span>Each block represents one recorded scan sample.</span>
+          <Show when={scanIntervalHint()}>
+            <span>{scanIntervalHint()}</span>
+          </Show>
+          <span class="history-legend-status"><span class="history-legend-block history-legend-online"></span>Online</span>
+          <span class="history-legend-status"><span class="history-legend-block history-legend-offline"></span>Offline</span>
+        </div>
         <table class="table table-hover history-table">
           <tbody>
-          <Show
-            when={!histUpdOnFilter()}
-          >
-            <For each={hosts}>{(host, index) =>
+            <For each={allHosts}>{(host, index) =>
             <tr>
               <td class="history-table-index opacity-50">{index()+1}.</td>
               <td class="history-host-cell">
@@ -46,12 +56,23 @@ function History() {
               </td>
             </tr>
             }</For>
-          </Show>
           </tbody> 
         </table>
       </div>
     </div>
   )
+}
+
+function formatInterval(seconds: number) {
+  if (seconds < 60) {
+    return seconds + " sec";
+  }
+
+  if (seconds % 60 === 0) {
+    return (seconds / 60) + " min";
+  }
+
+  return seconds + " sec";
 }
 
 export default History
