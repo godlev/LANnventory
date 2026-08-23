@@ -11,20 +11,20 @@ function Scan() {
         <form action={apiPath + '/api/config_settings/'} method="post">
           <table class="table table-borderless"><tbody>
             <tr>
-              <td>Interfaces</td>
-              <td><input name="ifaces" type="text" class="form-control" value={appConfig().Ifaces}></input></td>
+              <td class="config-field-label">Interfaces</td>
+              <td class="config-field-value"><input name="ifaces" type="text" class="form-control" value={appConfig().Ifaces}></input></td>
             </tr>
             <tr>
-              <td>Timeout (seconds)</td>
-              <td><input name="timeout" type="number" class="form-control" value={appConfig().Timeout}></input></td>
+              <td class="config-field-label">Timeout (seconds)</td>
+              <td class="config-field-value"><input name="timeout" type="number" class="form-control" value={appConfig().Timeout}></input></td>
             </tr>
             <tr>
-              <td>Args for arp-scan</td>
-              <td><input name="arpargs" type="text" class="form-control" value={appConfig().ArpArgs}></input></td>
+              <td class="config-field-label">Args for arp-scan</td>
+              <td class="config-field-value"><input name="arpargs" type="text" class="form-control" value={appConfig().ArpArgs}></input></td>
             </tr>
             <tr>
-              <td>Arp Strings</td>
-              <td>
+              <td class="config-field-label config-field-label-top">Arp Strings</td>
+              <td class="config-field-value">
                 <For each={appConfig().ArpStrs}>{arpStr =>
                   <input name="arpstrs" type="text" class="form-control" value={arpStr}></input>
                 }</For>
@@ -32,8 +32,8 @@ function Scan() {
               </td>
             </tr>
             <tr>
-              <td>Log level</td>
-              <td><select name="log" class="form-select">
+              <td class="config-field-label">Log level</td>
+              <td class="config-field-value"><select name="log" class="form-select">
               <For each={["debug","info","warn","error"]}>{level =>
                 <Show
                   when={level == appConfig().LogLevel}
@@ -45,12 +45,12 @@ function Scan() {
               </select></td>
             </tr>
             <tr>
-              <td>Trim History (hours)</td>
-              <td><input name="trim" type="number" class="form-control" value={appConfig().TrimHist}></input></td>
+              <td class="config-field-label">Trim History (hours)</td>
+              <td class="config-field-value"><input name="trim" type="number" class="form-control" value={appConfig().TrimHist}></input></td>
             </tr>
             <tr>
-              <td>Use DB</td>
-              <td><select name="usedb" class="form-select">
+              <td class="config-field-label">Use DB</td>
+              <td class="config-field-value"><select name="usedb" class="form-select">
                 <Show
                   when={appConfig().UseDB == "sqlite"}
                   fallback={<>
@@ -64,14 +64,14 @@ function Scan() {
               </select></td>
             </tr>
             <tr>
-              <td>PG Connect URL</td>
-              <td>
+              <td class="config-field-label config-field-label-top">PG Connect URL</td>
+              <td class="config-field-value">
                 <textarea name="pgconnect" class="form-control" style="width: 100%;" rows="3" wrap="soft">{appConfig().PGConnect}</textarea>
               </td>
             </tr>
             <tr>
-              <td><button type="submit" class="btn btn-sm wyl-button">Save</button></td>
-              <td class="text-muted">*Pressing <b>Save</b> button will trigger rescan</td>
+              <td class="config-action-cell"><button type="submit" class="btn btn-sm wyl-button">Save</button></td>
+              <td class="config-action-cell text-muted">*Pressing <b>Save</b> button will trigger rescan</td>
             </tr>
             </tbody></table>
         </form>

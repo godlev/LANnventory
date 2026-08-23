@@ -18,16 +18,16 @@ function Basic() {
           <table class="table table-borderless">
           <tbody>
             <tr>
-              <td>Host</td>
-              <td><input name="host" type="text" class="form-control" value={appConfig().Host}></input></td>
+              <td class="config-field-label">Host</td>
+              <td class="config-field-value"><input name="host" type="text" class="form-control" value={appConfig().Host}></input></td>
             </tr>
             <tr>
-              <td>Port</td>
-              <td><input name="port" type="text" class="form-control" value={appConfig().Port}></input></td>
+              <td class="config-field-label">Port</td>
+              <td class="config-field-value"><input name="port" type="text" class="form-control" value={appConfig().Port}></input></td>
             </tr>
             <tr>
-              <td>Base theme</td>
-              <td>
+              <td class="config-field-label">Base theme</td>
+              <td class="config-field-value">
                 <select name="theme" class="form-select">
                 <For each={themes}>{theme =>
                   <Show
@@ -42,8 +42,8 @@ function Basic() {
               </td>
             </tr>
             <tr>
-               <td>Color mode</td>
-               <td>
+               <td class="config-field-label">Color mode</td>
+               <td class="config-field-value">
                 <select name="color" class="form-select">
                 <Show
                   when={appConfig().Color == "dark"}
@@ -59,18 +59,18 @@ function Basic() {
                </td>
             </tr>
             <tr>
-              <td>Local node-bootstrap URL</td>
-              <td><input name="node" type="text" class="form-control" value={appConfig().NodePath}></input></td>
+              <td class="config-field-label">Local node-bootstrap URL</td>
+              <td class="config-field-value"><input name="node" type="text" class="form-control" value={appConfig().NodePath}></input></td>
             </tr>
             <tr>
-              <td>Shoutrrr URL</td>
-              <td>
+              <td class="config-field-label config-field-label-top">Shoutrrr URL</td>
+              <td class="config-field-value">
                 <textarea name="shout" class="form-control" style="width: 100%;" rows="3" wrap="soft">{appConfig().ShoutURL}</textarea>
               </td>
             </tr>
             <tr>
-              <td><button type="submit" class="btn btn-sm wyl-button">Save</button></td>
-              <td><button onClick={handleTestNotify} type="button" class="btn btn-sm wyl-button config-secondary-action">Test notification</button></td>
+              <td class="config-action-cell"><button type="submit" class="btn btn-sm wyl-button">Save</button></td>
+              <td class="config-action-cell"><button onClick={handleTestNotify} type="button" class="btn btn-sm wyl-button config-secondary-action">Test notification</button></td>
               <td></td>
             </tr>
           </tbody>

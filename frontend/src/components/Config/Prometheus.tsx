@@ -10,8 +10,8 @@ function Prometheus() {
         <form action={apiPath + '/api/config_prometheus/'} method="post">
           <table class="table table-borderless"><tbody>
             <tr>
-              <td>Enable</td>
-              <td>
+              <td class="config-field-label">Enable</td>
+              <td class="config-field-value">
                 <div class="form-check form-switch">
                   {appConfig().PrometheusEnable
                     ? <input class="form-check-input" type="checkbox" name="enable" checked></input>
@@ -21,8 +21,8 @@ function Prometheus() {
               </td>
             </tr>
             <tr>
-              <td><button type="submit" class="btn btn-sm wyl-button">Save</button></td>
-              <td>
+              <td class="config-action-cell"><button type="submit" class="btn btn-sm wyl-button">Save</button></td>
+              <td class="config-action-cell">
                 <a href="/metrics" target="_blank">/metrics</a>
               </td>
             </tr>

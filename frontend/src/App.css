@@ -48,6 +48,10 @@
     --wyl-history-offline: var(--bs-gray-500);
     --wyl-history-hour-marker: rgba(121, 175, 182, 0.45);
     --wyl-history-day-marker: rgba(168, 139, 98, 0.7);
+    --wyl-field-label-size: 0.91rem;
+    --wyl-field-value-size: 0.96rem;
+    --wyl-form-control-size: 0.94rem;
+    --wyl-helper-text-size: 0.76rem;
 }
 
 html[data-bs-theme="dark"] {
@@ -178,10 +182,11 @@ html[data-bs-theme] body {
     background-color: var(--wyl-control-bg);
     border: 1px solid var(--wyl-control-border);
     border-radius: 6px;
+    font-size: var(--wyl-form-control-size);
 }
 .wyl-panel .form-select {
-    font-variant-caps: all-small-caps;
-    letter-spacing: 0.025em;
+    font-variant-caps: normal;
+    letter-spacing: 0;
 }
 .wyl-panel .form-control:focus,
 .wyl-panel .form-select:focus {
@@ -211,6 +216,27 @@ html[data-bs-theme] body {
 }
 .wyl-panel .text-muted {
     color: var(--wyl-muted) !important;
+}
+
+.wyl-field-label,
+.config-panel .config-field-label,
+.host-field-label,
+.host-port-field,
+.host-history-date-control {
+    color: var(--wyl-muted);
+    font-size: var(--wyl-field-label-size);
+    font-weight: 800;
+    font-variant-caps: all-small-caps;
+    letter-spacing: 0.035em;
+    line-height: 1.18;
+}
+
+.wyl-field-value,
+.config-panel .config-field-value,
+.host-field-value {
+    color: var(--bs-body-color);
+    font-size: var(--wyl-field-value-size);
+    line-height: 1.35;
 }
 
 .wyl-navbar {
@@ -911,15 +937,25 @@ html[data-bs-theme] .config-panel table > tbody > tr > td {
     padding: 0.42rem 0.5rem;
     vertical-align: middle;
 }
-.config-panel td:first-child {
+.config-panel .config-field-label {
     width: 34%;
-    min-width: 8.5rem;
-    color: var(--wyl-muted);
-    font-size: 0.82rem;
-    font-weight: 800;
-    font-variant-caps: all-small-caps;
-    letter-spacing: 0.035em;
+    min-width: 9.25rem;
+    padding-right: 0.68rem;
+    text-align: right;
     white-space: nowrap;
+}
+.config-panel .config-field-label-top {
+    padding-top: 0.66rem;
+    vertical-align: top;
+}
+.config-panel .config-field-value {
+    min-width: 0;
+}
+.config-panel .config-action-cell {
+    padding-top: 0.6rem;
+}
+.config-info-table .config-field-label {
+    width: 38%;
 }
 .config-panel textarea.form-control {
     min-height: 5.5rem;
@@ -930,7 +966,7 @@ html[data-bs-theme] .config-panel table > tbody > tr > td {
 .config-field-helper {
     margin-top: 0.28rem;
     color: var(--wyl-muted);
-    font-size: 0.76rem;
+    font-size: var(--wyl-helper-text-size);
     line-height: 1.25;
 }
 .config-secondary-action {
@@ -1168,12 +1204,6 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     align-items: center;
 }
 .host-field-label {
-    color: var(--wyl-muted);
-    font-size: 0.82rem;
-    font-weight: 800;
-    font-variant-caps: all-small-caps;
-    letter-spacing: 0.035em;
-    line-height: 1.12;
     text-align: right;
 }
 .host-field-value {
@@ -1234,11 +1264,6 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     align-items: flex-start;
     gap: 0.32rem;
     margin: 0;
-    color: var(--wyl-muted);
-    font-size: 0.78rem;
-    font-weight: 800;
-    font-variant-caps: all-small-caps;
-    letter-spacing: 0.035em;
 }
 .host-port-field {
     flex-direction: column;
@@ -1377,6 +1402,26 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     .device-search {
         flex: 1 1 100%;
         width: 100%;
+    }
+    .config-panel .table-responsive {
+        overflow-x: visible;
+    }
+    .config-panel .table tr {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+    .config-panel .config-field-label {
+        width: auto;
+        min-width: 0;
+        padding-bottom: 0.12rem;
+        text-align: left;
+        white-space: normal;
+    }
+    .config-panel .config-field-label-top {
+        padding-top: 0.42rem;
+    }
+    .config-panel .config-field-value {
+        padding-top: 0;
     }
     .host-property-grid,
     .host-port-controls {

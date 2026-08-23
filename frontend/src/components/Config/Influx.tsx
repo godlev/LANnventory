@@ -10,8 +10,8 @@ function Influx() {
             <form action={apiPath + '/api/config_influx/'} method="post">
               <table class="table table-borderless"><tbody>
                 <tr>
-                  <td>Enable</td>
-                  <td>
+                  <td class="config-field-label">Enable</td>
+                  <td class="config-field-value">
                     <div class="form-check form-switch">
                       {appConfig().InfluxEnable
                         ? <input class="form-check-input" type="checkbox" name="enable" checked></input>
@@ -21,24 +21,24 @@ function Influx() {
                   </td>
                 </tr>
                 <tr>
-                  <td>Address</td>
-                  <td><input name="addr" type="text" class="form-control" value={appConfig().InfluxAddr}></input></td>
+                  <td class="config-field-label">Address</td>
+                  <td class="config-field-value"><input name="addr" type="text" class="form-control" value={appConfig().InfluxAddr}></input></td>
                 </tr>
                 <tr>
-                  <td>Token</td>
-                  <td><input name="token" type="text" class="form-control" value={appConfig().InfluxToken}></input></td>
+                  <td class="config-field-label">Token</td>
+                  <td class="config-field-value"><input name="token" type="text" class="form-control" value={appConfig().InfluxToken}></input></td>
                 </tr>
                 <tr>
-                  <td>Org</td>
-                  <td><input name="org" type="text" class="form-control" value={appConfig().InfluxOrg}></input></td>
+                  <td class="config-field-label">Org</td>
+                  <td class="config-field-value"><input name="org" type="text" class="form-control" value={appConfig().InfluxOrg}></input></td>
                 </tr>
                 <tr>
-                  <td>Bucket</td>
-                  <td><input name="bucket" type="text" class="form-control" value={appConfig().InfluxBucket}></input></td>
+                  <td class="config-field-label">Bucket</td>
+                  <td class="config-field-value"><input name="bucket" type="text" class="form-control" value={appConfig().InfluxBucket}></input></td>
                 </tr>
                 <tr>
-                  <td>Skip TLS verify</td>
-                  <td>
+                  <td class="config-field-label">Skip TLS verify</td>
+                  <td class="config-field-value">
                     <div class="form-check form-switch">
                       {appConfig().InfluxSkipTLS
                         ? <input class="form-check-input" type="checkbox" name="skip" checked></input>
@@ -48,8 +48,8 @@ function Influx() {
                   </td>
                 </tr>
                 <tr>
-                  <td><button type="submit" class="btn btn-sm wyl-button">Save</button></td>
-                  <td></td>
+                  <td class="config-action-cell"><button type="submit" class="btn btn-sm wyl-button">Save</button></td>
+                  <td class="config-action-cell"></td>
                 </tr>
               </tbody></table>
             </form>
