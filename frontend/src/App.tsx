@@ -17,21 +17,19 @@ function App() {
   const HostPage = lazy(() => import("./pages/HostPage"));
 
   return (
-    <>
-    <Header></Header>
-    <div class="container-lg">
-      <div class="row">
-        <div class="col-md mt-4 mb-4">
-          <Router>
+    <Router>
+      <Header></Header>
+      <div class="container-lg">
+        <div class="row">
+          <div class="col-md mt-4 mb-4">
             <Route path="/" component={Body}/>
             <Route path="/config" component={Config}/>
             <Route path="/history" component={History}/>
             <Route path="/host/:id" component={HostPage}/>
-          </Router>
+          </div>
         </div>
       </div>
-    </div>
-    </>
+    </Router>
   )
 }
 

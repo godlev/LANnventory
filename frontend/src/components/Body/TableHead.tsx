@@ -1,5 +1,6 @@
 import { For, Show } from "solid-js";
-import { Host, SortDirection, sortState } from "../../functions/exports";
+import { editNames, filterState, Host, setEditNames, setSelectedIDs, SortDirection, sortState } from "../../functions/exports";
+import { getHosts } from "../../functions/atstart";
 import { sortByAnyField } from "../../functions/sort";
 
 const headers: { label: string; field: keyof Host; className: string; title?: string; icon?: string; ariaLabel?: string }[] = [
@@ -29,6 +30,17 @@ function TableHead() {
     sortByAnyField(field);
   };
 
+  const handleEditMode = async () => {
+    const next = !editNames();
+
+    if (!next) {
+      await getHosts();
+      setSelectedIDs([]);
+    }
+
+    setEditNames(next);
+  };
+
   const handleKeyDown = (event: KeyboardEvent, field: keyof Host) => {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
@@ -45,10 +57,50 @@ function TableHead() {
     return direction === "ascending" ? "bi-arrow-up-short" : "bi-arrow-down-short";
   };
 
+  const filterSummary = () => {
+    const state = filterState();
+    const active = [];
+
+    if (state.Iface) {
+      active.push("Iface: " + state.Iface);
+    }
+    if (state.Known === 1) {
+      active.push("Known");
+    }
+    if (state.Known === 0) {
+      active.push("Unknown");
+    }
+    if (state.Now === 1) {
+      active.push("Online");
+    }
+    if (state.Now === 0) {
+      active.push("Offline");
+    }
+    if (state.Search.trim()) {
+      active.push('Search: "' + state.Search.trim() + '"');
+    }
+
+    return active.length > 0 ? "Active filters - " + active.join(", ") : "";
+  };
+
+  const editTitle = () => editNames() ? "Finish editing" : "Edit devices";
+
   return (
     <thead>
       <tr>
-        <th class="device-table-index">#</th>
+        <th class="device-table-index">
+          <span>#</span>
+          <Show when={filterSummary()}>
+            <span
+              class="device-filter-indicator"
+              title={filterSummary()}
+              aria-label={filterSummary()}
+              role="img"
+            >
+              <i class="bi bi-funnel-fill" aria-hidden="true"></i>
+            </span>
+          </Show>
+        </th>
         <For each={headers}>{(header, index) =>
           <>
             <th
@@ -69,8 +121,17 @@ function TableHead() {
               </Show>
             </th>
             <Show when={index() === 0}>
-              <th class="device-table-actions" title="Actions" aria-label="Actions">
-                <i class="bi bi-pencil-fill" aria-hidden="true"></i>
+              <th class="device-table-actions" title={editTitle()} aria-label={editTitle()}>
+                <button
+                  type="button"
+                  class="device-header-action"
+                  title={editTitle()}
+                  aria-label={editTitle()}
+                  aria-pressed={editNames()}
+                  onClick={handleEditMode}
+                >
+                  <i class={editNames() ? "bi bi-check-lg" : "bi bi-pencil-fill"} aria-hidden="true"></i>
+                </button>
               </th>
             </Show>
           </>
