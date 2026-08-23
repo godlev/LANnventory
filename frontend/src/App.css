@@ -43,6 +43,9 @@
     --wyl-danger-control-hover-bg: rgba(116, 45, 55, 0.48);
     --wyl-danger-control-hover-border: rgba(220, 53, 69, 0.68);
     --wyl-danger-control-hover-text: #ffffff;
+    --wyl-history-online-day: var(--bs-success);
+    --wyl-history-online-night: #20504E;
+    --wyl-history-offline: var(--bs-gray-500);
     --wyl-history-hour-marker: rgba(121, 175, 182, 0.45);
     --wyl-history-day-marker: rgba(168, 139, 98, 0.7);
 }
@@ -88,6 +91,9 @@ html[data-bs-theme="dark"] {
     --wyl-danger-control-hover-bg: rgba(116, 45, 55, 0.48);
     --wyl-danger-control-hover-border: rgba(220, 53, 69, 0.68);
     --wyl-danger-control-hover-text: #ffffff;
+    --wyl-history-online-day: var(--bs-success);
+    --wyl-history-online-night: #20504E;
+    --wyl-history-offline: var(--bs-gray-500);
     --wyl-history-hour-marker: rgba(121, 175, 182, 0.45);
     --wyl-history-day-marker: rgba(168, 139, 98, 0.7);
 }
@@ -133,6 +139,9 @@ html[data-bs-theme="light"] {
     --wyl-danger-control-hover-bg: #EFCAD1;
     --wyl-danger-control-hover-border: rgba(155, 49, 63, 0.52);
     --wyl-danger-control-hover-text: #611C25;
+    --wyl-history-online-day: var(--bs-success);
+    --wyl-history-online-night: #20504E;
+    --wyl-history-offline: var(--bs-gray-500);
     --wyl-history-hour-marker: rgba(56, 103, 117, 0.38);
     --wyl-history-day-marker: rgba(155, 126, 89, 0.65);
 }
@@ -938,10 +947,25 @@ html[data-bs-theme] .config-panel table > tbody > tr > td {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    flex-wrap: wrap;
 }
 .history-toolbar {
+    flex: 1 1 auto;
     justify-content: flex-end;
+    min-width: 0;
+}
+.history-filter-group {
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+    min-width: 0;
+}
+.history-filter-select {
+    flex: 0 0 7.2rem;
+    width: 7.2rem;
+    min-width: 0 !important;
+}
+.history-filter-iface {
+    flex-basis: 7.8rem;
+    width: 7.8rem;
 }
 .history-panel-body {
     padding: 0;
@@ -961,21 +985,33 @@ html[data-bs-theme] .config-panel table > tbody > tr > td {
 .history-legend-status {
     display: inline-flex;
     align-items: center;
-    gap: 0.28rem;
+    gap: 0.32rem;
     font-variant-caps: all-small-caps;
     letter-spacing: 0.035em;
+    white-space: nowrap;
 }
 .history-legend-block {
     display: inline-block;
-    width: 0.7rem;
-    height: 0.7rem;
+    width: 0.68rem;
+    height: 1rem;
     border-radius: 2px;
+    border-left: thin solid var(--wyl-panel-border);
+    vertical-align: middle;
 }
-.history-legend-online {
-    background-color: var(--bs-success);
+.history-legend-online-day {
+    background-color: var(--wyl-history-online-day);
+}
+.history-legend-online-night {
+    background-color: var(--wyl-history-online-night);
 }
 .history-legend-offline {
-    background-color: var(--bs-gray-500);
+    background-color: var(--wyl-history-offline);
+}
+.history-legend-boundary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.08rem;
+    min-width: 2.1rem;
 }
 .history-table {
     margin-bottom: 0;
@@ -1020,7 +1056,8 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
 .history-samples-control {
     display: inline-flex;
     align-items: center;
-    gap: 0.45rem;
+    gap: 0.36rem;
+    flex: 0 0 auto;
     color: var(--wyl-muted);
     font-size: 0.78rem;
     font-weight: 700;
@@ -1029,7 +1066,9 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     white-space: nowrap;
 }
 .history-show-input {
-    width: 5.6rem;
+    flex: 0 0 5.4rem;
+    width: 5.4rem !important;
+    min-width: 5.4rem;
     max-width: 100%;
 }
 
@@ -1054,6 +1093,9 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     .history-filter-group {
         width: 100%;
         justify-content: flex-start;
+    }
+    .history-filter-group {
+        flex-wrap: wrap;
     }
     .device-filter-group {
         width: 100%;
@@ -1106,19 +1148,25 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     vertical-align: middle;
 }
 .my-box-on {
-    background-color: var(--bs-success);
+    background-color: var(--wyl-history-online-day);
+}
+.my-box-on-day {
+    background-color: var(--wyl-history-online-day);
+}
+.my-box-on-night {
+    background-color: var(--wyl-history-online-night);
 }
 .my-box-off {
-    background-color: var(--bs-gray-500);
+    background-color: var(--wyl-history-offline);
 }
 .my-box-on:hover, .my-box-off:hover {
     background-color: #0000001a;
 }
 .history-sample-hour-break {
-    margin-left: 0.32rem;
+    margin-left: 0.36rem;
     box-shadow: -3px 0 0 var(--wyl-history-hour-marker);
 }
 .history-sample-day-break {
-    margin-left: 0.62rem;
-    box-shadow: -4px 0 0 var(--wyl-history-day-marker);
+    margin-left: 0.72rem;
+    box-shadow: -5px 0 0 var(--wyl-history-day-marker);
 }

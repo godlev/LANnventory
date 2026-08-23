@@ -29,8 +29,9 @@ function History() {
           <div class="history-panel-subtitle">Newest -&gt; Older</div>
         </div>
         <div class="history-toolbar">
-          <HistoryFilters></HistoryFilters>
-          <HistShow name="histShow"></HistShow>
+          <HistoryFilters>
+            <HistShow name="histShow"></HistShow>
+          </HistoryFilters>
         </div>
       </div>
       <div class="card-body history-panel-body table-responsive">
@@ -39,8 +40,23 @@ function History() {
           <Show when={scanIntervalHint()}>
             <span>{scanIntervalHint()}</span>
           </Show>
-          <span class="history-legend-status"><span class="history-legend-block history-legend-online"></span>Online</span>
+          <span class="history-legend-status"><span class="history-legend-block history-legend-online-day"></span>Online - Day</span>
+          <span class="history-legend-status"><span class="history-legend-block history-legend-online-night"></span>Online - Night</span>
           <span class="history-legend-status"><span class="history-legend-block history-legend-offline"></span>Offline</span>
+          <span class="history-legend-status">
+            <span class="history-legend-boundary" aria-hidden="true">
+              <span class="history-legend-block history-legend-online-day"></span>
+              <span class="history-legend-block history-legend-online-day history-sample-hour-break"></span>
+            </span>
+            New hour
+          </span>
+          <span class="history-legend-status">
+            <span class="history-legend-boundary" aria-hidden="true">
+              <span class="history-legend-block history-legend-online-day"></span>
+              <span class="history-legend-block history-legend-online-day history-sample-day-break"></span>
+            </span>
+            New day
+          </span>
         </div>
         <table class="table table-hover history-table">
           <tbody>
