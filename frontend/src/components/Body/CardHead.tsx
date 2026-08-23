@@ -25,23 +25,19 @@ function CardHead() {
   };
 
   return (
-    <div class="row">
-      <div class="col-md mt-1 mb-1">
-        <div class="d-flex justify-left">
+    <div class="device-toolbar">
+      <div class="device-toolbar-filters">
         <Filter></Filter>
-        </div>
       </div>
-      <div class="col-md mt-1 mb-1">
-        <div class="d-flex justify-content-between">
+      <div class="device-toolbar-actions">
         <Search></Search>
         <Show
           when={editNames()}
-          fallback={<button class="btn btn-outline-primary" title="Toggle edit" onClick={[handleEditNames, true]}>Edit</button>}
+          fallback={<button class="btn btn-outline-primary btn-sm" title="Toggle edit" onClick={[handleEditNames, true]}>Edit</button>}
         >
-          <button type="button" onClick={handleDel} title="Delete selected hosts" class="btn btn-outline-danger">Delete selected</button>
-          <button class="btn btn-primary" title="Toggle edit" onClick={[handleEditNames, false]}>Edit</button>
+          <button type="button" onClick={handleDel} title="Delete selected hosts" class="btn btn-outline-danger btn-sm">Delete selected</button>
+          <button class="btn btn-primary btn-sm" title="Toggle edit" onClick={[handleEditNames, false]}>Edit</button>
         </Show>
-        </div>
       </div>
     </div>
   )

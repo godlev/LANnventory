@@ -1,10 +1,11 @@
 import { For, onMount } from "solid-js";
 
-import { allHosts } from "../functions/exports";
+import { allHosts, bkpHosts } from "../functions/exports";
 
 import TableRow from "../components/Body/TableRow";
 import TableHead from "../components/Body/TableHead";
 import CardHead from "../components/Body/CardHead";
+import SummaryCards from "../components/Body/SummaryCards";
 import { getHosts } from "../functions/atstart";
 
 function Body() {
@@ -14,12 +15,18 @@ function Body() {
   });
 
   return (
-    <div class="card border-primary">
-      <div class="card-header">
+    <>
+    <SummaryCards></SummaryCards>
+    <div class="card border-primary device-panel">
+      <div class="card-header device-panel-header">
+        <div class="device-panel-title-group">
+          <div class="device-panel-title">Devices</div>
+          <div class="device-panel-subtitle">{bkpHosts().length} loaded hosts</div>
+        </div>
         <CardHead></CardHead>
       </div>
-      <div class="card-body table-responsive">
-        <table class="table table-striped table-hover">
+      <div class="card-body table-responsive device-table-wrap">
+        <table class="table table-striped table-hover device-table">
           <TableHead></TableHead>
           <tbody>
             <For each={allHosts}>{(host, index) =>
@@ -29,6 +36,7 @@ function Body() {
         </table>
       </div>
     </div>
+    </>
   )
 }
 

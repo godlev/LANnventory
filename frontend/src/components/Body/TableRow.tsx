@@ -7,14 +7,9 @@ import { debounce } from "@solid-primitives/scheduled";
 function TableRow(_props: any) {
 
   const [name, setName] = createSignal(_props.host.Name);
-  
-  let now = <i class="bi bi-circle-fill" style="color:var(--bs-gray-500);"></i>;
-  if (_props.host.Now == 1) {
-    now = <i class="bi bi-check-circle-fill" style="color:var(--bs-success);"></i>;
-  };
 
-  let known:boolean;
-  _props.host.Known === 1 ? known = true : known = false;
+  const isOnline = () => _props.host.Now === 1;
+  const known = () => _props.host.Known === 1;
 
   const debouncedApi = debounce(async (val: string) => {
     await apiEditHost(_props.host.ID, val, "");
@@ -51,18 +46,23 @@ function TableRow(_props: any) {
             onInput={e => handleInput(e.target.value)}></input>
         </Show>
       </td>
-      <td>{_props.host.Iface}</td>
+      <td><span class="device-cell-muted">{_props.host.Iface}</span></td>
       <td><a href={"http://" + _props.host.IP} target="_blank">{_props.host.IP}</a></td>
-      <td>{_props.host.Mac}</td>
+      <td><span class="device-cell-muted">{_props.host.Mac}</span></td>
       <td title={_props.host.Hw}>{_props.host.Hw.slice(0,12)+".."}</td>
-      <td>{_props.host.Date}</td>
+      <td><span class="device-cell-muted">{_props.host.Date}</span></td>
       <td>
         <div class="form-check form-switch">
-          <input class="form-check-input" type="checkbox" checked={known}
+          <input class="form-check-input" type="checkbox" checked={known()}
             onClick={handleToggle}></input>
         </div>
       </td>
-      <td>{now}</td>
+      <td>
+        <span class={isOnline() ? "status-pill status-pill-online" : "status-pill status-pill-offline"}>
+          <i class={isOnline() ? "bi bi-check-circle-fill" : "bi bi-slash-circle-fill"} aria-hidden="true"></i>
+          {isOnline() ? "Online" : "Offline"}
+        </span>
+      </td>
       <td>
         <Show
           when={editNames()}

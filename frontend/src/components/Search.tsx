@@ -7,7 +7,7 @@ function Search() {
   };
 
   return (
-    <input onInput={e => handleSearch(e.target.value)} class="form-control" placeholder="Search" style="max-width: 10em;" title="Search"></input>
+    <input onInput={e => handleSearch(e.target.value)} class="form-control form-control-sm device-search" placeholder="Search" title="Search"></input>
   )
 }
 
