@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -10,6 +11,8 @@ import (
 	"github.com/aceberg/WatchYourLAN/internal/gdb"
 	"github.com/aceberg/WatchYourLAN/internal/routines"
 )
+
+var errInvalidPositiveInt = errors.New("invalid positive integer")
 
 func saveConfigHandler(c *gin.Context) {
 
@@ -40,10 +43,20 @@ func saveSettingsHandler(c *gin.Context) {
 		gdb.Connect()
 	}
 
-	timeout := c.PostForm("timeout")
-	trimHist := c.PostForm("trim")
-	conf.AppConfig.Timeout, _ = strconv.Atoi(timeout)
-	conf.AppConfig.TrimHist, _ = strconv.Atoi(trimHist)
+	timeout, err := parsePositiveInt(c.PostForm("timeout"))
+	if err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid timeout"})
+		return
+	}
+
+	trimHist, err := parsePositiveInt(c.PostForm("trim"))
+	if err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid trim"})
+		return
+	}
+
+	conf.AppConfig.Timeout = timeout
+	conf.AppConfig.TrimHist = trimHist
 
 	arpStrs := c.PostFormArray("arpstrs")
 	conf.AppConfig.ArpStrs = []string{}
@@ -58,6 +71,15 @@ func saveSettingsHandler(c *gin.Context) {
 	routines.ScanRestart()
 
 	c.Redirect(http.StatusFound, c.Request.Referer())
+}
+
+func parsePositiveInt(value string) (int, error) {
+	parsed, err := strconv.Atoi(value)
+	if err != nil || parsed < 1 {
+		return 0, errInvalidPositiveInt
+	}
+
+	return parsed, nil
 }
 
 func saveInfluxHandler(c *gin.Context) {
