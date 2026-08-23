@@ -41,3 +41,29 @@ func TestParseOutputValidRows(t *testing.T) {
 		t.Errorf("Date = %q, want layout 2006-01-02 15:04:05: %v", first.Date, err)
 	}
 }
+
+func TestParseOutputIgnoresMalformedRows(t *testing.T) {
+	text := "not-a-valid-row\n" +
+		"192.168.1.10\tAA:BB:CC:DD:EE:FF\n" +
+		"\t\t\n" +
+		"192.168.1.11\t11:22:33:44:55:66\tDesktop Vendor\r\n"
+
+	hosts := parseOutput(text, "wifi0")
+	if len(hosts) != 1 {
+		t.Fatalf("parseOutput returned %d hosts, want 1", len(hosts))
+	}
+
+	host := hosts[0]
+	if host.Iface != "wifi0" {
+		t.Errorf("Iface = %q, want wifi0", host.Iface)
+	}
+	if host.IP != "192.168.1.11" {
+		t.Errorf("IP = %q, want 192.168.1.11", host.IP)
+	}
+	if host.Mac != "11:22:33:44:55:66" {
+		t.Errorf("Mac = %q, want 11:22:33:44:55:66", host.Mac)
+	}
+	if host.Hw != "Desktop Vendor" {
+		t.Errorf("Hw = %q, want Desktop Vendor", host.Hw)
+	}
+}

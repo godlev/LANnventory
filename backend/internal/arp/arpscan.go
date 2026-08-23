@@ -49,17 +49,29 @@ func parseOutput(text, iface string) []models.Host {
 	p := strings.Split(text, "\n")
 
 	for _, host := range p {
-		if host != "" {
-			var oneHost models.Host
-			p := strings.Split(host, "	")
-			oneHost.Iface = iface
-			oneHost.IP = p[0]
-			oneHost.Mac = p[1]
-			oneHost.Hw = p[2]
-			oneHost.Date = time.Now().Format("2006-01-02 15:04:05")
-			oneHost.Now = 1
-			foundHosts = append(foundHosts, oneHost)
+		host = strings.TrimSpace(host)
+		if host == "" {
+			continue
 		}
+
+		p := strings.Split(host, "	")
+		if len(p) < 3 {
+			slog.Warn("Ignoring malformed arp-scan row", "iface", iface, "row", host)
+			continue
+		}
+
+		var oneHost models.Host
+		oneHost.Iface = iface
+		oneHost.IP = strings.TrimSpace(p[0])
+		oneHost.Mac = strings.TrimSpace(p[1])
+		oneHost.Hw = strings.TrimSpace(strings.Join(p[2:], "	"))
+		if oneHost.IP == "" || oneHost.Mac == "" || oneHost.Hw == "" {
+			slog.Warn("Ignoring incomplete arp-scan row", "iface", iface, "row", host)
+			continue
+		}
+		oneHost.Date = time.Now().Format("2006-01-02 15:04:05")
+		oneHost.Now = 1
+		foundHosts = append(foundHosts, oneHost)
 	}
 
 	return foundHosts
