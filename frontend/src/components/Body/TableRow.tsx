@@ -10,6 +10,7 @@ function TableRow(_props: any) {
 
   const isOnline = () => _props.host.Now === 1;
   const known = () => _props.host.Known === 1;
+  const lastSeen = () => formatLastSeen(_props.host.Date);
 
   const debouncedApi = debounce(async (val: string) => {
     await apiEditHost(_props.host.ID, val, "");
@@ -36,8 +37,14 @@ function TableRow(_props: any) {
 
   return (
     <tr>
-      <td class="opacity-50">{_props.index}.</td>
-      <td>
+      <td class="device-table-index opacity-50">{_props.index}.</td>
+      <td class="device-table-known">
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" checked={known()}
+            onClick={handleToggle}></input>
+        </div>
+      </td>
+      <td class="device-table-name">
         <Show
           when={editNames()}
           fallback={name()}
@@ -46,24 +53,22 @@ function TableRow(_props: any) {
             onInput={e => handleInput(e.target.value)}></input>
         </Show>
       </td>
-      <td><span class="device-cell-muted">{_props.host.Iface}</span></td>
-      <td><a href={"http://" + _props.host.IP} target="_blank">{_props.host.IP}</a></td>
-      <td><span class="device-cell-muted">{_props.host.Mac}</span></td>
-      <td title={_props.host.Hw}>{_props.host.Hw.slice(0,12)+".."}</td>
-      <td><span class="device-cell-muted">{_props.host.Date}</span></td>
-      <td>
-        <div class="form-check form-switch">
-          <input class="form-check-input" type="checkbox" checked={known()}
-            onClick={handleToggle}></input>
-        </div>
-      </td>
-      <td>
+      <td class="device-table-status">
         <span class={isOnline() ? "status-pill status-pill-online" : "status-pill status-pill-offline"}>
           <i class={isOnline() ? "bi bi-check-circle-fill" : "bi bi-slash-circle-fill"} aria-hidden="true"></i>
           {isOnline() ? "Online" : "Offline"}
         </span>
       </td>
-      <td>
+      <td class="device-table-ip"><a href={"http://" + _props.host.IP} target="_blank">{_props.host.IP}</a></td>
+      <td class="device-table-iface"><span class="device-cell-muted">{_props.host.Iface}</span></td>
+      <td class="device-table-mac"><span class="device-cell-muted">{_props.host.Mac}</span></td>
+      <td class="device-table-hardware" title={_props.host.Hw}>
+        <span class="device-hardware-text">{_props.host.Hw}</span>
+      </td>
+      <td class="device-table-last-seen" title={_props.host.Date}>
+        <span class="device-cell-muted">{lastSeen()}</span>
+      </td>
+      <td class="device-table-actions">
         <Show
           when={editNames()}
           fallback={
@@ -81,6 +86,23 @@ function TableRow(_props: any) {
       </td>
     </tr>
   )
+}
+
+function formatLastSeen(date: string) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::\d{2})?$/.exec(date);
+
+  if (!match) {
+    return date;
+  }
+
+  const [, year, month, day, hour, minute] = match;
+  const currentYear = new Date().getFullYear().toString();
+
+  if (year === currentYear) {
+    return `${month}-${day} ${hour}:${minute}`;
+  }
+
+  return `${year}-${month}-${day} ${hour}:${minute}`;
 }
 
 export default TableRow

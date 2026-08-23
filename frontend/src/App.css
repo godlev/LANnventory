@@ -252,6 +252,7 @@ html[data-bs-theme] body {
 .device-table tbody td {
     padding: 0.52rem 0.75rem;
     vertical-align: middle;
+    white-space: nowrap;
 }
 .device-table a {
     color: var(--bs-info);
@@ -263,6 +264,56 @@ html[data-bs-theme] body {
 }
 .device-cell-muted {
     color: var(--wyl-muted);
+}
+.device-table-index {
+    width: 2.75rem;
+}
+.device-table-known {
+    width: 4.25rem;
+}
+.device-table-known .form-check {
+    display: flex;
+    justify-content: center;
+    min-height: 0;
+    margin-bottom: 0;
+    padding-left: 0;
+}
+.device-table-known .form-check-input {
+    margin-left: 0;
+}
+.device-table-status {
+    width: 6rem;
+}
+.device-table-iface {
+    width: 5.5rem;
+}
+.device-table-actions {
+    width: 5rem;
+    text-align: center;
+}
+.device-table-ip {
+    min-width: 8rem;
+}
+.device-table-mac {
+    min-width: 10.5rem;
+}
+.device-table-name {
+    min-width: 9rem;
+}
+.device-table-hardware {
+    min-width: 15rem;
+    max-width: 24rem;
+}
+.device-hardware-text {
+    display: inline-block;
+    max-width: min(24rem, 34vw);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: bottom;
+    white-space: nowrap;
+}
+.device-table-last-seen {
+    min-width: 7.5rem;
 }
 .status-pill {
     display: inline-flex;

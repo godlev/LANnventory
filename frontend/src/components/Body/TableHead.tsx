@@ -2,15 +2,20 @@ import { For, Show } from "solid-js";
 import { Host, SortDirection, sortState } from "../../functions/exports";
 import { sortByAnyField } from "../../functions/sort";
 
-const headers: { label: string; field: keyof Host }[] = [
-  { label: "Name", field: "Name" },
-  { label: "Iface", field: "Iface" },
-  { label: "IP", field: "IP" },
-  { label: "MAC", field: "Mac" },
-  { label: "Hardware", field: "Hw" },
-  { label: "Date", field: "Date" },
-  { label: "Known", field: "Known" },
-  { label: "On", field: "Now" },
+const headers: { label: string; field: keyof Host; className: string; title?: string }[] = [
+  { label: "Known", field: "Known", className: "device-table-known" },
+  { label: "Name", field: "Name", className: "device-table-name" },
+  { label: "On", field: "Now", className: "device-table-status" },
+  { label: "IP", field: "IP", className: "device-table-ip" },
+  { label: "Iface", field: "Iface", className: "device-table-iface" },
+  { label: "MAC", field: "Mac", className: "device-table-mac" },
+  { label: "Hardware", field: "Hw", className: "device-table-hardware" },
+  {
+    label: "Last Seen",
+    field: "Date",
+    className: "device-table-last-seen",
+    title: "Last time this device was observed on the network",
+  },
 ];
 
 function TableHead() {
@@ -37,14 +42,14 @@ function TableHead() {
   return (
     <thead>
       <tr>
-        <th style="width: 2em;"></th>
+        <th class="device-table-index">#</th>
         <For each={headers}>{(header) =>
           <th 
-            class="sortable-th"
+            class={"sortable-th " + header.className}
             style={sortState().field === header.field ? "color: var(--bs-primary);" : ''}
             aria-sort={ariaSort(header.field)}
             tabIndex={0}
-            title={"Sort by " + header.label}
+            title={header.title ? header.title : "Sort by " + header.label}
             onClick={[handleSort, header.field]}
             onKeyDown={(event) => handleKeyDown(event, header.field)}
           >
@@ -54,7 +59,7 @@ function TableHead() {
             </Show>
           </th>
         }</For>
-        <th style="width: 2em;" title="Edit"><i class="bi bi-pencil-fill"></i></th>
+        <th class="device-table-actions" title="Actions">Actions</th>
       </tr>
     </thead>
   )
