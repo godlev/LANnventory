@@ -364,6 +364,40 @@ html[data-bs-theme] body {
 .device-toolbar-actions .btn {
     white-space: nowrap;
 }
+.wyl-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    color: rgba(244, 247, 248, 0.9);
+    background-color: var(--wyl-control-bg);
+    border: 1px solid var(--wyl-control-border);
+    border-radius: 6px;
+    line-height: 1.35;
+}
+.wyl-button:hover,
+.wyl-button:focus-visible {
+    color: #ffffff;
+    background-color: var(--wyl-control-hover-bg);
+    border-color: #597D7C;
+}
+.wyl-button:focus-visible {
+    box-shadow: 0 0 0 0.18rem rgba(89, 125, 124, 0.24);
+}
+.device-edit-button {
+    min-width: 4.25rem;
+}
+.device-delete-button {
+    color: #f2d6d8;
+    background-color: rgba(96, 38, 47, 0.32);
+    border-color: rgba(220, 53, 69, 0.42);
+}
+.device-delete-button:hover,
+.device-delete-button:focus-visible {
+    color: #ffffff;
+    background-color: rgba(116, 45, 55, 0.48);
+    border-color: rgba(220, 53, 69, 0.68);
+}
 .device-table-wrap {
     padding: 0;
     overflow-x: visible !important;
@@ -410,9 +444,6 @@ html[data-bs-theme] .device-table > tbody > tr:hover > td {
 }
 html[data-bs-theme] .device-table > tbody > tr.device-row-unknown > td {
     background-color: rgba(96, 81, 92, 0.22);
-}
-.device-table tbody tr.device-row-unknown td:first-child {
-    box-shadow: inset 2px 0 0 var(--wyl-accent-unknown);
 }
 html[data-bs-theme] .device-table > tbody > tr.device-row-unknown:hover > td {
     background-color: rgba(96, 81, 92, 0.32);
@@ -533,12 +564,22 @@ html[data-bs-theme] .device-table > tbody > tr.device-row-unknown:hover > td {
     justify-content: center;
     width: 1.8rem;
     height: 1.8rem;
+    color: var(--wyl-muted);
+    opacity: 0.78;
     border-radius: 6px;
+    text-decoration: none;
+}
+.device-action-link:hover,
+.device-action-link:focus-visible {
+    color: var(--wyl-link-hover);
+    opacity: 1;
+    text-decoration: none !important;
 }
 .device-action-link .my-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    color: inherit;
     padding: 0 !important;
 }
 .device-action-checkbox {

@@ -1,5 +1,5 @@
 import { Show } from "solid-js";
-import { editNames, selectedIDs, setEditNames } from "../../functions/exports";
+import { editNames, selectedIDs, setEditNames, setSelectedIDs } from "../../functions/exports";
 import Filter from "../Filter";
 import Search from "../Search";
 import { getHosts } from "../../functions/atstart";
@@ -10,6 +10,7 @@ function CardHead() {
   const handleEditNames = (toggle: boolean) => {
     if (!toggle) {
       getHosts();
+      setSelectedIDs([]);
     }
     setEditNames(toggle);
   };
@@ -33,10 +34,23 @@ function CardHead() {
         <Search></Search>
         <Show
           when={editNames()}
-          fallback={<button class="btn btn-outline-primary btn-sm" title="Toggle edit" onClick={[handleEditNames, true]}>Edit</button>}
+          fallback={
+            <button class="btn btn-sm wyl-button device-edit-button" title="Edit device names" onClick={[handleEditNames, true]}>
+              <i class="bi bi-pencil-fill" aria-hidden="true"></i>
+              <span>Edit</span>
+            </button>
+          }
         >
-          <button type="button" onClick={handleDel} title="Delete selected hosts" class="btn btn-outline-danger btn-sm">Delete selected</button>
-          <button class="btn btn-primary btn-sm" title="Toggle edit" onClick={[handleEditNames, false]}>Edit</button>
+          <Show when={selectedIDs().length > 0}>
+            <button type="button" onClick={handleDel} title="Delete selected hosts" class="btn btn-sm wyl-button device-delete-button">
+              <i class="bi bi-trash3-fill" aria-hidden="true"></i>
+              <span>Delete ({selectedIDs().length})</span>
+            </button>
+          </Show>
+          <button class="btn btn-sm wyl-button device-edit-button" title="Finish editing" onClick={[handleEditNames, false]}>
+            <i class="bi bi-check-lg" aria-hidden="true"></i>
+            <span>Done</span>
+          </button>
         </Show>
       </div>
     </div>
