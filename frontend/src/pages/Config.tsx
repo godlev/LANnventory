@@ -8,8 +8,8 @@ import Scan from "../components/Config/Scan"
 function Config() {
 
   return (
-    <div class="row">
-      <div class="col-md">
+    <div class="row config-page">
+      <div class="col-md config-column">
         
         <Basic></Basic>
         
@@ -20,7 +20,7 @@ function Config() {
           <Scan></Scan>
         </div>
       </div>
-      <div class="col-md">
+      <div class="col-md config-column">
         
         <Influx></Influx>
         

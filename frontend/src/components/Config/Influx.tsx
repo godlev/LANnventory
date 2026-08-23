@@ -4,7 +4,7 @@ import { appConfig } from "../../functions/exports"
 function Influx() {
 
   return (
-    <div class="card border-primary">
+    <div class="card border-primary wyl-panel config-panel">
           <div class="card-header">InfluxDB2 config</div>
           <div class="card-body table-responsive">
             <form action={apiPath + '/api/config_influx/'} method="post">

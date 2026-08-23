@@ -23,25 +23,25 @@ function History() {
   });
 
   return (
-    <div class="card border-primary">
-      <div class="card-header d-flex justify-content-between">
+    <div class="card border-primary wyl-panel history-panel">
+      <div class="card-header history-panel-header">
         <Filter></Filter>
         <HistShow name="histShow"></HistShow>
       </div>
-      <div class="card-body">
-        <table class="table table-striped table-hover">
+      <div class="card-body history-panel-body table-responsive">
+        <table class="table table-hover history-table">
           <tbody>
           <Show
             when={!histUpdOnFilter()}
           >
             <For each={hosts}>{(host, index) =>
             <tr>
-              <td class="opacity-50" style="width: 2em;">{index()+1}.</td>
-              <td>
+              <td class="history-table-index opacity-50">{index()+1}.</td>
+              <td class="history-host-cell">
                 <a href={"/host/"+host.ID}>{host.Name}</a><br></br>
                 <a href={"http://"+host.IP}>{host.IP}</a>
               </td>
-              <td>
+              <td class="history-mac-cell">
                 <MacHistory mac={host.Mac} date=""></MacHistory>
               </td>
             </tr>

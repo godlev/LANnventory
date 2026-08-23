@@ -13,7 +13,7 @@ function About() {
   });
 
   return (
-    <div class="card border-primary">
+    <div class="card border-primary wyl-panel config-panel">
       <div class="card-header">
         About (<a href={link()} target="_blank">{version()}</a>)
       </div>

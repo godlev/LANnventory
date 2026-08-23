@@ -3,7 +3,7 @@
 function Donate() {
 
   return (
-    <div class="card border-info">
+    <div class="card border-info wyl-panel config-panel">
       <div class="card-header">Donations and Work</div>
       <div class="card-body">
         <p>Every <a href="https://github.com/aceberg#donate" target="_blank">donation</a> is truly appreciated!</p>
