@@ -65,7 +65,7 @@ function HostPage() {
 
   return (
     <div class="host-page">
-    <div class="row g-3 host-page-row">
+    <div class="row g-3 mx-0 host-page-row">
       <div class="col-md">
         <HostCard host={currentHost()} onHostChange={setCurrentHost}></HostCard>
       </div>
@@ -73,7 +73,7 @@ function HostPage() {
         <Ping IP={currentHost().IP}></Ping>
       </div>
     </div>
-    <div class="row g-3 mt-1 host-page-row">
+    <div class="row g-3 mx-0 mt-1 host-page-row">
       <div class="col-md">
         <HistCard mac={currentHost().Mac}></HistCard>
       </div>

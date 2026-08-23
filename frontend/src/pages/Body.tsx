@@ -46,7 +46,7 @@ function Body() {
   return (
     <>
     <SummaryCards></SummaryCards>
-    <div class="card border-primary device-panel">
+    <div class="card device-panel">
       <div class="card-header device-panel-header">
         <div class="device-panel-title-group">
           <div class="device-panel-title">Devices</div>
