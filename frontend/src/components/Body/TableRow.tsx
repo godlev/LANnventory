@@ -2,6 +2,7 @@ import { createSignal, Show } from "solid-js";
 import { editNames, hasMultipleIfaces, selectedIDs, setSelectedIDs } from "../../functions/exports";
 import { apiEditHost } from "../../functions/api";
 import { getHosts } from "../../functions/atstart";
+import { formatLastSeen } from "../../functions/dateFormat";
 
 import { debounce } from "@solid-primitives/scheduled"; 
 
@@ -113,28 +114,6 @@ function TableRow(_props: any) {
       </td>
     </tr>
   )
-}
-
-function formatLastSeen(date: string) {
-  const match = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::\d{2})?$/.exec(date);
-
-  if (!match) {
-    return date;
-  }
-
-  const [, year, month, day, hour, minute] = match;
-  const monthName = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"][Number(month) - 1];
-  const currentYear = new Date().getFullYear().toString();
-
-  if (!monthName) {
-    return date;
-  }
-
-  if (year === currentYear) {
-    return `${day} ${monthName} ${hour}:${minute}`;
-  }
-
-  return `${day} ${monthName} ${year} ${hour}:${minute}`;
 }
 
 export default TableRow

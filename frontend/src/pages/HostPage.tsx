@@ -33,10 +33,7 @@ function HostPage() {
           return;
         }
 
-        const hostName = host.Name.trim();
         setCurrentHost(host);
-        setPageContext({ kind: "host", hostName });
-        document.title = (hostName || "Host") + " · WatchYourLAN2";
       })
       .catch(() => {
         if (activeRequest !== requestId) {
@@ -54,22 +51,34 @@ function HostPage() {
     document.title = previousTitle;
   });
 
+  createEffect(() => {
+    const host = currentHost();
+
+    if (host.ID === 0) {
+      return;
+    }
+
+    const hostName = host.Name.trim();
+    setPageContext({ kind: "host", hostName });
+    document.title = (hostName || "Host") + " · WatchYourLAN2";
+  });
+
   return (
-    <>
-    <div class="row">
+    <div class="host-page">
+    <div class="row g-3 host-page-row">
       <div class="col-md">
-        <HostCard host={currentHost()}></HostCard>
+        <HostCard host={currentHost()} onHostChange={setCurrentHost}></HostCard>
       </div>
       <div class="col-md">
         <Ping IP={currentHost().IP}></Ping>
       </div>
     </div>
-    <div class="row mt-4">
+    <div class="row g-3 mt-1 host-page-row">
       <div class="col-md">
         <HistCard mac={currentHost().Mac}></HistCard>
       </div>
     </div>
-    </>
+    </div>
   )
 }
 

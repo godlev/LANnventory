@@ -567,7 +567,8 @@ html[data-bs-theme] body {
 .device-toolbar-actions .btn {
     white-space: nowrap;
 }
-.wyl-button {
+.wyl-button,
+.btn.wyl-button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -581,24 +582,30 @@ html[data-bs-theme] body {
     letter-spacing: 0.035em;
 }
 .wyl-button:hover,
-.wyl-button:focus-visible {
+.wyl-button:focus-visible,
+.btn.wyl-button:hover,
+.btn.wyl-button:focus-visible {
     color: var(--wyl-control-text-strong);
     background-color: var(--wyl-control-hover-bg);
     border-color: #597D7C;
 }
-.wyl-button:focus-visible {
+.wyl-button:focus-visible,
+.btn.wyl-button:focus-visible {
     box-shadow: 0 0 0 0.18rem rgba(89, 125, 124, 0.24);
 }
 .device-edit-button {
     min-width: 4.25rem;
 }
-.device-delete-button {
+.device-delete-button,
+.btn.device-delete-button {
     color: var(--wyl-danger-control-text);
     background-color: var(--wyl-danger-control-bg);
     border-color: var(--wyl-danger-control-border);
 }
 .device-delete-button:hover,
-.device-delete-button:focus-visible {
+.device-delete-button:focus-visible,
+.btn.device-delete-button:hover,
+.btn.device-delete-button:focus-visible {
     color: var(--wyl-danger-control-hover-text);
     background-color: var(--wyl-danger-control-hover-bg);
     border-color: var(--wyl-danger-control-hover-border);
@@ -1097,6 +1104,212 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     max-width: 100%;
 }
 
+.form-control.wyl-control {
+    color: var(--wyl-control-text);
+    background-color: var(--wyl-control-bg);
+    border: 1px solid var(--wyl-control-border);
+    border-radius: 6px;
+}
+.form-control.wyl-control:focus {
+    color: var(--wyl-control-text-strong);
+    background-color: var(--wyl-control-bg);
+    border-color: #597D7C;
+    box-shadow: 0 0 0 0.18rem rgba(89, 125, 124, 0.24);
+}
+.form-control.wyl-control::placeholder {
+    color: var(--wyl-muted);
+}
+.host-page {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+.host-page-row {
+    row-gap: 0.85rem;
+}
+.host-panel,
+.host-history-panel {
+    height: 100%;
+    margin-bottom: 0;
+}
+.host-panel-header,
+.host-history-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+.host-panel-title {
+    font-size: 1rem;
+    font-weight: 800;
+    line-height: 1.15;
+    font-variant-caps: all-small-caps;
+    letter-spacing: 0.04em;
+}
+.host-panel-subtitle {
+    color: var(--wyl-muted);
+    font-size: 0.76rem;
+    font-weight: 700;
+    line-height: 1.2;
+    font-variant-caps: all-small-caps;
+    letter-spacing: 0.035em;
+}
+.host-details-body,
+.host-port-body,
+.host-history-body {
+    padding: 0.95rem;
+}
+.host-property-grid {
+    display: grid;
+    grid-template-columns: minmax(7rem, 9rem) minmax(0, 1fr);
+    column-gap: 0.78rem;
+    row-gap: 0.56rem;
+    align-items: center;
+}
+.host-field-label {
+    color: var(--wyl-muted);
+    font-size: 0.82rem;
+    font-weight: 800;
+    font-variant-caps: all-small-caps;
+    letter-spacing: 0.035em;
+    line-height: 1.12;
+    text-align: right;
+}
+.host-field-value {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.host-field-value a {
+    color: var(--wyl-link);
+    text-decoration: none;
+}
+.host-field-value a:hover {
+    color: var(--wyl-link-hover);
+    text-decoration: underline;
+}
+.host-name-input {
+    max-width: 24rem;
+}
+.host-known-toggle {
+    width: 2rem;
+    height: 2rem;
+    font-size: 1rem;
+}
+.host-status-value {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+.host-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 0.95rem;
+}
+.host-wol-button,
+.btn.host-wol-button {
+    color: var(--bs-success);
+    border-color: rgba(25, 135, 84, 0.42);
+    background-color: var(--wyl-status-online-bg);
+}
+.host-wol-button:hover,
+.host-wol-button:focus-visible,
+.btn.host-wol-button:hover,
+.btn.host-wol-button:focus-visible {
+    color: var(--wyl-control-text-strong);
+    border-color: rgba(25, 135, 84, 0.68);
+    background-color: rgba(25, 135, 84, 0.24);
+}
+.host-port-controls {
+    display: grid;
+    grid-template-columns: minmax(6.5rem, 1fr) minmax(6.5rem, 1fr) auto;
+    gap: 0.55rem;
+    align-items: end;
+}
+.host-port-field,
+.host-history-date-control {
+    display: inline-flex;
+    align-items: flex-start;
+    gap: 0.32rem;
+    margin: 0;
+    color: var(--wyl-muted);
+    font-size: 0.78rem;
+    font-weight: 800;
+    font-variant-caps: all-small-caps;
+    letter-spacing: 0.035em;
+}
+.host-port-field {
+    flex-direction: column;
+}
+.host-port-input {
+    width: 100%;
+}
+.host-scan-button {
+    min-width: 5.1rem;
+}
+.host-scan-state {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.65rem;
+    margin-top: 0.72rem;
+    padding-top: 0.72rem;
+    border-top: 1px solid var(--wyl-panel-border);
+}
+.host-stop-button,
+.btn.host-stop-button {
+    color: var(--wyl-accent-unknown);
+    border-color: rgba(168, 139, 98, 0.46);
+}
+.host-scan-status {
+    color: var(--wyl-muted);
+    font-size: 0.86rem;
+}
+.host-found-ports {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.72rem;
+    min-height: 1.65rem;
+}
+.host-port-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.4rem;
+    padding: 0.18rem 0.48rem;
+    color: var(--wyl-link);
+    background-color: var(--wyl-control-bg);
+    border: 1px solid var(--wyl-control-border);
+    border-radius: 6px;
+    font-size: 0.82rem;
+    text-decoration: none;
+}
+.host-port-chip:hover,
+.host-port-chip:focus-visible {
+    color: var(--wyl-link-hover);
+    background-color: var(--wyl-control-hover-bg);
+    border-color: #597D7C;
+    text-decoration: none;
+}
+.host-history-date-control {
+    align-items: center;
+    white-space: nowrap;
+}
+.host-date-input {
+    width: 9.6rem;
+}
+.host-history-body {
+    min-height: 3.25rem;
+    line-height: 1.05;
+}
+.host-loading {
+    color: var(--wyl-muted);
+    font-size: 0.86rem;
+}
+
 @media (max-width: 991.98px) {
     .overview-grid {
         grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1134,6 +1347,15 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     .history-samples-control {
         flex-wrap: wrap;
     }
+    .host-property-grid {
+        grid-template-columns: minmax(6.2rem, 8rem) minmax(0, 1fr);
+    }
+    .host-port-controls {
+        grid-template-columns: minmax(6.5rem, 1fr) minmax(6.5rem, 1fr);
+    }
+    .host-scan-button {
+        justify-self: start;
+    }
 }
 
 @media (max-width: 767.98px) {
@@ -1155,6 +1377,23 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     .device-search {
         flex: 1 1 100%;
         width: 100%;
+    }
+    .host-property-grid,
+    .host-port-controls {
+        grid-template-columns: 1fr;
+    }
+    .host-field-label {
+        text-align: left;
+    }
+    .host-actions,
+    .host-scan-state,
+    .host-history-header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+    .host-history-date-control {
+        align-items: flex-start;
+        flex-direction: column;
     }
 }
 
