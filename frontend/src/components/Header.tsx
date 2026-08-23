@@ -25,10 +25,10 @@ function Header() {
   return (
     <>
     <link rel="stylesheet" href={themePath()}></link> {/* theme */}
-    <nav class="navbar navbar-expand-md navbar-dark bg-primary">
+    <nav class="navbar navbar-expand-md navbar-dark wyl-navbar">
       <div class="container-lg">
         <a class="navbar-brand" href="/">
-          <img src="/fs/public/favicon.png" style="width: 2em"/>
+          <img src="/fs/public/favicon.png" class="wyl-navbar-logo"/>
         </a>
         <ul class="navbar-nav me-auto mb-2 mb-md-0">
           <li class="nav-item">
@@ -43,7 +43,7 @@ function Header() {
         </ul>
         <ul class="navbar-nav">
           <li class="nav-item">
-            <a class="nav-link active fs-3 ms-md-2" target="_blank" href="https://github.com/aceberg/WatchYourLAN" title="Github"><i class="bi bi-github"></i></a>
+            <a class="nav-link active wyl-navbar-github ms-md-2" target="_blank" href="https://github.com/aceberg/WatchYourLAN" title="Github"><i class="bi bi-github"></i></a>
           </li>
         </ul>
       </div>

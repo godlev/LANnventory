@@ -1,6 +1,6 @@
 import { createMemo, For } from "solid-js";
 import { bkpHosts, filterState, setHistUpdOnFilter } from "../../functions/exports";
-import { toggleHostFilter } from "../../functions/filter";
+import { resetFilters, toggleHostFilter } from "../../functions/filter";
 
 type SummaryItem = {
   label: string;
@@ -10,6 +10,7 @@ type SummaryItem = {
   tone: string;
   filterField?: "Known" | "Now";
   filterValue?: number;
+  clearsFilters?: boolean;
 };
 
 function SummaryCards() {
@@ -32,6 +33,7 @@ function SummaryCards() {
         detail: total === 1 ? "1 loaded host" : total + " loaded hosts",
         icon: "bi-hdd-network",
         tone: "total",
+        clearsFilters: true,
       },
       {
         label: "Online",
@@ -73,6 +75,11 @@ function SummaryCards() {
   });
 
   const isActive = (item: SummaryItem) => {
+    if (item.clearsFilters) {
+      const filters = filterState();
+      return filters.Iface === "" && filters.Known === "" && filters.Now === "" && filters.Search === "";
+    }
+
     if (!item.filterField || item.filterValue === undefined) {
       return false;
     }
@@ -80,6 +87,12 @@ function SummaryCards() {
   };
 
   const handleQuickFilter = (item: SummaryItem) => {
+    if (item.clearsFilters) {
+      resetFilters();
+      setHistUpdOnFilter(true);
+      return;
+    }
+
     if (!item.filterField || item.filterValue === undefined) {
       return;
     }
@@ -103,7 +116,7 @@ function SummaryCards() {
   return (
     <section class="overview-grid" aria-label="Device overview">
       <For each={summary()}>{(item) =>
-        item.filterField
+        item.filterField || item.clearsFilters
           ? <button
               type="button"
               class={"overview-card overview-card-button overview-card-" + item.tone + (isActive(item) ? " is-active" : "")}
