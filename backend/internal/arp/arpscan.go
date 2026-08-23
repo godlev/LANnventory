@@ -11,13 +11,12 @@ import (
 	"github.com/aceberg/WatchYourLAN/internal/models"
 )
 
-var arpArgs string
 var scanCommandTimeout = 2 * time.Minute
 var commandRunner = runCommand
 
-func scanIface(iface string) (string, bool) {
+func scanIface(iface, scanArgs string) (string, bool) {
 	args := []string{"-glNx"}
-	args = append(args, strings.Fields(arpArgs)...)
+	args = append(args, strings.Fields(scanArgs)...)
 	args = append(args, "-I", iface)
 
 	return commandRunner("arp-scan", args...)
@@ -93,7 +92,6 @@ func Scan(ifaces, args string, strs []string) ([]models.Host, bool) {
 	var p []string
 	var foundHosts = []models.Host{}
 	scanOK := true
-	arpArgs = args
 
 	if ifaces != "" {
 
@@ -102,7 +100,7 @@ func Scan(ifaces, args string, strs []string) ([]models.Host, bool) {
 		for _, iface := range p {
 			slog.Debug("Scanning interface " + iface)
 			var ok bool
-			text, ok = scanIface(iface)
+			text, ok = scanIface(iface, args)
 			if !ok {
 				scanOK = false
 				continue

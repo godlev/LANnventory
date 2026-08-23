@@ -2,6 +2,7 @@ package arp
 
 import (
 	"os"
+	"sync"
 	"testing"
 	"time"
 )
@@ -151,6 +152,117 @@ func TestScanSplitsArpArgsAndIgnoresIfaceWhitespace(t *testing.T) {
 	for i, wantArg := range wantArgs {
 		if calls[0][i] != wantArg {
 			t.Fatalf("call 0 arg %d = %q, want %q; args=%v", i, calls[0][i], wantArg, calls[0])
+		}
+	}
+}
+
+func TestConcurrentScansKeepSeparateIfaceArgs(t *testing.T) {
+	oldRunner := commandRunner
+	t.Cleanup(func() {
+		commandRunner = oldRunner
+	})
+
+	firstScanBlocked := make(chan struct{})
+	secondScanStarted := make(chan struct{})
+	releaseFirstScan := make(chan struct{})
+
+	var secondScanOnce sync.Once
+	var mu sync.Mutex
+	callsByIface := make(map[string][]string)
+
+	commandRunner = func(_ string, args ...string) (string, bool) {
+		iface := ifaceFromArgs(args)
+
+		mu.Lock()
+		callsByIface[iface] = append([]string(nil), args...)
+		mu.Unlock()
+
+		switch iface {
+		case "one0":
+			close(firstScanBlocked)
+			<-releaseFirstScan
+		case "two0":
+			secondScanOnce.Do(func() {
+				close(secondScanStarted)
+			})
+		}
+
+		return "192.168.1.1\tAA:BB:CC:DD:EE:FF\tRouter Inc\n", true
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		Scan("one0 one1", "-r 1", nil)
+	}()
+
+	waitForSignal(t, firstScanBlocked, "first scan to enter command runner")
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		Scan("two0 two1", "-q 2", nil)
+	}()
+
+	waitForSignal(t, secondScanStarted, "second scan to enter command runner")
+	close(releaseFirstScan)
+	wg.Wait()
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	assertArgsContain(t, callsByIface["one0"], "-r", "1")
+	assertArgsContain(t, callsByIface["one1"], "-r", "1")
+	assertArgsContain(t, callsByIface["two0"], "-q", "2")
+	assertArgsContain(t, callsByIface["two1"], "-q", "2")
+	assertArgsDoNotContain(t, callsByIface["one1"], "-q", "2")
+}
+
+func ifaceFromArgs(args []string) string {
+	for i, arg := range args {
+		if arg == "-I" && i+1 < len(args) {
+			return args[i+1]
+		}
+	}
+	return ""
+}
+
+func waitForSignal(t *testing.T, ch <-chan struct{}, name string) {
+	t.Helper()
+
+	select {
+	case <-ch:
+	case <-time.After(time.Second):
+		t.Fatalf("timed out waiting for %s", name)
+	}
+}
+
+func assertArgsContain(t *testing.T, args []string, values ...string) {
+	t.Helper()
+
+	for _, value := range values {
+		found := false
+		for _, arg := range args {
+			if arg == value {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("args %v do not contain %q", args, value)
+		}
+	}
+}
+
+func assertArgsDoNotContain(t *testing.T, args []string, values ...string) {
+	t.Helper()
+
+	for _, value := range values {
+		for _, arg := range args {
+			if arg == value {
+				t.Fatalf("args %v unexpectedly contain %q", args, value)
+			}
 		}
 	}
 }
