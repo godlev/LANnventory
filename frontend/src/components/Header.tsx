@@ -13,11 +13,7 @@ function Header() {
     const theme = appConfig().Theme?appConfig().Theme:"sand";
     const color = appConfig().Color?appConfig().Color:"dark";
     
-    if (appConfig().NodePath == '') {
-      setThemePath(localThemePath(theme));
-    } else {
-      setThemePath(appConfig().NodePath+"/node_modules/bootswatch/dist/"+theme+"/bootstrap.min.css");
-    }
+    setThemePath(localThemePath(theme));
 
     document.documentElement.setAttribute("data-bs-theme", color);
     color === "dark"
@@ -47,7 +43,7 @@ function Header() {
         </ul>
         <ul class="navbar-nav">
           <li class="nav-item">
-            <a class="nav-link active fs-3 ms-md-2" target="_blank" href="https://github.com/aceberg/WatchYourLAN" title="Github"><i class="bi bi-github"></i></a>
+            <span class="nav-link active fs-3 ms-md-2" title="WatchYourLAN"><i class="bi bi-github"></i></span>
           </li>
         </ul>
       </div>

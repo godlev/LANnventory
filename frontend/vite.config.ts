@@ -25,7 +25,8 @@ function getThemeFromPath(pathname: string) {
 function getThemeCss(theme: string) {
   const cssPath = join(bootswatchDist, theme, 'bootstrap.min.css')
   return readFileSync(cssPath, 'utf8')
-    .replace(/@import url\(https:\/\/fonts\.googleapis\.com[^;]+;\s*/g, '')
+    .replace(/@import\s+url\((['"]?)https:\/\/fonts\.googleapis\.com[^)'"]+\1\)\s*;?/g, '')
+    .replace(/@import\s+['"]https:\/\/fonts\.googleapis\.com[^'"]+['"]\s*;?/g, '')
     .replace(/\/\*# sourceMappingURL=bootstrap\.min\.css\.map\s*\*\//g, '')
 }
 
