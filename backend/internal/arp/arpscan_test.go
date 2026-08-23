@@ -1,6 +1,7 @@
 package arp
 
 import (
+	"os"
 	"testing"
 	"time"
 )
@@ -66,4 +67,29 @@ func TestParseOutputIgnoresMalformedRows(t *testing.T) {
 	if host.Hw != "Desktop Vendor" {
 		t.Errorf("Hw = %q, want Desktop Vendor", host.Hw)
 	}
+}
+
+func TestRunCommandTimesOut(t *testing.T) {
+	oldTimeout := scanCommandTimeout
+	scanCommandTimeout = 10 * time.Millisecond
+	t.Cleanup(func() {
+		scanCommandTimeout = oldTimeout
+	})
+	t.Setenv("WYL_ARP_TEST_HELPER", "1")
+
+	out := runCommand(os.Args[0], "-test.run=TestHelperProcess", "--", "sleep")
+	if out != "" {
+		t.Fatalf("runCommand returned %q, want empty output after timeout", out)
+	}
+}
+
+func TestHelperProcess(t *testing.T) {
+	if os.Getenv("WYL_ARP_TEST_HELPER") != "1" {
+		return
+	}
+
+	if os.Args[len(os.Args)-1] == "sleep" {
+		time.Sleep(time.Second)
+	}
+	os.Exit(0)
 }

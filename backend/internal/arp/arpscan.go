@@ -1,6 +1,7 @@
 package arp
 
 import (
+	"context"
 	"log/slog"
 	"os/exec"
 	"strings"
@@ -11,31 +12,40 @@ import (
 )
 
 var arpArgs string
+var scanCommandTimeout = 2 * time.Minute
 
 func scanIface(iface string) string {
-	var cmd *exec.Cmd
+	var args []string
 
 	if arpArgs != "" {
-		cmd = exec.Command("arp-scan", "-glNx", arpArgs, "-I", iface)
+		args = []string{"-glNx", arpArgs, "-I", iface}
 	} else {
-		cmd = exec.Command("arp-scan", "-glNx", "-I", iface)
+		args = []string{"-glNx", "-I", iface}
 	}
-	out, err := cmd.Output()
-	slog.Debug(cmd.String())
 
-	if check.IfError(err) {
-		return string("")
-	}
-	return string(out)
+	return runCommand("arp-scan", args...)
 }
 
 func scanStr(str string) string {
 
 	args := strings.Split(str, " ")
-	cmd := exec.Command("arp-scan", args...)
+
+	return runCommand("arp-scan", args...)
+}
+
+func runCommand(name string, args ...string) string {
+	ctx, cancel := context.WithTimeout(context.Background(), scanCommandTimeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, name, args...)
 
 	out, err := cmd.Output()
 	slog.Debug(cmd.String())
+
+	if ctx.Err() == context.DeadlineExceeded {
+		slog.Error("Command timed out", "cmd", cmd.String(), "timeout", scanCommandTimeout.String())
+		return string("")
+	}
 
 	if check.IfError(err) {
 		return string("")
