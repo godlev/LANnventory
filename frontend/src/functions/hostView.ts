@@ -1,24 +1,44 @@
-import { bkpHosts, filterState, Host, setAllHosts, sortState } from "./exports";
+import { bkpHosts, FilterState, filterState, Host, setAllHosts, sortState } from "./exports";
+
+export type HostFilterKey = keyof FilterState;
+
+type FilterOptions = {
+  ignore?: HostFilterKey[];
+};
 
 export function applyHostView() {
   const filters = filterState();
-  let hosts = [...bkpHosts()];
-
-  if (filters.Iface !== "") {
-    hosts = hosts.filter((host) => host.Iface === filters.Iface);
-  }
-  if (filters.Known !== "") {
-    hosts = hosts.filter((host) => host.Known === filters.Known);
-  }
-  if (filters.Now !== "") {
-    hosts = hosts.filter((host) => host.Now === filters.Now);
-  }
-  if (filters.Search !== "") {
-    const search = filters.Search.toLowerCase();
-    hosts = hosts.filter((host) => searchItem(host, search));
-  }
+  const hosts = filterHosts(bkpHosts(), filters);
 
   setAllHosts(sortHosts(hosts));
+}
+
+export function filterHosts(hosts: Host[], filters: FilterState, options: FilterOptions = {}) {
+  const ignored = new Set(options.ignore ?? []);
+  let filteredHosts = [...hosts];
+
+  if (!ignored.has("Iface") && filters.Iface !== "") {
+    filteredHosts = filteredHosts.filter((host) => host.Iface === filters.Iface);
+  }
+  if (!ignored.has("Known") && filters.Known !== "") {
+    filteredHosts = filteredHosts.filter((host) => host.Known === filters.Known);
+  }
+  if (!ignored.has("Now") && filters.Now !== "") {
+    filteredHosts = filteredHosts.filter((host) => host.Now === filters.Now);
+  }
+  if (!ignored.has("Search") && filters.Search !== "") {
+    const search = filters.Search.toLowerCase();
+    filteredHosts = filteredHosts.filter((host) => searchItem(host, search));
+  }
+
+  return filteredHosts;
+}
+
+export function hasActiveHostFilters(filters: FilterState) {
+  return filters.Iface !== ""
+    || filters.Known !== ""
+    || filters.Now !== ""
+    || filters.Search.trim() !== "";
 }
 
 function sortHosts(hosts: Host[]) {

@@ -1,6 +1,7 @@
 import { createMemo, For } from "solid-js";
 import { bkpHosts, filterState, setHistUpdOnFilter } from "../../functions/exports";
 import { resetFilters, toggleHostFilter } from "../../functions/filter";
+import { filterHosts, hasActiveHostFilters } from "../../functions/hostView";
 
 type SummaryItem = {
   label: string;
@@ -16,21 +17,34 @@ type SummaryItem = {
 function SummaryCards() {
   const summary = createMemo<SummaryItem[]>(() => {
     const hosts = bkpHosts();
+    const filters = filterState();
     const total = hosts.length;
-    const online = hosts.filter((host) => host.Now === 1).length;
-    const offline = hosts.filter((host) => host.Now === 0).length;
-    const known = hosts.filter((host) => host.Known === 1).length;
-    const unknown = hosts.filter((host) => host.Known === 0).length;
+    const filteredHosts = filterHosts(hosts, filters);
+    const statusFacetHosts = filterHosts(hosts, filters, { ignore: ["Now"] });
+    const knownFacetHosts = filterHosts(hosts, filters, { ignore: ["Known"] });
+    const filtersActive = hasActiveHostFilters(filters);
 
-    const percentage = (value: number) => total > 0
-      ? Math.round((value / total) * 100) + "%"
+    const visible = filteredHosts.length;
+    const online = statusFacetHosts.filter((host) => host.Now === 1).length;
+    const offline = statusFacetHosts.filter((host) => host.Now === 0).length;
+    const known = knownFacetHosts.filter((host) => host.Known === 1).length;
+    const unknown = knownFacetHosts.filter((host) => host.Known === 0).length;
+
+    const percentage = (value: number, base: number) => base > 0
+      ? Math.round((value / base) * 100) + "%"
       : "0%";
+    const facetDetail = (value: number, base: number) => {
+      const context = filtersActive ? " of matching" : " of devices";
+      return percentage(value, base) + context;
+    };
 
     return [
       {
         label: "Total Devices",
-        value: total,
-        detail: total === 1 ? "1 loaded host" : total + " loaded hosts",
+        value: filtersActive ? visible : total,
+        detail: filtersActive
+          ? visible + " visible / " + total + " total"
+          : total === 1 ? "1 loaded host" : total + " loaded hosts",
         icon: "bi-hdd-network",
         tone: "total",
         clearsFilters: true,
@@ -38,7 +52,7 @@ function SummaryCards() {
       {
         label: "Online",
         value: online,
-        detail: percentage(online) + " of devices",
+        detail: facetDetail(online, statusFacetHosts.length),
         icon: "bi-check-circle-fill",
         tone: "online",
         filterField: "Now",
@@ -47,7 +61,7 @@ function SummaryCards() {
       {
         label: "Offline",
         value: offline,
-        detail: percentage(offline) + " of devices",
+        detail: facetDetail(offline, statusFacetHosts.length),
         icon: "bi-slash-circle-fill",
         tone: "offline",
         filterField: "Now",
@@ -56,7 +70,7 @@ function SummaryCards() {
       {
         label: "Known",
         value: known,
-        detail: percentage(known) + " of devices",
+        detail: facetDetail(known, knownFacetHosts.length),
         icon: "bi-bookmark-check-fill",
         tone: "known",
         filterField: "Known",
@@ -65,7 +79,7 @@ function SummaryCards() {
       {
         label: "Unknown",
         value: unknown,
-        detail: percentage(unknown) + " of devices",
+        detail: facetDetail(unknown, knownFacetHosts.length),
         icon: "bi-question-circle-fill",
         tone: "unknown",
         filterField: "Known",

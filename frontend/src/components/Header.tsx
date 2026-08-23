@@ -50,9 +50,9 @@ function Header() {
           </li>
           )}
         </ul>
-        <ul class="navbar-nav">
+        <ul class="navbar-nav wyl-navbar-actions">
           <li class="nav-item">
-            <a class="nav-link wyl-navbar-github ms-md-2" target="_blank" rel="noreferrer" href="https://github.com/aceberg/WatchYourLAN" title="Github"><i class="bi bi-github"></i></a>
+            <a class="nav-link wyl-navbar-github" target="_blank" rel="noreferrer" href="https://github.com/aceberg/WatchYourLAN" title="Github"><i class="bi bi-github"></i></a>
           </li>
         </ul>
       </div>

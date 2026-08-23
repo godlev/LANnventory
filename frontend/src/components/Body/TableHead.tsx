@@ -89,7 +89,7 @@ function TableHead() {
     <thead>
       <tr>
         <th class="device-table-index">
-          <span>#</span>
+          <span class="device-header-content">#</span>
           <Show when={filterSummary()}>
             <span
               class="device-filter-indicator"
@@ -114,11 +114,15 @@ function TableHead() {
               onClick={[handleSort, header.field]}
               onKeyDown={(event) => handleKeyDown(event, header.field)}
             >
-              <Show when={header.icon} fallback={header.label}>
-                <i class={"bi " + header.icon} aria-hidden="true"></i>
-              </Show>
+              <span class="device-header-content">
+                <Show when={header.icon} fallback={header.label}>
+                  <i class={"bi " + header.icon} aria-hidden="true"></i>
+                </Show>
+              </span>
               <Show when={sortState().field === header.field}>
-                <i class={"bi " + sortIcon(sortState().direction) + " ms-1"} aria-hidden="true"></i>
+                <span class="device-sort-indicator" aria-hidden="true">
+                  <i class={"bi " + sortIcon(sortState().direction)}></i>
+                </span>
               </Show>
             </th>
             </Show>

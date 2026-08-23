@@ -231,9 +231,15 @@ html[data-bs-theme] body {
     align-items: stretch !important;
     align-self: stretch;
 }
-.wyl-nav-tabs .nav-item {
+.wyl-nav-tabs .nav-item,
+.wyl-navbar-actions .nav-item {
     display: flex;
     align-items: stretch;
+}
+.wyl-navbar-actions {
+    align-items: stretch !important;
+    align-self: stretch;
+    margin: 0;
 }
 .wyl-navbar .wyl-nav-tab {
     display: inline-flex;
@@ -262,10 +268,13 @@ html[data-bs-theme] body {
 }
 .wyl-navbar-github {
     display: inline-flex;
-    align-items: center;
+    align-items: center !important;
+    justify-content: center;
+    min-width: 2.7rem;
     min-height: 48px;
-    padding-top: 0 !important;
-    padding-bottom: 0 !important;
+    height: 100%;
+    margin: 0 !important;
+    padding: 0 0.55rem !important;
     font-size: 1.3rem !important;
     line-height: 1;
     opacity: 0.62;
@@ -291,6 +300,7 @@ html[data-bs-theme] body {
 }
 
 .sortable-th {
+    position: sticky;
     cursor: pointer;
     user-select: none;
 }
@@ -574,6 +584,7 @@ html[data-bs-theme] body {
     position: sticky;
     top: 0;
     z-index: 5;
+    height: 2.18rem;
     padding: 0.4rem 0.5rem;
     color: var(--wyl-muted);
     font-size: 0.9rem;
@@ -584,6 +595,8 @@ html[data-bs-theme] body {
     text-align: center;
     vertical-align: middle;
     border-bottom: 1px solid var(--wyl-panel-border);
+    white-space: nowrap;
+    overflow: visible;
 }
 html[data-bs-theme] .device-table > tbody > tr > td {
     background-color: var(--wyl-table-row-bg);
@@ -618,22 +631,52 @@ html[data-bs-theme] .device-table > tbody > tr.device-row-unknown:hover > td {
     color: var(--wyl-muted);
 }
 .device-table-index {
+    position: sticky;
     width: 1.6rem;
     padding-left: 0.18rem !important;
     padding-right: 0.18rem !important;
     text-align: center;
 }
+.device-header-content {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 1rem;
+    white-space: nowrap;
+    line-height: 1;
+}
 .device-filter-indicator {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    margin-left: 0.22rem;
+    position: absolute;
+    top: 0.14rem;
+    right: 0.1rem;
+    width: 0.72rem;
+    height: 0.72rem;
+    pointer-events: auto;
     color: var(--wyl-filter-active);
-    font-size: 0.78rem;
+    font-size: 0.56rem;
     line-height: 1;
-    vertical-align: middle;
+    z-index: 6;
+}
+.device-sort-indicator {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: 50%;
+    right: 0.12rem;
+    width: 0.8rem;
+    height: 0.8rem;
+    transform: translateY(-50%);
+    color: var(--wyl-link-hover);
+    font-size: 0.8rem;
+    line-height: 1;
+    pointer-events: none;
 }
 .device-table-known {
+    position: sticky;
     width: 1.75rem;
     padding-left: 0.12rem !important;
     padding-right: 0.12rem !important;
