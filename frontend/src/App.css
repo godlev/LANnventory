@@ -508,6 +508,11 @@ html[data-bs-theme] body {
     font-variant-caps: all-small-caps;
     letter-spacing: 0.025em;
 }
+.form-select.device-filter-select.is-active {
+    color: var(--wyl-control-text-strong);
+    background-color: var(--wyl-card-active-bg);
+    border-color: #597D7C;
+}
 .form-select.device-filter-select:focus,
 .form-control.device-search:focus,
 .btn.device-reset-filter:focus-visible {
@@ -530,6 +535,11 @@ html[data-bs-theme] body {
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+.btn.device-reset-filter span {
+    white-space: nowrap;
 }
 .device-search {
     flex: 0 1 18rem;
@@ -959,13 +969,13 @@ html[data-bs-theme] .config-panel table > tbody > tr > td {
     min-width: 0;
 }
 .history-filter-select {
-    flex: 0 0 7.2rem;
-    width: 7.2rem;
+    flex: 0 0 8.9rem;
+    width: 8.9rem;
     min-width: 0 !important;
 }
 .history-filter-iface {
-    flex-basis: 7.8rem;
-    width: 7.8rem;
+    flex-basis: 8.9rem;
+    width: 8.9rem;
 }
 .history-panel-body {
     padding: 0;
@@ -1006,6 +1016,9 @@ html[data-bs-theme] .config-panel table > tbody > tr > td {
 }
 .history-legend-offline {
     background-color: var(--wyl-history-offline);
+}
+.history-legend-neutral {
+    background-color: var(--wyl-control-hover-bg);
 }
 .history-legend-boundary {
     display: inline-flex;

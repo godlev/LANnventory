@@ -23,25 +23,29 @@ function HistoryFilters(props: ParentProps) {
     return filters.Iface !== "" || filters.Known !== "" || filters.Now !== "" || filters.Search !== "";
   };
 
+  const selectClass = (active: boolean) => {
+    return "form-select form-select-sm device-filter-select history-filter-select" + (active ? " is-active" : "");
+  };
+
   return (
     <div class="history-filter-group">
       <Show when={hasMultipleIfaces()}>
-        <select onChange={(event)=>{handleFilter("Iface", event)}} class="form-select form-select-sm device-filter-select history-filter-select history-filter-iface" title="Filter history by interface" value={filterState().Iface}>
-          <option value="">Iface</option>
+        <select onChange={(event)=>{handleFilter("Iface", event)}} class={selectClass(filterState().Iface !== "") + " history-filter-iface"} title="Filter history by interface" value={filterState().Iface}>
+          <option value="">All interfaces</option>
           <For each={ifaces()}>{(iface) =>
             <option value={iface}>{iface}</option>
           }</For>
         </select>
       </Show>
-      <select onChange={(event)=>{handleFilter("Known", event)}} class="form-select form-select-sm device-filter-select history-filter-select" title="Filter history by known state" value={filterState().Known}>
-        <option value="">Known</option>
-        <option value="1">Known</option>
-        <option value="0">Unknown</option>
+      <select onChange={(event)=>{handleFilter("Known", event)}} class={selectClass(filterState().Known !== "")} title="Filter by recognition state" value={filterState().Known}>
+        <option value="">All devices</option>
+        <option value="1">Known devices</option>
+        <option value="0">Unknown devices</option>
       </select>
-      <select onChange={(event)=>{handleFilter("Now", event)}} class="form-select form-select-sm device-filter-select history-filter-select" title="Filter history by online state" value={filterState().Now}>
-        <option value="">Status</option>
-        <option value="1">Online</option>
-        <option value="0">Offline</option>
+      <select onChange={(event)=>{handleFilter("Now", event)}} class={selectClass(filterState().Now !== "")} title="Filter history by online state" value={filterState().Now}>
+        <option value="">All statuses</option>
+        <option value="1">Online devices</option>
+        <option value="0">Offline devices</option>
       </select>
       {props.children}
       <Show when={hasActiveFilter()}>

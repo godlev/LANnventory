@@ -40,20 +40,20 @@ function History() {
           <Show when={scanIntervalHint()}>
             <span>{scanIntervalHint()}</span>
           </Show>
-          <span class="history-legend-status"><span class="history-legend-block history-legend-online-day"></span>Online - Day</span>
-          <span class="history-legend-status"><span class="history-legend-block history-legend-online-night"></span>Online - Night</span>
+          <span class="history-legend-status"><span class="history-legend-block history-legend-online-day"></span>Online — Day</span>
+          <span class="history-legend-status"><span class="history-legend-block history-legend-online-night"></span>Online — Night</span>
           <span class="history-legend-status"><span class="history-legend-block history-legend-offline"></span>Offline</span>
           <span class="history-legend-status">
             <span class="history-legend-boundary" aria-hidden="true">
-              <span class="history-legend-block history-legend-online-day"></span>
-              <span class="history-legend-block history-legend-online-day history-sample-hour-break"></span>
+              <span class="history-legend-block history-legend-neutral"></span>
+              <span class="history-legend-block history-legend-neutral history-sample-hour-break"></span>
             </span>
             New hour
           </span>
           <span class="history-legend-status">
             <span class="history-legend-boundary" aria-hidden="true">
-              <span class="history-legend-block history-legend-online-day"></span>
-              <span class="history-legend-block history-legend-online-day history-sample-day-break"></span>
+              <span class="history-legend-block history-legend-neutral"></span>
+              <span class="history-legend-block history-legend-neutral history-sample-day-break"></span>
             </span>
             New day
           </span>
