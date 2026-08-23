@@ -11,7 +11,7 @@ function Basic() {
   };
 
   return (
-    <div class="card border-primary wyl-panel config-panel">
+    <div class="card wyl-panel config-panel">
       <div class="card-header">Basic config</div>
       <div class="card-body table-responsive">
         <form action={apiPath + '/api/config/'} method="post">
@@ -26,7 +26,7 @@ function Basic() {
               <td><input name="port" type="text" class="form-control" value={appConfig().Port}></input></td>
             </tr>
             <tr>
-              <td>Theme</td>
+              <td>Base theme</td>
               <td>
                 <select name="theme" class="form-select">
                 <For each={themes}>{theme =>
@@ -38,6 +38,7 @@ function Basic() {
                   </Show>
                 }</For>
                 </select>
+                <div class="config-field-helper">Base Bootstrap/Bootswatch styling underneath the WatchYourLAN interface.</div>
               </td>
             </tr>
             <tr>
@@ -68,8 +69,8 @@ function Basic() {
               </td>
             </tr>
             <tr>
-              <td><button type="submit" class="btn btn-primary">Save</button></td>
-              <td><button onClick={handleTestNotify} type="button" style="float: right;" class="btn btn-info">Test notification</button></td>
+              <td><button type="submit" class="btn btn-sm wyl-button">Save</button></td>
+              <td><button onClick={handleTestNotify} type="button" class="btn btn-sm wyl-button config-secondary-action">Test notification</button></td>
               <td></td>
             </tr>
           </tbody>

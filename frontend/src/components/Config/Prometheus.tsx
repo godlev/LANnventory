@@ -4,7 +4,7 @@ import { appConfig } from "../../functions/exports"
 function Prometheus() {
 
   return (
-    <div class="card border-primary wyl-panel config-panel">
+    <div class="card wyl-panel config-panel">
       <div class="card-header">Prometheus config</div>
       <div class="card-body table-responsive">
         <form action={apiPath + '/api/config_prometheus/'} method="post">
@@ -21,7 +21,7 @@ function Prometheus() {
               </td>
             </tr>
             <tr>
-              <td><button type="submit" class="btn btn-primary">Save</button></td>
+              <td><button type="submit" class="btn btn-sm wyl-button">Save</button></td>
               <td>
                 <a href="/metrics" target="_blank">/metrics</a>
               </td>

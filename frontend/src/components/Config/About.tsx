@@ -13,12 +13,12 @@ function About() {
   });
 
   return (
-    <div class="card border-primary wyl-panel config-panel">
+    <div class="card wyl-panel config-panel">
       <div class="card-header">
         About (<a href={link()} target="_blank">{version()}</a>)
       </div>
       <div class="card-body table-responsive">
-        <table class="table table-striped"><tbody>
+        <table class="table config-info-table"><tbody>
           <tr>
             <td><b>Swagger API docs</b></td>
             <td><a href="/swagger/index.html" target="_blank">/swagger/index.html</a></td>

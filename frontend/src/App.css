@@ -33,6 +33,16 @@
     --wyl-control-bg: var(--bs-body-bg);
     --wyl-control-border: var(--bs-border-color);
     --wyl-control-hover-bg: var(--transparent-light);
+    --wyl-control-text: var(--bs-body-color);
+    --wyl-control-text-strong: var(--bs-body-color);
+    --wyl-unknown-row-bg: rgba(96, 81, 92, 0.22);
+    --wyl-unknown-row-hover-bg: rgba(96, 81, 92, 0.32);
+    --wyl-danger-control-bg: rgba(96, 38, 47, 0.32);
+    --wyl-danger-control-border: rgba(220, 53, 69, 0.42);
+    --wyl-danger-control-text: #f2d6d8;
+    --wyl-danger-control-hover-bg: rgba(116, 45, 55, 0.48);
+    --wyl-danger-control-hover-border: rgba(220, 53, 69, 0.68);
+    --wyl-danger-control-hover-text: #ffffff;
 }
 
 html[data-bs-theme="dark"] {
@@ -66,23 +76,59 @@ html[data-bs-theme="dark"] {
     --wyl-control-bg: #252933;
     --wyl-control-border: rgba(89, 125, 124, 0.55);
     --wyl-control-hover-bg: #404556;
+    --wyl-control-text: rgba(244, 247, 248, 0.9);
+    --wyl-control-text-strong: #ffffff;
+    --wyl-unknown-row-bg: rgba(96, 81, 92, 0.22);
+    --wyl-unknown-row-hover-bg: rgba(96, 81, 92, 0.32);
+    --wyl-danger-control-bg: rgba(96, 38, 47, 0.32);
+    --wyl-danger-control-border: rgba(220, 53, 69, 0.42);
+    --wyl-danger-control-text: #f2d6d8;
+    --wyl-danger-control-hover-bg: rgba(116, 45, 55, 0.48);
+    --wyl-danger-control-hover-border: rgba(220, 53, 69, 0.68);
+    --wyl-danger-control-hover-text: #ffffff;
 }
 
 html[data-bs-theme="light"] {
-    --wyl-page-bg: #f3f6f8;
-    --wyl-nav-bg: var(--bs-primary);
+    --wyl-page-bg: #EEF2F3;
+    --wyl-nav-bg: #DDE6E5;
+    --wyl-nav-link: #314044;
+    --wyl-nav-link-hover: #17292B;
+    --wyl-nav-active-bg: #C5D4D5;
+    --wyl-nav-hover-bg: #D0DEDF;
     --wyl-panel-bg: #ffffff;
-    --wyl-panel-header-bg: #f7f9fb;
-    --wyl-panel-border: rgba(42, 58, 75, 0.14);
-    --wyl-table-striped-bg: rgba(42, 58, 75, 0.035);
-    --wyl-table-hover-bg: rgba(13, 110, 253, 0.08);
+    --wyl-panel-header-bg: #F5F8F8;
+    --wyl-panel-border: rgba(49, 64, 68, 0.16);
+    --wyl-table-bg: #ffffff;
+    --wyl-table-header-bg: #F5F8F8;
+    --wyl-table-row-bg: #ffffff;
+    --wyl-table-striped-bg: rgba(49, 64, 68, 0.035);
+    --wyl-table-hover-bg: #E6EEEE;
+    --wyl-muted: #667176;
     --wyl-card-bg: #ffffff;
-    --wyl-card-border: rgba(42, 58, 75, 0.12);
-    --wyl-card-active-bg: #eef3f8;
-    --wyl-card-active-icon-bg: #e6edf5;
-    --wyl-control-bg: #ffffff;
-    --wyl-control-border: rgba(42, 58, 75, 0.22);
-    --wyl-control-hover-bg: #eef3f8;
+    --wyl-card-border: rgba(49, 64, 68, 0.14);
+    --wyl-card-active-bg: #DCE8E8;
+    --wyl-card-active-icon-bg: #CFE0E0;
+    --wyl-shadow: 0 10px 24px rgba(49, 64, 68, 0.12);
+    --wyl-accent-total: #6F7680;
+    --wyl-accent-known: #386775;
+    --wyl-accent-unknown: #9B7E59;
+    --wyl-link: #386775;
+    --wyl-link-hover: #20504E;
+    --wyl-offline-muted: #7D878C;
+    --wyl-filter-active: #386775;
+    --wyl-control-bg: #F6F9F9;
+    --wyl-control-border: rgba(49, 64, 68, 0.24);
+    --wyl-control-hover-bg: #E6EEEE;
+    --wyl-control-text: #314044;
+    --wyl-control-text-strong: #17292B;
+    --wyl-unknown-row-bg: rgba(155, 126, 89, 0.12);
+    --wyl-unknown-row-hover-bg: rgba(155, 126, 89, 0.2);
+    --wyl-danger-control-bg: #F8E0E4;
+    --wyl-danger-control-border: rgba(155, 49, 63, 0.34);
+    --wyl-danger-control-text: #7B2630;
+    --wyl-danger-control-hover-bg: #EFCAD1;
+    --wyl-danger-control-hover-border: rgba(155, 49, 63, 0.52);
+    --wyl-danger-control-hover-text: #611C25;
 }
 
 body {
@@ -118,9 +164,13 @@ html[data-bs-theme] body {
     border: 1px solid var(--wyl-control-border);
     border-radius: 6px;
 }
+.wyl-panel .form-select {
+    font-variant-caps: all-small-caps;
+    letter-spacing: 0.025em;
+}
 .wyl-panel .form-control:focus,
 .wyl-panel .form-select:focus {
-    color: var(--bs-body-color);
+    color: var(--wyl-control-text-strong);
     background-color: var(--wyl-control-bg);
     border-color: #597D7C;
     box-shadow: 0 0 0 0.18rem rgba(89, 125, 124, 0.24);
@@ -415,28 +465,32 @@ html[data-bs-theme] body {
 .form-select.device-filter-select,
 .form-control.device-search,
 .btn.device-reset-filter {
-    color: rgba(244, 247, 248, 0.9);
-    background-color: #252933;
-    border: 1px solid rgba(89, 125, 124, 0.55);
+    color: var(--wyl-control-text);
+    background-color: var(--wyl-control-bg);
+    border: 1px solid var(--wyl-control-border);
     border-radius: 6px;
+}
+.form-select.device-filter-select {
+    font-variant-caps: all-small-caps;
+    letter-spacing: 0.025em;
 }
 .form-select.device-filter-select:focus,
 .form-control.device-search:focus,
 .btn.device-reset-filter:focus-visible {
-    color: #ffffff;
-    background-color: #252933;
+    color: var(--wyl-control-text-strong);
+    background-color: var(--wyl-control-bg);
     border-color: #597D7C;
     box-shadow: 0 0 0 0.18rem rgba(89, 125, 124, 0.24);
 }
 .form-select.device-filter-select:hover,
 .btn.device-reset-filter:hover {
-    color: #ffffff;
-    background-color: #404556;
+    color: var(--wyl-control-text-strong);
+    background-color: var(--wyl-control-hover-bg);
     border-color: #597D7C;
 }
 .form-select.device-filter-select option {
-    background-color: #252933;
-    color: #f4f7f8;
+    background-color: var(--wyl-control-bg);
+    color: var(--wyl-control-text);
 }
 .btn.device-reset-filter {
     display: inline-flex;
@@ -462,15 +516,17 @@ html[data-bs-theme] body {
     align-items: center;
     justify-content: center;
     gap: 0.35rem;
-    color: rgba(244, 247, 248, 0.9);
+    color: var(--wyl-control-text);
     background-color: var(--wyl-control-bg);
     border: 1px solid var(--wyl-control-border);
     border-radius: 6px;
     line-height: 1.35;
+    font-variant-caps: all-small-caps;
+    letter-spacing: 0.035em;
 }
 .wyl-button:hover,
 .wyl-button:focus-visible {
-    color: #ffffff;
+    color: var(--wyl-control-text-strong);
     background-color: var(--wyl-control-hover-bg);
     border-color: #597D7C;
 }
@@ -481,15 +537,15 @@ html[data-bs-theme] body {
     min-width: 4.25rem;
 }
 .device-delete-button {
-    color: #f2d6d8;
-    background-color: rgba(96, 38, 47, 0.32);
-    border-color: rgba(220, 53, 69, 0.42);
+    color: var(--wyl-danger-control-text);
+    background-color: var(--wyl-danger-control-bg);
+    border-color: var(--wyl-danger-control-border);
 }
 .device-delete-button:hover,
 .device-delete-button:focus-visible {
-    color: #ffffff;
-    background-color: rgba(116, 45, 55, 0.48);
-    border-color: rgba(220, 53, 69, 0.68);
+    color: var(--wyl-danger-control-hover-text);
+    background-color: var(--wyl-danger-control-hover-bg);
+    border-color: var(--wyl-danger-control-hover-border);
 }
 .device-table-wrap {
     padding: 0;
@@ -536,10 +592,10 @@ html[data-bs-theme] .device-table > tbody > tr:hover > td {
     background-color: var(--wyl-table-hover-bg);
 }
 html[data-bs-theme] .device-table > tbody > tr.device-row-unknown > td {
-    background-color: rgba(96, 81, 92, 0.22);
+    background-color: var(--wyl-unknown-row-bg);
 }
 html[data-bs-theme] .device-table > tbody > tr.device-row-unknown:hover > td {
-    background-color: rgba(96, 81, 92, 0.32);
+    background-color: var(--wyl-unknown-row-hover-bg);
 }
 .device-table a {
     color: var(--wyl-link);
@@ -774,6 +830,15 @@ html[data-bs-theme] .config-panel table > tbody > tr > td {
 }
 .config-panel .form-control + .form-control {
     margin-top: 0.4rem;
+}
+.config-field-helper {
+    margin-top: 0.28rem;
+    color: var(--wyl-muted);
+    font-size: 0.76rem;
+    line-height: 1.25;
+}
+.config-secondary-action {
+    float: right;
 }
 .config-panel code {
     color: var(--wyl-link-hover);

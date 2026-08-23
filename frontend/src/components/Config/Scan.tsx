@@ -5,7 +5,7 @@ import { apiPath } from "../../functions/api"
 function Scan() {
 
   return (
-    <div class="card border-primary wyl-panel config-panel">
+    <div class="card wyl-panel config-panel">
       <div class="card-header">Scan settings</div>
       <div class="card-body table-responsive">
         <form action={apiPath + '/api/config_settings/'} method="post">
@@ -70,7 +70,7 @@ function Scan() {
               </td>
             </tr>
             <tr>
-              <td><button type="submit" class="btn btn-primary">Save</button></td>
+              <td><button type="submit" class="btn btn-sm wyl-button">Save</button></td>
               <td class="text-muted">*Pressing <b>Save</b> button will trigger rescan</td>
             </tr>
             </tbody></table>
