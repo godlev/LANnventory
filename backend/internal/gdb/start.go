@@ -21,6 +21,24 @@ import (
 var db *gorm.DB
 var gormConf *gorm.Config
 
+// Close closes the active database connection.
+func Close() error {
+	if db == nil {
+		return nil
+	}
+
+	sqlDB, err := db.DB()
+	if err != nil {
+		return err
+	}
+
+	err = sqlDB.Close()
+	if err == nil {
+		db = nil
+	}
+	return err
+}
+
 // Start working with DB
 func Start() {
 	var tab *gorm.DB

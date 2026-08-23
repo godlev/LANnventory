@@ -33,7 +33,12 @@ func getAllHosts(c *gin.Context) {
 // @Router       /host/{id} [get]
 func getHost(c *gin.Context) {
 	idStr := c.Param("id")
-	host := getHostByID(idStr) // functions.go
+	host, err := getHostByID(idStr) // functions.go
+	if err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	_, host.DNS = check.DNS(host)
 	c.IndentedJSON(http.StatusOK, host)
 }
@@ -48,7 +53,12 @@ func getHost(c *gin.Context) {
 // @Router       /host/del/{id} [get]
 func delHost(c *gin.Context) {
 	idStr := c.Param("id")
-	host := getHostByID(idStr) // functions.go
+	host, err := getHostByID(idStr) // functions.go
+	if err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	gdb.Delete("now", host.ID)
 	slog.Info("Deleting from DB", "host", host)
 	c.IndentedJSON(http.StatusOK, "OK")
@@ -106,7 +116,11 @@ func editHost(c *gin.Context) {
 	name := c.Param("name")
 	toggleKnown := c.Param("known")
 
-	host := getHostByID(idStr) // functions.go
+	host, err := getHostByID(idStr) // functions.go
+	if err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
 	host.Name = name
 

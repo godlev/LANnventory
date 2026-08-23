@@ -1,16 +1,21 @@
 package api
 
 import (
+	"errors"
 	"strconv"
 
 	"github.com/aceberg/WatchYourLAN/internal/gdb"
 	"github.com/aceberg/WatchYourLAN/internal/models"
 )
 
-func getHostByID(idStr string) (oneHost models.Host) {
+var errInvalidHostID = errors.New("invalid host id")
 
-	id, _ := strconv.Atoi(idStr)
-	oneHost = gdb.SelectByID(id)
+func getHostByID(idStr string) (models.Host, error) {
 
-	return oneHost
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id < 1 {
+		return models.Host{}, errInvalidHostID
+	}
+
+	return gdb.SelectByID(id), nil
 }
