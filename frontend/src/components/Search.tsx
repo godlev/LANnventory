@@ -1,3 +1,4 @@
+import { filterState } from "../functions/exports";
 import { searchFunc } from "../functions/search";
 
 function Search() {
@@ -7,7 +8,7 @@ function Search() {
   };
 
   return (
-    <input onInput={e => handleSearch(e.target.value)} class="form-control form-control-sm device-search" placeholder="Search" title="Search"></input>
+    <input onInput={e => handleSearch(e.target.value)} value={filterState().Search} class="form-control form-control-sm device-search" placeholder="Search" title="Search"></input>
   )
 }
 

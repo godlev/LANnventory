@@ -1,11 +1,11 @@
 import { apiGetAllHosts } from "./api";
-import { allHosts, setAllHosts, setBkpHosts, setIfaces } from "./exports";
-import { filterAtStart, filterFunc } from "./filter";
+import { Host, setBkpHosts, setIfaces } from "./exports";
+import { applyHostView } from "./hostView";
+import { filterAtStart } from "./filter";
 import { sortAtStart } from "./sort";
 
 export function runAtStart() {
   getHosts();
-  filterFunc("ID", 0); // reset filter
 
   setInterval(() => {
     getHosts();
@@ -16,20 +16,20 @@ export async function getHosts() {
   const hosts = await apiGetAllHosts();
 
   if (hosts !== null && hosts.length > 0) {
-    setAllHosts(hosts);
     setBkpHosts(hosts);
 
-    listIfaces();
+    listIfaces(hosts);
     sortAtStart();
     filterAtStart();
+    applyHostView();
   }
 }
 
-function listIfaces() {
+function listIfaces(hosts: Host[]) {
 
   let ifaces:string[] = [];
 
-  for (let host of allHosts) {
+  for (let host of hosts) {
     if (!ifaces.includes(host.Iface)) {
       ifaces.push(host.Iface);
     }

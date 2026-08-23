@@ -1,6 +1,6 @@
 import { For, Show } from "solid-js";
-import { Host } from "../../functions/exports";
-import { SortDirection, sortByAnyField, sortState } from "../../functions/sort";
+import { Host, SortDirection, sortState } from "../../functions/exports";
+import { sortByAnyField } from "../../functions/sort";
 
 const headers: { label: string; field: keyof Host }[] = [
   { label: "Name", field: "Name" },

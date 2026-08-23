@@ -41,6 +41,20 @@ export interface Conf {
 	PrometheusEnable: boolean;
 };
 
+export type SortDirection = "ascending" | "descending";
+
+export interface SortState {
+	field: keyof Host | "";
+	direction: SortDirection | "";
+};
+
+export interface FilterState {
+	Iface: string;
+	Known: number | "";
+	Now: number | "";
+	Search: string;
+};
+
 export const emptyHost:Host = {
 	ID:    0,
 	Name:  "",
@@ -79,12 +93,25 @@ export const emptyConf:Conf = {
 	PrometheusEnable: false,
 };
 
+export const emptyFilterState:FilterState = {
+	Iface: "",
+	Known: "",
+	Now: "",
+	Search: "",
+};
+
 export const [allHosts, setAllHosts] = createStore<Host[]>([]);
 export const [bkpHosts, setBkpHosts] = createSignal<Host[]>([]);
 
 export const [ifaces, setIfaces] = createSignal<string[]>([]);
 
 export const [appConfig, setAppConfig] = createSignal<Conf>(emptyConf);
+
+export const [filterState, setFilterState] = createSignal<FilterState>(emptyFilterState);
+export const [sortState, setSortState] = createSignal<SortState>({
+	field: "",
+	direction: "",
+});
 
 export const [editNames, setEditNames] = createSignal(false);
 

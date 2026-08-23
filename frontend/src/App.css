@@ -74,7 +74,7 @@ html[data-bs-theme] body {
 .overview-grid {
     display: grid;
     gap: 0.75rem;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     margin-bottom: 1rem;
 }
 .overview-card {
@@ -88,6 +88,7 @@ html[data-bs-theme] body {
     border-left-width: 3px;
     border-radius: 8px;
     box-shadow: var(--wyl-shadow);
+    text-align: left;
 }
 .overview-card-total {
     border-left-color: var(--bs-info);
@@ -98,8 +99,31 @@ html[data-bs-theme] body {
 .overview-card-offline {
     border-left-color: var(--bs-danger);
 }
+.overview-card-known {
+    border-left-color: var(--bs-primary);
+}
 .overview-card-unknown {
     border-left-color: var(--bs-warning);
+}
+.overview-card-button {
+    width: 100%;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+}
+.overview-card-button:hover,
+.overview-card-button:focus-visible {
+    background-color: var(--wyl-panel-header-bg);
+    border-color: var(--bs-primary);
+}
+.overview-card-button:focus-visible {
+    outline: 2px solid var(--bs-primary);
+    outline-offset: 2px;
+}
+.overview-card.is-active {
+    background-color: var(--wyl-panel-header-bg);
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 1px var(--bs-primary), var(--wyl-shadow);
 }
 .overview-card-icon {
     display: inline-flex;
@@ -119,6 +143,9 @@ html[data-bs-theme] body {
 }
 .overview-card-offline .overview-card-icon {
     color: var(--bs-danger);
+}
+.overview-card-known .overview-card-icon {
+    color: var(--bs-primary);
 }
 .overview-card-unknown .overview-card-icon {
     color: var(--bs-warning);
@@ -263,7 +290,7 @@ html[data-bs-theme] body {
 
 @media (max-width: 991.98px) {
     .overview-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
     }
     .device-panel-header,
     .device-toolbar {
@@ -282,6 +309,12 @@ html[data-bs-theme] body {
     }
     .device-filter-group {
         width: 100%;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .overview-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
 
