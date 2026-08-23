@@ -6,6 +6,17 @@ function Header() {
 
   const [themePath, setThemePath] = createSignal('');
   const localThemePath = (theme: string) => "/assets/themes/"+theme+"/bootstrap.min.css";
+  const navItems = [
+    { label: "Home", href: "/" },
+    { label: "Config", href: "/config" },
+    { label: "History", href: "/history" },
+  ];
+
+  const currentPath = () => window.location.pathname.replace(/\/$/, "") || "/";
+  const navClass = (href: string) => {
+    const path = href.replace(/\/$/, "") || "/";
+    return "nav-link wyl-nav-tab" + (currentPath() === path ? " is-active" : "");
+  };
   
   const setCurrentTheme = async () => {
     setAppConfig(await apiGetConfig());
@@ -30,20 +41,16 @@ function Header() {
         <a class="navbar-brand" href="/">
           <img src="/fs/public/favicon.png" class="wyl-navbar-logo"/>
         </a>
-        <ul class="navbar-nav me-auto mb-2 mb-md-0">
+        <ul class="navbar-nav wyl-nav-tabs me-auto mb-2 mb-md-0">
+          {navItems.map((item) =>
           <li class="nav-item">
-            <a class="nav-link active" href="/" title="Home">Home</a>
+            <a class={navClass(item.href)} href={item.href} title={item.label} aria-current={navClass(item.href).includes("is-active") ? "page" : undefined}>{item.label}</a>
           </li>
-          <li class="nav-item">
-            <a class="nav-link active" href="/config/" title="Config">Config</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link active" href="/history/" title="History">History</a>
-          </li>
+          )}
         </ul>
         <ul class="navbar-nav">
           <li class="nav-item">
-            <a class="nav-link active wyl-navbar-github ms-md-2" target="_blank" href="https://github.com/aceberg/WatchYourLAN" title="Github"><i class="bi bi-github"></i></a>
+            <a class="nav-link wyl-navbar-github ms-md-2" target="_blank" rel="noreferrer" href="https://github.com/aceberg/WatchYourLAN" title="Github"><i class="bi bi-github"></i></a>
           </li>
         </ul>
       </div>
