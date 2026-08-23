@@ -3,7 +3,7 @@ USR_NAME=aceberg
 
 build:
 	npm run build && \
-	rm ../backend/internal/web/public/assets/* && \
+	rm -rf ../backend/internal/web/public/assets/* && \
 	cp -r dist/assets ../backend/internal/web/public
 
 replace:
