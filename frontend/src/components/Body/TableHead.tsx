@@ -1,40 +1,58 @@
-import { createSignal, For } from "solid-js";
+import { For, Show } from "solid-js";
 import { Host } from "../../functions/exports";
-import { sortByAnyField } from "../../functions/sort";
+import { SortDirection, sortByAnyField, sortState } from "../../functions/sort";
+
+const headers: { label: string; field: keyof Host }[] = [
+  { label: "Name", field: "Name" },
+  { label: "Iface", field: "Iface" },
+  { label: "IP", field: "IP" },
+  { label: "MAC", field: "Mac" },
+  { label: "Hardware", field: "Hw" },
+  { label: "Date", field: "Date" },
+  { label: "Known", field: "Known" },
+  { label: "On", field: "Now" },
+];
 
 function TableHead() {
-
-  const [sortField, setSortField] = createSignal<string>('');
-  
-  const showSort = () => {
-    let field = localStorage.getItem("sortField") as string;
-    field === "Mac" ? field = "MAC" : '';
-    field === "Hw" ? field = "Hardware" : '';
-    field === "Now" ? field = "On" : '';
-    setSortField(field);
+  const handleSort = (field: keyof Host) => {
+    sortByAnyField(field);
   };
-  showSort();
 
-  const handleSort = (sortBy: string) => {
-    setSortField(sortBy);
-    sortBy === "MAC" ? sortBy = "Mac" : '';
-    sortBy === "Hardware" ? sortBy = "Hw" : '';
-    sortBy === "On" ? sortBy = "Now" : '';
-    sortByAnyField(sortBy as keyof Host);
+  const handleKeyDown = (event: KeyboardEvent, field: keyof Host) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      handleSort(field);
+    }
+  };
+
+  const ariaSort = (field: keyof Host): "ascending" | "descending" | "none" => {
+    const state = sortState();
+    return state.field === field && state.direction ? state.direction : "none";
+  };
+
+  const sortIcon = (direction: SortDirection | "") => {
+    return direction === "ascending" ? "bi-arrow-up-short" : "bi-arrow-down-short";
   };
 
   return (
     <thead>
       <tr>
         <th style="width: 2em;"></th>
-        <For each={["Name", "Iface", "IP", "MAC", "Hardware", "Date", "Known", "On"]}>{(key) =>
+        <For each={headers}>{(header) =>
           <th 
-            style={key === sortField() ? "color: var(--bs-primary);" : ''}
-          >{key} <i
-            class="bi bi-sort-down-alt my-btn"
-            onClick={[handleSort, key]}
-            title={"Sort by " + key}
-          ></i></th>
+            class="sortable-th"
+            style={sortState().field === header.field ? "color: var(--bs-primary);" : ''}
+            aria-sort={ariaSort(header.field)}
+            tabIndex={0}
+            title={"Sort by " + header.label}
+            onClick={[handleSort, header.field]}
+            onKeyDown={(event) => handleKeyDown(event, header.field)}
+          >
+            {header.label}
+            <Show when={sortState().field === header.field}>
+              <i class={"bi " + sortIcon(sortState().direction) + " ms-1"} aria-hidden="true"></i>
+            </Show>
+          </th>
         }</For>
         <th style="width: 2em;" title="Edit"><i class="bi bi-pencil-fill"></i></th>
       </tr>

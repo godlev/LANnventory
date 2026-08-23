@@ -17,6 +17,14 @@
     background-color: var(--transparent-light);
 }
 
+.sortable-th {
+    cursor: pointer;
+    user-select: none;
+}
+.sortable-th:hover {
+    color: var(--bs-primary);
+}
+
 /* History box */
 .my-box-on::before, .my-box-off::before {
     content: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='18'></svg>");

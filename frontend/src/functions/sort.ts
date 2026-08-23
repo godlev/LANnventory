@@ -1,51 +1,85 @@
-import { bkpHosts, Host, setAllHosts } from "./exports";
+import { createSignal } from "solid-js";
+import { bkpHosts, Host, setAllHosts, setBkpHosts } from "./exports";
 
-let down = false;
-let oldField = '';
+export type SortDirection = "ascending" | "descending";
+
+export interface SortState {
+  field: keyof Host | "";
+  direction: SortDirection | "";
+}
+
+const sortableFields = ["Name", "Iface", "IP", "Mac", "Hw", "Date", "Known", "Now"];
+
+export const [sortState, setSortState] = createSignal<SortState>({
+  field: "",
+  direction: "",
+});
 
 export function sortAtStart() {
-  const field = localStorage.getItem("sortField") as keyof Host;
-  down = JSON.parse(localStorage.getItem("sortDown") as string);
-  down = !down;
+  const field = normalizeField(localStorage.getItem("sortField"));
+  const direction = readStoredDirection();
 
-  sortByAnyField(field);
+  if (!field || !direction) {
+    setSortState({ field: "", direction: "" });
+    return;
+  }
+
+  applySort(field, direction);
 }
 
 export function sortByAnyField(field: keyof Host) {
+  const current = sortState();
+  const direction: SortDirection = current.field === field && current.direction === "ascending"
+    ? "descending"
+    : "ascending";
 
-  if (field != oldField) {
-    oldField = field;
-    down = !down;
-  } else {
-    oldField = '';
-    down = !down;
-  }
+  applySort(field, direction);
+}
 
-  localStorage.setItem("sortDown", down.toString());
+function applySort(field: keyof Host, direction: SortDirection) {
+  const ascending = direction === "ascending";
+  const sortedHosts = [...bkpHosts()];
+
+  localStorage.setItem("sortDown", ascending.toString());
   localStorage.setItem("sortField", field);
 
-  let someArray = bkpHosts();
   if (field == 'IP') {
-    someArray.sort((a, b) => sortIP(a, b, down));
+    sortedHosts.sort((a, b) => sortIP(a, b, ascending));
   } else {
-    someArray.sort((a, b) => byField(a, b, field, down));
+    sortedHosts.sort((a, b) => byField(a, b, field, ascending));
   }
-  
-  setAllHosts(someArray);
+
+  setSortState({ field, direction });
+  setBkpHosts(sortedHosts);
+  setAllHosts(sortedHosts);
 }
 
-function byField(a:Host, b:Host, fieldName: keyof Host, down:boolean){
+function normalizeField(field: string | null): keyof Host | "" {
+  return field && sortableFields.includes(field) ? field as keyof Host : "";
+}
+
+function readStoredDirection(): SortDirection | "" {
+  const stored = localStorage.getItem("sortDown");
+  if (stored === "true") return "ascending";
+  if (stored === "false") return "descending";
+  return "";
+}
+
+function byField(a:Host, b:Host, fieldName: keyof Host, ascending:boolean){
+  if (a[fieldName] === b[fieldName]) {
+    return 0;
+  }
   if (a[fieldName] > b[fieldName]) {
-    return down ? 1 : -1;
+    return ascending ? 1 : -1;
   } else {
-    return !down ? 1 : -1;
+    return ascending ? -1 : 1;
   }
 }
 
-function sortIP(a:Host, b:Host, down: boolean) {
+function sortIP(a:Host, b:Host, ascending: boolean) {
   const num1 = numIP(a);
   const num2 = numIP(b);
-  if (down) {
+  if (ascending) {
     return num1-num2;
   } else {
     return num2-num1;
