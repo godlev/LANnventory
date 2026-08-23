@@ -122,6 +122,39 @@ func TestScanReturnsTrueForSuccessfulEmptyResult(t *testing.T) {
 	}
 }
 
+func TestScanSplitsArpArgsAndIgnoresIfaceWhitespace(t *testing.T) {
+	oldRunner := commandRunner
+	var calls [][]string
+	commandRunner = func(_ string, args ...string) (string, bool) {
+		calls = append(calls, append([]string(nil), args...))
+		return "192.168.1.1\tAA:BB:CC:DD:EE:FF\tRouter Inc\n", true
+	}
+	t.Cleanup(func() {
+		commandRunner = oldRunner
+	})
+
+	hosts, ok := Scan(" eth0   wifi0 ", "-r 1", nil)
+	if !ok {
+		t.Fatal("Scan returned ok=false, want true")
+	}
+	if len(hosts) != 2 {
+		t.Fatalf("Scan returned %d hosts, want 2", len(hosts))
+	}
+	if len(calls) != 2 {
+		t.Fatalf("command runner was called %d times, want 2", len(calls))
+	}
+
+	wantArgs := []string{"-glNx", "-r", "1", "-I", "eth0"}
+	if len(calls[0]) != len(wantArgs) {
+		t.Fatalf("call 0 args = %v, want %v", calls[0], wantArgs)
+	}
+	for i, wantArg := range wantArgs {
+		if calls[0][i] != wantArg {
+			t.Fatalf("call 0 arg %d = %q, want %q; args=%v", i, calls[0][i], wantArg, calls[0])
+		}
+	}
+}
+
 func TestHelperProcess(t *testing.T) {
 	if os.Getenv("WYL_ARP_TEST_HELPER") != "1" {
 		return

@@ -16,20 +16,19 @@ var scanCommandTimeout = 2 * time.Minute
 var commandRunner = runCommand
 
 func scanIface(iface string) (string, bool) {
-	var args []string
-
-	if arpArgs != "" {
-		args = []string{"-glNx", arpArgs, "-I", iface}
-	} else {
-		args = []string{"-glNx", "-I", iface}
-	}
+	args := []string{"-glNx"}
+	args = append(args, strings.Fields(arpArgs)...)
+	args = append(args, "-I", iface)
 
 	return commandRunner("arp-scan", args...)
 }
 
 func scanStr(str string) (string, bool) {
 
-	args := strings.Split(str, " ")
+	args := strings.Fields(str)
+	if len(args) == 0 {
+		return "", true
+	}
 
 	return commandRunner("arp-scan", args...)
 }
@@ -98,7 +97,7 @@ func Scan(ifaces, args string, strs []string) ([]models.Host, bool) {
 
 	if ifaces != "" {
 
-		p = strings.Split(ifaces, " ")
+		p = strings.Fields(ifaces)
 
 		for _, iface := range p {
 			slog.Debug("Scanning interface " + iface)
@@ -115,6 +114,11 @@ func Scan(ifaces, args string, strs []string) ([]models.Host, bool) {
 	}
 
 	for _, s := range strs {
+		s = strings.TrimSpace(s)
+		if s == "" {
+			continue
+		}
+
 		slog.Debug("Scanning string " + s)
 		var ok bool
 		text, ok = scanStr(s)
@@ -123,7 +127,7 @@ func Scan(ifaces, args string, strs []string) ([]models.Host, bool) {
 			continue
 		}
 		slog.Debug("Found IPs: \n" + text)
-		p = strings.Split(s, " ")
+		p = strings.Fields(s)
 
 		foundHosts = append(foundHosts, parseOutput(text, p[len(p)-1])...)
 	}
