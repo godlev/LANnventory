@@ -1,7 +1,7 @@
 import { Host, setSortState, sortState, SortDirection } from "./exports";
 import { applyHostView } from "./hostView";
 
-const sortableFields = ["Name", "Iface", "IP", "Mac", "Hw", "Date", "Known", "Now"];
+const sortableFields = ["Name", "Iface", "IP", "Mac", "Hw", "Date", "Known"];
 
 export function sortAtStart() {
   const field = normalizeField(localStorage.getItem("sortField"));

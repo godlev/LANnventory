@@ -20,8 +20,6 @@ function Filter() {
     setHistUpdOnFilter(true);
   };
 
-  const selectValue = (value: string | number) => value === "" ? "" : value.toString();
-
   return (
     <div class="input-group device-filter-group">
         <select onChange={(event)=>{handleFilter("Iface", event)}} class="form-select form-select-sm" title="Filter by Iface" value={filterState().Iface}>
@@ -29,16 +27,6 @@ function Filter() {
           <For each={ifaces()}>{(iface) =>
             <option value={iface}>{iface}</option>
           }</For>
-        </select>
-        <select onChange={(event)=>{handleFilter("Known", event)}} class="form-select form-select-sm" title="Filter by Known" value={selectValue(filterState().Known)}>
-          <option value="">Known</option>
-          <option value={1}>Known</option>
-          <option value={0}>Unknown</option>
-        </select>
-        <select onChange={(event)=>{handleFilter("Now", event)}} class="form-select form-select-sm" title="Filter by Online" value={selectValue(filterState().Now)}>
-          <option value="">Online</option>
-          <option value={1}>On</option>
-          <option value={0}>Off</option>
         </select>
         <button onClick={handleReset} class="btn btn-outline-primary btn-sm" title="Reset filter">Reset filter</button>
     </div>
