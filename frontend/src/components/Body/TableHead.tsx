@@ -2,8 +2,15 @@ import { For, Show } from "solid-js";
 import { Host, SortDirection, sortState } from "../../functions/exports";
 import { sortByAnyField } from "../../functions/sort";
 
-const headers: { label: string; field: keyof Host; className: string; title?: string }[] = [
-  { label: "Known", field: "Known", className: "device-table-known" },
+const headers: { label: string; field: keyof Host; className: string; title?: string; icon?: string; ariaLabel?: string }[] = [
+  {
+    label: "",
+    field: "Known",
+    className: "device-table-known",
+    icon: "bi-question-circle-fill",
+    title: "Known / Unknown status - click to sort",
+    ariaLabel: "Known / Unknown status - click to sort",
+  },
   { label: "Name", field: "Name", className: "device-table-name" },
   { label: "IP", field: "IP", className: "device-table-ip" },
   { label: "Iface", field: "Iface", className: "device-table-iface" },
@@ -46,14 +53,17 @@ function TableHead() {
           <>
             <th
               class={"sortable-th " + header.className}
-              style={sortState().field === header.field ? "color: var(--bs-primary);" : ''}
+              style={sortState().field === header.field ? "color: var(--wyl-link-hover);" : ''}
               aria-sort={ariaSort(header.field)}
+              aria-label={header.ariaLabel}
               tabIndex={0}
               title={header.title ? header.title : "Sort by " + header.label}
               onClick={[handleSort, header.field]}
               onKeyDown={(event) => handleKeyDown(event, header.field)}
             >
-              {header.label}
+              <Show when={header.icon} fallback={header.label}>
+                <i class={"bi " + header.icon} aria-hidden="true"></i>
+              </Show>
               <Show when={sortState().field === header.field}>
                 <i class={"bi " + sortIcon(sortState().direction) + " ms-1"} aria-hidden="true"></i>
               </Show>

@@ -275,6 +275,9 @@ html[data-bs-theme] body {
     min-width: 0;
 }
 .device-filter-group {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
     width: auto;
     min-width: 0;
 }
@@ -284,6 +287,37 @@ html[data-bs-theme] body {
 }
 .device-filter-group .btn {
     white-space: nowrap;
+}
+.form-select.device-filter-select,
+.form-control.device-search,
+.btn.device-reset-filter {
+    color: rgba(244, 247, 248, 0.9);
+    background-color: #252933;
+    border: 1px solid rgba(89, 125, 124, 0.55);
+    border-radius: 6px;
+}
+.form-select.device-filter-select:focus,
+.form-control.device-search:focus,
+.btn.device-reset-filter:focus-visible {
+    color: #ffffff;
+    background-color: #252933;
+    border-color: #597D7C;
+    box-shadow: 0 0 0 0.18rem rgba(89, 125, 124, 0.24);
+}
+.form-select.device-filter-select:hover,
+.btn.device-reset-filter:hover {
+    color: #ffffff;
+    background-color: #404556;
+    border-color: #597D7C;
+}
+.form-select.device-filter-select option {
+    background-color: #252933;
+    color: #f4f7f8;
+}
+.btn.device-reset-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
 }
 .device-search {
     flex: 0 1 15rem;
@@ -396,10 +430,10 @@ html[data-bs-theme] body {
     outline-offset: 1px;
 }
 .device-known-toggle-known {
-    color: var(--bs-primary);
+    color: var(--wyl-accent-known);
 }
 .device-known-toggle-unknown {
-    color: var(--bs-warning);
+    color: var(--wyl-accent-unknown);
 }
 .device-ip-with-status {
     display: inline-flex;

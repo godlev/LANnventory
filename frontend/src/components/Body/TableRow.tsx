@@ -1,6 +1,7 @@
 import { createSignal, Show } from "solid-js";
 import { editNames, selectedIDs, setSelectedIDs } from "../../functions/exports";
 import { apiEditHost } from "../../functions/api";
+import { getHosts } from "../../functions/atstart";
 
 import { debounce } from "@solid-primitives/scheduled"; 
 
@@ -26,6 +27,7 @@ function TableRow(_props: any) {
   };
   const handleToggle = async () => {
     await apiEditHost(_props.host.ID, name(), "toggle");
+    await getHosts();
   };
 
   const handleCheck = (checked: boolean) => {

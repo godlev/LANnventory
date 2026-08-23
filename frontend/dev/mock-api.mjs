@@ -214,6 +214,23 @@ async function routeSafeAction(req, res, url) {
   }
 
   if (req.method === 'GET' && pathname.startsWith('/api/edit/')) {
+    const editMatch = pathname.match(/^\/api\/edit\/(\d+)\/([^/]*)(?:\/(.*))?$/);
+
+    if (editMatch) {
+      const id = Number(editMatch[1]);
+      const name = editMatch[2];
+      const action = editMatch[3] ?? '';
+      const hostEntry = fakeHosts.find((item) => item.ID === id);
+
+      if (hostEntry) {
+        hostEntry.Name = name;
+
+        if (action === 'toggle') {
+          hostEntry.Known = 1 - hostEntry.Known;
+        }
+      }
+    }
+
     sendJSON(res, 'OK');
     return true;
   }
