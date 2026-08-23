@@ -2,16 +2,21 @@ package routines
 
 import (
 	"log/slog"
+	"sync"
 
 	"github.com/aceberg/WatchYourLAN/internal/conf"
 )
 
 var (
-	quitScan = make(chan bool)
+	quitScan      = make(chan bool)
+	scanRestartMu sync.Mutex
+	startScanFunc = startScan
 )
 
 // ScanRestart - start or update routines
 func ScanRestart() {
+	scanRestartMu.Lock()
+	defer scanRestartMu.Unlock()
 
 	close(quitScan)
 
@@ -19,7 +24,7 @@ func ScanRestart() {
 	setLogLevel()
 
 	quitScan = make(chan bool)
-	go startScan(quitScan) // scan-routine.go
+	go startScanFunc(quitScan) // scan-routine.go
 }
 
 func setLogLevel() {
