@@ -5,12 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:local": "vite --host 127.0.0.1",
+    "mock:api": "node dev/mock-api.mjs",
     "build": "tsc -b && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
     "@solid-primitives/scheduled": "^1.5.2",
     "@solidjs/router": "^0.15.3",
+    "bootstrap-icons": "^1.13.1",
     "solid-js": "^1.9.5"
   },
   "devDependencies": {

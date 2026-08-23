@@ -1,5 +1,6 @@
 /* @refresh reload */
 import { render } from 'solid-js/web'
+import 'bootstrap-icons/font/bootstrap-icons.css'
 import App from './App.tsx'
 
 const root = document.getElementById('root')

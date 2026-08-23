@@ -1,0 +1,268 @@
+import { createReadStream, existsSync } from 'node:fs';
+import { createServer } from 'node:http';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const host = '127.0.0.1';
+const port = 8840;
+const now = '2026-08-23 10:15:00';
+
+const fakeHosts = [
+  {
+    ID: 1,
+    Name: 'router',
+    DNS: 'router.local',
+    Iface: 'eth0',
+    IP: '192.168.1.1',
+    Mac: 'AA:BB:CC:00:00:01',
+    Hw: 'Example Networks Gateway',
+    Date: now,
+    Known: 1,
+    Now: 1,
+  },
+  {
+    ID: 2,
+    Name: 'NAS',
+    DNS: 'nas.local',
+    Iface: 'eth0',
+    IP: '192.168.1.20',
+    Mac: 'AA:BB:CC:00:00:20',
+    Hw: 'Storage Appliance',
+    Date: now,
+    Known: 1,
+    Now: 1,
+  },
+  {
+    ID: 3,
+    Name: 'desktop',
+    DNS: 'desktop.local',
+    Iface: 'eth0',
+    IP: '192.168.1.42',
+    Mac: 'AA:BB:CC:00:00:42',
+    Hw: 'Workstation NIC',
+    Date: now,
+    Known: 1,
+    Now: 1,
+  },
+  {
+    ID: 4,
+    Name: 'phone',
+    DNS: 'phone.local',
+    Iface: 'wifi0',
+    IP: '192.168.1.83',
+    Mac: 'AA:BB:CC:00:00:83',
+    Hw: 'Mobile Device',
+    Date: now,
+    Known: 0,
+    Now: 1,
+  },
+  {
+    ID: 5,
+    Name: 'offline device',
+    DNS: '',
+    Iface: 'eth0',
+    IP: '192.168.1.120',
+    Mac: 'AA:BB:CC:00:01:20',
+    Hw: 'Legacy Device',
+    Date: '2026-08-23 08:05:00',
+    Known: 1,
+    Now: 0,
+  },
+];
+
+const config = {
+  Host: host,
+  Port: String(port),
+  Theme: 'sand',
+  Color: 'dark',
+  DirPath: './dev/.mock-data',
+  ConfPath: './dev/.mock-data/config_v2.yaml',
+  DBPath: './dev/.mock-data/scan.db',
+  NodePath: '',
+  LogLevel: 'info',
+  Ifaces: 'eth0 wifi0',
+  ArpArgs: '',
+  ArpStrs: [],
+  Timeout: 120,
+  TrimHist: 48,
+  ShoutURL: '',
+  Version: 'dev-mock',
+  UseDB: 'sqlite',
+  PGConnect: '',
+  InfluxEnable: false,
+  InfluxAddr: '',
+  InfluxToken: '',
+  InfluxOrg: '',
+  InfluxBucket: '',
+  InfluxSkipTLS: false,
+  PrometheusEnable: false,
+};
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const faviconPath = path.resolve(__dirname, '../../backend/internal/web/public/favicon.png');
+
+function sendJSON(res, value, statusCode = 200) {
+  res.writeHead(statusCode, {
+    'content-type': 'application/json; charset=utf-8',
+    'cache-control': 'no-store',
+  });
+  res.end(JSON.stringify(value));
+}
+
+function sendText(res, value, statusCode = 200) {
+  res.writeHead(statusCode, {
+    'content-type': 'text/plain; charset=utf-8',
+    'cache-control': 'no-store',
+  });
+  res.end(value);
+}
+
+function readBody(req) {
+  return new Promise((resolve) => {
+    let body = '';
+    req.on('data', (chunk) => {
+      body += chunk;
+    });
+    req.on('end', () => resolve(body));
+    req.on('error', () => resolve(body));
+  });
+}
+
+function historyFor(mac, datePrefix = '') {
+  const hostEntry = fakeHosts.find((item) => item.Mac === mac) ?? fakeHosts[0];
+  const rows = [];
+
+  for (let i = 0; i < 24; i += 1) {
+    const hour = String(23 - i).padStart(2, '0');
+    const date = `2026-08-23 ${hour}:00:00`;
+    rows.push({
+      ...hostEntry,
+      ID: i + 1,
+      Date: date,
+      Now: hostEntry.Now === 0 ? 0 : i % 7 === 0 ? 0 : 1,
+    });
+  }
+
+  return datePrefix === '' ? rows : rows.filter((item) => item.Date.startsWith(datePrefix));
+}
+
+function routeReadOnly(req, res, url) {
+  const pathname = decodeURIComponent(url.pathname);
+
+  if (req.method === 'GET' && pathname === '/api/config') {
+    sendJSON(res, config);
+    return true;
+  }
+
+  if (req.method === 'GET' && pathname === '/api/version') {
+    sendJSON(res, config.Version);
+    return true;
+  }
+
+  if (req.method === 'GET' && pathname === '/api/all') {
+    sendJSON(res, fakeHosts);
+    return true;
+  }
+
+  if (req.method === 'GET' && pathname === '/api/history') {
+    sendJSON(res, fakeHosts.flatMap((item) => historyFor(item.Mac)));
+    return true;
+  }
+
+  const hostMatch = pathname.match(/^\/api\/host\/(\d+)$/);
+  if (req.method === 'GET' && hostMatch) {
+    const id = Number(hostMatch[1]);
+    sendJSON(res, fakeHosts.find((item) => item.ID === id) ?? {});
+    return true;
+  }
+
+  const historyMatch = pathname.match(/^\/api\/history\/([^/]+)\/?$/);
+  if (req.method === 'GET' && historyMatch) {
+    sendJSON(res, historyFor(historyMatch[1]));
+    return true;
+  }
+
+  const historyDateMatch = pathname.match(/^\/api\/history\/([^/]+)\/(.+)$/);
+  if (req.method === 'GET' && historyDateMatch) {
+    sendJSON(res, historyFor(historyDateMatch[1], historyDateMatch[2]));
+    return true;
+  }
+
+  if (req.method === 'GET' && pathname === '/fs/public/favicon.png' && existsSync(faviconPath)) {
+    res.writeHead(200, {
+      'content-type': 'image/png',
+      'cache-control': 'no-store',
+    });
+    createReadStream(faviconPath).pipe(res);
+    return true;
+  }
+
+  return false;
+}
+
+async function routeSafeAction(req, res, url) {
+  const pathname = decodeURIComponent(url.pathname);
+
+  if (req.method === 'GET' && pathname === '/api/notify_test') {
+    sendText(res, 'mock notification skipped');
+    return true;
+  }
+
+  if (req.method === 'GET' && pathname === '/api/rescan') {
+    sendText(res, 'mock rescan skipped');
+    return true;
+  }
+
+  if (req.method === 'GET' && pathname.startsWith('/api/edit/')) {
+    sendJSON(res, 'OK');
+    return true;
+  }
+
+  if (req.method === 'GET' && pathname.startsWith('/api/host/del/')) {
+    sendJSON(res, 'OK');
+    return true;
+  }
+
+  if (req.method === 'GET' && pathname.startsWith('/api/host/add/')) {
+    sendJSON(res, fakeHosts[0]);
+    return true;
+  }
+
+  if (req.method === 'GET' && pathname.startsWith('/api/wol/')) {
+    sendJSON(res, true);
+    return true;
+  }
+
+  if (req.method === 'GET' && pathname.startsWith('/api/port/')) {
+    sendJSON(res, false);
+    return true;
+  }
+
+  if (req.method === 'POST' && pathname.startsWith('/api/config')) {
+    await readBody(req);
+    const referer = req.headers.referer || '/config';
+    res.writeHead(303, { location: referer });
+    res.end();
+    return true;
+  }
+
+  return false;
+}
+
+const server = createServer(async (req, res) => {
+  const url = new URL(req.url ?? '/', `http://${host}:${port}`);
+
+  if (routeReadOnly(req, res, url)) {
+    return;
+  }
+
+  if (await routeSafeAction(req, res, url)) {
+    return;
+  }
+
+  sendJSON(res, { error: 'mock endpoint not found' }, 404);
+});
+
+server.listen(port, host, () => {
+  console.log(`WatchYourLAN mock API listening at http://${host}:${port}`);
+});

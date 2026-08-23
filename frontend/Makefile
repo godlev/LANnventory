@@ -8,7 +8,7 @@ build:
 
 replace:
 	cd ../backend/internal/web/public/assets/ && \
-	cat index.js | sed 's/assets/fs\/public\/assets/g;s/http:\/\/0.0.0.0:8840//' > tmp && \
+	cat index.js | sed 's/assets/fs\/public\/assets/g' > tmp && \
 	mv tmp index.js
 
 all: build replace
