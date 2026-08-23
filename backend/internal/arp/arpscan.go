@@ -13,8 +13,9 @@ import (
 
 var arpArgs string
 var scanCommandTimeout = 2 * time.Minute
+var commandRunner = runCommand
 
-func scanIface(iface string) string {
+func scanIface(iface string) (string, bool) {
 	var args []string
 
 	if arpArgs != "" {
@@ -23,17 +24,17 @@ func scanIface(iface string) string {
 		args = []string{"-glNx", "-I", iface}
 	}
 
-	return runCommand("arp-scan", args...)
+	return commandRunner("arp-scan", args...)
 }
 
-func scanStr(str string) string {
+func scanStr(str string) (string, bool) {
 
 	args := strings.Split(str, " ")
 
-	return runCommand("arp-scan", args...)
+	return commandRunner("arp-scan", args...)
 }
 
-func runCommand(name string, args ...string) string {
+func runCommand(name string, args ...string) (string, bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), scanCommandTimeout)
 	defer cancel()
 
@@ -44,13 +45,13 @@ func runCommand(name string, args ...string) string {
 
 	if ctx.Err() == context.DeadlineExceeded {
 		slog.Error("Command timed out", "cmd", cmd.String(), "timeout", scanCommandTimeout.String())
-		return string("")
+		return string(""), false
 	}
 
 	if check.IfError(err) {
-		return string("")
+		return string(""), false
 	}
-	return string(out)
+	return string(out), true
 }
 
 func parseOutput(text, iface string) []models.Host {
@@ -88,10 +89,11 @@ func parseOutput(text, iface string) []models.Host {
 }
 
 // Scan all interfaces
-func Scan(ifaces, args string, strs []string) []models.Host {
+func Scan(ifaces, args string, strs []string) ([]models.Host, bool) {
 	var text string
 	var p []string
 	var foundHosts = []models.Host{}
+	scanOK := true
 	arpArgs = args
 
 	if ifaces != "" {
@@ -100,7 +102,12 @@ func Scan(ifaces, args string, strs []string) []models.Host {
 
 		for _, iface := range p {
 			slog.Debug("Scanning interface " + iface)
-			text = scanIface(iface)
+			var ok bool
+			text, ok = scanIface(iface)
+			if !ok {
+				scanOK = false
+				continue
+			}
 			slog.Debug("Found IPs: \n" + text)
 
 			foundHosts = append(foundHosts, parseOutput(text, iface)...)
@@ -109,12 +116,17 @@ func Scan(ifaces, args string, strs []string) []models.Host {
 
 	for _, s := range strs {
 		slog.Debug("Scanning string " + s)
-		text = scanStr(s)
+		var ok bool
+		text, ok = scanStr(s)
+		if !ok {
+			scanOK = false
+			continue
+		}
 		slog.Debug("Found IPs: \n" + text)
 		p = strings.Split(s, " ")
 
 		foundHosts = append(foundHosts, parseOutput(text, p[len(p)-1])...)
 	}
 
-	return foundHosts
+	return foundHosts, scanOK
 }

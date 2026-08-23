@@ -1,6 +1,7 @@
 package routines
 
 import (
+	"log/slog"
 	"time"
 
 	"github.com/aceberg/WatchYourLAN/internal/arp"
@@ -27,7 +28,13 @@ func startScan(quit chan bool) {
 
 			if nowDate.After(plusDate) {
 
-				foundHosts = arp.Scan(conf.AppConfig.Ifaces, conf.AppConfig.ArpArgs, conf.AppConfig.ArpStrs)
+				var scanOK bool
+				foundHosts, scanOK = arp.Scan(conf.AppConfig.Ifaces, conf.AppConfig.ArpArgs, conf.AppConfig.ArpStrs)
+				if !scanOK {
+					slog.Warn("Skipping host state update because ARP scan failed")
+					lastDate = time.Now()
+					continue
+				}
 
 				// Make map of found hosts
 				foundHostsMap := make(map[string]models.Host)

@@ -77,9 +77,48 @@ func TestRunCommandTimesOut(t *testing.T) {
 	})
 	t.Setenv("WYL_ARP_TEST_HELPER", "1")
 
-	out := runCommand(os.Args[0], "-test.run=TestHelperProcess", "--", "sleep")
+	out, ok := runCommand(os.Args[0], "-test.run=TestHelperProcess", "--", "sleep")
+	if ok {
+		t.Fatal("runCommand returned ok=true after timeout, want false")
+	}
 	if out != "" {
 		t.Fatalf("runCommand returned %q, want empty output after timeout", out)
+	}
+}
+
+func TestScanReturnsFalseWhenCommandFails(t *testing.T) {
+	oldRunner := commandRunner
+	commandRunner = func(string, ...string) (string, bool) {
+		return "", false
+	}
+	t.Cleanup(func() {
+		commandRunner = oldRunner
+	})
+
+	hosts, ok := Scan("eth0", "", nil)
+	if ok {
+		t.Fatal("Scan returned ok=true, want false")
+	}
+	if len(hosts) != 0 {
+		t.Fatalf("Scan returned %d hosts, want 0", len(hosts))
+	}
+}
+
+func TestScanReturnsTrueForSuccessfulEmptyResult(t *testing.T) {
+	oldRunner := commandRunner
+	commandRunner = func(string, ...string) (string, bool) {
+		return "", true
+	}
+	t.Cleanup(func() {
+		commandRunner = oldRunner
+	})
+
+	hosts, ok := Scan("eth0", "", nil)
+	if !ok {
+		t.Fatal("Scan returned ok=false, want true")
+	}
+	if len(hosts) != 0 {
+		t.Fatalf("Scan returned %d hosts, want 0", len(hosts))
 	}
 }
 
