@@ -58,7 +58,7 @@ function Basic() {
                </td>
             </tr>
             <tr>
-              <td>Legacy node-bootstrap URL</td>
+              <td>Local node-bootstrap URL</td>
               <td><input name="node" type="text" class="form-control" value={appConfig().NodePath}></input></td>
             </tr>
             <tr>

@@ -64,7 +64,7 @@ function HostCard(_props: any) {
           <tr>
             <td>IP</td>
             <td>
-              {_props.host.IP}
+              <a href={"http://" + _props.host.IP} target="_blank">{_props.host.IP}</a>
             </td>
           </tr>
           <tr>

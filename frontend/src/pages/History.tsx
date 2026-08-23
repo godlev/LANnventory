@@ -39,7 +39,7 @@ function History() {
               <td class="opacity-50" style="width: 2em;">{index()+1}.</td>
               <td>
                 <a href={"/host/"+host.ID}>{host.Name}</a><br></br>
-                <span>{host.IP}</span>
+                <a href={"http://"+host.IP}>{host.IP}</a>
               </td>
               <td>
                 <MacHistory mac={host.Mac} date=""></MacHistory>

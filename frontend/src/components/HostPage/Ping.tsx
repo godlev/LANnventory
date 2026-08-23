@@ -65,7 +65,7 @@ function Ping(_props: any) {
         }
         <div class="mt-2">
         <For each={foundPorts()}>{(port) =>
-          <span class="me-4">{port}</span>
+          <a class="me-4" href={"http://" + _props.IP + ":" + port} target="_blank">{port}</a>
         }</For>
         </div>
       </div>

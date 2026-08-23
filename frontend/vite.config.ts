@@ -24,10 +24,40 @@ function getThemeFromPath(pathname: string) {
 
 function getThemeCss(theme: string) {
   const cssPath = join(bootswatchDist, theme, 'bootstrap.min.css')
-  return readFileSync(cssPath, 'utf8')
+  const css = readFileSync(cssPath, 'utf8')
     .replace(/@import\s+url\((['"]?)https:\/\/fonts\.googleapis\.com[^)'"]+\1\)\s*;?/g, '')
     .replace(/@import\s+['"]https:\/\/fonts\.googleapis\.com[^'"]+['"]\s*;?/g, '')
     .replace(/\/\*# sourceMappingURL=bootstrap\.min\.css\.map\s*\*\//g, '')
+
+  validateThemeCss(theme, css)
+  return css
+}
+
+function validateThemeCss(theme: string, css: string) {
+  const brokenPatterns = [
+    /fonts\.googleapis\.com/,
+    /fonts\.gstatic\.com/,
+    /display=swap\)?;?/,
+    /@import\s+(?:url\()?['"]?https?:\/\//,
+  ]
+
+  for (const pattern of brokenPatterns) {
+    if (pattern.test(css)) {
+      throw new Error(`Invalid generated Bootswatch CSS for theme "${theme}": ${pattern}`)
+    }
+  }
+
+  const requiredPatterns = [
+    /:root/,
+    /\[data-bs-theme=dark\]/,
+    /--bs-primary/,
+  ]
+
+  for (const pattern of requiredPatterns) {
+    if (!pattern.test(css)) {
+      throw new Error(`Generated Bootswatch CSS for theme "${theme}" is missing ${pattern}`)
+    }
+  }
 }
 
 function localBootswatchThemes(): Plugin {

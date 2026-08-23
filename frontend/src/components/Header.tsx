@@ -43,7 +43,7 @@ function Header() {
         </ul>
         <ul class="navbar-nav">
           <li class="nav-item">
-            <span class="nav-link active fs-3 ms-md-2" title="WatchYourLAN"><i class="bi bi-github"></i></span>
+            <a class="nav-link active fs-3 ms-md-2" target="_blank" href="https://github.com/aceberg/WatchYourLAN" title="Github"><i class="bi bi-github"></i></a>
           </li>
         </ul>
       </div>
