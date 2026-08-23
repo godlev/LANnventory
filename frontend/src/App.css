@@ -262,6 +262,12 @@ html[data-bs-theme] body {
     color: var(--wyl-nav-link-hover) !important;
     background-color: var(--wyl-nav-active-bg);
 }
+.wyl-nav-context {
+    max-width: min(18rem, 38vw);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
 .wyl-navbar-logo {
     width: 1.62rem;
     height: 1.62rem;

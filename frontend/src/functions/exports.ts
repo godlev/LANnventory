@@ -55,6 +55,11 @@ export interface FilterState {
 	Search: string;
 };
 
+export interface PageContext {
+	kind: "" | "host";
+	hostName: string;
+};
+
 export const emptyHost:Host = {
 	ID:    0,
 	Name:  "",
@@ -100,6 +105,11 @@ export const emptyFilterState:FilterState = {
 	Search: "",
 };
 
+export const emptyPageContext:PageContext = {
+	kind: "",
+	hostName: "",
+};
+
 export const [allHosts, setAllHosts] = createStore<Host[]>([]);
 export const [bkpHosts, setBkpHosts] = createSignal<Host[]>([]);
 
@@ -109,6 +119,7 @@ export const hasMultipleIfaces = () => ifaces().filter((iface) => iface.trim() !
 export const [appConfig, setAppConfig] = createSignal<Conf>(emptyConf);
 
 export const [filterState, setFilterState] = createSignal<FilterState>(emptyFilterState);
+export const [pageContext, setPageContext] = createSignal<PageContext>(emptyPageContext);
 export const [sortState, setSortState] = createSignal<SortState>({
 	field: "",
 	direction: "",

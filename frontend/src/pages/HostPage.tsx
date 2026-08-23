@@ -1,26 +1,57 @@
 import { useParams } from "@solidjs/router";
-import { createSignal, onMount } from "solid-js";
+import { createEffect, createSignal, onCleanup } from "solid-js";
 
 import { apiGetHost } from "../functions/api";
 
 import HostCard from "../components/HostPage/HostCard";
 import Ping from "../components/HostPage/Ping";
 import HistCard from "../components/HostPage/HistCard";
-import { emptyHost, Host } from "../functions/exports";
+import { emptyHost, emptyPageContext, Host, setPageContext } from "../functions/exports";
 
 function HostPage() {
 
   const [currentHost, setCurrentHost] = createSignal<Host>(emptyHost);
+  const params = useParams();
+  const previousTitle = document.title;
+  let requestId = 0;
 
-  onMount(async () => {
-    const params = useParams();
-    if (!params.id) {
+  createEffect(() => {
+    const id = params.id;
+
+    if (!id) {
       return;
     }
 
-    const host = await apiGetHost(params.id);
+    const activeRequest = ++requestId;
+    setCurrentHost(emptyHost);
+    setPageContext({ kind: "host", hostName: "" });
+    document.title = "Host · WatchYourLAN2";
 
-    setCurrentHost(host);
+    apiGetHost(id)
+      .then((host) => {
+        if (activeRequest !== requestId) {
+          return;
+        }
+
+        const hostName = host.Name.trim();
+        setCurrentHost(host);
+        setPageContext({ kind: "host", hostName });
+        document.title = (hostName || "Host") + " · WatchYourLAN2";
+      })
+      .catch(() => {
+        if (activeRequest !== requestId) {
+          return;
+        }
+
+        setPageContext({ kind: "host", hostName: "" });
+        document.title = "Host · WatchYourLAN2";
+      });
+  });
+
+  onCleanup(() => {
+    requestId++;
+    setPageContext(emptyPageContext);
+    document.title = previousTitle;
   });
 
   return (

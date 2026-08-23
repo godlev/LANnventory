@@ -1,6 +1,6 @@
-import { createSignal } from "solid-js";
+import { createSignal, Show } from "solid-js";
 import { A, useLocation } from "@solidjs/router";
-import { appConfig, setAppConfig } from "../functions/exports";
+import { appConfig, pageContext, setAppConfig } from "../functions/exports";
 import { apiGetConfig } from "../functions/api";
 
 function Header() {
@@ -15,6 +15,11 @@ function Header() {
   ];
 
   const currentPath = () => location.pathname.replace(/\/$/, "") || "/";
+  const hostNavLabel = () => {
+    const hostName = pageContext().hostName.trim();
+    return hostName ? "Host · " + hostName : "Host";
+  };
+  const showHostContext = () => currentPath().startsWith("/host/");
   const navClass = (href: string) => {
     const path = href.replace(/\/$/, "") || "/";
     return "nav-link wyl-nav-tab" + (currentPath() === path ? " is-active" : "");
@@ -49,6 +54,18 @@ function Header() {
             <A class={navClass(item.href)} href={item.href} title={item.label} aria-current={navClass(item.href).includes("is-active") ? "page" : undefined}>{item.label}</A>
           </li>
           )}
+          <Show when={showHostContext()}>
+            <li class="nav-item">
+              <A
+                class="nav-link wyl-nav-tab wyl-nav-context is-active"
+                href={currentPath()}
+                title={hostNavLabel()}
+                aria-current="page"
+              >
+                {hostNavLabel()}
+              </A>
+            </li>
+          </Show>
         </ul>
         <ul class="navbar-nav wyl-navbar-actions">
           <li class="nav-item">
