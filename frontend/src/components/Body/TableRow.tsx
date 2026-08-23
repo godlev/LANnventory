@@ -12,6 +12,11 @@ function TableRow(_props: any) {
   const isOnline = () => _props.host.Now === 1;
   const known = () => _props.host.Known === 1;
   const lastSeen = () => formatLastSeen(_props.host.Date);
+  const rowClass = () => [
+    _props.host.Known === 0 ? "device-row-unknown" : "",
+    !isOnline() ? "device-row-offline" : "",
+  ].filter(Boolean).join(" ");
+  const nameClass = () => isOnline() ? "" : "device-offline-name";
   const knownTitle = () => known()
     ? "Known device - click to mark unknown"
     : "Unknown device - click to mark known";
@@ -42,7 +47,7 @@ function TableRow(_props: any) {
   };
 
   return (
-    <tr>
+    <tr class={rowClass()}>
       <td class="device-table-index opacity-50">{_props.index}.</td>
       <td class="device-table-known">
         <button
@@ -60,8 +65,8 @@ function TableRow(_props: any) {
         <Show
           when={editNames()}
           fallback={
-          <a href={"/host/" + _props.host.ID} class="device-action-link" title="More">
-            <i class="bi bi-three-dots-vertical my-btn p-2" aria-hidden="true"></i>
+          <a href={"/host/" + _props.host.ID} class="device-action-link" title="Edit / details">
+            <i class="bi bi-pencil-fill my-btn p-2" aria-hidden="true"></i>
           </a>}
         >
           <input
@@ -75,7 +80,7 @@ function TableRow(_props: any) {
       <td class="device-table-name">
         <Show
           when={editNames()}
-          fallback={name()}
+          fallback={<span class={nameClass()}>{name()}</span>}
         >
           <input type="text" class="form-control" value={name()}
             onInput={e => handleInput(e.target.value)}></input>
@@ -91,7 +96,9 @@ function TableRow(_props: any) {
           >
             <i class={isOnline() ? "bi bi-check-circle-fill" : "bi bi-x-circle-fill"} aria-hidden="true"></i>
           </span>
-          <a href={"http://" + _props.host.IP} target="_blank">{_props.host.IP}</a>
+          <Show when={isOnline()} fallback={<span class="device-ip-offline">{_props.host.IP}</span>}>
+            <a href={"http://" + _props.host.IP} target="_blank" rel="noreferrer">{_props.host.IP}</a>
+          </Show>
         </span>
       </td>
       <td class="device-table-iface"><span class="device-cell-muted">{_props.host.Iface}</span></td>
@@ -114,13 +121,18 @@ function formatLastSeen(date: string) {
   }
 
   const [, year, month, day, hour, minute] = match;
+  const monthName = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][Number(month) - 1];
   const currentYear = new Date().getFullYear().toString();
 
-  if (year === currentYear) {
-    return `${month}-${day} ${hour}:${minute}`;
+  if (!monthName) {
+    return date;
   }
 
-  return `${year}-${month}-${day} ${hour}:${minute}`;
+  if (year === currentYear) {
+    return `${day} ${monthName} ${hour}:${minute}`;
+  }
+
+  return `${day} ${monthName} ${year} ${hour}:${minute}`;
 }
 
 export default TableRow

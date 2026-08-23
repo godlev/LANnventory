@@ -64,7 +64,7 @@ const fakeHosts = [
     IP: '192.168.1.120',
     Mac: 'AA:BB:CC:00:01:20',
     Hw: 'Legacy Device',
-    Date: '2026-08-23 08:05:00',
+    Date: '2025-12-30 18:42:09',
     Known: 1,
     Now: 0,
   },

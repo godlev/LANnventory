@@ -336,7 +336,7 @@ html[data-bs-theme] body {
     margin-bottom: 0;
     vertical-align: middle;
     --bs-table-bg: var(--wyl-table-row-bg);
-    --bs-table-striped-bg: var(--wyl-table-striped-bg);
+    --bs-table-striped-bg: var(--wyl-table-row-bg);
     --bs-table-hover-bg: var(--wyl-table-hover-bg);
     --bs-table-border-color: var(--wyl-panel-border);
 }
@@ -350,10 +350,29 @@ html[data-bs-theme] body {
     vertical-align: middle;
     border-bottom: 1px solid var(--wyl-panel-border);
 }
+html[data-bs-theme] .device-table > tbody > tr > td {
+    background-color: var(--wyl-table-row-bg);
+    border-bottom-width: 0;
+}
 .device-table tbody td {
     padding: 0.52rem 0.75rem;
     vertical-align: middle;
     white-space: nowrap;
+}
+.device-table tbody tr {
+    background-color: var(--wyl-table-row-bg);
+}
+html[data-bs-theme] .device-table > tbody > tr:hover > td {
+    background-color: var(--wyl-table-hover-bg);
+}
+html[data-bs-theme] .device-table > tbody > tr.device-row-unknown > td {
+    background-color: rgba(96, 81, 92, 0.22);
+}
+.device-table tbody tr.device-row-unknown td:first-child {
+    box-shadow: inset 2px 0 0 var(--wyl-accent-unknown);
+}
+html[data-bs-theme] .device-table > tbody > tr.device-row-unknown:hover > td {
+    background-color: rgba(96, 81, 92, 0.32);
 }
 .device-table a {
     color: var(--wyl-link);
@@ -367,17 +386,19 @@ html[data-bs-theme] body {
     color: var(--wyl-muted);
 }
 .device-table-index {
-    width: 2.75rem;
+    width: 2.15rem;
+    padding-left: 0.45rem !important;
+    padding-right: 0.45rem !important;
 }
 .device-table-known {
-    width: 4rem;
+    width: 3rem;
     text-align: center;
 }
 .device-table-iface {
     width: 5rem;
 }
 .device-table-actions {
-    width: 3.25rem;
+    width: 2.75rem;
     text-align: center;
 }
 .device-table-ip {
@@ -434,6 +455,10 @@ html[data-bs-theme] body {
 }
 .device-known-toggle-unknown {
     color: var(--wyl-accent-unknown);
+}
+.device-offline-name,
+.device-ip-offline {
+    color: var(--wyl-muted);
 }
 .device-ip-with-status {
     display: inline-flex;

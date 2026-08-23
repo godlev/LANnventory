@@ -1,6 +1,6 @@
 import { For, onMount } from "solid-js";
 
-import { allHosts, bkpHosts } from "../functions/exports";
+import { allHosts, filterState } from "../functions/exports";
 
 import TableRow from "../components/Body/TableRow";
 import TableHead from "../components/Body/TableHead";
@@ -14,6 +14,35 @@ function Body() {
     getHosts();
   });
 
+  const hostLabel = (count: number) => count === 1 ? "host" : "hosts";
+
+  const currentSubtitle = () => {
+    const filters = filterState();
+    const count = allHosts.length;
+    const states = [];
+
+    if (filters.Known === 1) states.push("Known");
+    if (filters.Known === 0) states.push("Unknown");
+    if (filters.Now === 1) states.push("Online");
+    if (filters.Now === 0) states.push("Offline");
+
+    let text = states.length > 0
+      ? `${count} ${states.join(" ")} ${hostLabel(count)}`
+      : `${count} ${hostLabel(count)}`;
+
+    if (filters.Search !== "") {
+      text = states.length > 0
+        ? `${text} matching search`
+        : `${count} matching ${hostLabel(count)}`;
+    }
+
+    if (filters.Iface !== "") {
+      text = `${text} on ${filters.Iface}`;
+    }
+
+    return text;
+  };
+
   return (
     <>
     <SummaryCards></SummaryCards>
@@ -21,12 +50,12 @@ function Body() {
       <div class="card-header device-panel-header">
         <div class="device-panel-title-group">
           <div class="device-panel-title">Devices</div>
-          <div class="device-panel-subtitle">{bkpHosts().length} loaded hosts</div>
+          <div class="device-panel-subtitle">{currentSubtitle()}</div>
         </div>
         <CardHead></CardHead>
       </div>
       <div class="card-body table-responsive device-table-wrap">
-        <table class="table table-striped table-hover device-table">
+        <table class="table table-hover device-table">
           <TableHead></TableHead>
           <tbody>
             <For each={allHosts}>{(host, index) =>
