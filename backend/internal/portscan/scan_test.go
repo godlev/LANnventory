@@ -58,3 +58,25 @@ func TestIsOpenReturnsFalseForClosedIPv4Port(t *testing.T) {
 		t.Fatalf("IsOpen(%q, %q) = true, want false", host, port)
 	}
 }
+
+func TestTargetAddressFormatsIPv4(t *testing.T) {
+	target := targetAddress("127.0.0.1", "8840")
+	if target != "127.0.0.1:8840" {
+		t.Fatalf("targetAddress returned %q, want 127.0.0.1:8840", target)
+	}
+}
+
+func TestTargetAddressFormatsIPv6(t *testing.T) {
+	target := targetAddress("2001:db8::1", "443")
+	if target != "[2001:db8::1]:443" {
+		t.Fatalf("targetAddress returned %q, want [2001:db8::1]:443", target)
+	}
+
+	host, port, err := net.SplitHostPort(target)
+	if err != nil {
+		t.Fatalf("SplitHostPort(%q): %v", target, err)
+	}
+	if host != "2001:db8::1" || port != "443" {
+		t.Fatalf("SplitHostPort(%q) = (%q, %q), want (2001:db8::1, 443)", target, host, port)
+	}
+}
