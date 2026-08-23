@@ -30,8 +30,10 @@ function listIfaces(hosts: Host[]) {
   let ifaces:string[] = [];
 
   for (let host of hosts) {
-    if (!ifaces.includes(host.Iface)) {
-      ifaces.push(host.Iface);
+    const iface = host.Iface.trim();
+
+    if (iface !== "" && !ifaces.includes(iface)) {
+      ifaces.push(iface);
     }
   }
 

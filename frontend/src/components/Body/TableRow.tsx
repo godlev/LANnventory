@@ -1,5 +1,5 @@
 import { createSignal, Show } from "solid-js";
-import { editNames, selectedIDs, setSelectedIDs } from "../../functions/exports";
+import { editNames, hasMultipleIfaces, selectedIDs, setSelectedIDs } from "../../functions/exports";
 import { apiEditHost } from "../../functions/api";
 import { getHosts } from "../../functions/atstart";
 
@@ -101,7 +101,9 @@ function TableRow(_props: any) {
           </Show>
         </span>
       </td>
-      <td class="device-table-iface"><span class="device-cell-muted">{_props.host.Iface}</span></td>
+      <Show when={hasMultipleIfaces()}>
+        <td class="device-table-iface"><span class="device-cell-muted">{_props.host.Iface}</span></td>
+      </Show>
       <td class="device-table-mac"><span class="device-cell-muted">{_props.host.Mac}</span></td>
       <td class="device-table-hardware" title={_props.host.Hw}>
         <span class="device-hardware-text">{_props.host.Hw}</span>
@@ -121,7 +123,7 @@ function formatLastSeen(date: string) {
   }
 
   const [, year, month, day, hour, minute] = match;
-  const monthName = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][Number(month) - 1];
+  const monthName = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"][Number(month) - 1];
   const currentYear = new Date().getFullYear().toString();
 
   if (!monthName) {

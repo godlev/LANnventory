@@ -1,5 +1,5 @@
 import { For, Show } from "solid-js";
-import { filterState, Host, ifaces, setHistUpdOnFilter } from "../functions/exports";
+import { filterState, hasMultipleIfaces, Host, ifaces, setHistUpdOnFilter } from "../functions/exports";
 import { filterFunc, resetFilters } from "../functions/filter";
 
 
@@ -27,12 +27,14 @@ function Filter() {
 
   return (
     <div class="device-filter-group">
+      <Show when={hasMultipleIfaces()}>
         <select onChange={(event)=>{handleFilter("Iface", event)}} class="form-select form-select-sm device-filter-select" title="Filter by Iface" value={filterState().Iface}>
           <option value="">Iface</option>
           <For each={ifaces()}>{(iface) =>
             <option value={iface}>{iface}</option>
           }</For>
         </select>
+      </Show>
         <Show when={hasActiveFilter()}>
           <button onClick={handleReset} class="btn btn-sm device-reset-filter" title="Reset filter">
             <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>

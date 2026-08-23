@@ -1,5 +1,5 @@
 import { For, Show } from "solid-js";
-import { editNames, filterState, Host, setEditNames, setSelectedIDs, SortDirection, sortState } from "../../functions/exports";
+import { editNames, filterState, hasMultipleIfaces, Host, setEditNames, setSelectedIDs, SortDirection, sortState } from "../../functions/exports";
 import { getHosts } from "../../functions/atstart";
 import { sortByAnyField } from "../../functions/sort";
 
@@ -103,6 +103,7 @@ function TableHead() {
         </th>
         <For each={headers}>{(header, index) =>
           <>
+            <Show when={header.field !== "Iface" || hasMultipleIfaces()}>
             <th
               class={"sortable-th " + header.className}
               style={sortState().field === header.field ? "color: var(--wyl-link-hover);" : ''}
@@ -120,6 +121,7 @@ function TableHead() {
                 <i class={"bi " + sortIcon(sortState().direction) + " ms-1"} aria-hidden="true"></i>
               </Show>
             </th>
+            </Show>
             <Show when={index() === 0}>
               <th class="device-table-actions" title={editTitle()} aria-label={editTitle()}>
                 <button

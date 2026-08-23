@@ -104,6 +104,7 @@ export const [allHosts, setAllHosts] = createStore<Host[]>([]);
 export const [bkpHosts, setBkpHosts] = createSignal<Host[]>([]);
 
 export const [ifaces, setIfaces] = createSignal<string[]>([]);
+export const hasMultipleIfaces = () => ifaces().filter((iface) => iface.trim() !== "").length > 1;
 
 export const [appConfig, setAppConfig] = createSignal<Conf>(emptyConf);
 
