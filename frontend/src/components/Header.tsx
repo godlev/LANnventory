@@ -5,6 +5,7 @@ import { apiGetConfig } from "../functions/api";
 function Header() {
 
   const [themePath, setThemePath] = createSignal('');
+  const localThemePath = (theme: string) => "/assets/themes/"+theme+"/bootstrap.min.css";
   
   const setCurrentTheme = async () => {
     setAppConfig(await apiGetConfig());
@@ -13,7 +14,7 @@ function Header() {
     const color = appConfig().Color?appConfig().Color:"dark";
     
     if (appConfig().NodePath == '') {
-      setThemePath("https://cdn.jsdelivr.net/npm/aceberg-bootswatch-fork@v5.3.3-2/dist/"+theme+"/bootstrap.min.css");
+      setThemePath(localThemePath(theme));
     } else {
       setThemePath(appConfig().NodePath+"/node_modules/bootswatch/dist/"+theme+"/bootstrap.min.css");
     }

@@ -25,7 +25,7 @@ function About() {
           </tr>
           <tr>
             <td><b>Local node-bootstrap URL</b></td>
-            <td>local themes and fonts (optional). If empty, the app will pull everything from <code>cdn</code></td>
+            <td>local themes and fonts (optional). If empty, the app will use bundled theme assets</td>
           </tr>
           <tr>
             <td><b>Shoutrrr URL</b></td>
