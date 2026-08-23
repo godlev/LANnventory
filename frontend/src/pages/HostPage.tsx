@@ -14,6 +14,10 @@ function HostPage() {
 
   onMount(async () => {
     const params = useParams();
+    if (!params.id) {
+      return;
+    }
+
     const host = await apiGetHost(params.id);
 
     setCurrentHost(host);
