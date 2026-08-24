@@ -50,11 +50,7 @@ export function activityDescription(event: HostEvent): string {
     case "unknown":
       return "Marked as unknown";
     case "device-type-changed": {
-      if (event.NewValue === "") {
-        return "Device type cleared";
-      }
-
-      return "Type changed to " + getDeviceTypeOption(event.NewValue).label;
+      return "Type changed to " + activityDeviceTypeLabel(event.NewValue);
     }
     case "discovered":
     default:

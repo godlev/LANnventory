@@ -29,7 +29,7 @@ export type DeviceTypeOption = {
 };
 
 export const deviceTypes: readonly DeviceTypeOption[] = [
-  { value: "", label: "Unassigned", icon: "bi-question-circle", tone: "unassigned" },
+  { value: "", label: "Not set", icon: "bi-question-circle", tone: "unassigned" },
   { value: "router", label: "Router", icon: "bi-router-fill", tone: "infrastructure" },
   { value: "switch", label: "Switch", icon: "bi-diagram-3-fill", tone: "infrastructure" },
   { value: "access-point", label: "Access Point", icon: "bi-wifi", tone: "infrastructure" },
