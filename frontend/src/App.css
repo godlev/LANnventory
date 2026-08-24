@@ -35,7 +35,6 @@
     --wyl-control-hover-bg: var(--transparent-light);
     --wyl-control-text: var(--bs-body-color);
     --wyl-control-text-strong: var(--bs-body-color);
-    --wyl-settings-panel-header-bg: var(--wyl-panel-header-bg);
     --wyl-settings-group-header-bg: var(--wyl-control-bg);
     --wyl-unknown-row-bg: rgba(96, 81, 92, 0.22);
     --wyl-unknown-row-hover-bg: rgba(96, 81, 92, 0.32);
@@ -64,10 +63,10 @@ html[data-bs-theme="dark"] {
     --wyl-nav-active-bg: #20504E;
     --wyl-nav-hover-bg: rgba(64, 69, 86, 0.42);
     --wyl-panel-bg: #252933;
-    --wyl-panel-header-bg: #252933;
+    --wyl-panel-header-bg: #2E3440;
     --wyl-panel-border: rgba(119, 112, 118, 0.22);
     --wyl-table-bg: #252933;
-    --wyl-table-header-bg: #252933;
+    --wyl-table-header-bg: #2E3440;
     --wyl-table-row-bg: #252933;
     --wyl-table-striped-bg: rgba(64, 69, 86, 0.18);
     --wyl-table-hover-bg: #404556;
@@ -89,7 +88,6 @@ html[data-bs-theme="dark"] {
     --wyl-control-hover-bg: #404556;
     --wyl-control-text: rgba(244, 247, 248, 0.9);
     --wyl-control-text-strong: #ffffff;
-    --wyl-settings-panel-header-bg: #2E3440;
     --wyl-settings-group-header-bg: rgba(64, 69, 86, 0.28);
     --wyl-unknown-row-bg: rgba(96, 81, 92, 0.22);
     --wyl-unknown-row-hover-bg: rgba(96, 81, 92, 0.32);
@@ -114,10 +112,10 @@ html[data-bs-theme="light"] {
     --wyl-nav-active-bg: #C5D4D5;
     --wyl-nav-hover-bg: #D0DEDF;
     --wyl-panel-bg: #ffffff;
-    --wyl-panel-header-bg: #F5F8F8;
+    --wyl-panel-header-bg: #EEF4F4;
     --wyl-panel-border: rgba(49, 64, 68, 0.16);
     --wyl-table-bg: #ffffff;
-    --wyl-table-header-bg: #F5F8F8;
+    --wyl-table-header-bg: #EEF4F4;
     --wyl-table-row-bg: #ffffff;
     --wyl-table-striped-bg: rgba(49, 64, 68, 0.035);
     --wyl-table-hover-bg: #E6EEEE;
@@ -139,7 +137,6 @@ html[data-bs-theme="light"] {
     --wyl-control-hover-bg: #E6EEEE;
     --wyl-control-text: #314044;
     --wyl-control-text-strong: #17292B;
-    --wyl-settings-panel-header-bg: #EEF4F4;
     --wyl-settings-group-header-bg: #F6F9F9;
     --wyl-unknown-row-bg: rgba(155, 126, 89, 0.12);
     --wyl-unknown-row-hover-bg: rgba(155, 126, 89, 0.2);
@@ -1639,10 +1636,6 @@ html[data-bs-theme] .activity-table > tbody > tr.activity-group-row:hover > td {
 }
 .config-panel[id] {
     scroll-margin-top: 0.85rem;
-}
-.settings-page .wyl-panel > .card-header {
-    background-color: var(--wyl-settings-panel-header-bg) !important;
-    border-bottom-color: var(--wyl-panel-border) !important;
 }
 .settings-section-heading h2 {
     margin: 0;
