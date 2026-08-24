@@ -7,6 +7,7 @@ type DeviceTypePickerProps = {
   mode?: "icon" | "full";
   class?: string;
   ariaLabel?: string;
+  disabled?: boolean;
 };
 
 function DeviceTypePicker(props: DeviceTypePickerProps) {
@@ -16,6 +17,7 @@ function DeviceTypePicker(props: DeviceTypePickerProps) {
   let rootRef: HTMLDivElement | undefined;
 
   const mode = () => props.mode ?? "icon";
+  const disabled = () => props.disabled === true;
   const selected = () => getDeviceTypeOption(props.value);
   const rootClass = () => [
     "device-type-picker",
@@ -47,7 +49,7 @@ function DeviceTypePicker(props: DeviceTypePickerProps) {
   });
 
   const handleSelect = async (option: DeviceTypeOption) => {
-    if (saving()) {
+    if (saving() || disabled()) {
       return;
     }
 
@@ -75,6 +77,16 @@ function DeviceTypePicker(props: DeviceTypePickerProps) {
     }
   };
 
+  const handleTriggerKeyDown = (event: KeyboardEvent) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      if (disabled()) {
+        return;
+      }
+      setOpen((value) => !value);
+    }
+  };
+
   return (
     <div
       ref={rootRef}
@@ -90,7 +102,9 @@ function DeviceTypePicker(props: DeviceTypePickerProps) {
         aria-haspopup="listbox"
         aria-expanded={open()}
         aria-busy={saving()}
+        disabled={disabled()}
         onClick={() => setOpen((value) => !value)}
+        onKeyDown={handleTriggerKeyDown}
       >
         <i class={"bi " + selected().icon} aria-hidden="true"></i>
         <Show when={mode() === "full"}>
@@ -106,7 +120,7 @@ function DeviceTypePicker(props: DeviceTypePickerProps) {
               class={option.value === selected().value ? "device-type-option is-selected" : "device-type-option"}
               role="option"
               aria-selected={option.value === selected().value}
-              disabled={saving()}
+              disabled={saving() || disabled()}
               onClick={() => handleSelect(option)}
             >
               <i class={"bi " + option.icon + " device-type-option-icon device-type-tone-" + option.tone} aria-hidden="true"></i>

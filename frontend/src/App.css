@@ -980,6 +980,11 @@ html[data-bs-theme] .device-table > tbody > tr.device-row-unknown:hover > td {
     color: var(--wyl-accent-unknown);
     border-color: rgba(168, 139, 98, 0.46);
 }
+.device-type-trigger:disabled,
+.device-type-option:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
 .device-type-trigger-label {
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1314,6 +1319,9 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     height: 100%;
     margin-bottom: 0;
 }
+.host-panel.wyl-panel {
+    overflow: visible;
+}
 .host-panel-header,
 .host-history-header {
     display: flex;
@@ -1366,6 +1374,10 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
 }
 .host-name-input {
     max-width: 24rem;
+}
+.host-device-type-picker {
+    justify-content: flex-start;
+    max-width: 18rem;
 }
 .host-known-toggle {
     width: 2rem;

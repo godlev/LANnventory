@@ -1,7 +1,9 @@
 import { createEffect, createSignal, Show } from "solid-js";
-import { apiDelHost, apiEditHost, apiWOL } from "../../functions/api";
+import { apiDelHost, apiEditHost, apiSetDeviceType, apiWOL } from "../../functions/api";
 import { Host } from "../../functions/exports";
 import { formatLastSeen } from "../../functions/dateFormat";
+import type { DeviceTypeValue } from "../../functions/deviceTypes";
+import DeviceTypePicker from "../DeviceTypePicker";
 
 import { debounce } from "@solid-primitives/scheduled";
 
@@ -43,6 +45,11 @@ function HostCard(_props: HostCardProps) {
     _props.onHostChange?.({ ..._props.host, Name: nextName, Known: isKnown() ? 0 : 1 });
   };
 
+  const handleDeviceTypeChange = async (deviceType: DeviceTypeValue) => {
+    const updatedHost = await apiSetDeviceType(_props.host.ID, deviceType);
+    _props.onHostChange?.(updatedHost);
+  };
+
   const handleDel = async () => {
     
     await apiDelHost(_props.host.ID);
@@ -76,6 +83,17 @@ function HostCard(_props: HostCardProps) {
               value={name()}
               onInput={e => handleInput(e.target.value)}
             ></input>
+          </div>
+
+          <div class="host-field-label">Device type</div>
+          <div class="host-field-value">
+            <DeviceTypePicker
+              value={_props.host.DeviceType}
+              mode="full"
+              class="host-device-type-picker"
+              disabled={_props.host.ID === 0}
+              onChange={handleDeviceTypeChange}
+            ></DeviceTypePicker>
           </div>
 
           <div class="host-field-label">DNS name</div>
