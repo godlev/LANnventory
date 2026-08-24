@@ -130,7 +130,22 @@ const config = {
 };
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const faviconPath = path.resolve(__dirname, '../../backend/internal/web/public/favicon.png');
+const frontendPublicPath = path.resolve(__dirname, '../public/fs/public');
+const backendPublicPath = path.resolve(__dirname, '../../backend/internal/web/public');
+const localPublicAssets = new Set([
+  'favicon.png',
+  'lanventory.ico',
+  'lanventory-16x16.png',
+  'lanventory-32x32.png',
+  'lanventory-48x48.png',
+  'lanventory-64x64.png',
+  'lanventory-128x128.png',
+  'lanventory-180x180.png',
+  'lanventory-192x192.png',
+  'lanventory-256x256.png',
+  'lanventory-512x512.png',
+  'lanventory-navbar.png',
+]);
 const activityEvents = [];
 
 function sendJSON(res, value, statusCode = 200) {
@@ -147,6 +162,26 @@ function sendText(res, value, statusCode = 200) {
     'cache-control': 'no-store',
   });
   res.end(value);
+}
+
+function getLocalPublicAsset(pathname) {
+  const match = /^\/fs\/public\/([^/]+)$/.exec(pathname);
+  if (!match || !localPublicAssets.has(match[1])) {
+    return '';
+  }
+
+  for (const root of [frontendPublicPath, backendPublicPath]) {
+    const assetPath = path.join(root, match[1]);
+    if (existsSync(assetPath)) {
+      return assetPath;
+    }
+  }
+
+  return '';
+}
+
+function getAssetContentType(assetPath) {
+  return assetPath.endsWith('.ico') ? 'image/x-icon' : 'image/png';
 }
 
 function readBody(req) {
@@ -581,12 +616,13 @@ function routeReadOnly(req, res, url) {
     return true;
   }
 
-  if (req.method === 'GET' && pathname === '/fs/public/favicon.png' && existsSync(faviconPath)) {
+  const publicAssetPath = req.method === 'GET' ? getLocalPublicAsset(pathname) : '';
+  if (publicAssetPath) {
     res.writeHead(200, {
-      'content-type': 'image/png',
+      'content-type': getAssetContentType(publicAssetPath),
       'cache-control': 'no-store',
     });
-    createReadStream(faviconPath).pipe(res);
+    createReadStream(publicAssetPath).pipe(res);
     return true;
   }
 

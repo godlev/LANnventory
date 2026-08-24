@@ -114,7 +114,7 @@ function Header() {
     <nav class="navbar navbar-expand-md navbar-dark wyl-navbar">
       <div class="container-lg">
         <a class="navbar-brand" href="/" title="LANventory" aria-label="LANventory home">
-          <img src="/fs/public/favicon.png" class="wyl-navbar-logo" alt="LANventory"/>
+          <img src="/fs/public/lanventory-navbar.png" class="wyl-navbar-logo" alt="LANventory"/>
         </a>
         <ul class="navbar-nav wyl-nav-tabs me-auto">
           {navItems.map((item) =>
