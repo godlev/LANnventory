@@ -4,11 +4,13 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
 	"github.com/aceberg/WatchYourLAN/internal/conf"
 	"github.com/aceberg/WatchYourLAN/internal/gdb"
+	"github.com/aceberg/WatchYourLAN/internal/models"
 	"github.com/aceberg/WatchYourLAN/internal/routines"
 )
 
@@ -27,20 +29,19 @@ type retentionRequest struct {
 
 func saveConfigHandler(c *gin.Context) {
 
-	nextConfig := conf.AppConfig
-	nextConfig.Host = c.PostForm("host")
-	nextConfig.Port = c.PostForm("port")
-	nextConfig.Theme = c.PostForm("theme")
-	nextConfig.Color = c.PostForm("color")
-	nextConfig.NodePath = c.PostForm("node")
-	nextConfig.ShoutURL = c.PostForm("shout")
-
-	if err := conf.WriteErr(nextConfig); err != nil {
+	_, err := conf.UpdateAppConfig(func(nextConfig *models.Conf) error {
+		nextConfig.Host = c.PostForm("host")
+		nextConfig.Port = c.PostForm("port")
+		nextConfig.Theme = c.PostForm("theme")
+		nextConfig.Color = c.PostForm("color")
+		nextConfig.NodePath = c.PostForm("node")
+		nextConfig.ShoutURL = applySecretUpdate(nextConfig.ShoutURL, c.PostForm("shout"), c.PostForm("clear_shout"))
+		return nil
+	})
+	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to write config"})
 		return
 	}
-
-	conf.AppConfig = nextConfig
 
 	c.Redirect(http.StatusFound, c.Request.Referer())
 }
@@ -60,17 +61,16 @@ func saveColorHandler(c *gin.Context) {
 		return
 	}
 
-	nextConfig := conf.AppConfig
-	nextConfig.Color = color
-
-	if err := conf.WriteErr(nextConfig); err != nil {
+	nextConfig, err := conf.UpdateAppConfig(func(nextConfig *models.Conf) error {
+		nextConfig.Color = color
+		return nil
+	})
+	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to write config"})
 		return
 	}
 
-	conf.AppConfig = nextConfig
-
-	c.IndentedJSON(http.StatusOK, conf.AppConfig)
+	c.IndentedJSON(http.StatusOK, toPublicConfig(nextConfig))
 }
 
 func saveRetentionHandler(c *gin.Context) {
@@ -89,35 +89,34 @@ func saveRetentionHandler(c *gin.Context) {
 		return
 	}
 
-	nextConfig := conf.AppConfig
-	nextConfig.TrimHist = req.PresenceRetention
-	nextConfig.ConnectivityRetention = req.ConnectivityRetention
-
-	if err := conf.WriteErr(nextConfig); err != nil {
+	nextConfig, err := conf.UpdateAppConfig(func(nextConfig *models.Conf) error {
+		nextConfig.TrimHist = req.PresenceRetention
+		nextConfig.ConnectivityRetention = req.ConnectivityRetention
+		return nil
+	})
+	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to write config"})
 		return
 	}
 
-	conf.AppConfig = nextConfig
-
-	c.IndentedJSON(http.StatusOK, conf.AppConfig)
+	c.IndentedJSON(http.StatusOK, toPublicConfig(nextConfig))
 }
 
 func saveSettingsHandler(c *gin.Context) {
 
-	nextConfig := conf.AppConfig
+	currentConfig := conf.GetAppConfig()
+	nextConfig := currentConfig
 	nextConfig.LogLevel = c.PostForm("log")
 	nextConfig.ArpArgs = c.PostForm("arpargs")
 	nextConfig.Ifaces = c.PostForm("ifaces")
 
 	useDB := c.PostForm("usedb")
-	pgConnect := c.PostForm("pgconnect")
 	if useDB != "sqlite" && useDB != "postgres" {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid usedb"})
 		return
 	}
 	nextConfig.UseDB = useDB
-	nextConfig.PGConnect = pgConnect
+	nextConfig.PGConnect = applySecretUpdate(nextConfig.PGConnect, c.PostForm("pgconnect"), c.PostForm("clear_pgconnect"))
 
 	if !isValidLogLevel(nextConfig.LogLevel) {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid log"})
@@ -163,16 +162,29 @@ func saveSettingsHandler(c *gin.Context) {
 		}
 	}
 
-	if err := conf.WriteErr(nextConfig); err != nil {
-		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to write config"})
-		return
+	dbChanged := nextConfig.UseDB != currentConfig.UseDB || nextConfig.PGConnect != currentConfig.PGConnect
+	if dbChanged {
+		if err := gdb.Reconnect(nextConfig); err != nil {
+			c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to reconnect database"})
+			return
+		}
 	}
 
-	dbChanged := useDB != conf.AppConfig.UseDB || pgConnect != conf.AppConfig.PGConnect
-	conf.AppConfig = nextConfig
-
-	if dbChanged {
-		gdb.Start()
+	_, err = conf.UpdateAppConfig(func(config *models.Conf) error {
+		config.LogLevel = nextConfig.LogLevel
+		config.ArpArgs = nextConfig.ArpArgs
+		config.Ifaces = nextConfig.Ifaces
+		config.UseDB = nextConfig.UseDB
+		config.PGConnect = nextConfig.PGConnect
+		config.Timeout = nextConfig.Timeout
+		config.TrimHist = nextConfig.TrimHist
+		config.ConnectivityRetention = nextConfig.ConnectivityRetention
+		config.ArpStrs = append([]string(nil), nextConfig.ArpStrs...)
+		return nil
+	})
+	if err != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to write config"})
+		return
 	}
 
 	restartScanner()
@@ -200,23 +212,21 @@ func isValidLogLevel(value string) bool {
 
 func saveInfluxHandler(c *gin.Context) {
 
-	nextConfig := conf.AppConfig
-	nextConfig.InfluxAddr = c.PostForm("addr")
-	nextConfig.InfluxToken = c.PostForm("token")
-	nextConfig.InfluxOrg = c.PostForm("org")
-	nextConfig.InfluxBucket = c.PostForm("bucket")
-
 	enable := c.PostForm("enable")
 	skip := c.PostForm("skip")
-	nextConfig.InfluxEnable = enable == "on"
-	nextConfig.InfluxSkipTLS = skip == "on"
-
-	if err := conf.WriteErr(nextConfig); err != nil {
+	_, err := conf.UpdateAppConfig(func(nextConfig *models.Conf) error {
+		nextConfig.InfluxAddr = c.PostForm("addr")
+		nextConfig.InfluxToken = applySecretUpdate(nextConfig.InfluxToken, c.PostForm("token"), c.PostForm("clear_influx_token"))
+		nextConfig.InfluxOrg = c.PostForm("org")
+		nextConfig.InfluxBucket = c.PostForm("bucket")
+		nextConfig.InfluxEnable = enable == "on"
+		nextConfig.InfluxSkipTLS = skip == "on"
+		return nil
+	})
+	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to write config"})
 		return
 	}
-
-	conf.AppConfig = nextConfig
 
 	c.Redirect(http.StatusFound, c.Request.Referer())
 }
@@ -224,15 +234,34 @@ func saveInfluxHandler(c *gin.Context) {
 func savePrometheusHandler(c *gin.Context) {
 	enable := c.PostForm("enable")
 
-	nextConfig := conf.AppConfig
-	nextConfig.PrometheusEnable = enable == "on"
-
-	if err := conf.WriteErr(nextConfig); err != nil {
+	_, err := conf.UpdateAppConfig(func(nextConfig *models.Conf) error {
+		nextConfig.PrometheusEnable = enable == "on"
+		return nil
+	})
+	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to write config"})
 		return
 	}
 
-	conf.AppConfig = nextConfig
-
 	c.Redirect(http.StatusFound, c.Request.Referer())
+}
+
+func applySecretUpdate(currentValue, submittedValue, clearValue string) string {
+	if isTruthyFormValue(clearValue) {
+		return ""
+	}
+	if submittedValue != "" {
+		return submittedValue
+	}
+
+	return currentValue
+}
+
+func isTruthyFormValue(value string) bool {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "1", "on", "true", "yes":
+		return true
+	default:
+		return false
+	}
 }

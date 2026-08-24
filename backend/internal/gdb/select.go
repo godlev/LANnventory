@@ -18,8 +18,14 @@ type EventQuery struct {
 // Select - get all hosts
 func Select(table string) (dbHosts []models.Host, ok bool) {
 
-	tab := db.Table(table)
-	err := tab.Find(&dbHosts).Error
+	activeDB, release, err := acquireDB()
+	if err != nil {
+		return dbHosts, !check.IfError(err)
+	}
+	defer release()
+
+	tab := activeDB.Table(table)
+	err = tab.Find(&dbHosts).Error
 
 	return dbHosts, !check.IfError(err)
 }
@@ -27,7 +33,14 @@ func Select(table string) (dbHosts []models.Host, ok bool) {
 // SelectByID - get host by ID
 func SelectByID(id int) (host models.Host) {
 
-	tab := db.Table("now")
+	activeDB, release, err := acquireDB()
+	if err != nil {
+		check.IfError(err)
+		return host
+	}
+	defer release()
+
+	tab := activeDB.Table("now")
 	tab.First(&host, id)
 
 	return host
@@ -36,7 +49,14 @@ func SelectByID(id int) (host models.Host) {
 // SelectByMAC - get all hosts by MAC
 func SelectByMAC(table, mac string) (hosts []models.Host) {
 
-	tab := db.Table(table)
+	activeDB, release, err := acquireDB()
+	if err != nil {
+		check.IfError(err)
+		return hosts
+	}
+	defer release()
+
+	tab := activeDB.Table(table)
 	tab.Where("\"MAC\" = ?", mac).Find(&hosts)
 
 	return hosts
@@ -45,7 +65,14 @@ func SelectByMAC(table, mac string) (hosts []models.Host) {
 // SelectByDate - get all hosts by MAC and DATE
 func SelectByDate(mac, date string) (hosts []models.Host) {
 
-	tab := db.Table("history")
+	activeDB, release, err := acquireDB()
+	if err != nil {
+		check.IfError(err)
+		return hosts
+	}
+	defer release()
+
+	tab := activeDB.Table("history")
 	tab.
 		Where("\"MAC\" = ?", mac).
 		Where("\"DATE\" LIKE ?", date+"%").
@@ -57,7 +84,14 @@ func SelectByDate(mac, date string) (hosts []models.Host) {
 // SelectLatest - get latest hosts by MAC
 func SelectLatest(mac string, number int) (hosts []models.Host) {
 
-	tab := db.Table("history")
+	activeDB, release, err := acquireDB()
+	if err != nil {
+		check.IfError(err)
+		return hosts
+	}
+	defer release()
+
+	tab := activeDB.Table("history")
 	tab.
 		Where("\"MAC\" = ?", mac).
 		Order("\"DATE\" DESC").
@@ -79,7 +113,13 @@ func SelectEvents(limit int, mac string) (events []models.HostEvent, ok bool) {
 // SelectEventsFiltered returns recent host activity events matching query, newest first.
 func SelectEventsFiltered(query EventQuery) (events []models.HostEvent, ok bool) {
 
-	tab := db.Table("events")
+	activeDB, release, err := acquireDB()
+	if err != nil {
+		return events, !check.IfError(err)
+	}
+	defer release()
+
+	tab := activeDB.Table("events")
 	macs := eventQueryMacs(query)
 	if len(macs) > 0 {
 		tab = tab.Where("\"MAC\" IN ?", macs)
@@ -94,7 +134,7 @@ func SelectEventsFiltered(query EventQuery) (events []models.HostEvent, ok bool)
 		}
 		tab = tab.Where("\"EVENT_TYPE\" IN ?", eventTypes)
 	}
-	err := tab.
+	err = tab.
 		Order("\"DATE\" DESC").
 		Order("\"ID\" DESC").
 		Limit(query.Limit).
@@ -112,14 +152,20 @@ func SelectEventStats(macs []string) (stats models.ActivityStats, ok bool) {
 		Count     int64  `gorm:"column:count"`
 	}
 
-	tab := db.Table("events")
+	activeDB, release, err := acquireDB()
+	if err != nil {
+		return stats, !check.IfError(err)
+	}
+	defer release()
+
+	tab := activeDB.Table("events")
 	macs = normalizeMacs(macs)
 	if len(macs) > 0 {
 		tab = tab.Where("\"MAC\" IN ?", macs)
 	}
 
 	var rows []eventStatRow
-	err := tab.
+	err = tab.
 		Select("\"EVENT_TYPE\", COUNT(*) as count").
 		Group("EVENT_TYPE").
 		Scan(&rows).Error
@@ -152,7 +198,13 @@ func SelectEventStats(macs []string) (stats models.ActivityStats, ok bool) {
 func SelectActivityDeviceOptions() (devices []models.ActivityDeviceOption, ok bool) {
 
 	var hosts []models.Host
-	err := db.Table("now").
+	activeDB, release, err := acquireDB()
+	if err != nil {
+		return devices, !check.IfError(err)
+	}
+	defer release()
+
+	err = activeDB.Table("now").
 		Order("\"NAME\" ASC").
 		Order("\"MAC\" ASC").
 		Find(&hosts).Error
@@ -176,7 +228,7 @@ func SelectActivityDeviceOptions() (devices []models.ActivityDeviceOption, ok bo
 	}
 
 	var events []models.HostEvent
-	err = db.Table("events").
+	err = activeDB.Table("events").
 		Order("\"DATE\" DESC").
 		Order("\"ID\" DESC").
 		Find(&events).Error

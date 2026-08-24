@@ -21,7 +21,8 @@ func HistoryTrim() {
 }
 
 func trimHistory(now time.Time) {
-	presenceHours := conf.AppConfig.TrimHist
+	config := conf.GetAppConfig()
+	presenceHours := config.TrimHist
 	presenceCutoff := now.Add(-time.Duration(presenceHours) * time.Hour)
 	presenceDate := presenceCutoff.Format("2006-01-02 15:04:05")
 
@@ -30,9 +31,9 @@ func trimHistory(now time.Time) {
 	n := gdb.DeleteOldHistory(presenceDate)
 	slog.Info("Removed records from Presence", "n", n)
 
-	connectivityHours := conf.AppConfig.ConnectivityRetention
+	connectivityHours := config.ConnectivityRetention
 	if connectivityHours < 1 {
-		connectivityHours = conf.AppConfig.TrimHist
+		connectivityHours = config.TrimHist
 	}
 	connectivityCutoff := now.Add(-time.Duration(connectivityHours) * time.Hour)
 	connectivityDate := connectivityCutoff.Format("2006-01-02 15:04:05")

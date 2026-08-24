@@ -1,7 +1,10 @@
 package gdb
 
 import (
+	"errors"
 	"path/filepath"
+	"strings"
+	"sync"
 	"testing"
 
 	"github.com/aceberg/WatchYourLAN/internal/conf"
@@ -12,7 +15,7 @@ import (
 )
 
 func TestStartMigratesLegacySQLiteSchemaWithoutChangingRows(t *testing.T) {
-	oldConfig := conf.AppConfig
+	oldConfig := conf.GetAppConfig()
 	dbPath := filepath.Join(t.TempDir(), "legacy-watchyourlan.db")
 
 	legacyDB := openMigrationFixtureDB(t, dbPath)
@@ -24,15 +27,15 @@ func TestStartMigratesLegacySQLiteSchemaWithoutChangingRows(t *testing.T) {
 	insertLegacyHost(t, legacyDB, "history", 11, "unknown", "", "wifi0", "192.168.1.50", "AA:BB:CC:DD:EE:50", "Mobile Vendor", "2026-08-24 07:05:00", 0, 0)
 	closeFixtureDB(t, legacyDB)
 
-	conf.AppConfig = models.Conf{
+	conf.SetAppConfigForTest(models.Conf{
 		UseDB:  "sqlite",
 		DBPath: dbPath,
-	}
+	})
 	t.Cleanup(func() {
 		if err := Close(); err != nil {
 			t.Errorf("Close: %v", err)
 		}
-		conf.AppConfig = oldConfig
+		conf.SetAppConfigForTest(oldConfig)
 	})
 
 	Start()
@@ -46,6 +49,111 @@ func TestStartMigratesLegacySQLiteSchemaWithoutChangingRows(t *testing.T) {
 	Start()
 	assertMigratedLegacyRows(t)
 	assertNoInventedEvents(t)
+}
+
+func TestReconnectKeepsCurrentSQLiteDBWhenCandidateFails(t *testing.T) {
+	oldConfig := conf.GetAppConfig()
+	activePath := filepath.Join(t.TempDir(), "active.db")
+	conf.SetAppConfigForTest(models.Conf{
+		UseDB:  "sqlite",
+		DBPath: activePath,
+	})
+	t.Cleanup(func() {
+		if err := Close(); err != nil {
+			t.Errorf("Close: %v", err)
+		}
+		conf.SetAppConfigForTest(oldConfig)
+	})
+
+	if err := StartErr(); err != nil {
+		t.Fatalf("StartErr: %v", err)
+	}
+
+	host := models.Host{
+		Name: "router",
+		Mac:  "AA:BB:CC:DD:EE:11",
+	}
+	if err := UpdateWithError("now", host); err != nil {
+		t.Fatalf("UpdateWithError before failed reconnect: %v", err)
+	}
+
+	err := Reconnect(models.Conf{
+		UseDB:     "postgres",
+		PGConnect: "postgres://wyl:super-secret@127.0.0.1:1/wyl?sslmode=disable",
+		DBPath:    filepath.Join(t.TempDir(), "fallback.db"),
+	})
+	if err == nil {
+		t.Fatal("Reconnect returned nil error for unreachable PostgreSQL")
+	}
+
+	hosts := SelectByMAC("now", host.Mac)
+	if len(hosts) != 1 {
+		t.Fatalf("active DB not usable after failed reconnect, hosts = %+v", hosts)
+	}
+}
+
+func TestConcurrentSQLiteReconnectsLeaveUsableDB(t *testing.T) {
+	oldConfig := conf.GetAppConfig()
+	tempDir := t.TempDir()
+	conf.SetAppConfigForTest(models.Conf{
+		UseDB:  "sqlite",
+		DBPath: filepath.Join(tempDir, "initial.db"),
+	})
+	t.Cleanup(func() {
+		if err := Close(); err != nil {
+			t.Errorf("Close: %v", err)
+		}
+		conf.SetAppConfigForTest(oldConfig)
+	})
+
+	if err := StartErr(); err != nil {
+		t.Fatalf("StartErr: %v", err)
+	}
+
+	const reconnects = 6
+	var wg sync.WaitGroup
+	errs := make(chan error, reconnects)
+	for i := 0; i < reconnects; i++ {
+		wg.Add(1)
+		go func(index int) {
+			defer wg.Done()
+			errs <- Reconnect(models.Conf{
+				UseDB:  "sqlite",
+				DBPath: filepath.Join(tempDir, "reconnect-"+string(rune('a'+index))+".db"),
+			})
+		}(i)
+	}
+	wg.Wait()
+	close(errs)
+
+	for err := range errs {
+		if err != nil {
+			t.Fatalf("Reconnect: %v", err)
+		}
+	}
+
+	host := models.Host{
+		Name: "nas",
+		Mac:  "AA:BB:CC:DD:EE:22",
+	}
+	if err := UpdateWithError("now", host); err != nil {
+		t.Fatalf("UpdateWithError after concurrent reconnects: %v", err)
+	}
+	if hosts := SelectByMAC("now", host.Mac); len(hosts) != 1 {
+		t.Fatalf("SelectByMAC after concurrent reconnects = %+v", hosts)
+	}
+}
+
+func TestRedactDatabaseErrorRedactsPostgresSecrets(t *testing.T) {
+	got := redactDatabaseError(errors.New(
+		"failed postgres://wyl:url-secret@localhost/wyl password=keyword-secret user=wyl",
+	))
+	if strings.Contains(got, "url-secret") || strings.Contains(got, "keyword-secret") {
+		t.Fatalf("redacted error leaked secret: %s", got)
+	}
+	if !strings.Contains(got, "<redacted>") {
+		t.Fatalf("redacted error missing marker: %s", got)
+	}
 }
 
 func openMigrationFixtureDB(t *testing.T, dbPath string) *gorm.DB {

@@ -55,14 +55,14 @@ func TestParsePositiveInt(t *testing.T) {
 func setupConfigRouter(t *testing.T) *gin.Engine {
 	t.Helper()
 
-	oldConfig := conf.AppConfig
+	oldConfig := conf.GetAppConfig()
 	tempDir := t.TempDir()
 	confPath := filepath.Join(tempDir, "config_v2.yaml")
 	if err := os.WriteFile(confPath, []byte("{}\n"), 0o600); err != nil {
 		t.Fatalf("os.WriteFile: %v", err)
 	}
 
-	conf.AppConfig = models.Conf{
+	conf.SetAppConfigForTest(models.Conf{
 		Host:                  "127.0.0.1",
 		Port:                  "8840",
 		Theme:                 "sand",
@@ -77,13 +77,16 @@ func setupConfigRouter(t *testing.T) *gin.Engine {
 		ArpArgs:               "-r 1",
 		ArpStrs:               []string{"scan-a"},
 		Ifaces:                "eth0",
-	}
+		ShoutURL:              "discord://notification-secret@example",
+		PGConnect:             "postgres://wyl:pg-secret@localhost/wyl?sslmode=disable",
+		InfluxToken:           "influx-secret",
+	})
 
 	t.Cleanup(func() {
 		if err := gdb.Close(); err != nil {
 			t.Errorf("gdb.Close: %v", err)
 		}
-		conf.AppConfig = oldConfig
+		conf.SetAppConfigForTest(oldConfig)
 	})
 
 	gin.SetMode(gin.TestMode)
@@ -91,6 +94,163 @@ func setupConfigRouter(t *testing.T) *gin.Engine {
 	Routes(router)
 
 	return router
+}
+
+func TestGetConfigRedactsStoredSecrets(t *testing.T) {
+	router := setupConfigRouter(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/config", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	body := rec.Body.String()
+	for _, secret := range []string{"notification-secret", "pg-secret", "influx-secret"} {
+		if strings.Contains(body, secret) {
+			t.Fatalf("public config response leaked secret %q: %s", secret, body)
+		}
+	}
+
+	var got publicConfig
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("json.Unmarshal: %v", err)
+	}
+	if got.ShoutURL != "" || got.PGConnect != "" || got.InfluxToken != "" {
+		t.Fatalf("public config returned secret values: %+v", got)
+	}
+	if !got.ShoutURLConfigured || !got.PGConnectConfigured || !got.InfluxTokenConfigured {
+		t.Fatalf("public config did not report configured secrets: %+v", got)
+	}
+}
+
+func TestSecretFormFieldsAreWriteOnly(t *testing.T) {
+	router := setupConfigRouter(t)
+	stubScannerRestart(t)
+
+	original := conf.GetAppConfig()
+
+	postEncodedForm(t, router, "/api/config/", generalForm(map[string]string{"shout": ""}))
+	if got := conf.GetAppConfig().ShoutURL; got != original.ShoutURL {
+		t.Fatalf("blank Shoutrrr field changed stored secret: got %q, want %q", got, original.ShoutURL)
+	}
+	postEncodedForm(t, router, "/api/config/", generalForm(map[string]string{"shout": "matrix://replacement-secret"}))
+	if got := conf.GetAppConfig().ShoutURL; got != "matrix://replacement-secret" {
+		t.Fatalf("Shoutrrr replacement = %q", got)
+	}
+	postEncodedForm(t, router, "/api/config/", generalForm(map[string]string{"shout": "", "clear_shout": "on"}))
+	if got := conf.GetAppConfig().ShoutURL; got != "" {
+		t.Fatalf("clear Shoutrrr left value %q", got)
+	}
+
+	postEncodedFormString(t, router, "/api/config_settings/", settingsForm(map[string]string{"pgconnect": ""}))
+	if got := conf.GetAppConfig().PGConnect; got != original.PGConnect {
+		t.Fatalf("blank PG connect field changed stored secret: got %q, want %q", got, original.PGConnect)
+	}
+	postEncodedFormString(t, router, "/api/config_settings/", settingsForm(map[string]string{"pgconnect": "postgres://wyl:replacement@localhost/wyl"}))
+	if got := conf.GetAppConfig().PGConnect; got != "postgres://wyl:replacement@localhost/wyl" {
+		t.Fatalf("PG connect replacement = %q", got)
+	}
+	postEncodedFormString(t, router, "/api/config_settings/", settingsForm(map[string]string{"pgconnect": "", "clear_pgconnect": "on"}))
+	if got := conf.GetAppConfig().PGConnect; got != "" {
+		t.Fatalf("clear PG connect left value %q", got)
+	}
+
+	postEncodedForm(t, router, "/api/config_influx/", influxForm(map[string]string{"token": ""}))
+	if got := conf.GetAppConfig().InfluxToken; got != original.InfluxToken {
+		t.Fatalf("blank Influx token field changed stored secret: got %q, want %q", got, original.InfluxToken)
+	}
+	postEncodedForm(t, router, "/api/config_influx/", influxForm(map[string]string{"token": "replacement-influx-token"}))
+	if got := conf.GetAppConfig().InfluxToken; got != "replacement-influx-token" {
+		t.Fatalf("Influx token replacement = %q", got)
+	}
+	postEncodedForm(t, router, "/api/config_influx/", influxForm(map[string]string{"token": "", "clear_influx_token": "on"}))
+	if got := conf.GetAppConfig().InfluxToken; got != "" {
+		t.Fatalf("clear Influx token left value %q", got)
+	}
+}
+
+func TestApplySecretUpdate(t *testing.T) {
+	tests := []struct {
+		name      string
+		current   string
+		submitted string
+		clear     string
+		want      string
+	}{
+		{name: "blank preserves", current: "stored", want: "stored"},
+		{name: "submitted replaces", current: "stored", submitted: "new", want: "new"},
+		{name: "clear removes", current: "stored", submitted: "new", clear: "on", want: ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := applySecretUpdate(tt.current, tt.submitted, tt.clear); got != tt.want {
+				t.Fatalf("applySecretUpdate() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func postEncodedForm(t *testing.T, router *gin.Engine, path string, values url.Values) *httptest.ResponseRecorder {
+	t.Helper()
+
+	return postEncodedFormString(t, router, path, values.Encode())
+}
+
+func postEncodedFormString(t *testing.T, router *gin.Engine, path string, body string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusFound && rec.Code != http.StatusOK {
+		t.Fatalf("POST %s status = %d, body: %s", path, rec.Code, rec.Body.String())
+	}
+
+	return rec
+}
+
+func generalForm(overrides map[string]string) url.Values {
+	config := conf.GetAppConfig()
+	values := url.Values{
+		"host":  {config.Host},
+		"port":  {config.Port},
+		"theme": {config.Theme},
+		"color": {config.Color},
+		"shout": {""},
+		"node":  {config.NodePath},
+	}
+	for key, value := range overrides {
+		values.Set(key, value)
+	}
+
+	return values
+}
+
+func influxForm(overrides map[string]string) url.Values {
+	config := conf.GetAppConfig()
+	values := url.Values{
+		"addr":   {config.InfluxAddr},
+		"token":  {""},
+		"org":    {config.InfluxOrg},
+		"bucket": {config.InfluxBucket},
+	}
+	if config.InfluxEnable {
+		values.Set("enable", "on")
+	}
+	if config.InfluxSkipTLS {
+		values.Set("skip", "on")
+	}
+	for key, value := range overrides {
+		values.Set(key, value)
+	}
+
+	return values
 }
 
 func stubScannerRestart(t *testing.T) *int {
@@ -150,6 +310,11 @@ func TestSaveSettingsRejectsInvalidInputAtomically(t *testing.T) {
 		{
 			name:      "invalid timeout",
 			overrides: map[string]string{"timeout": "abc"},
+			wantError: "invalid timeout",
+		},
+		{
+			name:      "invalid timeout does not clear PG connect",
+			overrides: map[string]string{"timeout": "abc", "clear_pgconnect": "on"},
 			wantError: "invalid timeout",
 		},
 		{
@@ -309,6 +474,7 @@ func TestSaveRetentionHandlerPersistsOnlyRetentionFields(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
 	}
+	assertNoResponseSecret(t, rec.Body.String())
 
 	var got models.Conf
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
@@ -414,6 +580,7 @@ func TestSaveColorHandlerPersistsValidColor(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
 	}
+	assertNoResponseSecret(t, rec.Body.String())
 
 	var got models.Conf
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
@@ -432,6 +599,16 @@ func TestSaveColorHandlerPersistsValidColor(t *testing.T) {
 	}
 	if !strings.Contains(strings.ToLower(string(written)), "color: light") {
 		t.Fatalf("config file did not persist color: %s", string(written))
+	}
+}
+
+func assertNoResponseSecret(t *testing.T, body string) {
+	t.Helper()
+
+	for _, secret := range []string{"notification-secret", "pg-secret", "influx-secret"} {
+		if strings.Contains(body, secret) {
+			t.Fatalf("response leaked secret %q: %s", secret, body)
+		}
 	}
 }
 

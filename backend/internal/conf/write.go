@@ -16,6 +16,13 @@ func Write(config models.Conf) {
 
 // WriteErr - write config to file and return any persistence error
 func WriteErr(config models.Conf) error {
+	appConfigMu.Lock()
+	defer appConfigMu.Unlock()
+
+	return writeErrNoLock(config)
+}
+
+func writeErrNoLock(config models.Conf) error {
 
 	slog.Info("Writing new config to " + config.ConfPath)
 

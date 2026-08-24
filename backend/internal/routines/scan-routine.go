@@ -23,13 +23,14 @@ func startScan(quit chan bool) {
 		case <-quit:
 			return
 		default:
+			config := conf.GetAppConfig()
 			nowDate = time.Now()
-			plusDate = lastDate.Add(time.Duration(conf.AppConfig.Timeout) * time.Second)
+			plusDate = lastDate.Add(time.Duration(config.Timeout) * time.Second)
 
 			if nowDate.After(plusDate) {
 
 				var scanOK bool
-				foundHosts, scanOK = arp.Scan(conf.AppConfig.Ifaces, conf.AppConfig.ArpArgs, conf.AppConfig.ArpStrs)
+				foundHosts, scanOK = arp.Scan(config.Ifaces, config.ArpArgs, config.ArpStrs)
 				if !processScanResult(foundHosts, scanOK) {
 					lastDate = time.Now()
 					continue
@@ -59,6 +60,7 @@ func processScanResult(foundHosts []models.Host, scanOK bool) bool {
 }
 
 func compareHosts(foundHostsMap map[string]models.Host) {
+	config := conf.GetAppConfig()
 
 	allHosts, ok := gdb.Select("now")
 	if !ok {
@@ -94,10 +96,10 @@ func compareHosts(foundHostsMap map[string]models.Host) {
 		aHost.Date = time.Now().Format("2006-01-02 15:04:05")
 		gdb.Update("history", aHost)
 
-		if conf.AppConfig.InfluxEnable {
-			influx.Add(conf.AppConfig, aHost)
+		if config.InfluxEnable {
+			influx.Add(config, aHost)
 		}
-		if conf.AppConfig.PrometheusEnable {
+		if config.PrometheusEnable {
 			prometheus.Add(aHost)
 		}
 	}

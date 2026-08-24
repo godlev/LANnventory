@@ -19,7 +19,13 @@ func Update(table string, oneHost models.Host) {
 // UpdateWithError updates or creates a host and returns persistence errors.
 func UpdateWithError(table string, oneHost models.Host) error {
 
-	tab := db.Table(table)
+	activeDB, release, err := acquireDB()
+	if err != nil {
+		return err
+	}
+	defer release()
+
+	tab := activeDB.Table(table)
 	result := tab.Save(&oneHost)
 
 	return result.Error
@@ -29,7 +35,13 @@ func UpdateWithError(table string, oneHost models.Host) error {
 func UpdateDeviceType(id int, deviceType string) (models.Host, error) {
 	var host models.Host
 
-	tab := db.Table("now")
+	activeDB, release, err := acquireDB()
+	if err != nil {
+		return host, err
+	}
+	defer release()
+
+	tab := activeDB.Table("now")
 	result := tab.Model(&models.Host{}).
 		Where("\"ID\" = ?", id).
 		Update("DEVICE_TYPE", deviceType)
@@ -40,14 +52,21 @@ func UpdateDeviceType(id int, deviceType string) (models.Host, error) {
 		return host, gorm.ErrRecordNotFound
 	}
 
-	err := tab.First(&host, id).Error
+	err = tab.First(&host, id).Error
 	return host, err
 }
 
 // Delete - delete host from DB
 func Delete(table string, id int) {
 
-	tab := db.Table(table)
+	activeDB, release, err := acquireDB()
+	if err != nil {
+		check.IfError(err)
+		return
+	}
+	defer release()
+
+	tab := activeDB.Table(table)
 	result := tab.Delete(&models.Host{}, id)
 	check.IfError(result.Error)
 }
@@ -55,7 +74,14 @@ func Delete(table string, id int) {
 // DeleteOldHistory - delete a list of hosts from History
 func DeleteOldHistory(date string) int64 {
 
-	tab := db.Table("history")
+	activeDB, release, err := acquireDB()
+	if err != nil {
+		check.IfError(err)
+		return 0
+	}
+	defer release()
+
+	tab := activeDB.Table("history")
 	result := tab.Where("\"DATE\" < ?", date).Delete(&models.Host{})
 	check.IfError(result.Error)
 
@@ -69,7 +95,13 @@ func AddEvent(event models.HostEvent) error {
 		return errors.New("invalid host event type")
 	}
 
-	tab := db.Table("events")
+	activeDB, release, err := acquireDB()
+	if err != nil {
+		return err
+	}
+	defer release()
+
+	tab := activeDB.Table("events")
 	result := tab.Create(&event)
 
 	return result.Error
@@ -87,7 +119,14 @@ func RecordHostEvent(host models.Host, eventType models.HostEventType, oldValue,
 // DeleteOldConnectivityEvents removes online/offline activity events older than date.
 func DeleteOldConnectivityEvents(date string) int64 {
 
-	tab := db.Table("events")
+	activeDB, release, err := acquireDB()
+	if err != nil {
+		check.IfError(err)
+		return 0
+	}
+	defer release()
+
+	tab := activeDB.Table("events")
 	result := tab.
 		Where("\"DATE\" < ?", date).
 		Where("\"EVENT_TYPE\" IN ?", []string{
@@ -103,7 +142,14 @@ func DeleteOldConnectivityEvents(date string) int64 {
 // DeleteHostDeviceChangeEvents removes persistent device-change events for a deleted host record.
 func DeleteHostDeviceChangeEvents(hostID int) int64 {
 
-	tab := db.Table("events")
+	activeDB, release, err := acquireDB()
+	if err != nil {
+		check.IfError(err)
+		return 0
+	}
+	defer release()
+
+	tab := activeDB.Table("events")
 	result := tab.
 		Where("\"HOST_ID\" = ?", hostID).
 		Where("\"EVENT_TYPE\" IN ?", []string{
@@ -121,7 +167,14 @@ func DeleteHostDeviceChangeEvents(hostID int) int64 {
 // Clear - delete all hosts from table
 func Clear(table string) {
 
-	tab := db.Table(table)
+	activeDB, release, err := acquireDB()
+	if err != nil {
+		check.IfError(err)
+		return
+	}
+	defer release()
+
+	tab := activeDB.Table(table)
 	result := tab.Where("1 = 1").Delete(&models.Host{})
 	check.IfError(result.Error)
 }

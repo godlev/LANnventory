@@ -29,10 +29,11 @@ func ScanRestart() {
 
 func setLogLevel() {
 	var level slog.Level
+	config := conf.GetAppConfig()
 
-	slog.Info("Log level: " + conf.AppConfig.LogLevel)
+	slog.Info("Log level: " + config.LogLevel)
 
-	switch conf.AppConfig.LogLevel {
+	switch config.LogLevel {
 	case "debug":
 		level = slog.LevelDebug
 	case "info":

@@ -32,15 +32,16 @@ func Gui() {
 
 	file, err := pubFS.ReadFile("public/version")
 	check.IfError(err)
-	conf.AppConfig.Version = string(file)[8:]
+	conf.SetVersion(string(file)[8:])
 
-	address := conf.AppConfig.Host + ":" + conf.AppConfig.Port
+	config := conf.GetAppConfig()
+	address := config.Host + ":" + config.Port
 
 	slog.Info(colorCyan + "\n=================================== " +
-		"\n  LANventory Version: " + conf.AppConfig.Version +
-		"\n  Config dir: " + conf.AppConfig.DirPath +
-		"\n  Default DB: " + conf.AppConfig.UseDB +
-		"\n  Log level: " + conf.AppConfig.LogLevel +
+		"\n  LANventory Version: " + config.Version +
+		"\n  Config dir: " + config.DirPath +
+		"\n  Default DB: " + config.UseDB +
+		"\n  Log level: " + config.LogLevel +
 		"\n  Web GUI: http://" + address +
 		"\n=================================== " + colorReset)
 
