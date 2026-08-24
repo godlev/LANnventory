@@ -23,11 +23,14 @@ function Basic() {
 
   return (
     <div class="card wyl-panel config-panel">
-      <div class="card-header">Basic config</div>
+      <div class="card-header">General</div>
       <div class="card-body table-responsive">
         <form action={apiPath + '/api/config/'} method="post" onSubmit={handleSubmit}>
           <table class="table table-borderless">
           <tbody>
+            <tr class="config-subsection-row">
+              <td colSpan={2}>Server</td>
+            </tr>
             <tr>
               <td class="config-field-label">Host</td>
               <td class="config-field-value"><input name="host" type="text" class="form-control" value={appConfig().Host}></input></td>
@@ -35,6 +38,9 @@ function Basic() {
             <tr>
               <td class="config-field-label">Port</td>
               <td class="config-field-value"><input name="port" type="text" class="form-control" value={appConfig().Port}></input></td>
+            </tr>
+            <tr class="config-subsection-row">
+              <td colSpan={2}>Appearance</td>
             </tr>
             <tr>
               <td class="config-field-label">Base theme</td>
@@ -61,20 +67,28 @@ function Basic() {
                 </select>
                </td>
             </tr>
-            <tr>
-              <td class="config-field-label">Local node-bootstrap URL</td>
-              <td class="config-field-value"><input name="node" type="text" class="form-control" value={appConfig().NodePath}></input></td>
+            <tr class="config-subsection-row">
+              <td colSpan={2}>Notifications / compatibility</td>
             </tr>
             <tr>
               <td class="config-field-label config-field-label-top">Shoutrrr URL</td>
               <td class="config-field-value">
                 <textarea name="shout" class="form-control" style="width: 100%;" rows="3" wrap="soft">{appConfig().ShoutURL}</textarea>
+                <div class="config-inline-actions">
+                  <button onClick={handleTestNotify} type="button" class="btn btn-sm wyl-button config-secondary-action">Test notification</button>
+                </div>
               </td>
             </tr>
             <tr>
-              <td class="config-action-cell"><button type="submit" class="btn btn-sm wyl-button">Save</button></td>
-              <td class="config-action-cell"><button onClick={handleTestNotify} type="button" class="btn btn-sm wyl-button config-secondary-action">Test notification</button></td>
+              <td class="config-field-label config-field-label-top">Local node-bootstrap URL</td>
+              <td class="config-field-value">
+                <input name="node" type="text" class="form-control" value={appConfig().NodePath}></input>
+                <div class="config-field-helper">Legacy compatibility setting. UI theme assets are bundled locally by WatchYourLAN.</div>
+              </td>
+            </tr>
+            <tr>
               <td></td>
+              <td class="config-action-cell"><button type="submit" class="btn btn-sm wyl-button">Save general settings</button></td>
             </tr>
           </tbody>
           </table>

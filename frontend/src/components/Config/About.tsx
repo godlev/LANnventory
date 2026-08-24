@@ -15,49 +15,35 @@ function About() {
   return (
     <div class="card wyl-panel config-panel">
       <div class="card-header">
-        About (<a href={link()} target="_blank">{version()}</a>)
+        About
       </div>
       <div class="card-body table-responsive">
         <table class="table config-info-table"><tbody>
           <tr>
+            <td class="config-field-label"><b>Version</b></td>
+            <td class="config-field-value">
+              <a href={link()} target="_blank" rel="noreferrer">{version()}</a>
+            </td>
+          </tr>
+          <tr>
             <td class="config-field-label"><b>Swagger API docs</b></td>
-            <td class="config-field-value"><a href="/swagger/index.html" target="_blank">/swagger/index.html</a></td>
+            <td class="config-field-value"><a href="/swagger/index.html" target="_blank" rel="noreferrer">/swagger/index.html</a></td>
           </tr>
           <tr>
-            <td class="config-field-label config-field-label-top"><b>Local node-bootstrap URL</b></td>
-            <td class="config-field-value">legacy setting retained for config compatibility. The UI uses bundled theme assets served by WatchYourLAN</td>
+            <td class="config-field-label"><b>Project</b></td>
+            <td class="config-field-value"><a href="https://github.com/aceberg/WatchYourLAN" target="_blank" rel="noreferrer">WatchYourLAN on GitHub</a></td>
           </tr>
           <tr>
-            <td class="config-field-label config-field-label-top"><b>Shoutrrr URL</b></td>
-            <td class="config-field-value">provides notifications to Discord, Email, Gotify, Telegram and other services. <a href="https://shoutrrr.nickfedor.com/services/overview/" target="_blank">Link to documentation</a></td>
+            <td class="config-field-label"><b>Network docs</b></td>
+            <td class="config-field-value"><a href="https://github.com/aceberg/WatchYourLAN/blob/main/docs/VLAN_ARP_SCAN.md" target="_blank" rel="noreferrer">VLAN and ARP scan guide</a></td>
           </tr>
           <tr>
-            <td class="config-field-label"><b>Interfaces</b></td>
-            <td class="config-field-value">one or more, space separated</td>
+            <td class="config-field-label config-field-label-top"><b>Notifications</b></td>
+            <td class="config-field-value">Shoutrrr supports Discord, Email, Gotify, Telegram and other services. <a href="https://shoutrrr.nickfedor.com/services/overview/" target="_blank" rel="noreferrer">Service documentation</a></td>
           </tr>
           <tr>
-            <td class="config-field-label"><b>Timeout (seconds)</b></td>
-            <td class="config-field-value">time between scans</td>
-          </tr>
-          <tr>
-            <td class="config-field-label config-field-label-top"><b>Args for arp-scan</b></td>
-            <td class="config-field-value">pass your own arguments to <code>arp-scan</code>. Enable <b>debug</b> log level to see resulting command. (Example: <code>-r 1</code>). See <a href="https://github.com/aceberg/WatchYourLAN/blob/main/docs/VLAN_ARP_SCAN.md" target="_blank">docs</a> for more</td>
-          </tr>
-          <tr>
-            <td class="config-field-label config-field-label-top"><b>Arp Strings</b></td>
-            <td class="config-field-value">can setup scans for <code>vlans</code>, <code>docker0</code> and etcetera. See <a href="https://github.com/aceberg/WatchYourLAN/blob/main/docs/VLAN_ARP_SCAN.md" target="_blank">docs</a> for more</td>
-          </tr>
-          <tr>
-            <td class="config-field-label"><b>Presence retention</b></td>
-            <td class="config-field-value">remove sampled presence history after this many hours</td>
-          </tr>
-          <tr>
-            <td class="config-field-label"><b>Connectivity event retention</b></td>
-            <td class="config-field-value">remove online/offline event records after this many hours</td>
-          </tr>
-          <tr>
-            <td class="config-field-label config-field-label-top"><b>PG Connect URL</b></td>
-            <td class="config-field-value">address to connect to PostgreSQL DB. (Example: <code>postgres://username:password@192.168.0.1:5432/dbname?sslmode=disable</code>). Full list of URL parameters <a href="https://pkg.go.dev/github.com/lib/pq#hdr-Connection_String_Parameters" target="_blank">here</a></td>
+            <td class="config-field-label config-field-label-top"><b>PostgreSQL URL</b></td>
+            <td class="config-field-value">Connection string parameters are documented by <a href="https://pkg.go.dev/github.com/lib/pq#hdr-Connection_String_Parameters" target="_blank" rel="noreferrer">lib/pq</a>.</td>
           </tr>
         </tbody></table>
       </div>

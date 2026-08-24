@@ -10,20 +10,29 @@ function Scan() {
       <div class="card-body table-responsive">
         <form action={apiPath + '/api/config_settings/'} method="post">
           <table class="table table-borderless"><tbody>
+            <tr class="config-subsection-row">
+              <td colSpan={2}>Network discovery</td>
+            </tr>
             <tr>
               <td class="config-field-label">Interfaces</td>
               <td class="config-field-value"><input name="ifaces" type="text" class="form-control" value={appConfig().Ifaces}></input></td>
             </tr>
             <tr>
-              <td class="config-field-label">Timeout (seconds)</td>
-              <td class="config-field-value"><input name="timeout" type="number" class="form-control" value={appConfig().Timeout}></input></td>
+              <td class="config-field-label">Scan interval</td>
+              <td class="config-field-value">
+                <div class="config-value-with-unit">
+                  <input name="timeout" type="number" class="form-control" value={appConfig().Timeout}></input>
+                  <span class="config-field-unit">seconds</span>
+                </div>
+                <div class="config-field-helper">Time between network scans.</div>
+              </td>
             </tr>
             <tr>
               <td class="config-field-label">Args for arp-scan</td>
               <td class="config-field-value"><input name="arpargs" type="text" class="form-control" value={appConfig().ArpArgs}></input></td>
             </tr>
             <tr>
-              <td class="config-field-label config-field-label-top">Arp Strings</td>
+              <td class="config-field-label config-field-label-top">ARP Strings</td>
               <td class="config-field-value">
                 <For each={appConfig().ArpStrs}>{arpStr =>
                   <input name="arpstrs" type="text" class="form-control" value={arpStr}></input>
@@ -43,6 +52,9 @@ function Scan() {
                 </Show>
               }</For>
               </select></td>
+            </tr>
+            <tr class="config-subsection-row">
+              <td colSpan={2}>Database</td>
             </tr>
             <tr>
               <td class="config-field-label">Use DB</td>
@@ -66,8 +78,11 @@ function Scan() {
               </td>
             </tr>
             <tr>
-              <td class="config-action-cell"><button type="submit" class="btn btn-sm wyl-button">Save</button></td>
-              <td class="config-action-cell text-muted">*Pressing <b>Save</b> button will trigger rescan</td>
+              <td></td>
+              <td class="config-action-cell">
+                <button type="submit" class="btn btn-sm wyl-button">Save scan settings</button>
+                <div class="config-field-helper config-save-helper">Saving these settings restarts network scanning.</div>
+              </td>
             </tr>
             </tbody></table>
         </form>

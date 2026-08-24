@@ -21,7 +21,7 @@ function Prometheus() {
               </td>
             </tr>
             <tr>
-              <td class="config-action-cell"><button type="submit" class="btn btn-sm wyl-button">Save</button></td>
+              <td class="config-action-cell"><button type="submit" class="btn btn-sm wyl-button">Save Prometheus</button></td>
               <td class="config-action-cell">
                 <a href="/metrics" target="_blank">/metrics</a>
               </td>

@@ -48,7 +48,7 @@ function Influx() {
                   </td>
                 </tr>
                 <tr>
-                  <td class="config-action-cell"><button type="submit" class="btn btn-sm wyl-button">Save</button></td>
+                  <td class="config-action-cell"><button type="submit" class="btn btn-sm wyl-button">Save InfluxDB</button></td>
                   <td class="config-action-cell"></td>
                 </tr>
               </tbody></table>
