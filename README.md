@@ -13,7 +13,7 @@ LANnventory is an independently developed project based on the original [WatchYo
 > [!IMPORTANT]
 > LANnventory is still under active development. Packaging, installation and upgrade-path validation are still being completed before the first beta release.
 
-Current repository: [godlev/WatchYourLAN2](https://github.com/godlev/LANnventory)
+Current repository: [godlev/LANnventory](https://github.com/godlev/LANnventory)
 
 ## Dashboard
 
