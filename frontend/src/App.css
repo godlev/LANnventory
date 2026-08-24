@@ -359,6 +359,51 @@ html[data-bs-theme] body {
     color: var(--wyl-accent-unknown) !important;
     opacity: 1;
 }
+.wyl-support-item {
+    position: relative;
+}
+.wyl-support-popover {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: 1200;
+    width: min(22rem, calc(100vw - 24px));
+    margin-top: 0.35rem;
+    padding: 0.9rem;
+    color: var(--bs-body-color);
+    background-color: var(--wyl-panel-bg);
+    border: 1px solid var(--wyl-panel-border);
+    border-radius: 8px;
+    box-shadow: 0 1rem 2.5rem rgba(0, 0, 0, 0.28);
+}
+.wyl-support-title {
+    margin-bottom: 0.55rem;
+    color: var(--wyl-heading);
+    font-size: 0.76rem;
+    font-weight: 850;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+.wyl-support-popover p {
+    margin: 0 0 0.62rem;
+    color: var(--wyl-muted);
+    font-size: 0.84rem;
+    font-weight: 650;
+    line-height: 1.45;
+}
+.wyl-support-popover p:last-child {
+    margin-bottom: 0;
+}
+.wyl-support-popover a {
+    color: var(--wyl-link);
+    font-weight: 800;
+    text-decoration: none;
+}
+.wyl-support-popover a:hover,
+.wyl-support-popover a:focus-visible {
+    color: var(--wyl-link-hover);
+    text-decoration: underline;
+}
 .wyl-navbar-github {
     font-size: 1.3rem !important;
 }
@@ -2185,6 +2230,13 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     .settings-section-nav a {
         flex: 1 1 auto;
         text-align: center;
+    }
+    .wyl-support-popover {
+        position: fixed;
+        top: 3.25rem;
+        right: 12px;
+        left: 12px;
+        width: auto;
     }
     .config-panel .table-responsive {
         overflow-x: visible;
