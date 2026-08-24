@@ -1345,6 +1345,7 @@ html[data-bs-theme] .device-table > tbody > tr.device-row-unknown:hover > td {
 }
 .activity-table {
     margin-bottom: 0;
+    table-layout: auto;
     --bs-table-bg: var(--wyl-table-row-bg);
     --bs-table-striped-bg: var(--wyl-table-row-bg);
     --bs-table-hover-bg: var(--wyl-table-hover-bg);
@@ -1370,6 +1371,40 @@ html[data-bs-theme] .activity-table > tbody > tr:hover > td {
 .activity-table td {
     padding: 0.52rem 0.75rem;
     vertical-align: middle;
+}
+.activity-table-device-heading,
+.activity-table-device-cell {
+    width: 16%;
+    text-align: right;
+}
+.activity-table-device {
+    justify-content: flex-end;
+    max-width: 100%;
+    text-align: right;
+}
+.activity-table-event-heading,
+.activity-table-event-cell {
+    width: 20%;
+}
+.activity-table-ip-heading,
+.activity-table-ip-cell,
+.activity-table-time-heading,
+.activity-table-time-cell {
+    width: 1%;
+    white-space: nowrap;
+}
+.activity-table-iface-heading,
+.activity-table-iface-cell {
+    width: 1%;
+    white-space: nowrap;
+}
+.activity-table-details-heading,
+.activity-table-details-cell {
+    width: auto;
+}
+.activity-table-time-heading,
+.activity-table-time-cell {
+    text-align: right;
 }
 .activity-group-row,
 html[data-bs-theme] .activity-table > tbody > tr.activity-group-row > td,
@@ -2077,6 +2112,21 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     }
     .activity-table .activity-group-cell::before {
         content: none;
+    }
+    .activity-table-device-heading,
+    .activity-table-device-cell,
+    .activity-table-time-heading,
+    .activity-table-time-cell {
+        text-align: left;
+    }
+    .activity-table-device {
+        justify-content: flex-start;
+        text-align: left;
+    }
+    .activity-table-ip-cell,
+    .activity-table-iface-cell,
+    .activity-table-time-cell {
+        white-space: normal;
     }
     .activity-table .activity-time {
         grid-column: auto;
