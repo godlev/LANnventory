@@ -6,6 +6,27 @@ import { fileURLToPath } from 'node:url';
 const host = '127.0.0.1';
 const port = 8840;
 const now = '2026-08-23 10:15:00';
+const deviceTypes = new Set([
+  '',
+  'router',
+  'switch',
+  'access-point',
+  'firewall',
+  'server',
+  'nas',
+  'desktop',
+  'laptop',
+  'phone',
+  'tablet',
+  'tv',
+  'printer',
+  'camera',
+  'iot',
+  'virtual-machine',
+  'container',
+  'game-console',
+  'other',
+]);
 
 const fakeHosts = [
   {
@@ -19,6 +40,7 @@ const fakeHosts = [
     Date: now,
     Known: 1,
     Now: 1,
+    DeviceType: 'router',
   },
   {
     ID: 2,
@@ -31,6 +53,7 @@ const fakeHosts = [
     Date: now,
     Known: 1,
     Now: 1,
+    DeviceType: 'nas',
   },
   {
     ID: 3,
@@ -43,6 +66,7 @@ const fakeHosts = [
     Date: now,
     Known: 1,
     Now: 1,
+    DeviceType: 'desktop',
   },
   {
     ID: 4,
@@ -55,6 +79,7 @@ const fakeHosts = [
     Date: now,
     Known: 0,
     Now: 1,
+    DeviceType: 'phone',
   },
   {
     ID: 5,
@@ -67,6 +92,7 @@ const fakeHosts = [
     Date: '2025-12-30 18:42:09',
     Known: 1,
     Now: 0,
+    DeviceType: '',
   },
 ];
 
@@ -130,6 +156,10 @@ function readBody(req) {
 
 function isColorMode(color) {
   return color === 'dark' || color === 'light';
+}
+
+function isDeviceType(deviceType) {
+  return typeof deviceType === 'string' && deviceTypes.has(deviceType);
 }
 
 function parseRequestBody(body) {
@@ -279,6 +309,27 @@ async function routeSafeAction(req, res, url) {
     }
 
     sendJSON(res, 'OK');
+    return true;
+  }
+
+  const deviceTypeMatch = pathname.match(/^\/api\/host\/(\d+)\/type$/);
+  if (req.method === 'PATCH' && deviceTypeMatch) {
+    const id = Number(deviceTypeMatch[1]);
+    const hostEntry = fakeHosts.find((item) => item.ID === id);
+    if (!hostEntry) {
+      sendJSON(res, { error: 'invalid host id' }, 400);
+      return true;
+    }
+
+    const body = await readBody(req);
+    const params = parseRequestBody(body);
+    if (!isDeviceType(params.deviceType)) {
+      sendJSON(res, { error: 'invalid deviceType' }, 400);
+      return true;
+    }
+
+    hostEntry.DeviceType = params.deviceType;
+    sendJSON(res, hostEntry);
     return true;
   }
 

@@ -1,4 +1,5 @@
-import type { Conf } from "./exports";
+import { isDeviceTypeValue, type DeviceTypeValue } from "./deviceTypes";
+import type { Conf, Host } from "./exports";
 
 export const apiPath = '';
 
@@ -52,6 +53,25 @@ export const apiEditHost = async (id:number, name:string, known:string) => {
   const res = await (await fetch(url)).json();
 
   return res;
+};
+
+export const apiSetDeviceType = async (id: number, deviceType: DeviceTypeValue): Promise<Host> => {
+  if (!isDeviceTypeValue(deviceType)) {
+    throw new Error("invalid device type");
+  }
+
+  const url = apiPath+'/api/host/'+id+'/type';
+  const response = await fetch(url, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ deviceType }),
+  });
+
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+
+  return await response.json();
 };
 
 export const apiGetHost = async (id:string) => {

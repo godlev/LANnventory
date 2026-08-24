@@ -12,6 +12,7 @@ export interface Host {
 	Date:  string;
 	Known: number;
 	Now:   number;
+	DeviceType: string;
 };
 
 export interface Conf {
@@ -71,6 +72,7 @@ export const emptyHost:Host = {
 	Date:  "",
 	Known: 0,
 	Now:   0,
+	DeviceType: "",
 };
 
 export const emptyConf:Conf = {
