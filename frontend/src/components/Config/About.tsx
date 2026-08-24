@@ -1,15 +1,26 @@
-import { createSignal, onMount } from "solid-js";
+import { For, createSignal, onMount } from "solid-js";
 import { apiGetVersion } from "../../functions/api"
 
 function About() {
 
   const [version, setVersion] = createSignal('');
-  const [link, setLink] = createSignal('');
+  const forkHighlights = [
+    "Modern responsive interface",
+    "Fully local/offline UI assets",
+    "Dark and light color modes",
+    "Improved Home dashboard and filtering",
+    "Presence timeline",
+    "Persistent Events system",
+    "Unified Events explorer with filtering and grouping",
+    "Configurable Presence and Connectivity-event retention",
+    "Manual persistent Device Type classification",
+    "Host read/edit modes",
+    "Responsive Settings experience",
+  ];
 
   onMount(async () => {
     const v = await apiGetVersion();
     setVersion(v);
-    setLink("https://github.com/aceberg/WatchYourLAN/releases/tag/"+v);
   });
 
   return (
@@ -20,9 +31,39 @@ function About() {
       <div class="card-body table-responsive">
         <table class="table config-info-table"><tbody>
           <tr>
-            <td class="config-field-label"><b>Version</b></td>
+            <td class="config-field-label"><b>Project</b></td>
+            <td class="config-field-value"><b>WatchYourLAN2</b></td>
+          </tr>
+          <tr>
+            <td class="config-field-label"><b>Status</b></td>
+            <td class="config-field-value">In active development</td>
+          </tr>
+          <tr>
+            <td class="config-field-label config-field-label-top"><b>Development status</b></td>
+            <td class="config-field-value">WatchYourLAN2 is an actively developed fork of WatchYourLAN. Features, UI and behavior may continue to change while development is in progress.</td>
+          </tr>
+          <tr>
+            <td class="config-field-label"><b>Fork repository</b></td>
+            <td class="config-field-value"><a href="https://github.com/godlev/WatchYourLAN2" target="_blank" rel="noreferrer">godlev/WatchYourLAN2</a></td>
+          </tr>
+          <tr>
+            <td class="config-field-label"><b>Upstream project</b></td>
+            <td class="config-field-value"><a href="https://github.com/aceberg/WatchYourLAN" target="_blank" rel="noreferrer">WatchYourLAN by aceberg</a></td>
+          </tr>
+          <tr>
+            <td class="config-field-label"><b>Base / backend version</b></td>
             <td class="config-field-value">
-              <a href={link()} target="_blank" rel="noreferrer">{version()}</a>
+              {version()}
+            </td>
+          </tr>
+          <tr>
+            <td class="config-field-label config-field-label-top"><b>Fork highlights</b></td>
+            <td class="config-field-value">
+              <ul class="config-highlight-list">
+                <For each={forkHighlights}>{highlight =>
+                  <li>{highlight}</li>
+                }</For>
+              </ul>
             </td>
           </tr>
           <tr>
@@ -30,12 +71,12 @@ function About() {
             <td class="config-field-value"><a href="/swagger/index.html" target="_blank" rel="noreferrer">/swagger/index.html</a></td>
           </tr>
           <tr>
-            <td class="config-field-label"><b>Project</b></td>
-            <td class="config-field-value"><a href="https://github.com/aceberg/WatchYourLAN" target="_blank" rel="noreferrer">WatchYourLAN on GitHub</a></td>
-          </tr>
-          <tr>
             <td class="config-field-label"><b>Network docs</b></td>
             <td class="config-field-value"><a href="https://github.com/aceberg/WatchYourLAN/blob/main/docs/VLAN_ARP_SCAN.md" target="_blank" rel="noreferrer">VLAN and ARP scan guide</a></td>
+          </tr>
+          <tr>
+            <td class="config-field-label config-field-label-top"><b>Upstream credit</b></td>
+            <td class="config-field-value">Based on <a href="https://github.com/aceberg/WatchYourLAN" target="_blank" rel="noreferrer">WatchYourLAN by aceberg</a>.</td>
           </tr>
           <tr>
             <td class="config-field-label config-field-label-top"><b>Notifications</b></td>

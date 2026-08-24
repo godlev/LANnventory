@@ -1700,6 +1700,13 @@ html[data-bs-theme] .config-panel table > tbody > tr > td {
 .config-info-table .config-field-label {
     width: 38%;
 }
+.config-highlight-list {
+    display: grid;
+    gap: 0.16rem 0.9rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: 0;
+    padding-left: 1.05rem;
+}
 .config-panel textarea.form-control {
     min-height: 5.5rem;
 }
@@ -2257,6 +2264,9 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     }
     .config-panel .config-field-value {
         padding-top: 0;
+    }
+    .config-highlight-list {
+        grid-template-columns: 1fr;
     }
     .host-property-grid,
     .host-port-controls {

@@ -187,7 +187,7 @@ function Header() {
             </Show>
           </li>
           <li class="nav-item">
-            <a class="nav-link wyl-navbar-utility wyl-navbar-github" target="_blank" rel="noreferrer" href="https://github.com/aceberg/WatchYourLAN" title="Github"><i class="bi bi-github"></i></a>
+            <a class="nav-link wyl-navbar-utility wyl-navbar-github" target="_blank" rel="noreferrer" href="https://github.com/godlev/WatchYourLAN2" title="WatchYourLAN2 on GitHub" aria-label="WatchYourLAN2 on GitHub"><i class="bi bi-github"></i></a>
           </li>
         </ul>
       </div>
