@@ -1,22 +1,36 @@
-import { createSignal, onCleanup, onMount, Show } from "solid-js";
+import { createSignal, onCleanup, onMount } from "solid-js";
+import { A } from "@solidjs/router";
 
-import { apiGetActivity } from "../../functions/api";
+import { apiGetActivity, type ActivityCategory } from "../../functions/api";
 import { bkpHosts, type HostEvent } from "../../functions/exports";
 import ActivityFeed from "../ActivityFeed";
 
-const collapsedLimit = 6;
-const activityLimit = 20;
+const dashboardActivityLimit = 5;
+
+type DashboardActivityPanelProps = {
+  title: string;
+  subtitle: string;
+  events: HostEvent[];
+  emptyText: string;
+  hostExists: (event: HostEvent) => boolean;
+};
 
 function RecentActivityPanel() {
-  const [events, setEvents] = createSignal<HostEvent[]>([]);
-  const [expanded, setExpanded] = createSignal(false);
+  const [connectivityEvents, setConnectivityEvents] = createSignal<HostEvent[]>([]);
+  const [changeEvents, setChangeEvents] = createSignal<HostEvent[]>([]);
   let refreshTimer = 0;
 
   const loadActivity = async () => {
     try {
-      setEvents(await apiGetActivity(activityLimit));
+      const [nextConnectivityEvents, nextChangeEvents] = await Promise.all([
+        loadActivityCategory("connectivity"),
+        loadActivityCategory("changes"),
+      ]);
+      setConnectivityEvents(nextConnectivityEvents);
+      setChangeEvents(nextChangeEvents);
     } catch {
-      setEvents([]);
+      setConnectivityEvents([]);
+      setChangeEvents([]);
     }
   };
 
@@ -29,33 +43,50 @@ function RecentActivityPanel() {
     window.clearInterval(refreshTimer);
   });
 
-  const visibleEvents = () => expanded() ? events() : events().slice(0, collapsedLimit);
   const hostExists = (event: HostEvent) => bkpHosts().some((host) => host.ID === event.HostID && host.Mac === event.Mac);
 
   return (
-    <section class="card wyl-panel activity-panel" aria-labelledby="recent-activity-title">
+    <div class="activity-dashboard" aria-label="Recent activity">
+      <DashboardActivityPanel
+        title="Connectivity"
+        subtitle="Recent online/offline changes"
+        events={connectivityEvents()}
+        emptyText="No connectivity events recorded yet"
+        hostExists={hostExists}
+      ></DashboardActivityPanel>
+      <DashboardActivityPanel
+        title="Device changes"
+        subtitle="Recent discovery and classification changes"
+        events={changeEvents()}
+        emptyText="No device changes recorded yet"
+        hostExists={hostExists}
+      ></DashboardActivityPanel>
+    </div>
+  );
+}
+
+async function loadActivityCategory(category: ActivityCategory) {
+  return await apiGetActivity(dashboardActivityLimit, { category });
+}
+
+function DashboardActivityPanel(props: DashboardActivityPanelProps) {
+  return (
+    <section class="card wyl-panel activity-panel activity-dashboard-panel" aria-labelledby={"dashboard-activity-" + props.title.toLowerCase().replace(/\s+/g, "-") + "-title"}>
       <div class="card-header activity-panel-header">
         <div>
-          <div id="recent-activity-title" class="activity-panel-title">Recent activity</div>
-          <div class="activity-panel-subtitle">{events().length === 1 ? "1 event" : events().length + " events"}</div>
+          <div id={"dashboard-activity-" + props.title.toLowerCase().replace(/\s+/g, "-") + "-title"} class="activity-panel-title">{props.title}</div>
+          <div class="activity-panel-subtitle">{props.subtitle}</div>
         </div>
-        <Show when={events().length > collapsedLimit}>
-          <button
-            type="button"
-            class="btn btn-sm wyl-button activity-show-more"
-            aria-expanded={expanded()}
-            onClick={() => setExpanded(!expanded())}
-          >
-            <i class={expanded() ? "bi bi-chevron-up" : "bi bi-chevron-down"} aria-hidden="true"></i>
-            <span>{expanded() ? "Show less" : "Show more"}</span>
-          </button>
-        </Show>
+        <A class="activity-view-all" href="/activity">
+          <span>View all</span>
+          <i class="bi bi-arrow-right" aria-hidden="true"></i>
+        </A>
       </div>
       <div class="card-body activity-panel-body">
         <ActivityFeed
-          events={visibleEvents()}
-          emptyText="No recent activity"
-          hostExists={hostExists}
+          events={props.events}
+          emptyText={props.emptyText}
+          hostExists={props.hostExists}
         ></ActivityFeed>
       </div>
     </section>
