@@ -1425,12 +1425,45 @@ html[data-bs-theme] .device-table > tbody > tr.device-row-unknown:hover > td {
     justify-content: space-between;
     gap: 0.75rem;
 }
+.activity-table-title-group {
+    min-width: 0;
+}
+.activity-table-title-row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.55rem;
+    min-width: 0;
+}
 .activity-table-title {
+    flex: 0 0 auto;
     font-size: 1.02rem;
     font-weight: 750;
     line-height: 1.15;
     font-variant-caps: all-small-caps;
     letter-spacing: 0.04em;
+}
+.activity-state-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.32rem;
+    min-width: 0;
+    color: var(--wyl-filter-active);
+    font-size: 0.72rem;
+    font-weight: 800;
+    line-height: 1.15;
+    font-variant-caps: all-small-caps;
+    letter-spacing: 0.035em;
+    white-space: nowrap;
+}
+.activity-state-indicator .bi {
+    flex: 0 0 auto;
+    font-size: 0.68rem;
+    line-height: 1;
+}
+.activity-state-indicator span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .activity-table-subtitle {
     color: var(--wyl-muted);

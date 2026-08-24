@@ -111,8 +111,33 @@ function Activity() {
   let statsRequest = 0;
 
   const currentEventOption = () => eventFilterOptions.find((option) => option.key === eventFilter()) ?? eventFilterOptions[0];
+  const currentGroupOption = () => groupByOptions.find((option) => option.key === groupBy()) ?? groupByOptions[0];
   const hostExists = (event: HostEvent) => bkpHosts().some((host) => host.ID === event.HostID && host.Mac === event.Mac);
   const filtersActive = () => selectedMac() !== "" || eventFilter() !== "all";
+  const selectedDeviceLabel = () => {
+    const mac = selectedMac();
+    const device = devices().find((option) => option.Mac === mac);
+    return device ? deviceOptionLabel(device) : mac;
+  };
+  const tableStateSummary = createMemo(() => {
+    const active: string[] = [];
+
+    if (filtersActive()) {
+      active.push("Filtered");
+    }
+    if (selectedMac() !== "") {
+      active.push(selectedDeviceLabel());
+    }
+    if (eventFilter() !== "all") {
+      active.push(currentEventOption().label);
+    }
+    if (groupBy() !== "none") {
+      active.push("Grouped by " + currentGroupOption().label);
+    }
+
+    return active.join(" · ");
+  });
+  const tableStateIcon = () => filtersActive() ? "bi-funnel-fill" : "bi-layers-fill";
 
   const retentionText = () => {
     const hours = appConfig().ConnectivityRetention || appConfig().TrimHist;
@@ -360,7 +385,7 @@ function Activity() {
           <label class="activity-filter-field">
             <span class="activity-filter-label">Group by</span>
             <select
-              class="form-select form-select-sm activity-filter-select"
+              class={"form-select form-select-sm activity-filter-select" + (groupBy() !== "none" ? " is-active" : "")}
               value={groupBy()}
               onChange={(event) => setGroupBy(event.currentTarget.value as GroupByKey)}
             >
@@ -380,8 +405,20 @@ function Activity() {
 
       <section class="card wyl-panel activity-table-panel" aria-labelledby="events-table-title">
         <div class="card-header activity-table-header">
-          <div>
-            <div id="events-table-title" class="activity-table-title">Events</div>
+          <div class="activity-table-title-group">
+            <div class="activity-table-title-row">
+              <div id="events-table-title" class="activity-table-title">Events</div>
+              <Show when={tableStateSummary()}>
+                <span
+                  class="activity-state-indicator"
+                  title={tableStateSummary()}
+                  aria-label={"Events table state - " + tableStateSummary()}
+                >
+                  <i class={"bi " + tableStateIcon()} aria-hidden="true"></i>
+                  <span>{tableStateSummary()}</span>
+                </span>
+              </Show>
+            </div>
             <div class="activity-table-subtitle">{tableSubtitle(events().length, groupBy())}</div>
           </div>
         </div>
