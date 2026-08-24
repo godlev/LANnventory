@@ -196,7 +196,11 @@ Some integrations and packaging references may still live in upstream documentat
 
 ## Auth And Exposure
 
-LANventory does not currently provide built-in authentication. If you expose it beyond a trusted local network, place it behind suitable authentication and network controls. Remember that real scanning typically needs host network access.
+LANventory does not currently provide built-in authentication and should be treated as a trusted-network tool. Do not expose the UI/API directly to the public Internet. If remote access is required, place it behind strong authentication, TLS and network controls such as a VPN or authenticated reverse proxy.
+
+Stored notification, PostgreSQL and InfluxDB secrets are write-only in the Settings UI and are redacted from `/api/config`, but the local config file remains sensitive. Protect the runtime config/data directory with normal host filesystem permissions and avoid sharing logs or config backups without reviewing them first.
+
+Real scanning typically needs host network access and `arp-scan`, so only run the real backend on systems where LAN discovery is intentional. Use the mock API for frontend preview work that should not touch the network.
 
 ## Thanks And Attribution
 
