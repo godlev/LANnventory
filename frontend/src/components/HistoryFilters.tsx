@@ -1,6 +1,9 @@
 import { For, Show, type ParentProps } from "solid-js";
 import { filterState, hasMultipleIfaces, Host, ifaces, setHistUpdOnFilter } from "../functions/exports";
 import { filterFunc, resetFilters } from "../functions/filter";
+import { hasActiveHostFilters } from "../functions/hostView";
+import DeviceTypeFilter from "./DeviceTypeFilter";
+import Search from "./Search";
 
 function HistoryFilters(props: ParentProps) {
   type FilterEvent = Event & {
@@ -19,8 +22,7 @@ function HistoryFilters(props: ParentProps) {
   };
 
   const hasActiveFilter = () => {
-    const filters = filterState();
-    return filters.Iface !== "" || filters.Known !== "" || filters.Now !== "" || filters.Search !== "";
+    return hasActiveHostFilters(filterState());
   };
 
   const selectClass = (active: boolean) => {
@@ -37,6 +39,10 @@ function HistoryFilters(props: ParentProps) {
           }</For>
         </select>
       </Show>
+      <DeviceTypeFilter
+        className="history-filter-select"
+        title="Filter presence by device type"
+      ></DeviceTypeFilter>
       <select onChange={(event)=>{handleFilter("Known", event)}} class={selectClass(filterState().Known !== "")} title="Filter by recognition state" value={filterState().Known}>
         <option value="">All devices</option>
         <option value="1">Known devices</option>
@@ -48,6 +54,12 @@ function HistoryFilters(props: ParentProps) {
         <option value="0">Offline devices</option>
       </select>
       {props.children}
+      <Search
+        className="history-search"
+        placeholder="Search name, IP..."
+        title="Search presence devices"
+        onSearch={() => setHistUpdOnFilter(true)}
+      ></Search>
       <Show when={hasActiveFilter()}>
         <button onClick={handleReset} class="btn btn-sm device-reset-filter" title="Reset presence filters">
           <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>

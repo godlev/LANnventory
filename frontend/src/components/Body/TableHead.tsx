@@ -2,6 +2,7 @@ import { For, Show } from "solid-js";
 import { editNames, filterState, hasMultipleIfaces, Host, setEditNames, setSelectedIDs, SortDirection, sortState } from "../../functions/exports";
 import { getHosts } from "../../functions/atstart";
 import { sortByAnyField } from "../../functions/sort";
+import { deviceTypeFilterLabel } from "../../functions/deviceTypes";
 
 const headers: { label: string; field: keyof Host; className: string; title?: string; icon?: string; ariaLabel?: string }[] = [
   {
@@ -70,6 +71,9 @@ function TableHead() {
 
     if (state.Iface) {
       active.push("Iface: " + state.Iface);
+    }
+    if (state.DeviceType) {
+      active.push("Type: " + deviceTypeFilterLabel(state.DeviceType));
     }
     if (state.Known === 1) {
       active.push("Known");

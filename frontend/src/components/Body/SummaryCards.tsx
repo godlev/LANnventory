@@ -90,8 +90,7 @@ function SummaryCards() {
 
   const isActive = (item: SummaryItem) => {
     if (item.clearsFilters) {
-      const filters = filterState();
-      return filters.Iface === "" && filters.Known === "" && filters.Now === "" && filters.Search === "";
+      return !hasActiveHostFilters(filterState());
     }
 
     if (!item.filterField || item.filterValue === undefined) {

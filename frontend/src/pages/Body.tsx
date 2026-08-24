@@ -8,6 +8,7 @@ import CardHead from "../components/Body/CardHead";
 import SummaryCards from "../components/Body/SummaryCards";
 import RecentActivityPanel from "../components/Body/RecentActivityPanel";
 import { getHosts } from "../functions/atstart";
+import { deviceTypeFilterLabel } from "../functions/deviceTypes";
 
 function Body() {
 
@@ -39,6 +40,10 @@ function Body() {
 
     if (filters.Iface !== "") {
       text = `${text} on ${filters.Iface}`;
+    }
+
+    if (filters.DeviceType !== "") {
+      text = `${text} - Type: ${deviceTypeFilterLabel(filters.DeviceType)}`;
     }
 
     return text;

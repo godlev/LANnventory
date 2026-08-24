@@ -1,7 +1,8 @@
 import { emptyFilterState, filterState, FilterState, Host, setFilterState } from "./exports";
 import { applyHostView } from "./hostView";
+import { normalizeDeviceTypeFilter } from "./deviceTypes";
 
-type FilterField = "Iface" | "Known" | "Now";
+type FilterField = "Iface" | "DeviceType" | "Known" | "Now";
 
 export function filterAtStart() {
   setFilterState((current) => ({
@@ -16,7 +17,7 @@ export function filterFunc(field: keyof Host, value: any) {
     return;
   }
 
-  if (field !== "Iface" && field !== "Known" && field !== "Now") {
+  if (field !== "Iface" && field !== "DeviceType" && field !== "Known" && field !== "Now") {
     return;
   }
 
@@ -45,7 +46,11 @@ export function setSearchFilter(value: string) {
 }
 
 function setHostFilter(field: FilterField, value: any) {
-  const normalized = field === "Iface" ? normalizeIface(value) : normalizeBinary(value);
+  const normalized = field === "Iface"
+    ? normalizeIface(value)
+    : field === "DeviceType"
+      ? normalizeDeviceTypeFilter(value)
+      : normalizeBinary(value);
 
   updateFilterState({
     ...filterState(),
@@ -62,11 +67,15 @@ function updateFilterState(nextState: FilterState) {
 function readStoredFilters(): Omit<FilterState, "Search"> {
   const storedFilters = {
     Iface: normalizeIface(localStorage.getItem("filterIface")),
+    DeviceType: normalizeDeviceTypeFilter(localStorage.getItem("filterDeviceType")),
     Known: normalizeBinary(localStorage.getItem("filterKnown")),
     Now: normalizeBinary(localStorage.getItem("filterNow")),
   };
 
-  if (storedFilters.Iface !== "" || storedFilters.Known !== "" || storedFilters.Now !== "") {
+  if (storedFilters.Iface !== ""
+    || storedFilters.DeviceType !== ""
+    || storedFilters.Known !== ""
+    || storedFilters.Now !== "") {
     return storedFilters;
   }
 
@@ -75,6 +84,9 @@ function readStoredFilters(): Omit<FilterState, "Search"> {
 
   if (legacyField === "Iface") {
     return { ...storedFilters, Iface: normalizeIface(legacyValue) };
+  }
+  if (legacyField === "DeviceType") {
+    return { ...storedFilters, DeviceType: normalizeDeviceTypeFilter(legacyValue) };
   }
   if (legacyField === "Known" || legacyField === "Now") {
     return { ...storedFilters, [legacyField]: normalizeBinary(legacyValue) };
@@ -85,6 +97,7 @@ function readStoredFilters(): Omit<FilterState, "Search"> {
 
 function persistFilters(state: FilterState) {
   persistValue("filterIface", state.Iface);
+  persistValue("filterDeviceType", state.DeviceType);
   persistValue("filterKnown", state.Known);
   persistValue("filterNow", state.Now);
   localStorage.removeItem("filterField");

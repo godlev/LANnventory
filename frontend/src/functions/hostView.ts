@@ -1,5 +1,5 @@
 import { bkpHosts, FilterState, filterState, Host, setAllHosts, setBkpHosts, sortState } from "./exports";
-import { getDeviceTypeOption, normalizeDeviceType } from "./deviceTypes";
+import { deviceTypeFilterMatches, getDeviceTypeOption, normalizeDeviceType } from "./deviceTypes";
 
 export type HostFilterKey = keyof FilterState;
 
@@ -26,6 +26,9 @@ export function filterHosts(hosts: Host[], filters: FilterState, options: Filter
   if (!ignored.has("Iface") && filters.Iface !== "") {
     filteredHosts = filteredHosts.filter((host) => host.Iface === filters.Iface);
   }
+  if (!ignored.has("DeviceType") && filters.DeviceType !== "") {
+    filteredHosts = filteredHosts.filter((host) => deviceTypeFilterMatches(host, filters.DeviceType));
+  }
   if (!ignored.has("Known") && filters.Known !== "") {
     filteredHosts = filteredHosts.filter((host) => host.Known === filters.Known);
   }
@@ -42,6 +45,7 @@ export function filterHosts(hosts: Host[], filters: FilterState, options: Filter
 
 export function hasActiveHostFilters(filters: FilterState) {
   return filters.Iface !== ""
+    || filters.DeviceType !== ""
     || filters.Known !== ""
     || filters.Now !== ""
     || filters.Search.trim() !== "";

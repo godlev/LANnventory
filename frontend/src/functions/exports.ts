@@ -84,6 +84,7 @@ export interface SortState {
 
 export interface FilterState {
 	Iface: string;
+	DeviceType: string;
 	Known: number | "";
 	Now: number | "";
 	Search: string;
@@ -136,6 +137,7 @@ export const emptyConf:Conf = {
 
 export const emptyFilterState:FilterState = {
 	Iface: "",
+	DeviceType: "",
 	Known: "",
 	Now: "",
 	Search: "",

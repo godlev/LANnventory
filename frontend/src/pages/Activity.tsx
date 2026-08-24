@@ -137,6 +137,26 @@ function Activity() {
 
     return active.join(" · ");
   });
+  const tableStateTooltip = createMemo(() => {
+    const activeFilters: string[] = [];
+
+    if (selectedMac() !== "") {
+      activeFilters.push("Device: " + selectedDeviceLabel());
+    }
+    if (eventFilter() !== "all") {
+      activeFilters.push(currentEventOption().label);
+    }
+
+    const groupedBy = groupBy() !== "none" ? "Grouped by " + currentGroupOption().label : "";
+    if (activeFilters.length > 0 && groupedBy) {
+      return "Active filters - " + activeFilters.join(", ") + ". " + groupedBy + ".";
+    }
+    if (activeFilters.length > 0) {
+      return "Active filters - " + activeFilters.join(", ");
+    }
+
+    return groupedBy;
+  });
   const tableStateIcon = () => filtersActive() ? "bi-funnel-fill" : "bi-layers-fill";
 
   const retentionText = () => {
@@ -312,7 +332,7 @@ function Activity() {
   };
 
   const handleSummaryClick = (card: EventSummaryCard) => {
-    setEventFilter(card.key);
+    setEventFilter(eventFilter() === card.key || card.key === "all" ? "all" : card.key);
   };
 
   const handleGroupToggle = (key: string) => {
@@ -411,8 +431,8 @@ function Activity() {
               <Show when={tableStateSummary()}>
                 <span
                   class="activity-state-indicator"
-                  title={tableStateSummary()}
-                  aria-label={"Events table state - " + tableStateSummary()}
+                  title={tableStateTooltip()}
+                  aria-label={tableStateTooltip()}
                 >
                   <i class={"bi " + tableStateIcon()} aria-hidden="true"></i>
                   <span>{tableStateSummary()}</span>
@@ -427,7 +447,21 @@ function Activity() {
             <table class="table table-hover activity-table">
               <thead>
                 <tr>
-                  <th scope="col" class="activity-table-time-heading">Time</th>
+                  <th scope="col" class="activity-table-time-heading">
+                    <span class="activity-heading-with-state">
+                      <Show when={tableStateSummary()}>
+                        <span
+                          class="activity-sticky-state-indicator"
+                          title={tableStateTooltip()}
+                          aria-label={tableStateTooltip()}
+                          role="img"
+                        >
+                          <i class={"bi " + tableStateIcon()} aria-hidden="true"></i>
+                        </span>
+                      </Show>
+                      <span>Time</span>
+                    </span>
+                  </th>
                   <th scope="col" class="activity-table-device-heading">Device</th>
                   <th scope="col" class="activity-table-ip-heading">IP</th>
                   <th scope="col" class="activity-table-event-heading">Event</th>

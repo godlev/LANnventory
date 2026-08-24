@@ -1,3 +1,5 @@
+import type { Host } from "./exports";
+
 export type DeviceTypeValue =
   | ""
   | "router"
@@ -27,6 +29,14 @@ export type DeviceTypeOption = {
   icon: string;
   tone: DeviceTypeTone;
 };
+
+export type DeviceTypeFilterOption = {
+  value: string;
+  label: string;
+};
+
+export const deviceTypeNotSetFilterValue = "not-set";
+const legacyDeviceTypeNotSetFilterValue = "__not-set";
 
 export const deviceTypes: readonly DeviceTypeOption[] = [
   { value: "", label: "Not set", icon: "bi-question-circle", tone: "unassigned" },
@@ -62,4 +72,59 @@ export function isDeviceTypeValue(value: string): value is DeviceTypeValue {
 
 export function getDeviceTypeOption(value: string | null | undefined): DeviceTypeOption {
   return deviceTypeByValue.get(normalizeDeviceType(value)) ?? deviceTypes[0];
+}
+
+export function normalizeDeviceTypeFilter(value: unknown): string {
+  if (value === deviceTypeNotSetFilterValue || value === legacyDeviceTypeNotSetFilterValue) {
+    return deviceTypeNotSetFilterValue;
+  }
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  const normalized = normalizeDeviceType(value);
+  return normalized === "" ? "" : normalized;
+}
+
+export function deviceTypeFilterMatches(host: Host, filterValue: string): boolean {
+  const normalizedFilter = normalizeDeviceTypeFilter(filterValue);
+  if (normalizedFilter === "") {
+    return true;
+  }
+
+  const hostDeviceType = normalizeDeviceType(host.DeviceType);
+  if (normalizedFilter === deviceTypeNotSetFilterValue) {
+    return hostDeviceType === "";
+  }
+
+  return hostDeviceType === normalizedFilter;
+}
+
+export function deviceTypeFilterLabel(value: string): string {
+  const normalized = normalizeDeviceTypeFilter(value);
+  if (normalized === "") {
+    return "All types";
+  }
+  if (normalized === deviceTypeNotSetFilterValue) {
+    return deviceTypes[0].label;
+  }
+
+  return getDeviceTypeOption(normalized).label;
+}
+
+export function deviceTypeFilterOptions(hosts: Host[], activeValue = ""): DeviceTypeFilterOption[] {
+  const presentTypes = new Set(hosts.map((host) => normalizeDeviceType(host.DeviceType)));
+  const normalizedActive = normalizeDeviceTypeFilter(activeValue);
+  const options: DeviceTypeFilterOption[] = [{ value: "", label: "All types" }];
+
+  for (const type of deviceTypes) {
+    const value = type.value === "" ? deviceTypeNotSetFilterValue : type.value;
+    const isPresent = type.value === "" ? presentTypes.has("") : presentTypes.has(type.value);
+
+    if (isPresent || normalizedActive === value) {
+      options.push({ value, label: type.label });
+    }
+  }
+
+  return options;
 }
