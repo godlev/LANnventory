@@ -1,5 +1,5 @@
 import { For, onMount, Show } from "solid-js"
-import { allHosts, appConfig, setShow } from "../functions/exports"
+import { allHosts, appConfig, hostsLoadError, setShow } from "../functions/exports"
 import MacHistory from "../components/MacHistory"
 import HistShow from "../components/HistShow"
 import HistoryFilters from "../components/HistoryFilters"
@@ -22,6 +22,13 @@ function History() {
   };
 
   return (
+    <>
+    <Show when={hostsLoadError()}>
+      <div class="data-load-warning" role="status">
+        <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+        <span>{hostsLoadError()}</span>
+      </div>
+    </Show>
     <div class="card wyl-panel history-panel">
       <div class="card-header history-panel-header">
         <div class="history-panel-title-group">
@@ -76,6 +83,7 @@ function History() {
         </table>
       </div>
     </div>
+    </>
   )
 }
 

@@ -74,7 +74,7 @@ function Retention() {
                 <td></td>
                 <td class="config-action-cell">
                   <button type="submit" class="btn btn-sm wyl-button">Save retention</button>
-                  <span class="config-save-status" role="status">
+                  <span class={"config-save-status" + (error() ? " config-save-error" : "")} role="status">
                     {error() || status()}
                   </span>
                 </td>

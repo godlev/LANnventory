@@ -13,9 +13,23 @@ type ActivityQuery = {
   macs?: string[];
 };
 
+const apiFetch = async (url: string, init?: RequestInit): Promise<Response> => {
+  const response = await fetch(url, init);
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(detail || response.statusText || "API request failed");
+  }
+
+  return response;
+};
+
+const apiJSON = async <T>(url: string, init?: RequestInit): Promise<T> => {
+  return await (await apiFetch(url, init)).json();
+};
+
 export const apiGetAllHosts = async () => {
   const url = apiPath+'/api/all';
-  const hosts = await (await fetch(url)).json();
+  const hosts = await apiJSON<Host[]>(url);
 
   return hosts;
 };
@@ -23,7 +37,7 @@ export const apiGetAllHosts = async () => {
 export const apiGetConfig = async () => {
 
   const url = apiPath+'/api/config';
-  const res = await (await fetch(url)).json();
+  const res = await apiJSON<Conf>(url);
 
   return res;
 };
@@ -31,7 +45,7 @@ export const apiGetConfig = async () => {
 export const apiGetVersion = async () => {
 
   const url = apiPath+'/api/version';
-  const res = await (await fetch(url)).json();
+  const res = await apiJSON<string>(url);
 
   return res;
 };
@@ -57,7 +71,7 @@ export const apiGetActivity = async (limit = 20, query: ActivityQuery = {}): Pro
   });
 
   const url = apiPath+'/api/activity?'+params.toString();
-  const events = await (await fetch(url)).json();
+  const events = await apiJSON<HostEvent[]>(url);
 
   return events;
 };
@@ -75,65 +89,53 @@ export const apiGetActivityStats = async (query: Pick<ActivityQuery, "mac" | "ma
 
   const suffix = params.toString();
   const url = apiPath+'/api/activity/stats'+(suffix === "" ? "" : "?"+suffix);
-  const stats = await (await fetch(url)).json();
+  const stats = await apiJSON<ActivityStats>(url);
 
   return stats;
 };
 
 export const apiGetActivityDevices = async (): Promise<ActivityDeviceOption[]> => {
   const url = apiPath+'/api/activity/devices';
-  const devices = await (await fetch(url)).json();
+  const devices = await apiJSON<ActivityDeviceOption[]>(url);
 
   return devices;
 };
 
 export const apiGetHostActivity = async (id: number | string, limit = 10): Promise<HostEvent[]> => {
   const url = apiPath+'/api/host/'+id+'/activity?limit='+limit;
-  const events = await (await fetch(url)).json();
+  const events = await apiJSON<HostEvent[]>(url);
 
   return events;
 };
 
 export const apiSetConfigColor = async (color: "dark" | "light"): Promise<Conf> => {
   const url = apiPath+'/api/config/color';
-  const response = await fetch(url, {
+  return await apiJSON<Conf>(url, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ color }),
   });
-
-  if (!response.ok) {
-    throw new Error(await response.text());
-  }
-
-  return await response.json();
 };
 
 export const apiSetRetention = async (presenceRetention: number, connectivityRetention: number): Promise<Conf> => {
   const url = apiPath+'/api/config/retention';
-  const response = await fetch(url, {
+  return await apiJSON<Conf>(url, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ presenceRetention, connectivityRetention }),
   });
-
-  if (!response.ok) {
-    throw new Error(await response.text());
-  }
-
-  return await response.json();
 };
 
 export const apiTestNotify = async () => {
 
   const url = apiPath+'/api/notify_test';
-  await fetch(url);
+  await apiFetch(url);
 };
 
 export const apiEditHost = async (id:number, name:string, known:string) => {
 
   const url = apiPath+'/api/edit/'+id+'/'+name+'/'+known;
-  const res = await (await fetch(url)).json();
+  const res = await apiJSON<string>(url);
 
   return res;
 };
@@ -144,28 +146,17 @@ export const apiSetDeviceType = async (id: number, deviceType: DeviceTypeValue):
   }
 
   const url = apiPath+'/api/host/'+id+'/type';
-  const response = await fetch(url, {
+  return await apiJSON<Host>(url, {
     method: 'PATCH',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ deviceType }),
   });
-
-  if (!response.ok) {
-    throw new Error(await response.text());
-  }
-
-  return await response.json();
 };
 
 export const apiGetHost = async (id:string) => {
 
   const url = apiPath+'/api/host/'+id;
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(await response.text());
-  }
-
-  const res = await response.json();
+  const res = await apiJSON<Host>(url);
 
   return res;
 };
@@ -173,7 +164,7 @@ export const apiGetHost = async (id:string) => {
 export const apiDelHost = async (id:number) => {
 
   const url = apiPath+'/api/host/del/'+id;
-  const res = await (await fetch(url)).json();
+  const res = await apiJSON<string>(url);
 
   return res;
 };
@@ -181,21 +172,21 @@ export const apiDelHost = async (id:number) => {
 export const apiPortScan = async (ip:string, port:number) => {
 
   const url = apiPath+'/api/port/'+ip+'/'+port;
-  const res = await (await fetch(url)).json();
+  const res = await apiJSON<boolean>(url);
 
   return res;
 };
 
 export const apiGetHistory = async (mac:string) => {
   const url = apiPath+'/api/history/'+mac+'/?num=210';
-  const hosts = await (await fetch(url)).json();
+  const hosts = await apiJSON<Host[]>(url);
 
   return hosts;
 };
 
 export const apiGetHistoryByDate = async (mac:string, date: string) => {
   const url = apiPath+'/api/history/'+mac+'/'+date;
-  const hosts = await (await fetch(url)).json();
+  const hosts = await apiJSON<Host[]>(url);
 
   return hosts;
 };
@@ -203,7 +194,7 @@ export const apiGetHistoryByDate = async (mac:string, date: string) => {
 export const apiWOL = async (mac:string) => {
 
   const url = apiPath+'/api/wol/'+mac;
-  const res = await (await fetch(url)).json();
+  const res = await apiJSON<boolean>(url);
 
   return res;
 };

@@ -1,6 +1,6 @@
-import { For, onMount } from "solid-js";
+import { For, onMount, Show } from "solid-js";
 
-import { allHosts, filterState } from "../functions/exports";
+import { allHosts, filterState, hostsLoadError } from "../functions/exports";
 
 import TableRow from "../components/Body/TableRow";
 import TableHead from "../components/Body/TableHead";
@@ -51,6 +51,12 @@ function Body() {
 
   return (
     <>
+    <Show when={hostsLoadError()}>
+      <div class="data-load-warning" role="status">
+        <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+        <span>{hostsLoadError()}</span>
+      </div>
+    </Show>
     <SummaryCards></SummaryCards>
     <RecentActivityPanel></RecentActivityPanel>
     <div class="card device-panel">

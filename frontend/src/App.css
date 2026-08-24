@@ -1841,6 +1841,34 @@ html[data-bs-theme] .config-panel table > tbody > tr > td {
     font-size: var(--wyl-helper-text-size);
     font-weight: 700;
 }
+.config-save-error {
+    color: var(--wyl-danger-control-text);
+}
+.config-secret-clear {
+    margin-top: 0.45rem;
+    color: var(--wyl-muted);
+    font-size: var(--wyl-helper-text-size);
+    font-weight: 650;
+}
+.settings-status-panel,
+.data-load-warning {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    padding: 0.72rem 0.9rem;
+    border: 1px solid var(--wyl-border);
+    border-radius: 8px;
+    background: var(--wyl-panel-bg);
+    color: var(--wyl-muted);
+    font-size: var(--wyl-helper-text-size);
+    font-weight: 700;
+}
+.settings-status-error,
+.data-load-warning {
+    border-color: var(--wyl-danger-control-border);
+    color: var(--wyl-danger-control-text);
+}
 .config-secondary-action {
     float: none;
 }

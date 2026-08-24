@@ -1,5 +1,5 @@
 import { apiGetAllHosts } from "./api";
-import { Host, setBkpHosts, setIfaces } from "./exports";
+import { Host, setBkpHosts, setHostsLoadError, setIfaces } from "./exports";
 import { applyHostView } from "./hostView";
 import { filterAtStart } from "./filter";
 import { sortAtStart } from "./sort";
@@ -13,7 +13,15 @@ export function runAtStart() {
 }
 
 export async function getHosts() {
-  const hosts = await apiGetAllHosts();
+  let hosts: Host[];
+  try {
+    hosts = await apiGetAllHosts();
+  } catch {
+    setHostsLoadError("Device data could not be refreshed. Showing the last loaded device list.");
+    return;
+  }
+
+  setHostsLoadError("");
 
   if (hosts !== null && hosts.length > 0) {
     setBkpHosts(hosts);

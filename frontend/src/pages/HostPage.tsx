@@ -1,5 +1,5 @@
 import { useLocation, useNavigate, useParams } from "@solidjs/router";
-import { createEffect, createSignal, onCleanup } from "solid-js";
+import { createEffect, createSignal, onCleanup, Show } from "solid-js";
 
 import { apiGetHost } from "../functions/api";
 
@@ -12,6 +12,7 @@ import { emptyHost, emptyPageContext, Host, setPageContext } from "../functions/
 function HostPage() {
 
   const [currentHost, setCurrentHost] = createSignal<Host>(emptyHost);
+  const [loadError, setLoadError] = createSignal("");
   const params = useParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -35,6 +36,7 @@ function HostPage() {
     }
 
     const activeRequest = ++requestId;
+    setLoadError("");
     setCurrentHost(emptyHost);
     setPageContext({ kind: "host", hostName: "" });
     document.title = "Host · LANventory";
@@ -54,6 +56,7 @@ function HostPage() {
 
         setPageContext({ kind: "host", hostName: "" });
         document.title = "Host · LANventory";
+        setLoadError("Host details could not be loaded. The device may have been deleted or the backend may be unavailable.");
       });
   });
 
@@ -77,24 +80,34 @@ function HostPage() {
 
   return (
     <div class="host-page">
-    <div class="row g-3 mx-0 host-page-row">
-      <div class="col-md">
-        <HostCard host={currentHost()} editMode={isEditMode()} onEditModeChange={setEditMode} onHostChange={setCurrentHost}></HostCard>
+    <Show
+      when={!loadError()}
+      fallback={
+        <div class="data-load-warning" role="alert">
+          <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+          <span>{loadError()}</span>
+        </div>
+      }
+    >
+      <div class="row g-3 mx-0 host-page-row">
+        <div class="col-md">
+          <HostCard host={currentHost()} editMode={isEditMode()} onEditModeChange={setEditMode} onHostChange={setCurrentHost}></HostCard>
+        </div>
+        <div class="col-md">
+          <Ping IP={currentHost().IP}></Ping>
+        </div>
       </div>
-      <div class="col-md">
-        <Ping IP={currentHost().IP}></Ping>
+      <div class="row g-3 mx-0 mt-1 host-page-row">
+        <div class="col-md">
+          <HostActivityCard host={currentHost()}></HostActivityCard>
+        </div>
       </div>
-    </div>
-    <div class="row g-3 mx-0 mt-1 host-page-row">
-      <div class="col-md">
-        <HostActivityCard host={currentHost()}></HostActivityCard>
+      <div class="row g-3 mx-0 mt-1 host-page-row">
+        <div class="col-md">
+          <HistCard mac={currentHost().Mac}></HistCard>
+        </div>
       </div>
-    </div>
-    <div class="row g-3 mx-0 mt-1 host-page-row">
-      <div class="col-md">
-        <HistCard mac={currentHost().Mac}></HistCard>
-      </div>
-    </div>
+    </Show>
     </div>
   )
 }

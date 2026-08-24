@@ -117,12 +117,15 @@ const config = {
   TrimHist: 48,
   ConnectivityRetention: 168,
   ShoutURL: '',
+  ShoutURLConfigured: false,
   Version: 'dev-mock',
   UseDB: 'sqlite',
   PGConnect: '',
+  PGConnectConfigured: false,
   InfluxEnable: false,
   InfluxAddr: '',
   InfluxToken: '',
+  InfluxTokenConfigured: false,
   InfluxOrg: '',
   InfluxBucket: '',
   InfluxSkipTLS: false,
@@ -217,6 +220,35 @@ function parseRequestBody(body) {
   }
 }
 
+function publicConfig() {
+  const { ConfPath, DBPath, Version, ...publicFields } = config;
+
+  return {
+    ...publicFields,
+    ShoutURL: '',
+    ShoutURLConfigured: config.ShoutURL !== '',
+    PGConnect: '',
+    PGConnectConfigured: config.PGConnect !== '',
+    InfluxToken: '',
+    InfluxTokenConfigured: config.InfluxToken !== '',
+  };
+}
+
+function isTruthyFormValue(value) {
+  return ['1', 'on', 'true', 'yes'].includes(String(value ?? '').trim().toLowerCase());
+}
+
+function applySecretUpdate(currentValue, submittedValue, clearValue) {
+  if (isTruthyFormValue(clearValue)) {
+    return '';
+  }
+  if (typeof submittedValue === 'string' && submittedValue !== '') {
+    return submittedValue;
+  }
+
+  return currentValue;
+}
+
 function applyBasicConfigForm(body) {
   const form = parseRequestBody(body);
 
@@ -235,9 +267,7 @@ function applyBasicConfigForm(body) {
   if (typeof form.node === 'string') {
     config.NodePath = form.node;
   }
-  if (typeof form.shout === 'string') {
-    config.ShoutURL = form.shout;
-  }
+  config.ShoutURL = applySecretUpdate(config.ShoutURL, form.shout, form.clear_shout);
 }
 
 function applySettingsConfigForm(body) {
@@ -264,9 +294,30 @@ function applySettingsConfigForm(body) {
   if (typeof form.usedb === 'string') {
     config.UseDB = form.usedb;
   }
-  if (typeof form.pgconnect === 'string') {
-    config.PGConnect = form.pgconnect;
+  config.PGConnect = applySecretUpdate(config.PGConnect, form.pgconnect, form.clear_pgconnect);
+}
+
+function applyInfluxConfigForm(body) {
+  const form = parseRequestBody(body);
+
+  if (typeof form.addr === 'string') {
+    config.InfluxAddr = form.addr;
   }
+  config.InfluxToken = applySecretUpdate(config.InfluxToken, form.token, form.clear_influx_token);
+  if (typeof form.org === 'string') {
+    config.InfluxOrg = form.org;
+  }
+  if (typeof form.bucket === 'string') {
+    config.InfluxBucket = form.bucket;
+  }
+  config.InfluxEnable = form.enable === 'on';
+  config.InfluxSkipTLS = form.skip === 'on';
+}
+
+function applyPrometheusConfigForm(body) {
+  const form = parseRequestBody(body);
+
+  config.PrometheusEnable = form.enable === 'on';
 }
 
 function applyRetentionConfigBody(body) {
@@ -284,7 +335,7 @@ function applyRetentionConfigBody(body) {
   config.TrimHist = presenceRetention;
   config.ConnectivityRetention = connectivityRetention;
 
-  return { config };
+  return { config: publicConfig() };
 }
 
 function historyFor(mac, datePrefix = '') {
@@ -531,7 +582,7 @@ function routeReadOnly(req, res, url) {
   const pathname = decodeURIComponent(url.pathname);
 
   if (req.method === 'GET' && pathname === '/api/config') {
-    sendJSON(res, config);
+    sendJSON(res, publicConfig());
     return true;
   }
 
@@ -727,7 +778,7 @@ async function routeSafeAction(req, res, url) {
     }
 
     config.Color = color;
-    sendJSON(res, config);
+    sendJSON(res, publicConfig());
     return true;
   }
 
@@ -755,6 +806,24 @@ async function routeSafeAction(req, res, url) {
   if (req.method === 'POST' && pathname === '/api/config_settings/') {
     const body = await readBody(req);
     applySettingsConfigForm(body);
+    const referer = req.headers.referer || '/config';
+    res.writeHead(303, { location: referer });
+    res.end();
+    return true;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/config_influx/') {
+    const body = await readBody(req);
+    applyInfluxConfigForm(body);
+    const referer = req.headers.referer || '/config';
+    res.writeHead(303, { location: referer });
+    res.end();
+    return true;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/config_prometheus/') {
+    const body = await readBody(req);
+    applyPrometheusConfigForm(body);
     const referer = req.headers.referer || '/config';
     res.writeHead(303, { location: referer });
     res.end();

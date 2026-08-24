@@ -1,14 +1,32 @@
-import { For, Show } from "solid-js"
+import { createSignal, For, Show } from "solid-js"
 import { appConfig } from "../../functions/exports"
 import { apiPath } from "../../functions/api"
+import { saveErrorMessage, submitConfigForm } from "../../functions/configForms";
 
 function Scan() {
+  const [status, setStatus] = createSignal("");
+  const [error, setError] = createSignal("");
+
+  const handleSubmit = async (event: SubmitEvent) => {
+    event.preventDefault();
+
+    const form = event.currentTarget as HTMLFormElement;
+    setStatus("");
+    setError("");
+
+    try {
+      await submitConfigForm(form);
+      setStatus("Saved");
+    } catch (saveError) {
+      setError(saveErrorMessage(saveError));
+    }
+  };
 
   return (
     <div class="card wyl-panel config-panel">
       <div class="card-header">Scan settings</div>
       <div class="card-body table-responsive">
-        <form action={apiPath + '/api/config_settings/'} method="post">
+        <form action={apiPath + '/api/config_settings/'} method="post" onSubmit={handleSubmit}>
           <table class="table table-borderless"><tbody>
             <tr class="config-subsection-row">
               <td colSpan={2}>Network discovery</td>
@@ -74,13 +92,30 @@ function Scan() {
             <tr>
               <td class="config-field-label config-field-label-top">PG Connect URL</td>
               <td class="config-field-value">
-                <textarea name="pgconnect" class="form-control" style="width: 100%;" rows="3" wrap="soft">{appConfig().PGConnect}</textarea>
+                <textarea
+                  name="pgconnect"
+                  class="form-control"
+                  style="width: 100%;"
+                  rows="3"
+                  wrap="soft"
+                  placeholder={appConfig().PGConnectConfigured ? "Configured - leave blank to keep current value" : ""}
+                ></textarea>
+                <Show when={appConfig().PGConnectConfigured}>
+                  <label class="form-check config-secret-clear">
+                    <input name="clear_pgconnect" class="form-check-input" type="checkbox"></input>
+                    <span class="form-check-label">Clear stored PostgreSQL connection URL</span>
+                  </label>
+                </Show>
+                <div class="config-field-helper">Stored database connection URLs are write-only and are not displayed after saving.</div>
               </td>
             </tr>
             <tr>
               <td></td>
               <td class="config-action-cell">
                 <button type="submit" class="btn btn-sm wyl-button">Save scan settings</button>
+                <span class={"config-save-status" + (error() ? " config-save-error" : "")} role="status">
+                  {error() || status()}
+                </span>
                 <div class="config-field-helper config-save-helper">Saving these settings restarts network scanning.</div>
               </td>
             </tr>

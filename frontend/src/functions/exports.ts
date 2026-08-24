@@ -62,12 +62,15 @@ export interface Conf {
 	TrimHist:  number;
 	ConnectivityRetention: number;
 	ShoutURL:  string;
+	ShoutURLConfigured: boolean;
 	UseDB:     string;
 	PGConnect: string;
+	PGConnectConfigured: boolean;
 	// InfluxDB
 	InfluxEnable:  boolean;
 	InfluxAddr:    string;
 	InfluxToken:   string;
+	InfluxTokenConfigured: boolean;
 	InfluxOrg:     string;
 	InfluxBucket:  string;
 	InfluxSkipTLS: boolean;
@@ -124,11 +127,14 @@ export const emptyConf:Conf = {
 	TrimHist: 48,
 	ConnectivityRetention: 48,
 	ShoutURL: "",
+	ShoutURLConfigured: false,
 	UseDB: "",
 	PGConnect: "",
+	PGConnectConfigured: false,
 	InfluxEnable:  false,
 	InfluxAddr:    "",
 	InfluxToken:   "",
+	InfluxTokenConfigured: false,
 	InfluxOrg:     "",
 	InfluxBucket:  "",
 	InfluxSkipTLS: false,
@@ -150,6 +156,7 @@ export const emptyPageContext:PageContext = {
 
 export const [allHosts, setAllHosts] = createStore<Host[]>([]);
 export const [bkpHosts, setBkpHosts] = createSignal<Host[]>([]);
+export const [hostsLoadError, setHostsLoadError] = createSignal("");
 
 export const [ifaces, setIfaces] = createSignal<string[]>([]);
 export const hasMultipleIfaces = () => ifaces().filter((iface) => iface.trim() !== "").length > 1;
