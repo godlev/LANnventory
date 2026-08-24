@@ -56,14 +56,14 @@ function HostActivityCard(props: HostActivityCardProps) {
     <section class="card wyl-panel activity-panel host-activity-panel" aria-labelledby="host-activity-title">
       <div class="card-header activity-panel-header">
         <div>
-          <div id="host-activity-title" class="activity-panel-title">Recent activity</div>
+          <div id="host-activity-title" class="activity-panel-title">Recent events</div>
           <div class="activity-panel-subtitle">{props.host.Mac || "Waiting for host"}</div>
         </div>
       </div>
       <div class="card-body activity-panel-body">
         <ActivityFeed
           events={events()}
-          emptyText="No recorded activity yet"
+          emptyText="No recorded events yet"
           hostExists={hostExists}
         ></ActivityFeed>
       </div>

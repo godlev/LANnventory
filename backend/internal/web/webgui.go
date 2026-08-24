@@ -56,6 +56,7 @@ func Gui() {
 	router.GET("/", indexHandler)          // index.go
 	router.GET("/config", indexHandler)    // index.go
 	router.GET("/history", indexHandler)   // index.go
+	router.GET("/activity", indexHandler)  // index.go
 	router.GET("/host/*any", indexHandler) // index.go
 	router.GET("/metrics", prometheus.Handler())
 

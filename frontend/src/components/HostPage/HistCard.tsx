@@ -20,11 +20,11 @@ function HistCard(_props: any) {
     <div class="card wyl-panel host-history-panel">
       <div class="card-header host-history-header">
         <div>
-          <div class="host-panel-title">Host history</div>
+          <div class="host-panel-title">Presence history</div>
           <div class="host-panel-subtitle">{_props.mac || "Waiting for host"}</div>
         </div>
         <label class="host-history-date-control">
-          <span>History date</span>
+          <span>Presence date</span>
           <input
             type="date"
             class="form-control form-control-sm wyl-control host-date-input"

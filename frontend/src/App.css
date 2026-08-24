@@ -723,6 +723,22 @@ html[data-bs-theme] .device-table > tbody > tr.device-row-unknown:hover > td {
     color: var(--wyl-link-hover);
     text-decoration: underline;
 }
+.device-name-link {
+    display: inline-block;
+    max-width: 18rem;
+    overflow: hidden;
+    color: var(--bs-body-color) !important;
+    text-overflow: ellipsis;
+    vertical-align: bottom;
+    white-space: nowrap;
+}
+.device-name-link:hover,
+.device-name-link:focus-visible {
+    color: var(--wyl-link-hover) !important;
+}
+.device-name-link.device-offline-name {
+    color: var(--wyl-offline-muted) !important;
+}
 .device-cell-muted {
     color: var(--wyl-muted);
 }
@@ -1757,6 +1773,22 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
 .host-device-type-picker {
     justify-content: flex-start;
     max-width: 18rem;
+}
+.host-mode-button {
+    min-width: 4.5rem;
+}
+.host-static-value {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 1.8rem;
+}
+.host-static-device-type {
+    color: var(--wyl-link);
+    font-weight: 700;
+}
+.host-known-static {
+    font-weight: 700;
 }
 .host-known-toggle {
     width: 2rem;

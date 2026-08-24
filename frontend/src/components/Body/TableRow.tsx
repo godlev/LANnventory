@@ -74,7 +74,7 @@ function TableRow(_props: any) {
         <Show
           when={editNames()}
           fallback={
-          <a href={"/host/" + _props.host.ID} class="device-action-link" title="Edit / details">
+          <a href={"/host/" + _props.host.ID + "?edit=1"} class="device-action-link" title="Edit host">
             <i class="bi bi-pencil-fill my-btn p-2" aria-hidden="true"></i>
           </a>}
         >
@@ -89,7 +89,7 @@ function TableRow(_props: any) {
       <td class="device-table-name">
         <Show
           when={editNames()}
-          fallback={<span class={nameClass()}>{name()}</span>}
+          fallback={<a href={"/host/" + _props.host.ID} class={"device-name-link " + nameClass()}>{name()}</a>}
         >
           <input type="text" class="form-control" value={name()}
             onInput={e => handleInput(e.target.value)}></input>

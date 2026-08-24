@@ -1,4 +1,4 @@
-import { useParams } from "@solidjs/router";
+import { useLocation, useNavigate, useParams } from "@solidjs/router";
 import { createEffect, createSignal, onCleanup } from "solid-js";
 
 import { apiGetHost } from "../functions/api";
@@ -13,8 +13,19 @@ function HostPage() {
 
   const [currentHost, setCurrentHost] = createSignal<Host>(emptyHost);
   const params = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const previousTitle = document.title;
   let requestId = 0;
+
+  const isEditMode = () => new URLSearchParams(location.search).get("edit") === "1";
+  const setEditMode = (editing: boolean) => {
+    if (!params.id) {
+      return;
+    }
+
+    navigate("/host/" + params.id + (editing ? "?edit=1" : ""));
+  };
 
   createEffect(() => {
     const id = params.id;
@@ -68,7 +79,7 @@ function HostPage() {
     <div class="host-page">
     <div class="row g-3 mx-0 host-page-row">
       <div class="col-md">
-        <HostCard host={currentHost()} onHostChange={setCurrentHost}></HostCard>
+        <HostCard host={currentHost()} editMode={isEditMode()} onEditModeChange={setEditMode} onHostChange={setCurrentHost}></HostCard>
       </div>
       <div class="col-md">
         <Ping IP={currentHost().IP}></Ping>
