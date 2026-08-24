@@ -1,4 +1,5 @@
-import { bkpHosts, FilterState, filterState, Host, setAllHosts, sortState } from "./exports";
+import { bkpHosts, FilterState, filterState, Host, setAllHosts, setBkpHosts, sortState } from "./exports";
+import { getDeviceTypeOption, normalizeDeviceType } from "./deviceTypes";
 
 export type HostFilterKey = keyof FilterState;
 
@@ -11,6 +12,11 @@ export function applyHostView() {
   const hosts = filterHosts(bkpHosts(), filters);
 
   setAllHosts(sortHosts(hosts));
+}
+
+export function updateHostInView(updatedHost: Host) {
+  setBkpHosts((hosts) => hosts.map((host) => host.ID === updatedHost.ID ? { ...host, ...updatedHost } : host));
+  applyHostView();
 }
 
 export function filterHosts(hosts: Host[], filters: FilterState, options: FilterOptions = {}) {
@@ -53,6 +59,8 @@ function sortHosts(hosts: Host[]) {
 
   if (currentSort.field === "IP") {
     sortedHosts.sort((a, b) => sortIP(a, b, ascending));
+  } else if (currentSort.field === "DeviceType") {
+    sortedHosts.sort((a, b) => byString(normalizeDeviceType(a.DeviceType), normalizeDeviceType(b.DeviceType), ascending));
   } else {
     sortedHosts.sort((a, b) => byField(a, b, currentSort.field as keyof Host, ascending));
   }
@@ -65,13 +73,28 @@ function searchItem(host: Host, search: string) {
   const hardware = host.Hw.toLowerCase();
   const mac = host.Mac.toLowerCase();
   const iface = host.Iface.toLowerCase();
+  const deviceType = getDeviceTypeOption(host.DeviceType);
+  const deviceTypeValue = deviceType.value.toLowerCase();
+  const deviceTypeLabel = deviceType.label.toLowerCase();
 
   return name.includes(search)
     || iface.includes(search)
     || host.IP.includes(search)
     || mac.includes(search)
     || hardware.includes(search)
+    || deviceTypeValue.includes(search)
+    || deviceTypeLabel.includes(search)
     || host.Date.includes(search);
+}
+
+function byString(a: string, b: string, ascending: boolean) {
+  if (a === b) {
+    return 0;
+  }
+  if (a > b) {
+    return ascending ? 1 : -1;
+  }
+  return ascending ? -1 : 1;
 }
 
 function byField(a: Host, b: Host, fieldName: keyof Host, ascending: boolean) {

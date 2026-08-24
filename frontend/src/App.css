@@ -793,6 +793,14 @@ html[data-bs-theme] .device-table > tbody > tr.device-row-unknown:hover > td {
     min-width: 9rem;
     text-align: left !important;
 }
+.device-table-type {
+    width: 3rem;
+    min-width: 3rem;
+    max-width: 3rem;
+    padding-left: 0.16rem !important;
+    padding-right: 0.16rem !important;
+    text-align: center;
+}
 .device-table-hardware {
     min-width: 15rem;
     max-width: 24rem;

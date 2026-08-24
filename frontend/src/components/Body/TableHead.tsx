@@ -13,6 +13,13 @@ const headers: { label: string; field: keyof Host; className: string; title?: st
     ariaLabel: "Known / Unknown status - click to sort",
   },
   { label: "Name", field: "Name", className: "device-table-name" },
+  {
+    label: "Type",
+    field: "DeviceType",
+    className: "device-table-type",
+    title: "Device type - click to sort",
+    ariaLabel: "Device type - click to sort",
+  },
   { label: "IP", field: "IP", className: "device-table-ip" },
   { label: "Iface", field: "Iface", className: "device-table-iface" },
   { label: "MAC", field: "Mac", className: "device-table-mac" },

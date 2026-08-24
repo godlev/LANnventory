@@ -1,8 +1,11 @@
 import { createSignal, Show } from "solid-js";
 import { editNames, hasMultipleIfaces, selectedIDs, setSelectedIDs } from "../../functions/exports";
-import { apiEditHost } from "../../functions/api";
+import { apiEditHost, apiSetDeviceType } from "../../functions/api";
 import { getHosts } from "../../functions/atstart";
 import { formatLastSeen } from "../../functions/dateFormat";
+import { updateHostInView } from "../../functions/hostView";
+import type { DeviceTypeValue } from "../../functions/deviceTypes";
+import DeviceTypePicker from "../DeviceTypePicker";
 
 import { debounce } from "@solid-primitives/scheduled"; 
 
@@ -34,6 +37,11 @@ function TableRow(_props: any) {
   const handleToggle = async () => {
     await apiEditHost(_props.host.ID, name(), "toggle");
     await getHosts();
+  };
+
+  const handleDeviceTypeChange = async (deviceType: DeviceTypeValue) => {
+    const updatedHost = await apiSetDeviceType(_props.host.ID, deviceType);
+    updateHostInView(updatedHost);
   };
 
   const handleCheck = (checked: boolean) => {
@@ -86,6 +94,13 @@ function TableRow(_props: any) {
           <input type="text" class="form-control" value={name()}
             onInput={e => handleInput(e.target.value)}></input>
         </Show>
+      </td>
+      <td class="device-table-type">
+        <DeviceTypePicker
+          value={_props.host.DeviceType}
+          mode="icon"
+          onChange={handleDeviceTypeChange}
+        ></DeviceTypePicker>
       </td>
       <td class="device-table-ip">
         <span class="device-ip-with-status">
