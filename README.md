@@ -1,12 +1,14 @@
-# WatchYourLAN2
+# LANventory
 
-An actively developed fork of WatchYourLAN focused on a modern, self-contained interface and richer LAN monitoring history, events and device management.
+LANventory is an actively developed fork of WatchYourLAN focused on modern LAN inventory, device presence history, events and classification.
 
 > This project is currently under active development. Features, configuration and UI may change.
 
-WatchYourLAN2 is based on [WatchYourLAN by aceberg](https://github.com/aceberg/WatchYourLAN). The original scanning and backend foundation comes from the upstream project; this repository contains additional fork work around the interface, offline runtime assets, history, events, retention and device management. Applicable upstream license and attribution notices are preserved.
+LANventory is based on [WatchYourLAN by aceberg](https://github.com/aceberg/WatchYourLAN). The original scanning and backend foundation comes from the upstream project; this repository contains additional fork work around the interface, offline runtime assets, history, events, retention and device management. Applicable upstream license and attribution notices are preserved.
 
-## What's different in WatchYourLAN2
+Current repository: [godlev/WatchYourLAN2](https://github.com/godlev/WatchYourLAN2).
+
+## What's different in LANventory
 
 ### Interface
 
@@ -50,21 +52,21 @@ The UI includes a unified Events explorer, Device/Event filters, summary cards, 
 
 ## Development Status
 
-WatchYourLAN2 is actively under development and is currently based on the upstream WatchYourLAN architecture. Not all existing upstream documentation may apply exactly to this fork yet. Migrations and backward compatibility are being kept in mind, but the fork should not be treated as a separately stabilized production release until that status is documented here.
+LANventory is actively under development and is currently based on the upstream WatchYourLAN architecture. Not all existing upstream documentation may apply exactly to this fork yet. Migrations and backward compatibility are being kept in mind, but the fork should not be treated as a separately stabilized production release until that status is documented here.
 
 ## Screenshots
 
-Updated WatchYourLAN2 screenshots will be added as development progresses.
+Updated LANventory screenshots will be added as development progresses.
 
 ## Support Development
 
-If you find WatchYourLAN2 useful and would like to support development:
+If you find LANventory useful and would like to support development:
 
 [Support via Revolut](https://revolut.me/mirgeo)
 
 ## Runtime Requirements
 
-WatchYourLAN2 inherits the upstream network discovery model:
+LANventory inherits the upstream network discovery model:
 
 - Linux is the intended runtime for real LAN scanning.
 - `arp-scan` is required for real ARP discovery.
@@ -121,7 +123,7 @@ The backend creates or reads `config_v2.yaml` and `scan.db` in that directory. R
 
 ## Installation Status
 
-WatchYourLAN2 does not currently document an independently published Docker image or packaged release artifact in this repository. Do not install `aceberg/watchyourlan` expecting to receive WatchYourLAN2 fork changes; that image belongs to the upstream project.
+LANventory does not currently document an independently published Docker image or packaged release artifact in this repository. Do not install `aceberg/watchyourlan` expecting to receive LANventory fork changes; that image belongs to the upstream project.
 
 The existing Dockerfile and compose files in this repository are inherited development references and may still contain upstream naming. Build and test from this checkout when evaluating fork behavior.
 
@@ -138,7 +140,7 @@ Configuration can be supplied through `config_v2.yaml`, the UI or environment va
 | `PORT` | Web UI/API port. | `8840` |
 | `THEME` | Bundled Bootswatch theme name in lowercase. | `sand` |
 | `COLOR` | Color mode: `dark` or `light`. | `dark` |
-| `NODEPATH` | Legacy upstream compatibility setting. WatchYourLAN2 bundles UI assets locally. | |
+| `NODEPATH` | Legacy upstream compatibility setting. LANventory bundles UI assets locally. | |
 | `SHOUTRRR_URL` | Shoutrrr notification URL. See [Shoutrrr service documentation](https://shoutrrr.nickfedor.com/services/overview/). | |
 
 ### Scan And Database Settings
@@ -180,7 +182,7 @@ Configuration can be supplied through `config_v2.yaml`, the UI or environment va
 
 ## Offline UI Assets
 
-The built WatchYourLAN2 UI is intended to be self-contained. Bootstrap Icons, Open Sans and Bootswatch themes are installed during development/build and bundled or copied into the application assets served by WatchYourLAN2 itself.
+The built LANventory UI is intended to be self-contained. Bootstrap Icons, Open Sans and Bootswatch themes are installed during development/build and bundled or copied into the application assets served by LANventory itself.
 
 The browser should not need Internet access to render the UI. User-clicked links to external repositories, documentation, Shoutrrr, Bootswatch, package documentation or donation pages remain normal external navigation.
 
@@ -194,7 +196,7 @@ Some integrations and packaging references may still live in upstream documentat
 
 ## Auth And Exposure
 
-WatchYourLAN2 does not currently provide built-in authentication. If you expose it beyond a trusted local network, place it behind suitable authentication and network controls. Remember that real scanning typically needs host network access.
+LANventory does not currently provide built-in authentication. If you expose it beyond a trusted local network, place it behind suitable authentication and network controls. Remember that real scanning typically needs host network access.
 
 ## Thanks And Attribution
 

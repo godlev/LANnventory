@@ -37,7 +37,7 @@ func Gui() {
 	address := conf.AppConfig.Host + ":" + conf.AppConfig.Port
 
 	slog.Info(colorCyan + "\n=================================== " +
-		"\n  WatchYourLAN Version: " + conf.AppConfig.Version +
+		"\n  LANventory Version: " + conf.AppConfig.Version +
 		"\n  Config dir: " + conf.AppConfig.DirPath +
 		"\n  Default DB: " + conf.AppConfig.UseDB +
 		"\n  Log level: " + conf.AppConfig.LogLevel +

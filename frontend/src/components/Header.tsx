@@ -113,8 +113,8 @@ function Header() {
     <>
     <nav class="navbar navbar-expand-md navbar-dark wyl-navbar">
       <div class="container-lg">
-        <a class="navbar-brand" href="/">
-          <img src="/fs/public/favicon.png" class="wyl-navbar-logo"/>
+        <a class="navbar-brand" href="/" title="LANventory" aria-label="LANventory home">
+          <img src="/fs/public/favicon.png" class="wyl-navbar-logo" alt="LANventory"/>
         </a>
         <ul class="navbar-nav wyl-nav-tabs me-auto">
           {navItems.map((item) =>
@@ -164,8 +164,8 @@ function Header() {
               ref={supportButtonRef}
               type="button"
               class={"nav-link wyl-navbar-utility wyl-support-toggle" + (supportOpen() ? " is-active" : "")}
-              title="Support WatchYourLAN2"
-              aria-label="Support WatchYourLAN2"
+              title="Support LANventory"
+              aria-label="Support LANventory"
               aria-expanded={supportOpen() ? "true" : "false"}
               aria-controls="support-popover"
               onClick={handleSupportToggle}
@@ -180,8 +180,8 @@ function Header() {
                 role="dialog"
                 aria-labelledby="support-popover-title"
               >
-                <div id="support-popover-title" class="wyl-support-title">SUPPORT WATCHYOURLAN2</div>
-                <p>WatchYourLAN2 is an independent fork currently in active development. If you find the project useful and want to support its continued development, you can contribute via Revolut.</p>
+                <div id="support-popover-title" class="wyl-support-title">SUPPORT LANVENTORY</div>
+                <p>LANventory is an independent fork currently in active development. If you find the project useful and want to support its continued development, you can contribute via Revolut.</p>
                 <a class="wyl-support-action" href="https://revolut.me/mirgeo" target="_blank" rel="noreferrer">
                   <i class="bi bi-heart-fill" aria-hidden="true"></i>
                   <span>SUPPORT VIA REVOLUT</span>
@@ -191,7 +191,7 @@ function Header() {
             </Show>
           </li>
           <li class="nav-item">
-            <a class="nav-link wyl-navbar-utility wyl-navbar-github" target="_blank" rel="noreferrer" href="https://github.com/godlev/WatchYourLAN2" title="WatchYourLAN2 on GitHub" aria-label="WatchYourLAN2 on GitHub"><i class="bi bi-github"></i></a>
+            <a class="nav-link wyl-navbar-utility wyl-navbar-github" target="_blank" rel="noreferrer" href="https://github.com/godlev/WatchYourLAN2" title="LANventory on GitHub" aria-label="LANventory on GitHub"><i class="bi bi-github"></i></a>
           </li>
         </ul>
       </div>

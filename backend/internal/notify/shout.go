@@ -32,7 +32,7 @@ func Test() {
 func shout(msg string) {
 
 	hostname, _ := os.Hostname()
-	wyl := "WatchYourLAN on '" + hostname + "': "
+	wyl := "LANventory on '" + hostname + "': "
 
 	if conf.AppConfig.ShoutURL != "" {
 		err := shoutrrr.Send(conf.AppConfig.ShoutURL, wyl+msg)

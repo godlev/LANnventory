@@ -26,7 +26,7 @@ function Config() {
     <div class="settings-page">
       <header class="settings-page-header">
         <h1>Settings</h1>
-        <p>Configure WatchYourLAN2</p>
+        <p>Configure LANventory</p>
       </header>
 
       <div class="settings-layout">
@@ -48,7 +48,7 @@ function Config() {
           <section id="integrations" class="settings-section" aria-label="Integrations">
             <div class="settings-section-heading">
               <h2>Integrations</h2>
-              <p>Send WatchYourLAN2 metrics to external monitoring systems.</p>
+              <p>Send LANventory metrics to external monitoring systems.</p>
             </div>
             <Influx></Influx>
             <Prometheus></Prometheus>

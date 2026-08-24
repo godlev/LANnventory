@@ -37,7 +37,7 @@ function HostPage() {
     const activeRequest = ++requestId;
     setCurrentHost(emptyHost);
     setPageContext({ kind: "host", hostName: "" });
-    document.title = "Host · WatchYourLAN2";
+    document.title = "Host · LANventory";
 
     apiGetHost(id)
       .then((host) => {
@@ -53,7 +53,7 @@ function HostPage() {
         }
 
         setPageContext({ kind: "host", hostName: "" });
-        document.title = "Host · WatchYourLAN2";
+        document.title = "Host · LANventory";
       });
   });
 
@@ -72,7 +72,7 @@ function HostPage() {
 
     const hostName = host.Name.trim();
     setPageContext({ kind: "host", hostName });
-    document.title = (hostName || "Host") + " · WatchYourLAN2";
+    document.title = (hostName || "Host") + " · LANventory";
   });
 
   return (

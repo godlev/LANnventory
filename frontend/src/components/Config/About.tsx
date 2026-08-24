@@ -32,7 +32,7 @@ function About() {
         <table class="table config-info-table"><tbody>
           <tr>
             <td class="config-field-label"><b>Project</b></td>
-            <td class="config-field-value"><b>WatchYourLAN2</b></td>
+            <td class="config-field-value"><b>LANventory</b></td>
           </tr>
           <tr>
             <td class="config-field-label"><b>Status</b></td>
@@ -40,10 +40,10 @@ function About() {
           </tr>
           <tr>
             <td class="config-field-label config-field-label-top"><b>Development status</b></td>
-            <td class="config-field-value">WatchYourLAN2 is an actively developed fork of WatchYourLAN. Features, UI and behavior may continue to change while development is in progress.</td>
+            <td class="config-field-value">LANventory is an actively developed fork of WatchYourLAN. Features, UI and behavior may continue to change while development is in progress.</td>
           </tr>
           <tr>
-            <td class="config-field-label"><b>Fork repository</b></td>
+            <td class="config-field-label"><b>Repository</b></td>
             <td class="config-field-value"><a href="https://github.com/godlev/WatchYourLAN2" target="_blank" rel="noreferrer">godlev/WatchYourLAN2</a></td>
           </tr>
           <tr>
