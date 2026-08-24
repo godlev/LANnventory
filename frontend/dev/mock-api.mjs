@@ -128,6 +128,42 @@ function readBody(req) {
   });
 }
 
+function isColorMode(color) {
+  return color === 'dark' || color === 'light';
+}
+
+function parseRequestBody(body) {
+  try {
+    const parsed = JSON.parse(body);
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return Object.fromEntries(new URLSearchParams(body));
+  }
+}
+
+function applyBasicConfigForm(body) {
+  const form = parseRequestBody(body);
+
+  if (typeof form.host === 'string') {
+    config.Host = form.host;
+  }
+  if (typeof form.port === 'string') {
+    config.Port = form.port;
+  }
+  if (typeof form.theme === 'string' && /^[a-z0-9-]+$/.test(form.theme)) {
+    config.Theme = form.theme;
+  }
+  if (isColorMode(form.color)) {
+    config.Color = form.color;
+  }
+  if (typeof form.node === 'string') {
+    config.NodePath = form.node;
+  }
+  if (typeof form.shout === 'string') {
+    config.ShoutURL = form.shout;
+  }
+}
+
 function historyFor(mac, datePrefix = '') {
   const hostEntry = fakeHosts.find((item) => item.Mac === mac) ?? fakeHosts[0];
   const rows = [];
@@ -263,6 +299,30 @@ async function routeSafeAction(req, res, url) {
 
   if (req.method === 'GET' && pathname.startsWith('/api/port/')) {
     sendJSON(res, false);
+    return true;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/config/color') {
+    const body = await readBody(req);
+    const params = parseRequestBody(body);
+    const color = params.color ?? params.Color;
+
+    if (!isColorMode(color)) {
+      sendJSON(res, { error: 'invalid color' }, 400);
+      return true;
+    }
+
+    config.Color = color;
+    sendJSON(res, config);
+    return true;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/config/') {
+    const body = await readBody(req);
+    applyBasicConfigForm(body);
+    const referer = req.headers.referer || '/config';
+    res.writeHead(303, { location: referer });
+    res.end();
     return true;
   }
 

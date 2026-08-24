@@ -14,6 +14,10 @@ import (
 
 var errInvalidPositiveInt = errors.New("invalid positive integer")
 
+type colorRequest struct {
+	Color string `json:"color"`
+}
+
 func saveConfigHandler(c *gin.Context) {
 
 	conf.AppConfig.Host = c.PostForm("host")
@@ -26,6 +30,34 @@ func saveConfigHandler(c *gin.Context) {
 	conf.Write(conf.AppConfig)
 
 	c.Redirect(http.StatusFound, c.Request.Referer())
+}
+
+func saveColorHandler(c *gin.Context) {
+	color := c.PostForm("color")
+
+	if color == "" {
+		var req colorRequest
+		if err := c.ShouldBindJSON(&req); err == nil {
+			color = req.Color
+		}
+	}
+
+	if color != "dark" && color != "light" {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid color"})
+		return
+	}
+
+	nextConfig := conf.AppConfig
+	nextConfig.Color = color
+
+	if err := conf.WriteErr(nextConfig); err != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to write config"})
+		return
+	}
+
+	conf.AppConfig = nextConfig
+
+	c.IndentedJSON(http.StatusOK, conf.AppConfig)
 }
 
 func saveSettingsHandler(c *gin.Context) {

@@ -1,3 +1,5 @@
+import type { Conf } from "./exports";
+
 export const apiPath = '';
 
 export const apiGetAllHosts = async () => {
@@ -21,6 +23,21 @@ export const apiGetVersion = async () => {
   const res = await (await fetch(url)).json();
 
   return res;
+};
+
+export const apiSetConfigColor = async (color: "dark" | "light"): Promise<Conf> => {
+  const url = apiPath+'/api/config/color';
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ color }),
+  });
+
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+
+  return await response.json();
 };
 
 export const apiTestNotify = async () => {

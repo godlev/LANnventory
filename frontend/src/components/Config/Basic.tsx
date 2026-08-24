@@ -1,6 +1,7 @@
 import { For, Show } from "solid-js";
 import { apiPath, apiTestNotify } from "../../functions/api"
 import { appConfig } from "../../functions/exports"
+import { applyColorMode, cacheColorMode, isColorMode } from "../../functions/theme";
 
 function Basic() {
 
@@ -10,11 +11,21 @@ function Basic() {
     apiTestNotify();
   };
 
+  const handleSubmit = (event: SubmitEvent) => {
+    const form = event.currentTarget as HTMLFormElement;
+    const color = new FormData(form).get("color");
+
+    if (isColorMode(color)) {
+      applyColorMode(color);
+      cacheColorMode(color);
+    }
+  };
+
   return (
     <div class="card wyl-panel config-panel">
       <div class="card-header">Basic config</div>
       <div class="card-body table-responsive">
-        <form action={apiPath + '/api/config/'} method="post">
+        <form action={apiPath + '/api/config/'} method="post" onSubmit={handleSubmit}>
           <table class="table table-borderless">
           <tbody>
             <tr>
@@ -44,17 +55,9 @@ function Basic() {
             <tr>
                <td class="config-field-label">Color mode</td>
                <td class="config-field-value">
-                <select name="color" class="form-select">
-                <Show
-                  when={appConfig().Color == "dark"}
-                  fallback={<>
-                    <option value="dark">dark</option>
-                    <option value="light" selected>light</option>
-                  </>}
-                >
-                  <option value="dark" selected>dark</option>
+                <select name="color" class="form-select" value={appConfig().Color || "dark"}>
+                  <option value="dark">dark</option>
                   <option value="light">light</option>
-                </Show>
                 </select>
                </td>
             </tr>

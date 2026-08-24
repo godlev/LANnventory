@@ -1,13 +1,12 @@
-import { createSignal, Show } from "solid-js";
+import { createSignal, onMount, Show } from "solid-js";
 import { A, useLocation } from "@solidjs/router";
-import { appConfig, pageContext, setAppConfig } from "../functions/exports";
-import { apiGetConfig } from "../functions/api";
+import { appConfig, pageContext } from "../functions/exports";
+import { normalizeColorMode, refreshAppConfig, setColorMode } from "../functions/theme";
 
 function Header() {
 
-  const [themePath, setThemePath] = createSignal('');
+  const [themeError, setThemeError] = createSignal(false);
   const location = useLocation();
-  const localThemePath = (theme: string) => "/assets/themes/"+theme+"/bootstrap.min.css";
   const navItems = [
     { label: "Home", href: "/" },
     { label: "Config", href: "/config" },
@@ -24,25 +23,43 @@ function Header() {
     const path = href.replace(/\/$/, "") || "/";
     return "nav-link wyl-nav-tab" + (currentPath() === path ? " is-active" : "");
   };
-  
-  const setCurrentTheme = async () => {
-    setAppConfig(await apiGetConfig());
 
-    const theme = appConfig().Theme?appConfig().Theme:"sand";
-    const color = appConfig().Color?appConfig().Color:"dark";
-    
-    setThemePath(localThemePath(theme));
+  const currentColor = () => normalizeColorMode(appConfig().Color);
+  const nextColor = () => currentColor() === "dark" ? "light" : "dark";
+  const colorToggleLabel = () => currentColor() === "dark"
+    ? "Dark mode - switch to light mode"
+    : "Light mode - switch to dark mode";
+  const colorToggleIcon = () => currentColor() === "dark" ? "bi bi-moon-stars-fill" : "bi bi-sun-fill";
 
-    document.documentElement.setAttribute("data-bs-theme", color);
-    color === "dark"
-      ? document.documentElement.style.setProperty('--transparent-light', '#ffffff15')
-      : document.documentElement.style.setProperty('--transparent-light', '#00000015');
-  }
-  setCurrentTheme();
+  const handleColorToggle = async () => {
+    setThemeError(false);
+
+    try {
+      await setColorMode(nextColor());
+    } catch (error) {
+      setThemeError(true);
+      console.error("Failed to save color mode", error);
+    }
+  };
+
+  const handleColorToggleKeyDown = (event: KeyboardEvent) => {
+    if (event.key !== "Enter" && event.key !== " ") {
+      return;
+    }
+
+    event.preventDefault();
+    handleColorToggle();
+  };
+
+  onMount(() => {
+    refreshAppConfig().catch((error) => {
+      setThemeError(true);
+      console.error("Failed to load application config", error);
+    });
+  });
 
   return (
     <>
-    <link rel="stylesheet" href={themePath()}></link> {/* theme */}
     <nav class="navbar navbar-expand-md navbar-dark wyl-navbar">
       <div class="container-lg">
         <a class="navbar-brand" href="/">
@@ -69,7 +86,19 @@ function Header() {
         </ul>
         <ul class="navbar-nav wyl-navbar-actions">
           <li class="nav-item">
-            <a class="nav-link wyl-navbar-github" target="_blank" rel="noreferrer" href="https://github.com/aceberg/WatchYourLAN" title="Github"><i class="bi bi-github"></i></a>
+            <button
+              type="button"
+              class={"nav-link wyl-navbar-utility wyl-theme-toggle" + (themeError() ? " has-error" : "")}
+              title={themeError() ? "Color mode could not be saved" : colorToggleLabel()}
+              aria-label={themeError() ? "Color mode could not be saved" : colorToggleLabel()}
+              onClick={handleColorToggle}
+              onKeyDown={handleColorToggleKeyDown}
+            >
+              <i class={themeError() ? "bi bi-exclamation-triangle-fill" : colorToggleIcon()} aria-hidden="true"></i>
+            </button>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link wyl-navbar-utility wyl-navbar-github" target="_blank" rel="noreferrer" href="https://github.com/aceberg/WatchYourLAN" title="Github"><i class="bi bi-github"></i></a>
           </li>
         </ul>
       </div>

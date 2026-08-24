@@ -32,6 +32,7 @@ func Routes(router *gin.Engine) {
 		r0.GET("/wol/:mac", sendWOL)              // api-network.go
 
 		r0.POST("/config/", saveConfigHandler)                // config.go
+		r0.POST("/config/color", saveColorHandler)            // config.go
 		r0.POST("/config_settings/", saveSettingsHandler)     // config.go
 		r0.POST("/config_influx/", saveInfluxHandler)         // config.go
 		r0.POST("/config_prometheus/", savePrometheusHandler) // config.go

@@ -5,6 +5,23 @@
     <link rel="icon" type="image/png" href="/fs/public/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>WatchYourLAN</title>
+    <script>
+      (function () {
+        try {
+          var theme = document.createElement("link");
+          theme.id = "wyl-theme-stylesheet";
+          theme.rel = "stylesheet";
+          theme.href = "/assets/themes/sand/bootstrap.min.css";
+          document.head.appendChild(theme);
+
+          var color = localStorage.getItem("watchyourlan-color-mode");
+          if (color === "dark" || color === "light") {
+            document.documentElement.setAttribute("data-bs-theme", color);
+            document.documentElement.style.setProperty("--transparent-light", color === "dark" ? "#ffffff15" : "#00000015");
+          }
+        } catch (error) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

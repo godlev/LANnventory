@@ -11,6 +11,11 @@ import (
 
 // Write - write config to file
 func Write(config models.Conf) {
+	check.IfError(WriteErr(config))
+}
+
+// WriteErr - write config to file and return any persistence error
+func WriteErr(config models.Conf) error {
 
 	slog.Info("Writing new config to " + config.ConfPath)
 
@@ -43,6 +48,5 @@ func Write(config models.Conf) {
 
 	viper.Set("PROMETHEUS_ENABLE", config.PrometheusEnable)
 
-	err := viper.WriteConfig()
-	check.IfError(err)
+	return viper.WriteConfig()
 }
