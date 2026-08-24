@@ -1,223 +1,269 @@
-<h1><a href="https://github.com/aceberg/WatchYourLAN">
-    <img src="https://raw.githubusercontent.com/aceberg/WatchYourLAN/main/assets/logo.png" width="20" />
-</a>WatchYourLAN</h1>
-<br/>
+<h1>
+  <img src="frontend/public/fs/public/lanventory-128x128.png" width="48" alt="LANventory icon" />
+  LANventory
+</h1>
 
-[![Docker](https://github.com/aceberg/WatchYourLAN/actions/workflows/main-docker-all.yml/badge.svg)](https://github.com/aceberg/WatchYourLAN/actions/workflows/main-docker-all.yml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/aceberg/WatchYourLAN)](https://goreportcard.com/report/github.com/aceberg/WatchYourLAN)
-[![Docker Image Size (latest semver)](https://img.shields.io/docker/image-size/aceberg/watchyourlan)](https://hub.docker.com/r/aceberg/watchyourlan)
-[![GitHub Discussions](https://img.shields.io/github/discussions/aceberg/WatchYourLAN)](https://github.com/aceberg/WatchYourLAN/discussions)   
+LANventory is an actively developed fork of [WatchYourLAN by aceberg](https://github.com/aceberg/WatchYourLAN), focused on modern LAN inventory, device presence history, event tracking, classification and a self-contained web interface.
 
-<a href="https://trendshift.io/repositories/11642" target="_blank"><img src="https://trendshift.io/api/badge/repositories/11642" alt="aceberg%2FWatchYourLAN | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
+> [!IMPORTANT]
+> LANventory is still under active development. Features, configuration, packaging and upgrade instructions may continue to change until the first beta release is prepared.
 
-Lightweight network IP scanner with web GUI. Features:
-- Send notification when new host is found
-- Monitor hosts online/offline history
-- Keep a list of all hosts in the network
-- Send data to `InfluxDB2` or `Prometheus` to make a `Grafana` dashboard 
+Current repository: [godlev/WatchYourLAN2](https://github.com/godlev/WatchYourLAN2)
 
-> [!IMPORTANT]   
-> Please, consider making a [donation](https://github.com/aceberg#donate). Even $10 will make a difference to me.
+The original WatchYourLAN scanning/backend foundation is preserved and credited. LANventory adds a substantially expanded interface, persistent event model, device classification, configurable retention, migration hardening, safer configuration handling and other reliability improvements.
 
-![Screenshot_1](https://raw.githubusercontent.com/aceberg/WatchYourLAN/main/assets/Screenshot_1.png)  
+## LANventory dashboard
 
-## More screenshots
+![LANventory dashboard](assets/image.png)
 
-<details>
-  <summary>Expand</summary>
+## Highlights
 
-![Screenshot_5](https://raw.githubusercontent.com/aceberg/WatchYourLAN/main/assets/Screenshot_5.png)   
-![Screenshot_2](https://raw.githubusercontent.com/aceberg/WatchYourLAN/main/assets/Screenshot_2.png)   
-![Screenshot_3](https://raw.githubusercontent.com/aceberg/WatchYourLAN/main/assets/Screenshot_3.png)   
-![Screenshot_4](https://raw.githubusercontent.com/aceberg/WatchYourLAN/main/assets/Screenshot_4.png) 
-</details> 
+### Modern local-first interface
 
-## Quick start
+- Compact responsive dashboard.
+- Dark and light color modes.
+- Local Open Sans fonts.
+- Local Bootstrap Icons.
+- Local Bootswatch themes.
+- LANventory favicon and navbar icon assets bundled locally.
+- No automatic external UI asset requests after build.
 
-<details>
-  <summary>Expand</summary>
+### Home dashboard
 
-Replace `$YOURTIMEZONE` with correct time zone and `$YOURIFACE` with network interface you want to scan. Network mode must be `host`. Set `$DOCKERDATAPATH` for container to save data:
+- Summary cards for Total, Online, Offline, Known and Unknown devices.
+- Shared filtering by interface, device type, recognition state, online state and search.
+- Search across device information such as name and IP.
+- Device Type filtering integrated with dashboard counts and recent event panels.
+- Compact device table with sticky column headings.
+- Device names link to read-only Host details.
+- Direct edit shortcut from the device table.
+- Recent Connectivity and Device Changes panels.
+- Recent event panels automatically follow the currently filtered device set.
 
-```sh
-docker run --name wyl \
-	-e "IFACES=$YOURIFACE" \
-	-e "TZ=$YOURTIMEZONE" \
-	--network="host" \
-	-v $DOCKERDATAPATH/wyl:/data/WatchYourLAN \
-    aceberg/watchyourlan
-```
-Web GUI should be at http://localhost:8840
+### Device management
 
-</details> 
+- Persistent Known / Unknown classification.
+- Persistent manual Device Type classification.
+- Device Type icon picker.
+- Supported device types include:
+  - Router
+  - Switch
+  - Access Point
+  - Firewall
+  - Server
+  - NAS
+  - Desktop
+  - Laptop
+  - Phone
+  - Tablet
+  - TV
+  - Printer
+  - Camera
+  - IoT
+  - Virtual Machine
+  - Container
+  - Game Console
+  - Other
+- Host page defaults to read mode.
+- Explicit Host edit mode for editable properties.
+- Wake-on-LAN and port-scan actions remain available where supported.
 
-## Auth
+### Presence
 
-<details>
-  <summary>Expand</summary>
+Presence represents sampled online/offline visibility over time.
 
-**WatchYourLAN** does not have built-in auth option. But you can use it with SSO tools like Authelia, or my simple auth app [ForAuth](https://github.com/aceberg/ForAuth).   
-Here is an example [docker-compose-auth.yml](https://github.com/aceberg/WatchYourLAN/blob/main/docker-compose-auth.yml).
+Features include:
 
-> :warning:  **WARNING!**   
-> Please, don't forget that WYL needs `host` network mode to work. So, WYL port will be exposed in this setup. You need to limit access to it with firewall or other measures.   
+- Search by device name, IP and other shared device fields.
+- Filter by interface.
+- Filter by Device Type.
+- Filter by Known / Unknown state.
+- Filter by current Online / Offline state.
+- Day/night visualization.
+- Hour and day timeline boundaries.
+- Configurable Presence retention.
+- Presence data remains separate from discrete Events.
 
-</details> 
+### Events
 
-## Install on Linux
+Events record meaningful state transitions and device changes instead of storing every scan as an Event.
 
-<details>
-  <summary>Expand</summary>
+Current Event types:
 
-All binary packages can be found in [latest](https://github.com/aceberg/WatchYourLAN/releases/latest) release. There are `.deb`, `.rpm`, `.apk` (Alpine Linux) and `.tar.gz` files.   
+- `discovered`
+- `online`
+- `offline`
+- `known`
+- `unknown`
+- `device-type-changed`
 
-Supported architectures: `amd64`, `i386`, `arm_v5`, `arm_v6`, `arm_v7`, `arm64`.   
-Dependencies: `arp-scan`, `tzdata`.
+Events features include:
 
-For `amd64` there is a `deb` repo [available](https://github.com/aceberg/ppa)
+- Unified Events explorer.
+- Summary cards with Event filtering.
+- Ctrl/Cmd-click multi-select on Event summary cards.
+- Device filter.
+- Multiple Event Type filtering.
+- Active filter/grouping indicators.
+- Sticky Events table header.
+- Deterministic pagination.
+- Load More support.
+- Group By controls.
 
-</details> 
+Available grouping options include:
 
-## Config
-<details>
-  <summary>Expand</summary>
+- Device
+- Event
+- Category
+- Device Type
+- IP
+- Interface
+- Day
 
-Configuration can be done through config file, GUI or environment variables. Variable names is `config_v2.yaml` file are the same, but in lowcase.
+Grouped Events support:
 
-### Basic config
-| Variable  | Description | Default |
-| --------  | ----------- | ------- |
-| TZ | Set your timezone for correct time | |
-| HOST | Listen address | 0.0.0.0 |
-| PORT   | Port for web GUI | 8840 |
-| THEME | Any theme name from https://bootswatch.com in lowcase or [additional](https://github.com/aceberg/aceberg-bootswatch-fork) | sand |
-| COLOR | Background color: light or dark | dark |
-| NODEPATH | Path to local node modules |  |
-| SHOUTRRR_URL | WatchYourLAN uses [Shoutrrr](https://github.com/nicholas-fedor/shoutrrr) to send notifications. It is already integrated, just needs a correct URL. Examples for Discord, Email, Gotify, Matrix, Ntfy, Pushover, Slack, Telegram, Generic Webhook and etc are [here](https://nicholas-fedor.github.io/shoutrrr/) | |
+- Collapse All
+- Expand All
+- Stable collapsed state when loading additional Events.
 
-### Scan settings
-| Variable  | Description | Default |
-| --------  | ----------- | ------- |
-| IFACES | Interfaces to scan. Could be one or more, separated by space. See [docs/VLAN_ARP_SCAN.md](https://github.com/aceberg/WatchYourLAN/blob/main/docs/VLAN_ARP_SCAN.md). | |
-| TIMEOUT | Time between scans (seconds) | 120 |
-| ARP_ARGS | Arguments for `arp-scan`. Enable `debug` log level to see resulting command. (Example: `-r 1`). See [docs/VLAN_ARP_SCAN.md](https://github.com/aceberg/WatchYourLAN/blob/main/docs/VLAN_ARP_SCAN.md). | |
-| ARP_STRS ARP_STRS_JOINED | See [docs/VLAN_ARP_SCAN.md](https://github.com/aceberg/WatchYourLAN/blob/main/docs/VLAN_ARP_SCAN.md). | |
-| LOG_LEVEL | Log level: `debug`, `info`, `warn` or `error` | info |
-| TRIM_HIST | Remove history after (hours) | 48 |
-| HIST_IN_DB | DEPRECATED since 2.1.3. Now History is always stored in DB. Use TRIM_HIST to reduce DB size |  |
-| USE_DB | Either `sqlite` or `postgres` | sqlite |
-| PG_CONNECT | Address to connect to PostgreSQL. (Example: `postgres://username:password@192.168.0.1:5432/dbname?sslmode=disable`). Full list of URL parameters [here](https://pkg.go.dev/github.com/lib/pq#hdr-Connection_String_Parameters) | |
+### Event device display
 
-### InfluxDB2 config
-This config matches Grafana's config for InfluxDB data source
+The Device column in Events can be displayed as:
 
-| Variable  | Description | Default | Example |
-| --------  | ----------- | ------- | ------- |
-| INFLUX_ENABLE | Enable export to InfluxDB2 | false | true |
-| INFLUX_SKIP_TLS | Skip TLS Verify | false | true |
-| INFLUX_ADDR | Address:port of InfluxDB2 server | | https://192.168.2.3:8086/ |
-| INFLUX_BUCKET | InfluxDB2 bucket | | test |
-| INFLUX_ORG | InfluxDB2 org | | home |
-| INFLUX_TOKEN | Secret token, generated by InfluxDB2 | | |
+- `Name + icon`
+- `Name only`
+- `Icon only`
 
-### Prometheus config
-This config configures the Prometheus data source
+`Icon only` is the default for new or invalid preferences.
 
-| Variable  | Description | Default | Example |
-| --------  | ----------- | ------- | ------- |
-| PROMETHEUS_ENABLE | Enable the Prometheus `/metrics` endpoint | false | true |
+When a Host still exists, the device icon/name can link to its Host page.
 
-</details> 
+If a Host has been deleted, retained connectivity Events remain readable as historical snapshots and are not linked to an unrelated Host that may later reuse the same numeric ID.
 
-## Config file
+## Retention model
 
-<details>
-  <summary>Expand</summary>
+LANventory deliberately separates sampled Presence history from Events.
 
-Config file name is `config_v2.yaml`. Example:
+| Data | Retention behavior |
+| --- | --- |
+| Presence samples | Controlled by `TRIM_HIST` |
+| `online` / `offline` Events | Controlled by `CONNECTIVITY_RETENTION` |
+| Device-change Events | Retained while the device record exists |
 
-```yaml
-arp_args: ""
-color: dark
-host: 0.0.0.0
-ifaces: enp4s0
-influx_addr: ""
-influx_bucket: ""
-influx_enable: false
-influx_org: ""
-influx_skip_tls: false
-influx_token: ""
-log_level: info
-nodepath: ""
-pg_connect: ""
-port: "8840"
-prometheus_enable: false
-shoutrrr_url: "gotify://192.168.0.1:8083/AwQqpAae.rrl5Ob/?title=Unknown host detected&DisableTLS=yes"
-theme: sand
-timeout: 60
-trim_hist: 48
-use_db: sqlite
-```
+If `CONNECTIVITY_RETENTION` is absent from an older configuration, LANventory falls back to the existing `TRIM_HIST` value for backward compatibility.
 
-</details> 
+Retention can be configured from:
 
-## Options
+**Settings → Data retention**
 
-<details>
-  <summary>Expand</summary>
+Changing retention does not restart the network scanner.
 
-| Key  | Description | Default | 
-| --------  | ----------- | ------- | 
-| -d | Path to config dir | /data/WatchYourLAN | 
-| -n | Path to node modules (see below) | |
+## Reliability and migration work
 
-</details> 
+LANventory has completed a major release-readiness audit and hardening pass.
 
-## Local network only
-<details>
-  <summary>Expand</summary>
+Current validation includes:
 
-By default, this app pulls themes, icons and fonts from the internet. But, in some cases, it may be useful to have an independent from global network setup. I created a separate [image](https://github.com/aceberg/my-dockerfiles/tree/main/node-bootstrap) with all necessary modules and fonts.
-Run with Docker:
-```sh
-docker run --name node-bootstrap          \
-    -p 8850:8850                          \
-    aceberg/node-bootstrap
-```
-```sh
-docker run --name wyl \
-	-e "IFACES=$YOURIFACE" \
-	-e "TZ=$YOURTIMEZONE" \
-	--network="host" \
-	-v $DOCKERDATAPATH/wyl:/data/WatchYourLAN \
-    aceberg/watchyourlan -n "http://$YOUR_IP:8850"
-```
-Or use [docker-compose](docker-compose.yml)
+- Non-destructive migration tests against a legacy WatchYourLAN SQLite schema.
+- Existing Host rows survive migration.
+- Existing History rows survive migration.
+- Device Type schema is added safely.
+- Events schema is created safely.
+- Migration is idempotent.
+- Reopening an already migrated database is safe.
+- Failed scans do not create false Offline state changes.
+- Failed scans do not create false Offline Events.
+- Repeated scans do not create duplicate transition Events.
+- Host return after a failed scan produces the correct transition.
+- Presence and connectivity-event retention are independent.
+- Device-change Events are not removed by age-based connectivity retention.
+- Missing Host IDs are rejected instead of returning a zero-value Host.
+- Configuration validation is atomic.
+- Invalid configuration changes do not partially modify runtime configuration.
+- Invalid scan settings do not accidentally restart scanning.
+- Database-setting changes trigger schema migration after reconnect.
+- Configuration access is synchronized for concurrent readers and writers.
+- Global database lifecycle/reconnect operations are mutex-guarded.
 
-</details> 
+## Configuration security hardening
 
-## API & Integrations
+Sensitive configuration values are no longer returned by `/api/config`.
 
-<details>
-  <summary>Expand</summary>
+Sensitive settings currently include values such as:
 
-### API
-Moved to [docs/API.md](https://github.com/aceberg/WatchYourLAN/blob/main/docs/API.md)
+- PostgreSQL connection credentials.
+- InfluxDB token.
+- Shoutrrr notification URL/credentials.
 
-### Integrations
-- [ArchLinux (AUR)](https://aur.archlinux.org/packages/watch-your-lan) by `gilcu3`
-- [Python API client](https://github.com/drwahl/py-watchyourlanclient) by [drwahl](https://github.com/drwahl)
-- [Umbrel](https://apps.umbrel.com/app/watch-your-lan) by [Jasper](https://github.com/ceramicwhite)
-- [YunoHost](https://apps.yunohost.org/app/watchyourlan)
-</details> 
+These fields are now write-only from the web Settings interface.
 
-## Thanks
-<details>
-  <summary>Expand</summary>
+Existing secret values can be:
 
-- All go packages listed in [dependencies](https://github.com/aceberg/WatchYourLAN/network/dependencies)
-- Favicon and logo: [Access point icons created by Freepik - Flaticon](https://www.flaticon.com/free-icons/access-point)
-- [Bootstrap](https://getbootstrap.com/)
-- Themes: [Free themes for Bootstrap](https://bootswatch.com)
+- Kept unchanged.
+- Replaced with a new value.
+- Explicitly cleared.
 
-</details> 
+Leaving a secret field blank does **not** overwrite the stored value.
+
+The frontend only receives information about whether a secret is configured, not the stored plaintext secret itself.
+
+## Frontend failure handling
+
+Critical UI flows have been hardened so API failures do not appear as valid empty/default data.
+
+Examples include:
+
+- Missing Host handling.
+- Settings load failures.
+- Settings save failures.
+- Host API failures.
+- Presence API failures.
+- Event API failures.
+
+The Settings page no longer displays fake/default configuration values as if they were the currently stored configuration when loading fails.
+
+## Security and exposure
+
+LANventory does **not** currently provide built-in authentication.
+
+> [!WARNING]
+> Do not expose LANventory directly to the public Internet.
+
+Recommended deployment:
+
+- Trusted local network.
+- VPN.
+- Authenticated reverse proxy.
+- SSO-protected reverse proxy.
+
+LANventory exposes administrative operations including:
+
+- Device editing.
+- Device deletion.
+- Scan configuration.
+- Runtime configuration.
+- Wake-on-LAN.
+- Port scanning.
+
+Protect access accordingly.
+
+Stored PostgreSQL, InfluxDB and Shoutrrr secrets are protected from browser readback, but the local `config_v2.yaml` file still contains the real values.
+
+Protect the LANventory data/config directory using appropriate filesystem permissions.
+
+## Runtime requirements
+
+LANventory currently inherits the WatchYourLAN ARP discovery architecture.
+
+Real LAN scanning is intended primarily for Linux.
+
+Requirements include:
+
+- `arp-scan`
+- `tzdata`
+- Access to the physical LAN interface being scanned.
+
+The web UI/API normally listens on:
+
+```text
+0.0.0.0:8840
