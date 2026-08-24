@@ -62,7 +62,7 @@ type EventGroup = {
 const eventsPageSize = 100;
 const customEventFilterValue = "custom";
 const eventsDeviceDisplayStorageKey = "eventsDeviceDisplay";
-const defaultDeviceDisplayMode: DeviceDisplayMode = "name-icon";
+const defaultDeviceDisplayMode: DeviceDisplayMode = "icon";
 const eventTypeOrder: ActivityEventType[] = ["online", "offline", "discovered", "known", "unknown", "device-type-changed"];
 
 const emptyStats: ActivityStats = {

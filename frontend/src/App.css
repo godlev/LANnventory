@@ -1300,12 +1300,14 @@ html[data-bs-theme] .device-table > tbody > tr.device-row-unknown:hover > td {
     text-decoration: underline;
 }
 .activity-host-icon-link {
-    color: var(--wyl-muted);
+    color: var(--wyl-link);
+    opacity: 1;
     text-decoration: none;
 }
 .activity-host-icon-link:hover,
 .activity-host-icon-link:focus-visible {
     color: var(--wyl-link-hover);
+    opacity: 1;
     text-decoration: none;
 }
 .activity-host-icon-link:focus-visible {
