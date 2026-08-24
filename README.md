@@ -12,6 +12,10 @@ Current repository: [godlev/WatchYourLAN2](https://github.com/godlev/WatchYourLA
 
 The original WatchYourLAN scanning/backend foundation is preserved and credited. LANventory adds a substantially expanded interface, persistent event model, device classification, configurable retention, migration hardening, safer configuration handling and other reliability improvements.
 
+## LANventory dashboard
+
+![LANventory dashboard](assets/image.png)
+
 ## Highlights
 
 ### Modern local-first interface
@@ -301,10 +305,6 @@ Some integrations and packaging references may still exist only in upstream docu
 The current code retains PostgreSQL support and fork-added queries have been reviewed for portability, but an isolated real PostgreSQL runtime integration test is still required before LANventory is declared fully validated for PostgreSQL deployments.
 
 SQLite is currently the most extensively tested migration/runtime path in the fork.
-
-## Screenshots
-
-Updated LANventory screenshots will be added as the interface approaches the first beta release.
 
 ## Support development
 
