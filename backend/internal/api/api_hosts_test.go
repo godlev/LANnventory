@@ -1,13 +1,17 @@
 package api
 
 import (
+	"bytes"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strconv"
 	"testing"
 
 	"github.com/aceberg/WatchYourLAN/internal/conf"
 	"github.com/aceberg/WatchYourLAN/internal/gdb"
+	"github.com/aceberg/WatchYourLAN/internal/models"
 	"github.com/gin-gonic/gin"
 )
 
@@ -56,4 +60,190 @@ func TestHostEndpointsRejectInvalidID(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestSetHostDeviceTypeAcceptsValidTypeAndPreservesFields(t *testing.T) {
+	router := setupTestRouter(t)
+	host := seedHost(t, models.Host{
+		Name:  "gateway",
+		Iface: "eth0",
+		IP:    "192.168.1.1",
+		Mac:   "AA:BB:CC:DD:EE:01",
+		Hw:    "Gateway Vendor",
+		Date:  "2026-08-24 09:00:00",
+		Known: 1,
+		Now:   1,
+	})
+
+	rec := patchHostDeviceType(router, host.ID, `{"deviceType":"router"}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var updated models.Host
+	if err := json.Unmarshal(rec.Body.Bytes(), &updated); err != nil {
+		t.Fatalf("json.Unmarshal: %v", err)
+	}
+	if updated.DeviceType != "router" {
+		t.Fatalf("DeviceType = %q, want router", updated.DeviceType)
+	}
+	if updated.Name != host.Name || updated.IP != host.IP || updated.Mac != host.Mac || updated.Known != host.Known || updated.Now != host.Now {
+		t.Fatalf("unrelated fields changed: got %+v, original %+v", updated, host)
+	}
+
+	reread := gdb.SelectByID(host.ID)
+	if reread.DeviceType != "router" {
+		t.Fatalf("reread DeviceType = %q, want router", reread.DeviceType)
+	}
+	if reread.Hw != host.Hw || reread.Iface != host.Iface || reread.Date != host.Date {
+		t.Fatalf("reread unrelated fields changed: got %+v, original %+v", reread, host)
+	}
+}
+
+func TestSetHostDeviceTypeAcceptsNASAndClearing(t *testing.T) {
+	router := setupTestRouter(t)
+	host := seedHost(t, models.Host{
+		Name:       "storage",
+		IP:         "192.168.1.20",
+		Mac:        "AA:BB:CC:DD:EE:20",
+		Hw:         "Storage Vendor",
+		Known:      1,
+		Now:        1,
+		DeviceType: "router",
+	})
+
+	rec := patchHostDeviceType(router, host.ID, `{"deviceType":"nas"}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	if got := gdb.SelectByID(host.ID).DeviceType; got != "nas" {
+		t.Fatalf("DeviceType after NAS update = %q, want nas", got)
+	}
+
+	rec = patchHostDeviceType(router, host.ID, `{"deviceType":""}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	if got := gdb.SelectByID(host.ID).DeviceType; got != "" {
+		t.Fatalf("DeviceType after clearing = %q, want empty string", got)
+	}
+}
+
+func TestSetHostDeviceTypeRejectsInvalidInput(t *testing.T) {
+	router := setupTestRouter(t)
+	host := seedHost(t, models.Host{
+		Name:       "desktop",
+		IP:         "192.168.1.42",
+		Mac:        "AA:BB:CC:DD:EE:42",
+		DeviceType: "desktop",
+	})
+
+	tests := []struct {
+		name string
+		body string
+	}{
+		{name: "unknown type", body: `{"deviceType":"spaceship"}`},
+		{name: "missing field", body: `{}`},
+		{name: "null field", body: `{"deviceType":null}`},
+		{name: "non-string field", body: `{"deviceType":42}`},
+		{name: "malformed json", body: `not-json`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rec := patchHostDeviceType(router, host.ID, tt.body)
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+			}
+			if got := gdb.SelectByID(host.ID).DeviceType; got != "desktop" {
+				t.Fatalf("DeviceType changed after rejected input: got %q, want desktop", got)
+			}
+		})
+	}
+}
+
+func TestSetHostDeviceTypeRejectsInvalidID(t *testing.T) {
+	router := setupTestRouter(t)
+	body := bytes.NewBufferString(`{"deviceType":"router"}`)
+	tests := []string{
+		"/api/host/not-a-number/type",
+		"/api/host/0/type",
+		"/api/host/-1/type",
+		"/api/host/999/type",
+	}
+
+	for _, path := range tests {
+		t.Run(path, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPatch, path, bytes.NewReader(body.Bytes()))
+			req.Header.Set("Content-Type", "application/json")
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+			}
+		})
+	}
+}
+
+func TestHostJSONIncludesDeviceType(t *testing.T) {
+	router := setupTestRouter(t)
+	host := seedHost(t, models.Host{
+		Name:       "console",
+		IP:         "127.0.0.1",
+		Mac:        "AA:BB:CC:DD:EE:99",
+		DeviceType: "game-console",
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/all", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("/api/all status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	var allHosts []models.Host
+	if err := json.Unmarshal(rec.Body.Bytes(), &allHosts); err != nil {
+		t.Fatalf("json.Unmarshal /api/all: %v", err)
+	}
+	if len(allHosts) != 1 || allHosts[0].DeviceType != "game-console" {
+		t.Fatalf("/api/all DeviceType = %+v, want game-console", allHosts)
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/api/host/"+itoa(host.ID), nil)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("/api/host status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	var got models.Host
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("json.Unmarshal /api/host: %v", err)
+	}
+	if got.DeviceType != "game-console" {
+		t.Fatalf("/api/host DeviceType = %q, want game-console", got.DeviceType)
+	}
+}
+
+func seedHost(t *testing.T, host models.Host) models.Host {
+	t.Helper()
+
+	gdb.Update("now", host)
+	hosts := gdb.SelectByMAC("now", host.Mac)
+	if len(hosts) != 1 {
+		t.Fatalf("seeded hosts len = %d, want 1", len(hosts))
+	}
+	return hosts[0]
+}
+
+func patchHostDeviceType(router *gin.Engine, id int, body string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(http.MethodPatch, "/api/host/"+itoa(id)+"/type", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	return rec
+}
+
+func itoa(id int) string {
+	return strconv.Itoa(id)
 }

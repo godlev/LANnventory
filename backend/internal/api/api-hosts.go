@@ -1,10 +1,12 @@
 package api
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 
 	"github.com/aceberg/WatchYourLAN/internal/check"
 	"github.com/aceberg/WatchYourLAN/internal/gdb"
@@ -41,6 +43,56 @@ func getHost(c *gin.Context) {
 
 	_, host.DNS = check.DNS(host)
 	c.IndentedJSON(http.StatusOK, host)
+}
+
+// setHostDeviceType godoc
+// @Summary      Set host device type
+// @Description  Update only a host's manually assigned device type
+// @Tags         hosts
+// @Accept       json
+// @Produce      json
+// @Param        id    path      string  true  "Host ID"
+// @Param        body  body      object  true  "Device type payload"
+// @Success      200   {object}  models.Host
+// @Router       /host/{id}/type [patch]
+func setHostDeviceType(c *gin.Context) {
+	idStr := c.Param("id")
+	host, err := getHostByID(idStr) // functions.go
+	if err != nil || host.ID < 1 {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": errInvalidHostID.Error()})
+		return
+	}
+
+	var payload map[string]any
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+
+	rawDeviceType, ok := payload["deviceType"]
+	if !ok {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "missing deviceType"})
+		return
+	}
+
+	deviceType, ok := rawDeviceType.(string)
+	if !ok || !models.IsValidDeviceType(deviceType) {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid deviceType"})
+		return
+	}
+
+	updatedHost, err := gdb.UpdateDeviceType(host.ID, deviceType)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": errInvalidHostID.Error()})
+		return
+	}
+	if err != nil {
+		slog.Error("Failed to update host device type", "id", host.ID, "err", err)
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to update host device type"})
+		return
+	}
+
+	c.IndentedJSON(http.StatusOK, updatedHost)
 }
 
 // delHost godoc

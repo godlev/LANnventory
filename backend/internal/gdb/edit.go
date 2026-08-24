@@ -3,6 +3,8 @@ package gdb
 import (
 	"github.com/aceberg/WatchYourLAN/internal/check"
 	"github.com/aceberg/WatchYourLAN/internal/models"
+
+	"gorm.io/gorm"
 )
 
 // Update - update or create host
@@ -11,6 +13,25 @@ func Update(table string, oneHost models.Host) {
 	tab := db.Table(table)
 	result := tab.Save(&oneHost)
 	check.IfError(result.Error)
+}
+
+// UpdateDeviceType updates only the manual DeviceType field for a host.
+func UpdateDeviceType(id int, deviceType string) (models.Host, error) {
+	var host models.Host
+
+	tab := db.Table("now")
+	result := tab.Model(&models.Host{}).
+		Where("\"ID\" = ?", id).
+		Update("DEVICE_TYPE", deviceType)
+	if result.Error != nil {
+		return host, result.Error
+	}
+	if result.RowsAffected == 0 {
+		return host, gorm.ErrRecordNotFound
+	}
+
+	err := tab.First(&host, id).Error
+	return host, err
 }
 
 // Delete - delete host from DB
