@@ -2,6 +2,13 @@ import { isDeviceTypeValue, type DeviceTypeValue } from "./deviceTypes";
 import type { Conf, Host, HostEvent } from "./exports";
 
 export const apiPath = '';
+export type ActivityCategory = "all" | "connectivity" | "changes";
+
+type ActivityQuery = {
+  category?: ActivityCategory;
+  offset?: number;
+  mac?: string;
+};
 
 export const apiGetAllHosts = async () => {
   const url = apiPath+'/api/all';
@@ -26,8 +33,19 @@ export const apiGetVersion = async () => {
   return res;
 };
 
-export const apiGetActivity = async (limit = 20): Promise<HostEvent[]> => {
-  const url = apiPath+'/api/activity?limit='+limit;
+export const apiGetActivity = async (limit = 20, query: ActivityQuery = {}): Promise<HostEvent[]> => {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (query.category !== undefined) {
+    params.set("category", query.category);
+  }
+  if (query.offset !== undefined) {
+    params.set("offset", String(query.offset));
+  }
+  if (query.mac) {
+    params.set("mac", query.mac);
+  }
+
+  const url = apiPath+'/api/activity?'+params.toString();
   const events = await (await fetch(url)).json();
 
   return events;

@@ -5,6 +5,15 @@ import (
 	"github.com/aceberg/WatchYourLAN/internal/models"
 )
 
+// EventQuery describes filters for persistent activity event selection.
+type EventQuery struct {
+	Limit      int
+	Offset     int
+	Mac        string
+	HostID     int
+	EventTypes []models.HostEventType
+}
+
 // Select - get all hosts
 func Select(table string) (dbHosts []models.Host, ok bool) {
 
@@ -60,14 +69,34 @@ func SelectLatest(mac string, number int) (hosts []models.Host) {
 // SelectEvents returns recent host activity events, newest first.
 func SelectEvents(limit int, mac string) (events []models.HostEvent, ok bool) {
 
+	return SelectEventsFiltered(EventQuery{
+		Limit: limit,
+		Mac:   mac,
+	})
+}
+
+// SelectEventsFiltered returns recent host activity events matching query, newest first.
+func SelectEventsFiltered(query EventQuery) (events []models.HostEvent, ok bool) {
+
 	tab := db.Table("events")
-	if mac != "" {
-		tab = tab.Where("\"MAC\" = ?", mac)
+	if query.Mac != "" {
+		tab = tab.Where("\"MAC\" = ?", query.Mac)
+	}
+	if query.HostID > 0 {
+		tab = tab.Where("\"HOST_ID\" = ?", query.HostID)
+	}
+	if len(query.EventTypes) > 0 {
+		eventTypes := make([]string, 0, len(query.EventTypes))
+		for _, eventType := range query.EventTypes {
+			eventTypes = append(eventTypes, string(eventType))
+		}
+		tab = tab.Where("\"EVENT_TYPE\" IN ?", eventTypes)
 	}
 	err := tab.
 		Order("\"DATE\" DESC").
 		Order("\"ID\" DESC").
-		Limit(limit).
+		Limit(query.Limit).
+		Offset(query.Offset).
 		Find(&events).Error
 
 	return events, !check.IfError(err)
@@ -76,13 +105,8 @@ func SelectEvents(limit int, mac string) (events []models.HostEvent, ok bool) {
 // SelectEventsByHostID returns recent host activity events for one host, newest first.
 func SelectEventsByHostID(hostID int, limit int) (events []models.HostEvent, ok bool) {
 
-	tab := db.Table("events")
-	err := tab.
-		Where("\"HOST_ID\" = ?", hostID).
-		Order("\"DATE\" DESC").
-		Order("\"ID\" DESC").
-		Limit(limit).
-		Find(&events).Error
-
-	return events, !check.IfError(err)
+	return SelectEventsFiltered(EventQuery{
+		Limit:  limit,
+		HostID: hostID,
+	})
 }

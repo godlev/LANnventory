@@ -8,23 +8,35 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/aceberg/WatchYourLAN/internal/gdb"
+	"github.com/aceberg/WatchYourLAN/internal/models"
 )
 
 const (
-	defaultActivityLimit = 20
-	maxActivityLimit     = 100
+	defaultActivityLimit  = 20
+	maxActivityLimit      = 100
+	defaultActivityOffset = 0
+
+	activityCategoryAll          = "all"
+	activityCategoryConnectivity = "connectivity"
+	activityCategoryChanges      = "changes"
 )
 
-var errInvalidActivityLimit = errors.New("invalid limit")
+var (
+	errInvalidActivityLimit    = errors.New("invalid limit")
+	errInvalidActivityOffset   = errors.New("invalid offset")
+	errInvalidActivityCategory = errors.New("invalid category")
+)
 
 // getActivity godoc
 // @Summary      Get recent activity
 // @Description  Retrieve recent host activity events
 // @Tags         activity
 // @Produce      json
-// @Param        limit  query     int     false  "Event limit from 1 to 100"
-// @Param        mac    query     string  false  "Filter by MAC address"
-// @Success      200    {array}   models.HostEvent
+// @Param        limit     query     int     false  "Event limit from 1 to 100"
+// @Param        offset    query     int     false  "Event offset, 0 or greater"
+// @Param        category  query     string  false  "Event category: all, connectivity, changes"
+// @Param        mac       query     string  false  "Filter by MAC address"
+// @Success      200       {array}   models.HostEvent
 // @Router       /activity [get]
 func getActivity(c *gin.Context) {
 	limit, err := parseActivityLimit(c)
@@ -33,7 +45,24 @@ func getActivity(c *gin.Context) {
 		return
 	}
 
-	events, _ := gdb.SelectEvents(limit, c.Query("mac"))
+	offset, err := parseActivityOffset(c)
+	if err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	eventTypes, err := parseActivityCategory(c)
+	if err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	events, _ := gdb.SelectEventsFiltered(gdb.EventQuery{
+		Limit:      limit,
+		Offset:     offset,
+		Mac:        c.Query("mac"),
+		EventTypes: eventTypes,
+	})
 	c.IndentedJSON(http.StatusOK, events)
 }
 
@@ -72,4 +101,36 @@ func parseActivityLimit(c *gin.Context) (int, error) {
 	}
 
 	return limit, nil
+}
+
+func parseActivityOffset(c *gin.Context) (int, error) {
+	rawOffset := c.DefaultQuery("offset", strconv.Itoa(defaultActivityOffset))
+	offset, err := strconv.Atoi(rawOffset)
+	if err != nil || offset < 0 {
+		return 0, errInvalidActivityOffset
+	}
+
+	return offset, nil
+}
+
+func parseActivityCategory(c *gin.Context) ([]models.HostEventType, error) {
+	category := c.DefaultQuery("category", activityCategoryAll)
+	switch category {
+	case activityCategoryAll:
+		return nil, nil
+	case activityCategoryConnectivity:
+		return []models.HostEventType{
+			models.EventOnline,
+			models.EventOffline,
+		}, nil
+	case activityCategoryChanges:
+		return []models.HostEventType{
+			models.EventDiscovered,
+			models.EventKnown,
+			models.EventUnknown,
+			models.EventDeviceTypeChanged,
+		}, nil
+	default:
+		return nil, errInvalidActivityCategory
+	}
 }

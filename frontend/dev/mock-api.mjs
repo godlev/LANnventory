@@ -28,6 +28,8 @@ const deviceTypes = new Set([
   'game-console',
   'other',
 ]);
+const connectivityEvents = new Set(['online', 'offline']);
+const changeEvents = new Set(['discovered', 'known', 'unknown', 'device-type-changed']);
 
 const fakeHosts = [
   {
@@ -271,6 +273,21 @@ function seedActivity() {
   addActivityMinutesAgo(fakeHosts[3], 'offline', 8);
   addActivityMinutesAgo(fakeHosts[3], 'online', 2);
   addActivityMinutesAgo(deletedHostSnapshot, 'offline', 1440);
+
+  for (let i = 0; i < 60; i += 1) {
+    const hostEntry = i % 3 === 0 ? fakeHosts[3] : i % 3 === 1 ? fakeHosts[2] : fakeHosts[1];
+    addActivityMinutesAgo(hostEntry, i % 2 === 0 ? 'online' : 'offline', 20 + i);
+  }
+
+  const changeTypes = ['discovered', 'known', 'unknown', 'device-type-changed'];
+  for (let i = 0; i < 16; i += 1) {
+    const hostEntry = fakeHosts[i % fakeHosts.length];
+    const eventType = changeTypes[i % changeTypes.length];
+    addActivityMinutesAgo(hostEntry, eventType, 90 + i * 3, {
+      oldValue: eventType === 'device-type-changed' ? '' : undefined,
+      newValue: eventType === 'device-type-changed' ? hostEntry.DeviceType : undefined,
+    });
+  }
 }
 
 function sortedActivityEvents() {
@@ -286,13 +303,47 @@ function parseActivityLimit(url) {
   return Number.isInteger(limit) && limit >= 1 && limit <= 100 ? limit : 0;
 }
 
+function parseActivityOffset(url) {
+  const rawOffset = url.searchParams.get('offset') ?? '0';
+  const offset = Number(rawOffset);
+  return Number.isInteger(offset) && offset >= 0 ? offset : -1;
+}
+
+function parseActivityCategory(url) {
+  const category = url.searchParams.get('category') ?? 'all';
+  if (category === 'all') {
+    return () => true;
+  }
+  if (category === 'connectivity') {
+    return (event) => connectivityEvents.has(event.EventType);
+  }
+  if (category === 'changes') {
+    return (event) => changeEvents.has(event.EventType);
+  }
+
+  return null;
+}
+
 function activityFor(url, predicate = () => true) {
   const limit = parseActivityLimit(url);
   if (limit === 0) {
-    return null;
+    return { error: 'invalid limit' };
   }
 
-  return sortedActivityEvents().filter(predicate).slice(0, limit);
+  const offset = parseActivityOffset(url);
+  if (offset < 0) {
+    return { error: 'invalid offset' };
+  }
+
+  const categoryPredicate = parseActivityCategory(url);
+  if (categoryPredicate === null) {
+    return { error: 'invalid category' };
+  }
+
+  return sortedActivityEvents()
+    .filter(categoryPredicate)
+    .filter(predicate)
+    .slice(offset, offset + limit);
 }
 
 function routeReadOnly(req, res, url) {
@@ -316,8 +367,8 @@ function routeReadOnly(req, res, url) {
   if (req.method === 'GET' && pathname === '/api/activity') {
     const mac = url.searchParams.get('mac') ?? '';
     const events = activityFor(url, (event) => mac === '' || event.Mac === mac);
-    if (events === null) {
-      sendJSON(res, { error: 'invalid limit' }, 400);
+    if (events.error) {
+      sendJSON(res, { error: events.error }, 400);
       return true;
     }
 
@@ -340,8 +391,8 @@ function routeReadOnly(req, res, url) {
     }
 
     const events = activityFor(url, (event) => event.HostID === id);
-    if (events === null) {
-      sendJSON(res, { error: 'invalid limit' }, 400);
+    if (events.error) {
+      sendJSON(res, { error: events.error }, 400);
       return true;
     }
 
