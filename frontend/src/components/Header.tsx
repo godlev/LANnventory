@@ -27,9 +27,9 @@ function Header() {
   const currentColor = () => normalizeColorMode(appConfig().Color);
   const nextColor = () => currentColor() === "dark" ? "light" : "dark";
   const colorToggleLabel = () => currentColor() === "dark"
-    ? "Dark mode - switch to light mode"
-    : "Light mode - switch to dark mode";
-  const colorToggleIcon = () => currentColor() === "dark" ? "bi bi-moon-stars-fill" : "bi bi-sun-fill";
+    ? "Switch to light mode"
+    : "Switch to dark mode";
+  const colorToggleIcon = () => currentColor() === "dark" ? "bi bi-sun-fill" : "bi bi-moon-stars-fill";
 
   const handleColorToggle = async () => {
     setThemeError(false);
