@@ -1189,6 +1189,9 @@ html[data-bs-theme] .device-table > tbody > tr.device-row-unknown:hover > td {
     color: var(--wyl-muted);
     font-size: 0.88rem;
 }
+.host-activity-panel {
+    margin-bottom: 0;
+}
 
 .config-page {
     row-gap: 1rem;

@@ -5,6 +5,7 @@ import { apiGetHost } from "../functions/api";
 
 import HostCard from "../components/HostPage/HostCard";
 import Ping from "../components/HostPage/Ping";
+import HostActivityCard from "../components/HostPage/HostActivityCard";
 import HistCard from "../components/HostPage/HistCard";
 import { emptyHost, emptyPageContext, Host, setPageContext } from "../functions/exports";
 
@@ -71,6 +72,11 @@ function HostPage() {
       </div>
       <div class="col-md">
         <Ping IP={currentHost().IP}></Ping>
+      </div>
+    </div>
+    <div class="row g-3 mx-0 mt-1 host-page-row">
+      <div class="col-md">
+        <HostActivityCard host={currentHost()}></HostActivityCard>
       </div>
     </div>
     <div class="row g-3 mx-0 mt-1 host-page-row">
