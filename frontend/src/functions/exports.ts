@@ -15,6 +15,20 @@ export interface Host {
 	DeviceType: string;
 };
 
+export interface HostEvent {
+	ID:         number;
+	HostID:     number;
+	Mac:        string;
+	Name:       string;
+	EventType:  string;
+	Date:       string;
+	IP:         string;
+	Iface:      string;
+	DeviceType: string;
+	OldValue:   string;
+	NewValue:   string;
+};
+
 export interface Conf {
 	Host:	   string;
 	Port:	   string;

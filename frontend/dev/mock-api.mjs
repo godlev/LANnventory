@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 const host = '127.0.0.1';
 const port = 8840;
 const now = '2026-08-23 10:15:00';
+let nextActivityId = 1;
 const deviceTypes = new Set([
   '',
   'router',
@@ -126,6 +127,7 @@ const config = {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const faviconPath = path.resolve(__dirname, '../../backend/internal/web/public/favicon.png');
+const activityEvents = [];
 
 function sendJSON(res, value, statusCode = 200) {
   res.writeHead(statusCode, {
@@ -212,6 +214,10 @@ function historyFor(mac, datePrefix = '') {
   return datePrefix === '' ? rows : rows.filter((item) => item.Date.startsWith(datePrefix));
 }
 
+function findHostByID(id) {
+  return fakeHosts.find((item) => item.ID === id);
+}
+
 function formatDate(date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -221,6 +227,72 @@ function formatDate(date) {
   const second = String(date.getSeconds()).padStart(2, '0');
 
   return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
+}
+
+function addActivity(hostEntry, eventType, options = {}) {
+  activityEvents.push({
+    ID: nextActivityId,
+    HostID: hostEntry.ID,
+    Mac: hostEntry.Mac,
+    Name: hostEntry.Name,
+    EventType: eventType,
+    Date: formatDate(options.date ?? new Date()),
+    IP: hostEntry.IP ?? '',
+    Iface: hostEntry.Iface ?? '',
+    DeviceType: hostEntry.DeviceType ?? '',
+    OldValue: options.oldValue ?? '',
+    NewValue: options.newValue ?? '',
+  });
+  nextActivityId += 1;
+}
+
+function addActivityMinutesAgo(hostEntry, eventType, minutesAgo, options = {}) {
+  addActivity(hostEntry, eventType, {
+    ...options,
+    date: new Date(Date.now() - minutesAgo * 60000),
+  });
+}
+
+function seedActivity() {
+  const deletedHostSnapshot = {
+    ID: 99,
+    Name: 'old tablet',
+    Iface: 'wifi0',
+    IP: '192.168.1.70',
+    Mac: 'AA:BB:CC:00:00:70',
+    DeviceType: 'tablet',
+  };
+
+  addActivityMinutesAgo(fakeHosts[0], 'discovered', 1560);
+  addActivityMinutesAgo(fakeHosts[1], 'discovered', 1515);
+  addActivityMinutesAgo(fakeHosts[1], 'device-type-changed', 65, { oldValue: '', newValue: 'nas' });
+  addActivityMinutesAgo(fakeHosts[0], 'known', 28);
+  addActivityMinutesAgo(fakeHosts[4], 'discovered', 12);
+  addActivityMinutesAgo(fakeHosts[3], 'offline', 8);
+  addActivityMinutesAgo(fakeHosts[3], 'online', 2);
+  addActivityMinutesAgo(deletedHostSnapshot, 'offline', 1440);
+}
+
+function sortedActivityEvents() {
+  return [...activityEvents].sort((left, right) => {
+    const byDate = right.Date.localeCompare(left.Date);
+    return byDate === 0 ? right.ID - left.ID : byDate;
+  });
+}
+
+function parseActivityLimit(url) {
+  const rawLimit = url.searchParams.get('limit') ?? '20';
+  const limit = Number(rawLimit);
+  return Number.isInteger(limit) && limit >= 1 && limit <= 100 ? limit : 0;
+}
+
+function activityFor(url, predicate = () => true) {
+  const limit = parseActivityLimit(url);
+  if (limit === 0) {
+    return null;
+  }
+
+  return sortedActivityEvents().filter(predicate).slice(0, limit);
 }
 
 function routeReadOnly(req, res, url) {
@@ -241,15 +313,46 @@ function routeReadOnly(req, res, url) {
     return true;
   }
 
+  if (req.method === 'GET' && pathname === '/api/activity') {
+    const mac = url.searchParams.get('mac') ?? '';
+    const events = activityFor(url, (event) => mac === '' || event.Mac === mac);
+    if (events === null) {
+      sendJSON(res, { error: 'invalid limit' }, 400);
+      return true;
+    }
+
+    sendJSON(res, events);
+    return true;
+  }
+
   if (req.method === 'GET' && pathname === '/api/history') {
     sendJSON(res, fakeHosts.flatMap((item) => historyFor(item.Mac)));
+    return true;
+  }
+
+  const hostActivityMatch = pathname.match(/^\/api\/host\/(\d+)\/activity$/);
+  if (req.method === 'GET' && hostActivityMatch) {
+    const id = Number(hostActivityMatch[1]);
+    const hostEntry = findHostByID(id);
+    if (!hostEntry) {
+      sendJSON(res, { error: 'invalid host id' }, 400);
+      return true;
+    }
+
+    const events = activityFor(url, (event) => event.HostID === id);
+    if (events === null) {
+      sendJSON(res, { error: 'invalid limit' }, 400);
+      return true;
+    }
+
+    sendJSON(res, events);
     return true;
   }
 
   const hostMatch = pathname.match(/^\/api\/host\/(\d+)$/);
   if (req.method === 'GET' && hostMatch) {
     const id = Number(hostMatch[1]);
-    sendJSON(res, fakeHosts.find((item) => item.ID === id) ?? {});
+    sendJSON(res, findHostByID(id) ?? {});
     return true;
   }
 
@@ -297,13 +400,17 @@ async function routeSafeAction(req, res, url) {
       const id = Number(editMatch[1]);
       const name = editMatch[2];
       const action = editMatch[3] ?? '';
-      const hostEntry = fakeHosts.find((item) => item.ID === id);
+      const hostEntry = findHostByID(id);
 
       if (hostEntry) {
+        const oldKnown = hostEntry.Known;
         hostEntry.Name = name;
 
         if (action === 'toggle') {
           hostEntry.Known = 1 - hostEntry.Known;
+          if (oldKnown !== hostEntry.Known) {
+            addActivity(hostEntry, hostEntry.Known === 1 ? 'known' : 'unknown');
+          }
         }
       }
     }
@@ -315,7 +422,7 @@ async function routeSafeAction(req, res, url) {
   const deviceTypeMatch = pathname.match(/^\/api\/host\/(\d+)\/type$/);
   if (req.method === 'PATCH' && deviceTypeMatch) {
     const id = Number(deviceTypeMatch[1]);
-    const hostEntry = fakeHosts.find((item) => item.ID === id);
+    const hostEntry = findHostByID(id);
     if (!hostEntry) {
       sendJSON(res, { error: 'invalid host id' }, 400);
       return true;
@@ -328,7 +435,14 @@ async function routeSafeAction(req, res, url) {
       return true;
     }
 
+    const oldDeviceType = hostEntry.DeviceType;
     hostEntry.DeviceType = params.deviceType;
+    if (oldDeviceType !== hostEntry.DeviceType) {
+      addActivity(hostEntry, 'device-type-changed', {
+        oldValue: oldDeviceType,
+        newValue: hostEntry.DeviceType,
+      });
+    }
     sendJSON(res, hostEntry);
     return true;
   }
@@ -401,6 +515,8 @@ const server = createServer(async (req, res) => {
 
   sendJSON(res, { error: 'mock endpoint not found' }, 404);
 });
+
+seedActivity();
 
 server.listen(port, host, () => {
   console.log(`WatchYourLAN mock API listening at http://${host}:${port}`);

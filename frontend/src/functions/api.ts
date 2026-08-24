@@ -1,5 +1,5 @@
 import { isDeviceTypeValue, type DeviceTypeValue } from "./deviceTypes";
-import type { Conf, Host } from "./exports";
+import type { Conf, Host, HostEvent } from "./exports";
 
 export const apiPath = '';
 
@@ -24,6 +24,20 @@ export const apiGetVersion = async () => {
   const res = await (await fetch(url)).json();
 
   return res;
+};
+
+export const apiGetActivity = async (limit = 20): Promise<HostEvent[]> => {
+  const url = apiPath+'/api/activity?limit='+limit;
+  const events = await (await fetch(url)).json();
+
+  return events;
+};
+
+export const apiGetHostActivity = async (id: number | string, limit = 10): Promise<HostEvent[]> => {
+  const url = apiPath+'/api/host/'+id+'/activity?limit='+limit;
+  const events = await (await fetch(url)).json();
+
+  return events;
 };
 
 export const apiSetConfigColor = async (color: "dark" | "light"): Promise<Conf> => {
