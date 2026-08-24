@@ -30,19 +30,10 @@ func startScan(quit chan bool) {
 
 				var scanOK bool
 				foundHosts, scanOK = arp.Scan(conf.AppConfig.Ifaces, conf.AppConfig.ArpArgs, conf.AppConfig.ArpStrs)
-				if !scanOK {
-					slog.Warn("Skipping host state update because ARP scan failed")
+				if !processScanResult(foundHosts, scanOK) {
 					lastDate = time.Now()
 					continue
 				}
-
-				// Make map of found hosts
-				foundHostsMap := make(map[string]models.Host)
-				for _, fHost := range foundHosts {
-					foundHostsMap[fHost.Mac] = fHost
-				}
-
-				compareHosts(foundHostsMap)
 
 				lastDate = time.Now()
 			}
@@ -50,6 +41,21 @@ func startScan(quit chan bool) {
 			time.Sleep(time.Duration(1) * time.Minute)
 		}
 	}
+}
+
+func processScanResult(foundHosts []models.Host, scanOK bool) bool {
+	if !scanOK {
+		slog.Warn("Skipping host state update because ARP scan failed")
+		return false
+	}
+
+	foundHostsMap := make(map[string]models.Host)
+	for _, fHost := range foundHosts {
+		foundHostsMap[fHost.Mac] = fHost
+	}
+
+	compareHosts(foundHostsMap)
+	return true
 }
 
 func compareHosts(foundHostsMap map[string]models.Host) {
@@ -60,6 +66,7 @@ func compareHosts(foundHostsMap map[string]models.Host) {
 	}
 
 	for _, aHost := range allHosts {
+		previousNow := aHost.Now
 
 		fHost, exists := foundHostsMap[aHost.Mac]
 		if exists {
@@ -75,6 +82,13 @@ func compareHosts(foundHostsMap map[string]models.Host) {
 			aHost.Now = 0
 		}
 		gdb.Update("now", aHost)
+
+		if exists && previousNow == 0 {
+			gdb.RecordHostEvent(aHost, models.EventOnline, "", "")
+		}
+		if !exists && previousNow == 1 {
+			gdb.RecordHostEvent(aHost, models.EventOffline, "", "")
+		}
 
 		aHost.ID = 0
 		aHost.Date = time.Now().Format("2006-01-02 15:04:05")
@@ -94,5 +108,9 @@ func compareHosts(foundHostsMap map[string]models.Host) {
 		notify.Unknown(fHost) // Log and Shoutrrr
 
 		gdb.Update("now", fHost)
+		hosts := gdb.SelectByMAC("now", fHost.Mac)
+		if len(hosts) > 0 {
+			gdb.RecordHostEvent(hosts[0], models.EventDiscovered, "", "")
+		}
 	}
 }

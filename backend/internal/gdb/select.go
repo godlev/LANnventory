@@ -56,3 +56,33 @@ func SelectLatest(mac string, number int) (hosts []models.Host) {
 
 	return hosts
 }
+
+// SelectEvents returns recent host activity events, newest first.
+func SelectEvents(limit int, mac string) (events []models.HostEvent, ok bool) {
+
+	tab := db.Table("events")
+	if mac != "" {
+		tab = tab.Where("\"MAC\" = ?", mac)
+	}
+	err := tab.
+		Order("\"DATE\" DESC").
+		Order("\"ID\" DESC").
+		Limit(limit).
+		Find(&events).Error
+
+	return events, !check.IfError(err)
+}
+
+// SelectEventsByHostID returns recent host activity events for one host, newest first.
+func SelectEventsByHostID(hostID int, limit int) (events []models.HostEvent, ok bool) {
+
+	tab := db.Table("events")
+	err := tab.
+		Where("\"HOST_ID\" = ?", hostID).
+		Order("\"DATE\" DESC").
+		Order("\"ID\" DESC").
+		Limit(limit).
+		Find(&events).Error
+
+	return events, !check.IfError(err)
+}

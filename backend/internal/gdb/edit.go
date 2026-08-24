@@ -1,6 +1,9 @@
 package gdb
 
 import (
+	"errors"
+	"log/slog"
+
 	"github.com/aceberg/WatchYourLAN/internal/check"
 	"github.com/aceberg/WatchYourLAN/internal/models"
 
@@ -10,9 +13,16 @@ import (
 // Update - update or create host
 func Update(table string, oneHost models.Host) {
 
+	check.IfError(UpdateWithError(table, oneHost))
+}
+
+// UpdateWithError updates or creates a host and returns persistence errors.
+func UpdateWithError(table string, oneHost models.Host) error {
+
 	tab := db.Table(table)
 	result := tab.Save(&oneHost)
-	check.IfError(result.Error)
+
+	return result.Error
 }
 
 // UpdateDeviceType updates only the manual DeviceType field for a host.
@@ -47,6 +57,38 @@ func DeleteOldHistory(date string) int64 {
 
 	tab := db.Table("history")
 	result := tab.Where("\"DATE\" < ?", date).Delete(&models.Host{})
+	check.IfError(result.Error)
+
+	return result.RowsAffected
+}
+
+// AddEvent stores a validated host activity event.
+func AddEvent(event models.HostEvent) error {
+
+	if !models.IsValidHostEventType(event.EventType) {
+		return errors.New("invalid host event type")
+	}
+
+	tab := db.Table("events")
+	result := tab.Create(&event)
+
+	return result.Error
+}
+
+// RecordHostEvent stores an activity event and logs failures without failing callers.
+func RecordHostEvent(host models.Host, eventType models.HostEventType, oldValue, newValue string) {
+
+	err := AddEvent(models.NewHostEvent(host, eventType, oldValue, newValue))
+	if err != nil {
+		slog.Error("Failed to record host event", "eventType", eventType, "mac", host.Mac, "err", err)
+	}
+}
+
+// DeleteOldEvents removes host activity events older than date.
+func DeleteOldEvents(date string) int64 {
+
+	tab := db.Table("events")
+	result := tab.Where("\"DATE\" < ?", date).Delete(&models.HostEvent{})
 	check.IfError(result.Error)
 
 	return result.RowsAffected

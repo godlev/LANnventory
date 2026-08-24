@@ -81,6 +81,7 @@ func setHostDeviceType(c *gin.Context) {
 		return
 	}
 
+	oldDeviceType := host.DeviceType
 	updatedHost, err := gdb.UpdateDeviceType(host.ID, deviceType)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": errInvalidHostID.Error()})
@@ -90,6 +91,10 @@ func setHostDeviceType(c *gin.Context) {
 		slog.Error("Failed to update host device type", "id", host.ID, "err", err)
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to update host device type"})
 		return
+	}
+
+	if oldDeviceType != updatedHost.DeviceType {
+		gdb.RecordHostEvent(updatedHost, models.EventDeviceTypeChanged, oldDeviceType, updatedHost.DeviceType)
 	}
 
 	c.IndentedJSON(http.StatusOK, updatedHost)
@@ -145,6 +150,9 @@ func addHost(c *gin.Context) {
 
 		gdb.Update("now", host)
 		hosts = gdb.SelectByMAC("now", mac)
+		if len(hosts) > 0 {
+			gdb.RecordHostEvent(hosts[0], models.EventDiscovered, "", "")
+		}
 
 		slog.Info("Added host to DB", "host", hosts[0])
 	}
@@ -175,12 +183,25 @@ func editHost(c *gin.Context) {
 	}
 
 	host.Name = name
+	oldKnown := host.Known
 
 	if toggleKnown == "/toggle" {
 		host.Known = 1 - host.Known
 	}
 
-	gdb.Update("now", host)
+	if err := gdb.UpdateWithError("now", host); err != nil {
+		slog.Error("Failed to update host", "id", host.ID, "err", err)
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to update host"})
+		return
+	}
+
+	if oldKnown != host.Known {
+		eventType := models.EventUnknown
+		if host.Known == 1 {
+			eventType = models.EventKnown
+		}
+		gdb.RecordHostEvent(host, eventType, "", "")
+	}
 
 	c.IndentedJSON(http.StatusOK, "OK")
 }

@@ -225,6 +225,89 @@ func TestHostJSONIncludesDeviceType(t *testing.T) {
 	}
 }
 
+func TestEditHostKnownToggleCreatesEventsOnlyOnKnownChange(t *testing.T) {
+	router := setupTestRouter(t)
+	host := seedHost(t, models.Host{
+		Name:  "camera",
+		IP:    "192.168.1.60",
+		Mac:   "AA:BB:CC:DD:EE:60",
+		Known: 0,
+		Now:   1,
+	})
+
+	rec := getPath(router, "/api/edit/"+itoa(host.ID)+"/camera/toggle")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("known toggle status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	assertActivityEvents(t, []models.HostEventType{models.EventKnown})
+
+	events, ok := gdb.SelectEvents(10, "")
+	if !ok {
+		t.Fatal("SelectEvents failed")
+	}
+	if events[0].HostID != host.ID || events[0].Mac != host.Mac || events[0].Name != host.Name {
+		t.Fatalf("event snapshot = %+v, want HostID/Mac/Name from host %+v", events[0], host)
+	}
+
+	rec = getPath(router, "/api/edit/"+itoa(host.ID)+"/camera-renamed/")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("name edit status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	assertActivityEvents(t, []models.HostEventType{models.EventKnown})
+
+	rec = getPath(router, "/api/edit/"+itoa(host.ID)+"/camera-renamed/toggle")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("unknown toggle status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	assertActivityEvents(t, []models.HostEventType{models.EventUnknown, models.EventKnown})
+}
+
+func TestSetHostDeviceTypeCreatesEventsOnlyOnRealChange(t *testing.T) {
+	router := setupTestRouter(t)
+	host := seedHost(t, models.Host{
+		Name:       "router",
+		IP:         "192.168.1.1",
+		Mac:        "AA:BB:CC:DD:EE:01",
+		Known:      1,
+		Now:        1,
+		DeviceType: "",
+	})
+
+	rec := patchHostDeviceType(router, host.ID, `{"deviceType":"router"}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("router update status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	assertActivityEvents(t, []models.HostEventType{models.EventDeviceTypeChanged})
+
+	events, ok := gdb.SelectEvents(10, "")
+	if !ok {
+		t.Fatal("SelectEvents failed")
+	}
+	if events[0].OldValue != "" || events[0].NewValue != "router" || events[0].DeviceType != "router" {
+		t.Fatalf("device type event = %+v, want old empty/new router/current router", events[0])
+	}
+
+	rec = patchHostDeviceType(router, host.ID, `{"deviceType":"router"}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("same-value update status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	assertActivityEvents(t, []models.HostEventType{models.EventDeviceTypeChanged})
+
+	rec = patchHostDeviceType(router, host.ID, `{"deviceType":""}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("clear update status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	assertActivityEvents(t, []models.HostEventType{models.EventDeviceTypeChanged, models.EventDeviceTypeChanged})
+
+	events, ok = gdb.SelectEvents(10, "")
+	if !ok {
+		t.Fatal("SelectEvents failed")
+	}
+	if events[0].OldValue != "router" || events[0].NewValue != "" || events[0].DeviceType != "" {
+		t.Fatalf("clear event = %+v, want old router/new empty/current empty", events[0])
+	}
+}
+
 func seedHost(t *testing.T, host models.Host) models.Host {
 	t.Helper()
 
@@ -242,6 +325,30 @@ func patchHostDeviceType(router *gin.Engine, id int, body string) *httptest.Resp
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 	return rec
+}
+
+func getPath(router *gin.Engine, path string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(http.MethodGet, path, nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	return rec
+}
+
+func assertActivityEvents(t *testing.T, want []models.HostEventType) {
+	t.Helper()
+
+	events, ok := gdb.SelectEvents(10, "")
+	if !ok {
+		t.Fatal("SelectEvents failed")
+	}
+	if len(events) != len(want) {
+		t.Fatalf("events len = %d, want %d: %+v", len(events), len(want), events)
+	}
+	for i, eventType := range want {
+		if events[i].EventType != string(eventType) {
+			t.Fatalf("events[%d].EventType = %q, want %q; events: %+v", i, events[i].EventType, eventType, events)
+		}
+	}
 }
 
 func itoa(id int) string {

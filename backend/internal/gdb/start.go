@@ -71,6 +71,10 @@ func Start() {
 	tab = db.Table("history")
 	err = tab.AutoMigrate(&models.Host{})
 	check.IfError(err)
+
+	tab = db.Table("events")
+	err = tab.AutoMigrate(&models.HostEvent{})
+	check.IfError(err)
 }
 
 // Connect - choose DB and connect

@@ -23,6 +23,9 @@ func HistoryTrim() {
 
 			n := gdb.DeleteOldHistory(date)
 			slog.Info("Removed records from History", "n", n)
+
+			n = gdb.DeleteOldEvents(date)
+			slog.Info("Removed records from Activity", "n", n)
 		}
 	}()
 }
