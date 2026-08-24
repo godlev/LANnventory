@@ -14,6 +14,8 @@ import (
 
 var errInvalidPositiveInt = errors.New("invalid positive integer")
 
+var restartScanner = routines.ScanRestart
+
 type colorRequest struct {
 	Color string `json:"color"`
 }
@@ -25,14 +27,20 @@ type retentionRequest struct {
 
 func saveConfigHandler(c *gin.Context) {
 
-	conf.AppConfig.Host = c.PostForm("host")
-	conf.AppConfig.Port = c.PostForm("port")
-	conf.AppConfig.Theme = c.PostForm("theme")
-	conf.AppConfig.Color = c.PostForm("color")
-	conf.AppConfig.NodePath = c.PostForm("node")
-	conf.AppConfig.ShoutURL = c.PostForm("shout")
+	nextConfig := conf.AppConfig
+	nextConfig.Host = c.PostForm("host")
+	nextConfig.Port = c.PostForm("port")
+	nextConfig.Theme = c.PostForm("theme")
+	nextConfig.Color = c.PostForm("color")
+	nextConfig.NodePath = c.PostForm("node")
+	nextConfig.ShoutURL = c.PostForm("shout")
 
-	conf.Write(conf.AppConfig)
+	if err := conf.WriteErr(nextConfig); err != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to write config"})
+		return
+	}
+
+	conf.AppConfig = nextConfig
 
 	c.Redirect(http.StatusFound, c.Request.Referer())
 }
@@ -97,17 +105,23 @@ func saveRetentionHandler(c *gin.Context) {
 
 func saveSettingsHandler(c *gin.Context) {
 
-	conf.AppConfig.LogLevel = c.PostForm("log")
-	conf.AppConfig.ArpArgs = c.PostForm("arpargs")
-	conf.AppConfig.Ifaces = c.PostForm("ifaces")
+	nextConfig := conf.AppConfig
+	nextConfig.LogLevel = c.PostForm("log")
+	nextConfig.ArpArgs = c.PostForm("arpargs")
+	nextConfig.Ifaces = c.PostForm("ifaces")
 
 	useDB := c.PostForm("usedb")
 	pgConnect := c.PostForm("pgconnect")
+	if useDB != "sqlite" && useDB != "postgres" {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid usedb"})
+		return
+	}
+	nextConfig.UseDB = useDB
+	nextConfig.PGConnect = pgConnect
 
-	if useDB != conf.AppConfig.UseDB || pgConnect != conf.AppConfig.PGConnect {
-		conf.AppConfig.UseDB = c.PostForm("usedb")
-		conf.AppConfig.PGConnect = c.PostForm("pgconnect")
-		gdb.Connect()
+	if !isValidLogLevel(nextConfig.LogLevel) {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid log"})
+		return
 	}
 
 	timeout, err := parsePositiveInt(c.PostForm("timeout"))
@@ -116,7 +130,7 @@ func saveSettingsHandler(c *gin.Context) {
 		return
 	}
 
-	trimHist := conf.AppConfig.TrimHist
+	trimHist := nextConfig.TrimHist
 	if rawTrimHist := c.PostForm("trim"); rawTrimHist != "" {
 		trimHist, err = parsePositiveInt(rawTrimHist)
 		if err != nil {
@@ -125,7 +139,7 @@ func saveSettingsHandler(c *gin.Context) {
 		}
 	}
 
-	connectivityRetention := conf.AppConfig.ConnectivityRetention
+	connectivityRetention := nextConfig.ConnectivityRetention
 	if connectivityRetention < 1 {
 		connectivityRetention = trimHist
 	}
@@ -137,21 +151,31 @@ func saveSettingsHandler(c *gin.Context) {
 		}
 	}
 
-	conf.AppConfig.Timeout = timeout
-	conf.AppConfig.TrimHist = trimHist
-	conf.AppConfig.ConnectivityRetention = connectivityRetention
+	nextConfig.Timeout = timeout
+	nextConfig.TrimHist = trimHist
+	nextConfig.ConnectivityRetention = connectivityRetention
 
 	arpStrs := c.PostFormArray("arpstrs")
-	conf.AppConfig.ArpStrs = []string{}
+	nextConfig.ArpStrs = []string{}
 	for _, s := range arpStrs {
 		if s != "" {
-			conf.AppConfig.ArpStrs = append(conf.AppConfig.ArpStrs, s)
+			nextConfig.ArpStrs = append(nextConfig.ArpStrs, s)
 		}
 	}
 
-	conf.Write(conf.AppConfig)
+	if err := conf.WriteErr(nextConfig); err != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to write config"})
+		return
+	}
 
-	routines.ScanRestart()
+	dbChanged := useDB != conf.AppConfig.UseDB || pgConnect != conf.AppConfig.PGConnect
+	conf.AppConfig = nextConfig
+
+	if dbChanged {
+		gdb.Start()
+	}
+
+	restartScanner()
 
 	c.Redirect(http.StatusFound, c.Request.Referer())
 }
@@ -165,19 +189,34 @@ func parsePositiveInt(value string) (int, error) {
 	return parsed, nil
 }
 
+func isValidLogLevel(value string) bool {
+	switch value {
+	case "debug", "info", "warn", "error":
+		return true
+	default:
+		return false
+	}
+}
+
 func saveInfluxHandler(c *gin.Context) {
 
-	conf.AppConfig.InfluxAddr = c.PostForm("addr")
-	conf.AppConfig.InfluxToken = c.PostForm("token")
-	conf.AppConfig.InfluxOrg = c.PostForm("org")
-	conf.AppConfig.InfluxBucket = c.PostForm("bucket")
+	nextConfig := conf.AppConfig
+	nextConfig.InfluxAddr = c.PostForm("addr")
+	nextConfig.InfluxToken = c.PostForm("token")
+	nextConfig.InfluxOrg = c.PostForm("org")
+	nextConfig.InfluxBucket = c.PostForm("bucket")
 
 	enable := c.PostForm("enable")
 	skip := c.PostForm("skip")
-	conf.AppConfig.InfluxEnable = enable == "on"
-	conf.AppConfig.InfluxSkipTLS = skip == "on"
+	nextConfig.InfluxEnable = enable == "on"
+	nextConfig.InfluxSkipTLS = skip == "on"
 
-	conf.Write(conf.AppConfig)
+	if err := conf.WriteErr(nextConfig); err != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to write config"})
+		return
+	}
+
+	conf.AppConfig = nextConfig
 
 	c.Redirect(http.StatusFound, c.Request.Referer())
 }
@@ -185,9 +224,15 @@ func saveInfluxHandler(c *gin.Context) {
 func savePrometheusHandler(c *gin.Context) {
 	enable := c.PostForm("enable")
 
-	conf.AppConfig.PrometheusEnable = enable == "on"
+	nextConfig := conf.AppConfig
+	nextConfig.PrometheusEnable = enable == "on"
 
-	conf.Write(conf.AppConfig)
+	if err := conf.WriteErr(nextConfig); err != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to write config"})
+		return
+	}
+
+	conf.AppConfig = nextConfig
 
 	c.Redirect(http.StatusFound, c.Request.Referer())
 }

@@ -5,12 +5,15 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/aceberg/WatchYourLAN/internal/conf"
+	"github.com/aceberg/WatchYourLAN/internal/gdb"
 	"github.com/aceberg/WatchYourLAN/internal/models"
 	"github.com/gin-gonic/gin"
 )
@@ -53,7 +56,8 @@ func setupConfigRouter(t *testing.T) *gin.Engine {
 	t.Helper()
 
 	oldConfig := conf.AppConfig
-	confPath := filepath.Join(t.TempDir(), "config_v2.yaml")
+	tempDir := t.TempDir()
+	confPath := filepath.Join(tempDir, "config_v2.yaml")
 	if err := os.WriteFile(confPath, []byte("{}\n"), 0o600); err != nil {
 		t.Fatalf("os.WriteFile: %v", err)
 	}
@@ -64,14 +68,21 @@ func setupConfigRouter(t *testing.T) *gin.Engine {
 		Theme:                 "sand",
 		Color:                 "dark",
 		ConfPath:              confPath,
+		DBPath:                filepath.Join(tempDir, "config-test.db"),
 		Timeout:               600,
 		TrimHist:              48,
 		ConnectivityRetention: 72,
 		UseDB:                 "sqlite",
 		LogLevel:              "info",
+		ArpArgs:               "-r 1",
+		ArpStrs:               []string{"scan-a"},
+		Ifaces:                "eth0",
 	}
 
 	t.Cleanup(func() {
+		if err := gdb.Close(); err != nil {
+			t.Errorf("gdb.Close: %v", err)
+		}
 		conf.AppConfig = oldConfig
 	})
 
@@ -82,11 +93,29 @@ func setupConfigRouter(t *testing.T) *gin.Engine {
 	return router
 }
 
+func stubScannerRestart(t *testing.T) *int {
+	t.Helper()
+
+	oldRestartScanner := restartScanner
+	restartCalls := 0
+	restartScanner = func() {
+		restartCalls++
+	}
+
+	t.Cleanup(func() {
+		restartScanner = oldRestartScanner
+	})
+
+	return &restartCalls
+}
+
 func TestSaveSettingsRejectsInvalidConnectivityRetention(t *testing.T) {
 	router := setupConfigRouter(t)
+	original := conf.AppConfig
 	confPath := conf.AppConfig.ConfPath
+	restartCalls := stubScannerRestart(t)
 
-	body := strings.NewReader("log=info&arpargs=&ifaces=eth0&timeout=600&trim=48&connectivity_retention=-1&usedb=sqlite&pgconnect=")
+	body := strings.NewReader("log=debug&arpargs=-q&ifaces=wlan0&timeout=600&trim=48&connectivity_retention=-1&usedb=sqlite&pgconnect=&arpstrs=scan-b")
 	req := httptest.NewRequest(http.MethodPost, "/api/config_settings/", body)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
@@ -96,8 +125,11 @@ func TestSaveSettingsRejectsInvalidConnectivityRetention(t *testing.T) {
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
 	}
-	if conf.AppConfig.ConnectivityRetention != 72 {
-		t.Fatalf("ConnectivityRetention = %d, want unchanged 72", conf.AppConfig.ConnectivityRetention)
+	if !reflect.DeepEqual(conf.AppConfig, original) {
+		t.Fatalf("AppConfig changed after rejected settings save:\ngot  %+v\nwant %+v", conf.AppConfig, original)
+	}
+	if *restartCalls != 0 {
+		t.Fatalf("restart calls = %d, want 0 after rejected settings save", *restartCalls)
 	}
 
 	written, err := os.ReadFile(confPath)
@@ -107,6 +139,160 @@ func TestSaveSettingsRejectsInvalidConnectivityRetention(t *testing.T) {
 	if strings.Contains(strings.ToLower(string(written)), "connectivity_retention: -1") {
 		t.Fatalf("config file persisted invalid connectivity retention: %s", string(written))
 	}
+}
+
+func TestSaveSettingsRejectsInvalidInputAtomically(t *testing.T) {
+	tests := []struct {
+		name      string
+		overrides map[string]string
+		wantError string
+	}{
+		{
+			name:      "invalid timeout",
+			overrides: map[string]string{"timeout": "abc"},
+			wantError: "invalid timeout",
+		},
+		{
+			name:      "invalid trim",
+			overrides: map[string]string{"trim": "0"},
+			wantError: "invalid trim",
+		},
+		{
+			name:      "invalid usedb",
+			overrides: map[string]string{"usedb": "mysql"},
+			wantError: "invalid usedb",
+		},
+		{
+			name:      "invalid log",
+			overrides: map[string]string{"log": "verbose"},
+			wantError: "invalid log",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			router := setupConfigRouter(t)
+			original := conf.AppConfig
+			restartCalls := stubScannerRestart(t)
+
+			req := httptest.NewRequest(http.MethodPost, "/api/config_settings/", strings.NewReader(settingsForm(tt.overrides)))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+			}
+			if !strings.Contains(rec.Body.String(), tt.wantError) {
+				t.Fatalf("body = %q, want to contain %q", rec.Body.String(), tt.wantError)
+			}
+			if !reflect.DeepEqual(conf.AppConfig, original) {
+				t.Fatalf("AppConfig changed after rejected settings save:\ngot  %+v\nwant %+v", conf.AppConfig, original)
+			}
+			if *restartCalls != 0 {
+				t.Fatalf("restart calls = %d, want 0 after rejected settings save", *restartCalls)
+			}
+		})
+	}
+}
+
+func TestSaveSettingsPersistsAfterValidationAndRestartsScanner(t *testing.T) {
+	router := setupConfigRouter(t)
+	original := conf.AppConfig
+	restartCalls := stubScannerRestart(t)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/config_settings/", strings.NewReader(settingsForm(nil)))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusFound {
+		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusFound, rec.Body.String())
+	}
+	if *restartCalls != 1 {
+		t.Fatalf("restart calls = %d, want 1", *restartCalls)
+	}
+	if conf.AppConfig.LogLevel != "debug" ||
+		conf.AppConfig.ArpArgs != "-q" ||
+		conf.AppConfig.Ifaces != "wlan0" ||
+		conf.AppConfig.Timeout != 300 ||
+		conf.AppConfig.TrimHist != 96 ||
+		conf.AppConfig.ConnectivityRetention != 168 ||
+		!reflect.DeepEqual(conf.AppConfig.ArpStrs, []string{"scan-b"}) {
+		t.Fatalf("scan settings were not updated correctly: %+v", conf.AppConfig)
+	}
+	if conf.AppConfig.Host != original.Host ||
+		conf.AppConfig.Port != original.Port ||
+		conf.AppConfig.Theme != original.Theme ||
+		conf.AppConfig.Color != original.Color ||
+		conf.AppConfig.ShoutURL != original.ShoutURL {
+		t.Fatalf("unrelated config changed: got %+v, original %+v", conf.AppConfig, original)
+	}
+}
+
+func TestSaveSettingsMigratesDatabaseWhenDBConfigChanges(t *testing.T) {
+	router := setupConfigRouter(t)
+	dbPath := conf.AppConfig.DBPath
+	restartCalls := stubScannerRestart(t)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/config_settings/", strings.NewReader(settingsForm(map[string]string{
+		"pgconnect": "changed-but-still-sqlite",
+	})))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusFound {
+		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusFound, rec.Body.String())
+	}
+	if *restartCalls != 1 {
+		t.Fatalf("restart calls = %d, want 1", *restartCalls)
+	}
+	if _, err := os.Stat(dbPath); err != nil {
+		t.Fatalf("settings DB was not created at %s: %v", dbPath, err)
+	}
+
+	host := models.Host{
+		Name:       "migration-check",
+		Mac:        "AA:BB:CC:DD:EE:90",
+		DeviceType: "router",
+	}
+	if err := gdb.UpdateWithError("now", host); err != nil {
+		t.Fatalf("UpdateWithError now after settings DB migration: %v", err)
+	}
+	hosts := gdb.SelectByMAC("now", host.Mac)
+	if len(hosts) != 1 || hosts[0].DeviceType != "router" {
+		t.Fatalf("migrated now table did not persist DeviceType: %+v", hosts)
+	}
+	if err := gdb.UpdateWithError("history", hosts[0]); err != nil {
+		t.Fatalf("UpdateWithError history after settings DB migration: %v", err)
+	}
+	if err := gdb.AddEvent(models.NewHostEvent(hosts[0], models.EventDiscovered, "", "")); err != nil {
+		t.Fatalf("AddEvent after settings DB migration: %v", err)
+	}
+}
+
+func settingsForm(overrides map[string]string) string {
+	values := url.Values{
+		"log":                    {"debug"},
+		"arpargs":                {"-q"},
+		"ifaces":                 {"wlan0"},
+		"timeout":                {"300"},
+		"trim":                   {"96"},
+		"connectivity_retention": {"168"},
+		"usedb":                  {"sqlite"},
+		"pgconnect":              {""},
+		"arpstrs":                {"scan-b", ""},
+	}
+
+	for key, value := range overrides {
+		values.Set(key, value)
+	}
+
+	return values.Encode()
 }
 
 func TestSaveRetentionHandlerPersistsOnlyRetentionFields(t *testing.T) {

@@ -559,7 +559,13 @@ function routeReadOnly(req, res, url) {
   const hostMatch = pathname.match(/^\/api\/host\/(\d+)$/);
   if (req.method === 'GET' && hostMatch) {
     const id = Number(hostMatch[1]);
-    sendJSON(res, findHostByID(id) ?? {});
+    const hostEntry = findHostByID(id);
+    if (!hostEntry) {
+      sendJSON(res, { error: 'invalid host id' }, 400);
+      return true;
+    }
+
+    sendJSON(res, hostEntry);
     return true;
   }
 

@@ -96,6 +96,34 @@ func TestNewHostCreatesOneDiscoveredEvent(t *testing.T) {
 	}
 }
 
+func TestRepeatedSuccessfulScanDoesNotDuplicateDiscoveredEvent(t *testing.T) {
+	setupScanRoutineTest(t)
+
+	host := models.Host{
+		Iface: "eth0",
+		IP:    "192.168.1.10",
+		Mac:   "AA:BB:CC:DD:EE:10",
+		Hw:    "New Device Vendor",
+		Date:  "2026-08-24 10:00:00",
+		Now:   1,
+	}
+
+	processScanResult([]models.Host{host}, true)
+	host.Date = "2026-08-24 10:05:00"
+	processScanResult([]models.Host{host}, true)
+
+	events, ok := gdb.SelectEvents(10, "")
+	if !ok {
+		t.Fatal("SelectEvents failed")
+	}
+	if len(events) != 1 {
+		t.Fatalf("events len = %d, want 1 discovered event: %+v", len(events), events)
+	}
+	if events[0].EventType != string(models.EventDiscovered) {
+		t.Fatalf("EventType = %q, want %q", events[0].EventType, models.EventDiscovered)
+	}
+}
+
 func TestOnlineOfflineTransitionsCreateSingleEvents(t *testing.T) {
 	setupScanRoutineTest(t)
 
@@ -175,6 +203,38 @@ func TestFailedScanDoesNotCreateOfflineEvent(t *testing.T) {
 	if len(events) != 0 {
 		t.Fatalf("events len after failed scan = %d, want 0: %+v", len(events), events)
 	}
+}
+
+func TestHostReturnsAfterFailedScanCreatesOnlyOnlineTransition(t *testing.T) {
+	setupScanRoutineTest(t)
+
+	gdb.Update("now", models.Host{
+		Name:  "phone",
+		Iface: "wifi0",
+		IP:    "192.168.1.83",
+		Mac:   "AA:BB:CC:DD:EE:83",
+		Hw:    "Mobile Vendor",
+		Date:  "2026-08-24 08:00:00",
+		Known: 1,
+		Now:   0,
+	})
+
+	if processScanResult(nil, false) {
+		t.Fatal("processScanResult returned true for failed scan")
+	}
+
+	processScanResult([]models.Host{
+		{
+			Iface: "wifi0",
+			IP:    "192.168.1.83",
+			Mac:   "AA:BB:CC:DD:EE:83",
+			Hw:    "Mobile Vendor",
+			Date:  "2026-08-24 09:00:00",
+			Now:   1,
+		},
+	}, true)
+
+	assertEventTypes(t, []models.HostEventType{models.EventOnline})
 }
 
 func TestRetentionDeletesOldPresenceAndOnlyOldConnectivity(t *testing.T) {

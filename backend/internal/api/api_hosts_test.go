@@ -62,6 +62,38 @@ func TestHostEndpointsRejectInvalidID(t *testing.T) {
 	}
 }
 
+func TestHostEndpointsRejectMissingHostID(t *testing.T) {
+	router := setupTestRouter(t)
+
+	tests := []string{
+		"/api/host/999",
+		"/api/host/del/999",
+		"/api/edit/999/name/toggle",
+		"/api/host/999/activity",
+	}
+
+	for _, path := range tests {
+		t.Run(path, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, path, nil)
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+			}
+		})
+	}
+
+	hosts, ok := gdb.Select("now")
+	if !ok {
+		t.Fatal("Select now failed")
+	}
+	if len(hosts) != 0 {
+		t.Fatalf("missing-host operations changed hosts: %+v", hosts)
+	}
+}
+
 func TestSetHostDeviceTypeAcceptsValidTypeAndPreservesFields(t *testing.T) {
 	router := setupTestRouter(t)
 	host := seedHost(t, models.Host{

@@ -160,7 +160,12 @@ export const apiSetDeviceType = async (id: number, deviceType: DeviceTypeValue):
 export const apiGetHost = async (id:string) => {
 
   const url = apiPath+'/api/host/'+id;
-  const res = await (await fetch(url)).json();
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+
+  const res = await response.json();
 
   return res;
 };

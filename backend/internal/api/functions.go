@@ -17,5 +17,10 @@ func getHostByID(idStr string) (models.Host, error) {
 		return models.Host{}, errInvalidHostID
 	}
 
-	return gdb.SelectByID(id), nil
+	host := gdb.SelectByID(id)
+	if host.ID < 1 {
+		return models.Host{}, errInvalidHostID
+	}
+
+	return host, nil
 }
