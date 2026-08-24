@@ -62,12 +62,31 @@ export function activityDescription(event: HostEvent): string {
   }
 }
 
+export function activityDetails(event: HostEvent): string {
+  switch (event.EventType) {
+    case "device-type-changed":
+      return "Type changed: " + activityDeviceTypeLabel(event.OldValue) + " \u2192 " + activityDeviceTypeLabel(event.NewValue);
+    case "discovered":
+    case "known":
+    case "unknown":
+      return compactNetworkDetail(event);
+    case "online":
+    case "offline":
+    default:
+      return "";
+  }
+}
+
 export function activityHostName(event: HostEvent): string {
   return event.Name.trim() || event.Mac || "Unknown device";
 }
 
 export function activityDeviceIcon(event: HostEvent): string {
   return getDeviceTypeOption(event.DeviceType).icon;
+}
+
+export function activityDeviceTypeLabel(value: string | null | undefined): string {
+  return getDeviceTypeOption(value).label;
 }
 
 export function relativeActivityTime(value: string): string {
@@ -96,6 +115,14 @@ export function relativeActivityTime(value: string): string {
   }
 
   return Math.floor(hours / 24) + " d ago";
+}
+
+function compactNetworkDetail(event: HostEvent): string {
+  if (event.IP && event.Iface) {
+    return event.IP + " / " + event.Iface;
+  }
+
+  return event.IP || event.Iface || "";
 }
 
 function parseActivityDate(value: string): Date | null {

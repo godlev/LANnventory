@@ -29,6 +29,7 @@ function App() {
 
   const Config = lazy(() => import("./pages/Config"));
   const History = lazy(() => import("./pages/History"));
+  const Activity = lazy(() => import("./pages/Activity"));
   const HostPage = lazy(() => import("./pages/HostPage"));
 
   return (
@@ -36,6 +37,7 @@ function App() {
       <Route path="/" component={Body}/>
       <Route path="/config" component={Config}/>
       <Route path="/history" component={History}/>
+      <Route path="/activity" component={Activity}/>
       <Route path="/host/:id" component={HostPage}/>
     </Router>
   )

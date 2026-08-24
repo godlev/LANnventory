@@ -11,6 +11,7 @@ function Header() {
     { label: "Home", href: "/" },
     { label: "Config", href: "/config" },
     { label: "History", href: "/history" },
+    { label: "Activity", href: "/activity" },
   ];
 
   const currentPath = () => location.pathname.replace(/\/$/, "") || "/";

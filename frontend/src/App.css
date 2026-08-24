@@ -1192,6 +1192,118 @@ html[data-bs-theme] .device-table > tbody > tr.device-row-unknown:hover > td {
 .host-activity-panel {
     margin-bottom: 0;
 }
+.activity-page {
+    display: grid;
+    gap: 1rem;
+}
+.activity-page-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+.activity-page-title {
+    margin: 0;
+    color: var(--bs-body-color);
+    font-size: 1.55rem;
+    font-weight: 800;
+    line-height: 1.1;
+    font-variant-caps: all-small-caps;
+    letter-spacing: 0.04em;
+}
+.activity-page-subtitle {
+    margin: 0.24rem 0 0;
+    color: var(--wyl-muted);
+    font-size: 0.94rem;
+}
+.activity-retention-note {
+    color: var(--wyl-muted);
+    font-size: 0.84rem;
+    font-weight: 700;
+    line-height: 1.25;
+    text-align: right;
+}
+.activity-table-panel {
+    margin-bottom: 0;
+}
+.activity-table-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+.activity-table-title {
+    font-size: 1.02rem;
+    font-weight: 750;
+    line-height: 1.15;
+    font-variant-caps: all-small-caps;
+    letter-spacing: 0.04em;
+}
+.activity-table-subtitle {
+    color: var(--wyl-muted);
+    font-size: 0.76rem;
+    font-weight: 700;
+    line-height: 1.2;
+    font-variant-caps: all-small-caps;
+    letter-spacing: 0.035em;
+}
+.activity-table-body {
+    padding: 0;
+}
+.activity-table {
+    margin-bottom: 0;
+    --bs-table-bg: var(--wyl-table-row-bg);
+    --bs-table-striped-bg: var(--wyl-table-row-bg);
+    --bs-table-hover-bg: var(--wyl-table-hover-bg);
+    --bs-table-border-color: var(--wyl-panel-border);
+}
+.activity-table thead th {
+    padding: 0.5rem 0.75rem;
+    color: var(--wyl-muted);
+    background-color: var(--wyl-table-header-bg);
+    border-bottom: 1px solid var(--wyl-panel-border);
+    font-size: 0.72rem;
+    font-weight: 800;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+html[data-bs-theme] .activity-table > tbody > tr > td {
+    background-color: var(--wyl-table-row-bg);
+    border-color: var(--wyl-panel-border);
+}
+html[data-bs-theme] .activity-table > tbody > tr:hover > td {
+    background-color: var(--wyl-table-hover-bg);
+}
+.activity-table td {
+    padding: 0.52rem 0.75rem;
+    vertical-align: middle;
+}
+.activity-table-device,
+.activity-table-event {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.48rem;
+    min-width: 0;
+}
+.activity-table .activity-event-icon {
+    width: 1.75rem;
+    height: 1.75rem;
+    flex: 0 0 auto;
+}
+.activity-table-muted {
+    color: var(--wyl-muted);
+    font-size: 0.88rem;
+}
+.activity-table-actions {
+    display: flex;
+    justify-content: center;
+    padding: 0.72rem;
+    border-top: 1px solid var(--wyl-panel-border);
+}
+.activity-load-more {
+    min-width: 7.1rem;
+}
 
 .config-page {
     row-gap: 1rem;
@@ -1674,6 +1786,9 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     .host-scan-button {
         justify-self: start;
     }
+    .activity-retention-note {
+        text-align: left;
+    }
     .activity-row {
         grid-template-columns: 2rem minmax(0, 1fr) auto;
     }
@@ -1754,6 +1869,43 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     }
     .activity-time {
         grid-column: 2;
+    }
+    .activity-table thead {
+        display: none;
+    }
+    .activity-table,
+    .activity-table tbody,
+    .activity-table tr,
+    .activity-table td {
+        display: block;
+        width: 100%;
+    }
+    .activity-table tr {
+        padding: 0.58rem 0;
+        border-top: 1px solid var(--wyl-panel-border);
+    }
+    .activity-table tr:first-child {
+        border-top: 0;
+    }
+    html[data-bs-theme] .activity-table > tbody > tr > td {
+        border-bottom-width: 0;
+    }
+    .activity-table td {
+        display: grid;
+        grid-template-columns: 5rem minmax(0, 1fr);
+        gap: 0.7rem;
+        padding: 0.18rem 0.75rem;
+    }
+    .activity-table td::before {
+        content: attr(data-label);
+        color: var(--wyl-muted);
+        font-size: 0.68rem;
+        font-weight: 800;
+        line-height: 1.4;
+        text-transform: uppercase;
+    }
+    .activity-table .activity-time {
+        grid-column: auto;
     }
 }
 
