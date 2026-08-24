@@ -1335,6 +1335,7 @@ html[data-bs-theme] .device-table > tbody > tr.device-row-unknown:hover > td {
 }
 .activity-table-panel {
     margin-bottom: 0;
+    overflow: visible;
 }
 .activity-table-header {
     display: flex;
@@ -1360,6 +1361,9 @@ html[data-bs-theme] .device-table > tbody > tr.device-row-unknown:hover > td {
 .activity-table-body {
     padding: 0;
 }
+.activity-table-body .table-responsive {
+    overflow-x: visible;
+}
 .activity-table {
     margin-bottom: 0;
     table-layout: auto;
@@ -1369,6 +1373,10 @@ html[data-bs-theme] .device-table > tbody > tr.device-row-unknown:hover > td {
     --bs-table-border-color: var(--wyl-panel-border);
 }
 .activity-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    height: 2.18rem;
     padding: 0.5rem 0.75rem;
     color: var(--wyl-muted);
     background-color: var(--wyl-table-header-bg);
@@ -1377,6 +1385,8 @@ html[data-bs-theme] .device-table > tbody > tr.device-row-unknown:hover > td {
     font-weight: 800;
     line-height: 1.2;
     text-transform: uppercase;
+    vertical-align: middle;
+    white-space: nowrap;
 }
 html[data-bs-theme] .activity-table > tbody > tr > td {
     background-color: var(--wyl-table-row-bg);
@@ -1391,7 +1401,7 @@ html[data-bs-theme] .activity-table > tbody > tr:hover > td {
 }
 .activity-table-device-heading,
 .activity-table-device-cell {
-    width: 16%;
+    width: 15%;
     text-align: right;
 }
 .activity-table-device {
@@ -1401,7 +1411,7 @@ html[data-bs-theme] .activity-table > tbody > tr:hover > td {
 }
 .activity-table-event-heading,
 .activity-table-event-cell {
-    width: 20%;
+    width: 26%;
 }
 .activity-table-ip-heading,
 .activity-table-ip-cell,

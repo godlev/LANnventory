@@ -390,12 +390,12 @@ function Activity() {
             <table class="table table-hover activity-table">
               <thead>
                 <tr>
+                  <th scope="col" class="activity-table-time-heading">Time</th>
                   <th scope="col" class="activity-table-device-heading">Device</th>
-                  <th scope="col" class="activity-table-event-heading">Event</th>
                   <th scope="col" class="activity-table-ip-heading">IP</th>
+                  <th scope="col" class="activity-table-event-heading">Event</th>
                   <th scope="col" class="activity-table-iface-heading">Iface</th>
                   <th scope="col" class="activity-table-details-heading">Details</th>
-                  <th scope="col" class="activity-table-time-heading">Time</th>
                 </tr>
               </thead>
               <tbody>
@@ -462,6 +462,11 @@ function eventRow(event: HostEvent, hostExists: (event: HostEvent) => boolean) {
 
   return (
     <tr class={"activity-table-row activity-row-" + activityTone(event.EventType)}>
+      <td data-label="Time" class="activity-table-time-cell">
+        <time class="activity-time" dateTime={event.Date} title={event.Date}>
+          {relativeActivityTime(event.Date)}
+        </time>
+      </td>
       <td data-label="Device" class="activity-table-device-cell">
         <span class="activity-table-device">
           <span class="activity-host-icon" aria-hidden="true">
@@ -475,6 +480,7 @@ function eventRow(event: HostEvent, hostExists: (event: HostEvent) => boolean) {
           </Show>
         </span>
       </td>
+      <td data-label="IP" class="activity-table-muted activity-table-ip-cell">{event.IP || " "}</td>
       <td data-label="Event" class="activity-table-event-cell">
         <span class="activity-table-event">
           <span class="activity-event-icon" aria-hidden="true">
@@ -483,14 +489,8 @@ function eventRow(event: HostEvent, hostExists: (event: HostEvent) => boolean) {
           <span>{activityDescription(event)}</span>
         </span>
       </td>
-      <td data-label="IP" class="activity-table-muted activity-table-ip-cell">{event.IP || " "}</td>
       <td data-label="Iface" class="activity-table-muted activity-table-iface-cell">{event.Iface || " "}</td>
       <td data-label="Details" class="activity-table-muted activity-table-details-cell">{activityDetails(event) || " "}</td>
-      <td data-label="Time" class="activity-table-time-cell">
-        <time class="activity-time" dateTime={event.Date} title={event.Date}>
-          {relativeActivityTime(event.Date)}
-        </time>
-      </td>
     </tr>
   );
 }
