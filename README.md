@@ -8,7 +8,7 @@ LANnventory is an actively developed fork of [WatchYourLAN by aceberg](https://g
 > [!IMPORTANT]
 > LANnventory is still under active development. Features, configuration, packaging and upgrade instructions may continue to change until the first beta release is prepared.
 
-Current repository: [godlev/WatchYourLAN2](https://github.com/godlev/WatchYourLAN2)
+Current repository: [godlev/WatchYourLAN2](https://github.com/godlev/LANnventory)
 
 The original WatchYourLAN scanning/backend foundation is preserved and credited. LANnventory adds a substantially expanded interface, persistent event model, device classification, configurable retention, migration hardening, safer configuration handling and other reliability improvements.
 
