@@ -35,6 +35,7 @@ type EventFilterKey =
   | "device-type-changed";
 
 type GroupByKey = "none" | "device" | "event" | "category" | "device-type" | "ip" | "iface" | "day";
+type DeviceDisplayMode = "name-icon" | "name" | "icon";
 
 type EventFilterOption = {
   key: EventFilterKey;
@@ -60,6 +61,8 @@ type EventGroup = {
 
 const eventsPageSize = 100;
 const customEventFilterValue = "custom";
+const eventsDeviceDisplayStorageKey = "eventsDeviceDisplay";
+const defaultDeviceDisplayMode: DeviceDisplayMode = "name-icon";
 const eventTypeOrder: ActivityEventType[] = ["online", "offline", "discovered", "known", "unknown", "device-type-changed"];
 
 const emptyStats: ActivityStats = {
@@ -96,10 +99,17 @@ const groupByOptions: { key: GroupByKey; label: string }[] = [
   { key: "day", label: "Day" },
 ];
 
+const deviceDisplayOptions: { key: DeviceDisplayMode; label: string }[] = [
+  { key: "name-icon", label: "Name + icon" },
+  { key: "name", label: "Name only" },
+  { key: "icon", label: "Icon only" },
+];
+
 function Activity() {
   const [selectedMac, setSelectedMac] = createSignal("");
   const [selectedEventTypes, setSelectedEventTypes] = createSignal<ActivityEventType[]>([]);
   const [groupBy, setGroupBy] = createSignal<GroupByKey>("none");
+  const [deviceDisplayMode, setDeviceDisplayMode] = createSignal<DeviceDisplayMode>(defaultDeviceDisplayMode);
   const [events, setEvents] = createSignal<HostEvent[]>([]);
   const [stats, setStats] = createSignal<ActivityStats>(emptyStats);
   const [devices, setDevices] = createSignal<ActivityDeviceOption[]>([]);
@@ -254,6 +264,7 @@ function Activity() {
   });
 
   onMount(() => {
+    setDeviceDisplayMode(readStoredEventsDeviceDisplay());
     loadDevices();
   });
 
@@ -412,6 +423,13 @@ function Activity() {
     }
   };
 
+  const handleDeviceDisplayChange = (event: Event & { currentTarget: HTMLSelectElement }) => {
+    const nextMode = normalizeDeviceDisplayMode(event.currentTarget.value);
+
+    setDeviceDisplayMode(nextMode);
+    persistEventsDeviceDisplay(nextMode);
+  };
+
   return (
     <div class="activity-page">
       <header class="activity-page-header">
@@ -487,6 +505,19 @@ function Activity() {
               }</For>
             </select>
           </label>
+          <label class="activity-filter-field activity-display-field">
+            <span class="activity-filter-label">Device display</span>
+            <select
+              class="form-select form-select-sm activity-filter-select"
+              value={deviceDisplayMode()}
+              onChange={handleDeviceDisplayChange}
+              title="Choose how the Events Device column is displayed"
+            >
+              <For each={deviceDisplayOptions}>{(option) =>
+                <option value={option.key}>{option.label}</option>
+              }</For>
+            </select>
+          </label>
           <Show when={groupBy() !== "none"}>
             <button
               type="button"
@@ -529,7 +560,7 @@ function Activity() {
         </div>
         <div class="card-body activity-table-body">
           <div class="table-responsive">
-            <table class="table table-hover activity-table">
+            <table class={"table table-hover activity-table activity-table-device-display-" + deviceDisplayMode()}>
               <thead>
                 <tr>
                   <th scope="col" class="activity-table-time-heading">
@@ -577,13 +608,13 @@ function Activity() {
                           </td>
                         </tr>
                         <Show when={!isGroupCollapsed(group.key)}>
-                          <For each={group.events}>{(event) => eventRow(event, hostExists)}</For>
+                          <For each={group.events}>{(event) => eventRow(event, hostExists, deviceDisplayMode)}</For>
                         </Show>
                       </>
                     }</For>
                   }
                 >
-                  <For each={events()}>{(event) => eventRow(event, hostExists)}</For>
+                  <For each={events()}>{(event) => eventRow(event, hostExists, deviceDisplayMode)}</For>
                 </Show>
               </tbody>
             </table>
@@ -613,8 +644,56 @@ function Activity() {
   );
 }
 
-function eventRow(event: HostEvent, hostExists: (event: HostEvent) => boolean) {
+function eventRow(event: HostEvent, hostExists: (event: HostEvent) => boolean, deviceDisplayMode: () => DeviceDisplayMode) {
   const canLinkHost = () => event.HostID > 0 && hostExists(event);
+  const deviceName = () => activityHostName(event);
+  const deviceTypeLabel = () => activityDeviceTypeLabel(event.DeviceType);
+  const iconOnlyTitle = () => deviceName() + " \u00b7 " + deviceTypeLabel() + (canLinkHost() ? " \u00b7 open device details" : " \u00b7 Device no longer exists");
+  const iconOnlyAria = () => canLinkHost()
+    ? "Open " + deviceName() + " device details"
+    : deviceName() + " \u00b7 " + deviceTypeLabel() + " \u00b7 Device no longer exists";
+  const nameContent = () => (
+    <Show
+      when={canLinkHost()}
+      fallback={<span class="activity-host-name">{deviceName()}</span>}
+    >
+      <A href={"/host/" + event.HostID} class="activity-host-link">{deviceName()}</A>
+    </Show>
+  );
+  const deviceTypeIcon = () => (
+    <span
+      class="activity-host-icon"
+      title={"Device type: " + deviceTypeLabel()}
+      aria-label={"Device type: " + deviceTypeLabel()}
+      role="img"
+    >
+      <i class={"bi " + activityDeviceIcon(event)} aria-hidden="true"></i>
+    </span>
+  );
+  const iconOnlyContent = () => (
+    <Show
+      when={canLinkHost()}
+      fallback={
+        <span
+          class="activity-host-icon"
+          title={iconOnlyTitle()}
+          aria-label={iconOnlyAria()}
+          role="img"
+        >
+          <i class={"bi " + activityDeviceIcon(event)} aria-hidden="true"></i>
+        </span>
+      }
+    >
+      <A
+        href={"/host/" + event.HostID}
+        class="activity-host-icon activity-host-icon-link"
+        title={iconOnlyTitle()}
+        aria-label={iconOnlyAria()}
+      >
+        <i class={"bi " + activityDeviceIcon(event)} aria-hidden="true"></i>
+      </A>
+    </Show>
+  );
 
   return (
     <tr class={"activity-table-row activity-row-" + activityTone(event.EventType)}>
@@ -624,21 +703,20 @@ function eventRow(event: HostEvent, hostExists: (event: HostEvent) => boolean) {
         </time>
       </td>
       <td data-label="Device" class="activity-table-device-cell">
-        <span class="activity-table-device">
+        <span class={"activity-table-device activity-device-display-" + deviceDisplayMode()}>
           <Show
-            when={canLinkHost()}
-            fallback={<span class="activity-host-name">{activityHostName(event)}</span>}
+            when={deviceDisplayMode() === "icon"}
+            fallback={
+              <>
+                {nameContent()}
+                <Show when={deviceDisplayMode() === "name-icon"}>
+                  {deviceTypeIcon()}
+                </Show>
+              </>
+            }
           >
-            <A href={"/host/" + event.HostID} class="activity-host-link">{activityHostName(event)}</A>
+            {iconOnlyContent()}
           </Show>
-          <span
-            class="activity-host-icon"
-            title={"Device type: " + activityDeviceTypeLabel(event.DeviceType)}
-            aria-label={"Device type: " + activityDeviceTypeLabel(event.DeviceType)}
-            role="img"
-          >
-            <i class={"bi " + activityDeviceIcon(event)} aria-hidden="true"></i>
-          </span>
         </span>
       </td>
       <td data-label="IP" class="activity-table-muted activity-table-ip-cell">{event.IP || " "}</td>
@@ -728,6 +806,28 @@ function sameEventTypes(left: ActivityEventType[], right: ActivityEventType[]) {
 
 function eventFilterOptionForTypes(eventTypes: ActivityEventType[]) {
   return eventFilterOptions.find((option) => sameEventTypes(eventTypes, option.eventTypes));
+}
+
+function normalizeDeviceDisplayMode(value: unknown): DeviceDisplayMode {
+  return deviceDisplayOptions.some((option) => option.key === value)
+    ? value as DeviceDisplayMode
+    : defaultDeviceDisplayMode;
+}
+
+function readStoredEventsDeviceDisplay(): DeviceDisplayMode {
+  try {
+    return normalizeDeviceDisplayMode(localStorage.getItem(eventsDeviceDisplayStorageKey));
+  } catch {
+    return defaultDeviceDisplayMode;
+  }
+}
+
+function persistEventsDeviceDisplay(value: DeviceDisplayMode) {
+  try {
+    localStorage.setItem(eventsDeviceDisplayStorageKey, value);
+  } catch {
+    // Display preference persistence is optional; rendering should continue if storage is unavailable.
+  }
 }
 
 export default Activity;
