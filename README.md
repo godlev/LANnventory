@@ -1,20 +1,20 @@
 <h1>
-  <img src="frontend/public/fs/public/lanventory-128x128.png" width="48" alt="LANventory icon" />
-  LANventory
+  <img src="frontend/public/fs/public/LANventory-128x128.png" width="48" alt="LANnventory icon" />
+  LANnventory
 </h1>
 
-LANventory is an actively developed fork of [WatchYourLAN by aceberg](https://github.com/aceberg/WatchYourLAN), focused on modern LAN inventory, device presence history, event tracking, classification and a self-contained web interface.
+LANnventory is an actively developed fork of [WatchYourLAN by aceberg](https://github.com/aceberg/WatchYourLAN), focused on modern LAN inventory, device presence history, event tracking, classification and a self-contained web interface.
 
 > [!IMPORTANT]
-> LANventory is still under active development. Features, configuration, packaging and upgrade instructions may continue to change until the first beta release is prepared.
+> LANnventory is still under active development. Features, configuration, packaging and upgrade instructions may continue to change until the first beta release is prepared.
 
 Current repository: [godlev/WatchYourLAN2](https://github.com/godlev/WatchYourLAN2)
 
-The original WatchYourLAN scanning/backend foundation is preserved and credited. LANventory adds a substantially expanded interface, persistent event model, device classification, configurable retention, migration hardening, safer configuration handling and other reliability improvements.
+The original WatchYourLAN scanning/backend foundation is preserved and credited. LANnventory adds a substantially expanded interface, persistent event model, device classification, configurable retention, migration hardening, safer configuration handling and other reliability improvements.
 
-## LANventory dashboard
+## LANnventory dashboard
 
-![LANventory dashboard](assets/image.png)
+![LANnventory dashboard](assets/image.png)
 
 ## Highlights
 
@@ -25,7 +25,7 @@ The original WatchYourLAN scanning/backend foundation is preserved and credited.
 - Local Open Sans fonts.
 - Local Bootstrap Icons.
 - Local Bootswatch themes.
-- LANventory favicon and navbar icon assets bundled locally.
+- LANnventory favicon and navbar icon assets bundled locally.
 - No automatic external UI asset requests after build.
 
 ### Home dashboard
@@ -142,7 +142,7 @@ If a Host has been deleted, retained connectivity Events remain readable as hist
 
 ## Retention model
 
-LANventory deliberately separates sampled Presence history from Events.
+LANnventory deliberately separates sampled Presence history from Events.
 
 | Data | Retention behavior |
 | --- | --- |
@@ -150,7 +150,7 @@ LANventory deliberately separates sampled Presence history from Events.
 | `online` / `offline` Events | Controlled by `CONNECTIVITY_RETENTION` |
 | Device-change Events | Retained while the device record exists |
 
-If `CONNECTIVITY_RETENTION` is absent from an older configuration, LANventory falls back to the existing `TRIM_HIST` value for backward compatibility.
+If `CONNECTIVITY_RETENTION` is absent from an older configuration, LANnventory falls back to the existing `TRIM_HIST` value for backward compatibility.
 
 Retention can be configured from:
 
@@ -160,7 +160,7 @@ Changing retention does not restart the network scanner.
 
 ## Reliability and migration work
 
-LANventory has completed a major release-readiness audit and hardening pass.
+LANnventory has completed a major release-readiness audit and hardening pass.
 
 Current validation includes:
 
@@ -224,10 +224,10 @@ The Settings page no longer displays fake/default configuration values as if the
 
 ## Security and exposure
 
-LANventory does **not** currently provide built-in authentication.
+LANnventory does **not** currently provide built-in authentication.
 
 > [!WARNING]
-> Do not expose LANventory directly to the public Internet.
+> Do not expose LANnventory directly to the public Internet.
 
 Recommended deployment:
 
@@ -236,7 +236,7 @@ Recommended deployment:
 - Authenticated reverse proxy.
 - SSO-protected reverse proxy.
 
-LANventory exposes administrative operations including:
+LANnventory exposes administrative operations including:
 
 - Device editing.
 - Device deletion.
@@ -249,11 +249,11 @@ Protect access accordingly.
 
 Stored PostgreSQL, InfluxDB and Shoutrrr secrets are protected from browser readback, but the local `config_v2.yaml` file still contains the real values.
 
-Protect the LANventory data/config directory using appropriate filesystem permissions.
+Protect the LANnventory data/config directory using appropriate filesystem permissions.
 
 ## Runtime requirements
 
-LANventory currently inherits the WatchYourLAN ARP discovery architecture.
+LANnventory currently inherits the WatchYourLAN ARP discovery architecture.
 
 Real LAN scanning is intended primarily for Linux.
 
