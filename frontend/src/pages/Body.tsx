@@ -6,6 +6,7 @@ import TableRow from "../components/Body/TableRow";
 import TableHead from "../components/Body/TableHead";
 import CardHead from "../components/Body/CardHead";
 import SummaryCards from "../components/Body/SummaryCards";
+import RecentActivityPanel from "../components/Body/RecentActivityPanel";
 import { getHosts } from "../functions/atstart";
 
 function Body() {
@@ -46,6 +47,7 @@ function Body() {
   return (
     <>
     <SummaryCards></SummaryCards>
+    <RecentActivityPanel></RecentActivityPanel>
     <div class="card device-panel">
       <div class="card-header device-panel-header">
         <div class="device-panel-title-group">
