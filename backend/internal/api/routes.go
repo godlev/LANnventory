@@ -13,8 +13,10 @@ func Routes(router *gin.Engine) {
 	r0 := router.Group("/api")
 	{
 		r0.GET("/all", getAllHosts)                // api-hosts.go
+		r0.GET("/activity", getActivity)           // api-activity.go
 		r0.GET("/edit/:id/:name/*known", editHost) // api-hosts.go
-		r0.GET("/host/:id", getHost)               // api-hosts.go
+		r0.GET("/host/:id/activity", getHostActivity)
+		r0.GET("/host/:id", getHost) // api-hosts.go
 		r0.PATCH("/host/:id/type", setHostDeviceType)
 		r0.GET("/host/del/:id", delHost)  // api-hosts.go
 		r0.GET("/host/add/:mac", addHost) // api-hosts.go
