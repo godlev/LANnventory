@@ -304,7 +304,10 @@ function Activity() {
           <h1 class="activity-page-title">Events</h1>
           <p class="activity-page-subtitle">Device changes and connectivity transitions</p>
         </div>
-        <div class="activity-retention-note">{retentionText()}</div>
+        <div class="activity-retention-note">
+          <span>{retentionText()}</span>
+          <A class="activity-retention-link" href="/config#data-retention">Retention settings</A>
+        </div>
       </header>
 
       <section class="activity-summary-grid overview-grid" aria-label="Event overview">

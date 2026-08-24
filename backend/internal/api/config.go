@@ -18,6 +18,11 @@ type colorRequest struct {
 	Color string `json:"color"`
 }
 
+type retentionRequest struct {
+	PresenceRetention     int `form:"presenceRetention" json:"presenceRetention"`
+	ConnectivityRetention int `form:"connectivityRetention" json:"connectivityRetention"`
+}
+
 func saveConfigHandler(c *gin.Context) {
 
 	conf.AppConfig.Host = c.PostForm("host")
@@ -60,6 +65,36 @@ func saveColorHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, conf.AppConfig)
 }
 
+func saveRetentionHandler(c *gin.Context) {
+	var req retentionRequest
+	if err := c.ShouldBind(&req); err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid retention"})
+		return
+	}
+
+	if req.PresenceRetention < 1 {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid presenceRetention"})
+		return
+	}
+	if req.ConnectivityRetention < 1 {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid connectivityRetention"})
+		return
+	}
+
+	nextConfig := conf.AppConfig
+	nextConfig.TrimHist = req.PresenceRetention
+	nextConfig.ConnectivityRetention = req.ConnectivityRetention
+
+	if err := conf.WriteErr(nextConfig); err != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to write config"})
+		return
+	}
+
+	conf.AppConfig = nextConfig
+
+	c.IndentedJSON(http.StatusOK, conf.AppConfig)
+}
+
 func saveSettingsHandler(c *gin.Context) {
 
 	conf.AppConfig.LogLevel = c.PostForm("log")
@@ -81,10 +116,13 @@ func saveSettingsHandler(c *gin.Context) {
 		return
 	}
 
-	trimHist, err := parsePositiveInt(c.PostForm("trim"))
-	if err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid trim"})
-		return
+	trimHist := conf.AppConfig.TrimHist
+	if rawTrimHist := c.PostForm("trim"); rawTrimHist != "" {
+		trimHist, err = parsePositiveInt(rawTrimHist)
+		if err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid trim"})
+			return
+		}
 	}
 
 	connectivityRetention := conf.AppConfig.ConnectivityRetention

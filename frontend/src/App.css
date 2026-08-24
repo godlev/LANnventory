@@ -1264,11 +1264,28 @@ html[data-bs-theme] .device-table > tbody > tr.device-row-unknown:hover > td {
     font-size: 0.94rem;
 }
 .activity-retention-note {
+    display: flex;
+    align-items: flex-end;
+    flex-direction: column;
+    gap: 0.18rem;
     color: var(--wyl-muted);
     font-size: 0.84rem;
     font-weight: 700;
     line-height: 1.25;
     text-align: right;
+}
+.activity-retention-link {
+    color: var(--wyl-link);
+    font-size: 0.76rem;
+    font-weight: 800;
+    font-variant-caps: all-small-caps;
+    letter-spacing: 0.035em;
+    text-decoration: none;
+}
+.activity-retention-link:hover,
+.activity-retention-link:focus-visible {
+    color: var(--wyl-link-hover);
+    text-decoration: underline;
 }
 .activity-summary-grid {
     grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -1549,6 +1566,31 @@ html[data-bs-theme] .config-panel table > tbody > tr > td {
     color: var(--wyl-muted);
     font-size: var(--wyl-helper-text-size);
     line-height: 1.25;
+}
+.config-value-with-unit {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+.config-retention-input {
+    flex: 0 0 7rem;
+    width: 7rem !important;
+}
+.config-field-unit {
+    color: var(--wyl-muted);
+    font-size: var(--wyl-helper-text-size);
+    font-weight: 800;
+    font-variant-caps: all-small-caps;
+    letter-spacing: 0.035em;
+}
+.config-save-status {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.5rem;
+    margin-left: 0.55rem;
+    color: var(--wyl-muted);
+    font-size: var(--wyl-helper-text-size);
+    font-weight: 700;
 }
 .config-secondary-action {
     float: right;
@@ -1989,6 +2031,7 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
         grid-template-columns: 1fr;
     }
     .activity-retention-note {
+        align-items: flex-start;
         text-align: left;
     }
     .activity-row {

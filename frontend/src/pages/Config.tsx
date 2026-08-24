@@ -3,6 +3,7 @@ import Basic from "../components/Config/Basic"
 import Donate from "../components/Config/Donate"
 import Influx from "../components/Config/Influx"
 import Prometheus from "../components/Config/Prometheus"
+import Retention from "../components/Config/Retention"
 import Scan from "../components/Config/Scan"
 
 function Config() {
@@ -16,8 +17,11 @@ function Config() {
         <div class="mt-4">
           <Donate></Donate>
         </div>
-        <div class="mt-4 mb-4">
+        <div class="mt-4">
           <Scan></Scan>
+        </div>
+        <div class="mt-4 mb-4">
+          <Retention></Retention>
         </div>
       </div>
       <div class="col-md config-column">

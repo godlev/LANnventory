@@ -109,6 +109,112 @@ func TestSaveSettingsRejectsInvalidConnectivityRetention(t *testing.T) {
 	}
 }
 
+func TestSaveRetentionHandlerPersistsOnlyRetentionFields(t *testing.T) {
+	router := setupConfigRouter(t)
+	original := conf.AppConfig
+
+	body := bytes.NewBufferString(`{"presenceRetention":96,"connectivityRetention":168}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/config/retention", body)
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var got models.Conf
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("json.Unmarshal: %v", err)
+	}
+	if got.TrimHist != 96 {
+		t.Fatalf("response TrimHist = %d, want 96", got.TrimHist)
+	}
+	if got.ConnectivityRetention != 168 {
+		t.Fatalf("response ConnectivityRetention = %d, want 168", got.ConnectivityRetention)
+	}
+	if conf.AppConfig.TrimHist != 96 {
+		t.Fatalf("conf.AppConfig.TrimHist = %d, want 96", conf.AppConfig.TrimHist)
+	}
+	if conf.AppConfig.ConnectivityRetention != 168 {
+		t.Fatalf("conf.AppConfig.ConnectivityRetention = %d, want 168", conf.AppConfig.ConnectivityRetention)
+	}
+	if conf.AppConfig.Timeout != original.Timeout ||
+		conf.AppConfig.Ifaces != original.Ifaces ||
+		conf.AppConfig.UseDB != original.UseDB ||
+		conf.AppConfig.PGConnect != original.PGConnect ||
+		conf.AppConfig.ArpArgs != original.ArpArgs {
+		t.Fatalf("unrelated config changed: got %+v, original %+v", conf.AppConfig, original)
+	}
+
+	written, err := os.ReadFile(conf.AppConfig.ConfPath)
+	if err != nil {
+		t.Fatalf("os.ReadFile: %v", err)
+	}
+	lowerWritten := strings.ToLower(string(written))
+	if !strings.Contains(lowerWritten, "trim_hist: 96") {
+		t.Fatalf("config file did not persist trim hist: %s", string(written))
+	}
+	if !strings.Contains(lowerWritten, "connectivity_retention: 168") {
+		t.Fatalf("config file did not persist connectivity retention: %s", string(written))
+	}
+}
+
+func TestSaveRetentionHandlerRejectsInvalidValues(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+		want string
+	}{
+		{
+			name: "zero presence",
+			body: `{"presenceRetention":0,"connectivityRetention":168}`,
+			want: "invalid presenceRetention",
+		},
+		{
+			name: "negative connectivity",
+			body: `{"presenceRetention":96,"connectivityRetention":-1}`,
+			want: "invalid connectivityRetention",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			router := setupConfigRouter(t)
+			confPath := conf.AppConfig.ConfPath
+
+			req := httptest.NewRequest(http.MethodPost, "/api/config/retention", bytes.NewBufferString(tt.body))
+			req.Header.Set("Content-Type", "application/json")
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+			}
+			if !strings.Contains(rec.Body.String(), tt.want) {
+				t.Fatalf("body = %q, want to contain %q", rec.Body.String(), tt.want)
+			}
+			if conf.AppConfig.TrimHist != 48 {
+				t.Fatalf("TrimHist = %d, want unchanged 48", conf.AppConfig.TrimHist)
+			}
+			if conf.AppConfig.ConnectivityRetention != 72 {
+				t.Fatalf("ConnectivityRetention = %d, want unchanged 72", conf.AppConfig.ConnectivityRetention)
+			}
+
+			written, err := os.ReadFile(confPath)
+			if err != nil {
+				t.Fatalf("os.ReadFile: %v", err)
+			}
+			lowerWritten := strings.ToLower(string(written))
+			if strings.Contains(lowerWritten, "trim_hist: 0") || strings.Contains(lowerWritten, "connectivity_retention: -1") {
+				t.Fatalf("config file persisted invalid retention values: %s", string(written))
+			}
+		})
+	}
+}
+
 func TestSaveColorHandlerPersistsValidColor(t *testing.T) {
 	router := setupConfigRouter(t)
 

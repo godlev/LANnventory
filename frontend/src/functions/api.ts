@@ -109,6 +109,21 @@ export const apiSetConfigColor = async (color: "dark" | "light"): Promise<Conf> 
   return await response.json();
 };
 
+export const apiSetRetention = async (presenceRetention: number, connectivityRetention: number): Promise<Conf> => {
+  const url = apiPath+'/api/config/retention';
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ presenceRetention, connectivityRetention }),
+  });
+
+  if (!response.ok) {
+    throw new Error(await response.text());
+  }
+
+  return await response.json();
+};
+
 export const apiTestNotify = async () => {
 
   const url = apiPath+'/api/notify_test';

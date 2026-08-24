@@ -234,6 +234,24 @@ function applySettingsConfigForm(body) {
   }
 }
 
+function applyRetentionConfigBody(body) {
+  const params = parseRequestBody(body);
+  const presenceRetention = Number(params.presenceRetention);
+  const connectivityRetention = Number(params.connectivityRetention);
+
+  if (!isPositiveIntegerValue(presenceRetention)) {
+    return { error: 'invalid presenceRetention' };
+  }
+  if (!isPositiveIntegerValue(connectivityRetention)) {
+    return { error: 'invalid connectivityRetention' };
+  }
+
+  config.TrimHist = presenceRetention;
+  config.ConnectivityRetention = connectivityRetention;
+
+  return { config };
+}
+
 function historyFor(mac, datePrefix = '') {
   const hostEntry = fakeHosts.find((item) => item.Mac === mac) ?? fakeHosts[0];
   const rows = [];
@@ -668,6 +686,18 @@ async function routeSafeAction(req, res, url) {
 
     config.Color = color;
     sendJSON(res, config);
+    return true;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/config/retention') {
+    const body = await readBody(req);
+    const result = applyRetentionConfigBody(body);
+    if (result.error) {
+      sendJSON(res, { error: result.error }, 400);
+      return true;
+    }
+
+    sendJSON(res, result.config);
     return true;
   }
 
