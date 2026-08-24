@@ -1414,7 +1414,8 @@ html[data-bs-theme] .device-table > tbody > tr.device-row-unknown:hover > td {
     background-color: var(--wyl-card-active-bg);
     border-color: #597D7C;
 }
-.activity-filter-reset {
+.activity-filter-reset,
+.activity-group-all-toggle {
     flex: 0 0 auto;
     min-height: calc(1.5em + 0.5rem + 2px);
 }
@@ -2267,7 +2268,7 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     .activity-row {
         grid-template-columns: 2rem minmax(0, 1fr) auto;
     }
-    .activity-host-icon {
+    .activity-row > .activity-host-icon {
         display: none;
     }
 }

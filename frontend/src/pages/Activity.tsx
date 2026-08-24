@@ -5,7 +5,6 @@ import {
   apiGetActivity,
   apiGetActivityDevices,
   apiGetActivityStats,
-  type ActivityCategory,
   type ActivityEventType,
 } from "../functions/api";
 import {
@@ -40,8 +39,7 @@ type GroupByKey = "none" | "device" | "event" | "category" | "device-type" | "ip
 type EventFilterOption = {
   key: EventFilterKey;
   label: string;
-  category?: ActivityCategory;
-  eventTypes?: ActivityEventType[];
+  eventTypes: ActivityEventType[];
 };
 
 type EventSummaryCard = {
@@ -51,6 +49,7 @@ type EventSummaryCard = {
   detail: string;
   icon: string;
   tone: string;
+  eventTypes: ActivityEventType[];
 };
 
 type EventGroup = {
@@ -60,6 +59,8 @@ type EventGroup = {
 };
 
 const eventsPageSize = 100;
+const customEventFilterValue = "custom";
+const eventTypeOrder: ActivityEventType[] = ["online", "offline", "discovered", "known", "unknown", "device-type-changed"];
 
 const emptyStats: ActivityStats = {
   Total: 0,
@@ -72,11 +73,11 @@ const emptyStats: ActivityStats = {
 };
 
 const eventFilterOptions: EventFilterOption[] = [
-  { key: "all", label: "All events" },
-  { key: "connectivity", label: "Connectivity", category: "connectivity" },
+  { key: "all", label: "All events", eventTypes: [] },
+  { key: "connectivity", label: "Connectivity", eventTypes: ["online", "offline"] },
   { key: "online", label: "Online", eventTypes: ["online"] },
   { key: "offline", label: "Offline", eventTypes: ["offline"] },
-  { key: "changes", label: "Device changes", category: "changes" },
+  { key: "changes", label: "Device changes", eventTypes: ["discovered", "known", "unknown", "device-type-changed"] },
   { key: "discovered", label: "New device detected", eventTypes: ["discovered"] },
   { key: "recognition", label: "Recognition changes", eventTypes: ["known", "unknown"] },
   { key: "known", label: "Marked known", eventTypes: ["known"] },
@@ -97,12 +98,13 @@ const groupByOptions: { key: GroupByKey; label: string }[] = [
 
 function Activity() {
   const [selectedMac, setSelectedMac] = createSignal("");
-  const [eventFilter, setEventFilter] = createSignal<EventFilterKey>("all");
+  const [selectedEventTypes, setSelectedEventTypes] = createSignal<ActivityEventType[]>([]);
   const [groupBy, setGroupBy] = createSignal<GroupByKey>("none");
   const [events, setEvents] = createSignal<HostEvent[]>([]);
   const [stats, setStats] = createSignal<ActivityStats>(emptyStats);
   const [devices, setDevices] = createSignal<ActivityDeviceOption[]>([]);
   const [collapsedGroups, setCollapsedGroups] = createSignal<Record<string, boolean>>({});
+  const [groupsCollapsedByDefault, setGroupsCollapsedByDefault] = createSignal(false);
   const [hasMore, setHasMore] = createSignal(false);
   const [loading, setLoading] = createSignal(false);
   const [error, setError] = createSignal("");
@@ -110,15 +112,19 @@ function Activity() {
   let eventsRequest = 0;
   let statsRequest = 0;
 
-  const currentEventOption = () => eventFilterOptions.find((option) => option.key === eventFilter()) ?? eventFilterOptions[0];
+  const selectedEventTypeSet = createMemo(() => new Set(selectedEventTypes()));
+  const currentEventOption = () => eventFilterOptionForTypes(selectedEventTypes());
+  const eventFilterSelectValue = () => currentEventOption()?.key ?? customEventFilterValue;
   const currentGroupOption = () => groupByOptions.find((option) => option.key === groupBy()) ?? groupByOptions[0];
   const hostExists = (event: HostEvent) => bkpHosts().some((host) => host.ID === event.HostID && host.Mac === event.Mac);
-  const filtersActive = () => selectedMac() !== "" || eventFilter() !== "all";
+  const filtersActive = () => selectedMac() !== "" || selectedEventTypes().length > 0;
   const selectedDeviceLabel = () => {
     const mac = selectedMac();
     const device = devices().find((option) => option.Mac === mac);
     return device ? deviceOptionLabel(device) : mac;
   };
+  const eventTypeSummary = () => selectedEventTypes().map(activityEventLabel).join(" + ");
+  const eventTypeTooltipSummary = () => selectedEventTypes().map(activityEventLabel).join(", ");
   const tableStateSummary = createMemo(() => {
     const active: string[] = [];
 
@@ -128,8 +134,8 @@ function Activity() {
     if (selectedMac() !== "") {
       active.push(selectedDeviceLabel());
     }
-    if (eventFilter() !== "all") {
-      active.push(currentEventOption().label);
+    if (selectedEventTypes().length > 0) {
+      active.push(eventTypeSummary());
     }
     if (groupBy() !== "none") {
       active.push("Grouped by " + currentGroupOption().label);
@@ -143,8 +149,8 @@ function Activity() {
     if (selectedMac() !== "") {
       activeFilters.push("Device: " + selectedDeviceLabel());
     }
-    if (eventFilter() !== "all") {
-      activeFilters.push(currentEventOption().label);
+    if (selectedEventTypes().length > 0) {
+      activeFilters.push(eventTypeTooltipSummary());
     }
 
     const groupedBy = groupBy() !== "none" ? "Grouped by " + currentGroupOption().label : "";
@@ -170,7 +176,7 @@ function Activity() {
 
   const loadEvents = async (reset: boolean) => {
     const activeRequest = ++eventsRequest;
-    const option = currentEventOption();
+    const eventTypes = selectedEventTypes();
     const mac = selectedMac();
     const offset = reset ? 0 : events().length;
 
@@ -184,8 +190,7 @@ function Activity() {
 
     try {
       const nextEvents = await apiGetActivity(eventsPageSize, {
-        category: option.category,
-        eventTypes: option.eventTypes,
+        eventTypes: eventTypes.length === 0 ? undefined : eventTypes,
         macs: mac === "" ? undefined : [mac],
         offset,
       });
@@ -239,7 +244,7 @@ function Activity() {
 
   createEffect(() => {
     selectedMac();
-    eventFilter();
+    selectedEventTypes();
     loadEvents(true);
   });
 
@@ -262,6 +267,7 @@ function Activity() {
         detail: statsError() ? "Counts unavailable" : "All retained events",
         icon: "bi-collection-fill",
         tone: "total",
+        eventTypes: [],
       },
       {
         key: "online",
@@ -270,6 +276,7 @@ function Activity() {
         detail: "Connectivity",
         icon: "bi-check-circle-fill",
         tone: "online",
+        eventTypes: ["online"],
       },
       {
         key: "offline",
@@ -278,6 +285,7 @@ function Activity() {
         detail: "Connectivity",
         icon: "bi-x-circle-fill",
         tone: "offline",
+        eventTypes: ["offline"],
       },
       {
         key: "discovered",
@@ -286,6 +294,7 @@ function Activity() {
         detail: "Discovery",
         icon: "bi-plus-circle-fill",
         tone: "unknown",
+        eventTypes: ["discovered"],
       },
       {
         key: "recognition",
@@ -294,6 +303,7 @@ function Activity() {
         detail: "Known and unknown",
         icon: "bi-bookmark-check-fill",
         tone: "known",
+        eventTypes: ["known", "unknown"],
       },
       {
         key: "device-type-changed",
@@ -302,6 +312,7 @@ function Activity() {
         detail: "Classification",
         icon: "bi-tag-fill",
         tone: "type",
+        eventTypes: ["device-type-changed"],
       },
     ];
   });
@@ -325,21 +336,80 @@ function Activity() {
 
     return [...groups.values()];
   });
+  const isGroupCollapsed = (key: string) => collapsedGroups()[key] ?? groupsCollapsedByDefault();
+  const hasExpandedGroups = () => groupBy() !== "none" && groupedEvents().some((group) => !isGroupCollapsed(group.key));
+  const groupAllControlTitle = () => hasExpandedGroups() ? "Collapse all groups" : "Expand all groups";
+  const groupAllControlIcon = () => hasExpandedGroups() ? "bi-arrows-collapse" : "bi-arrows-expand";
+  const groupAllControlLabel = () => hasExpandedGroups() ? "Collapse all" : "Expand all";
+  const isSummaryCardActive = (card: EventSummaryCard) => {
+    if (card.key === "all") {
+      return selectedEventTypes().length === 0;
+    }
+
+    const selected = selectedEventTypeSet();
+    return card.eventTypes.length > 0 && card.eventTypes.every((eventType) => selected.has(eventType));
+  };
 
   const handleReset = () => {
     setSelectedMac("");
-    setEventFilter("all");
+    setSelectedEventTypes([]);
   };
 
-  const handleSummaryClick = (card: EventSummaryCard) => {
-    setEventFilter(eventFilter() === card.key || card.key === "all" ? "all" : card.key);
+  const handleSummaryClick = (event: MouseEvent, card: EventSummaryCard) => {
+    if (card.key === "all") {
+      setSelectedEventTypes([]);
+      return;
+    }
+
+    if (event.ctrlKey || event.metaKey) {
+      const selected = new Set(selectedEventTypes());
+      const allCardTypesSelected = card.eventTypes.every((eventType) => selected.has(eventType));
+
+      for (const eventType of card.eventTypes) {
+        if (allCardTypesSelected) {
+          selected.delete(eventType);
+        } else {
+          selected.add(eventType);
+        }
+      }
+
+      setSelectedEventTypes(normalizeSelectedEventTypes([...selected]));
+      return;
+    }
+
+    setSelectedEventTypes(
+      sameEventTypes(selectedEventTypes(), card.eventTypes)
+        ? []
+        : normalizeSelectedEventTypes(card.eventTypes),
+    );
   };
 
   const handleGroupToggle = (key: string) => {
     setCollapsedGroups((current) => ({
       ...current,
-      [key]: !current[key],
+      [key]: !isGroupCollapsed(key),
     }));
+  };
+
+  const handleGroupAllToggle = () => {
+    const nextCollapsed = hasExpandedGroups();
+    const nextGroups: Record<string, boolean> = {};
+
+    for (const group of groupedEvents()) {
+      nextGroups[group.key] = nextCollapsed;
+    }
+
+    setGroupsCollapsedByDefault(nextCollapsed);
+    setCollapsedGroups(nextGroups);
+  };
+
+  const handleEventFilterChange = (event: Event & { currentTarget: HTMLSelectElement }) => {
+    const key = event.currentTarget.value as EventFilterKey | typeof customEventFilterValue;
+    const option = eventFilterOptions.find((candidate) => candidate.key === key);
+
+    if (option) {
+      setSelectedEventTypes(normalizeSelectedEventTypes(option.eventTypes));
+    }
   };
 
   return (
@@ -359,9 +429,9 @@ function Activity() {
         <For each={summaryCards()}>{(card) =>
           <button
             type="button"
-            class={"overview-card overview-card-button overview-card-" + card.tone + (eventFilter() === card.key ? " is-active" : "")}
-            aria-pressed={eventFilter() === card.key}
-            onClick={[handleSummaryClick, card]}
+            class={"overview-card overview-card-button overview-card-" + card.tone + (isSummaryCardActive(card) ? " is-active" : "")}
+            aria-pressed={isSummaryCardActive(card)}
+            onClick={(event) => handleSummaryClick(event, card)}
           >
             <div class="overview-card-icon" aria-hidden="true">
               <i class={"bi " + card.icon}></i>
@@ -393,10 +463,13 @@ function Activity() {
           <label class="activity-filter-field">
             <span class="activity-filter-label">Event type</span>
             <select
-              class={"form-select form-select-sm activity-filter-select" + (eventFilter() !== "all" ? " is-active" : "")}
-              value={eventFilter()}
-              onChange={(event) => setEventFilter(event.currentTarget.value as EventFilterKey)}
+              class={"form-select form-select-sm activity-filter-select" + (selectedEventTypes().length > 0 ? " is-active" : "")}
+              value={eventFilterSelectValue()}
+              onChange={handleEventFilterChange}
             >
+              <Show when={eventFilterSelectValue() === customEventFilterValue}>
+                <option value={customEventFilterValue}>Multiple event types</option>
+              </Show>
               <For each={eventFilterOptions}>{(option) =>
                 <option value={option.key}>{option.label}</option>
               }</For>
@@ -414,6 +487,18 @@ function Activity() {
               }</For>
             </select>
           </label>
+          <Show when={groupBy() !== "none"}>
+            <button
+              type="button"
+              class="btn btn-sm device-reset-filter activity-group-all-toggle"
+              onClick={handleGroupAllToggle}
+              title={groupAllControlTitle()}
+              aria-label={groupAllControlTitle()}
+            >
+              <i class={"bi " + groupAllControlIcon()} aria-hidden="true"></i>
+              <span>{groupAllControlLabel()}</span>
+            </button>
+          </Show>
           <Show when={filtersActive()}>
             <button type="button" class="btn btn-sm device-reset-filter activity-filter-reset" onClick={handleReset} title="Reset event filters">
               <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>
@@ -480,18 +565,18 @@ function Activity() {
                             <button
                               type="button"
                               class="activity-group-toggle"
-                              aria-expanded={!collapsedGroups()[group.key]}
+                              aria-expanded={!isGroupCollapsed(group.key)}
                               onClick={[handleGroupToggle, group.key]}
                             >
                               <span class="activity-group-title">
-                                <i class={"bi " + (collapsedGroups()[group.key] ? "bi-chevron-right" : "bi-chevron-down")} aria-hidden="true"></i>
+                                <i class={"bi " + (isGroupCollapsed(group.key) ? "bi-chevron-right" : "bi-chevron-down")} aria-hidden="true"></i>
                                 <span>{group.label}</span>
                               </span>
                               <span class="activity-group-count">{group.events.length} loaded {group.events.length === 1 ? "event" : "events"}</span>
                             </button>
                           </td>
                         </tr>
-                        <Show when={!collapsedGroups()[group.key]}>
+                        <Show when={!isGroupCollapsed(group.key)}>
                           <For each={group.events}>{(event) => eventRow(event, hostExists)}</For>
                         </Show>
                       </>
@@ -540,15 +625,20 @@ function eventRow(event: HostEvent, hostExists: (event: HostEvent) => boolean) {
       </td>
       <td data-label="Device" class="activity-table-device-cell">
         <span class="activity-table-device">
-          <span class="activity-host-icon" aria-hidden="true">
-            <i class={"bi " + activityDeviceIcon(event)}></i>
-          </span>
           <Show
             when={canLinkHost()}
             fallback={<span class="activity-host-name">{activityHostName(event)}</span>}
           >
             <A href={"/host/" + event.HostID} class="activity-host-link">{activityHostName(event)}</A>
           </Show>
+          <span
+            class="activity-host-icon"
+            title={"Device type: " + activityDeviceTypeLabel(event.DeviceType)}
+            aria-label={"Device type: " + activityDeviceTypeLabel(event.DeviceType)}
+            role="img"
+          >
+            <i class={"bi " + activityDeviceIcon(event)} aria-hidden="true"></i>
+          </span>
         </span>
       </td>
       <td data-label="IP" class="activity-table-muted activity-table-ip-cell">{event.IP || " "}</td>
@@ -618,6 +708,26 @@ function groupLabel(event: HostEvent, groupBy: GroupByKey) {
 function deviceOptionLabel(device: ActivityDeviceOption) {
   const name = device.Name.trim() || device.Mac || "Unknown device";
   return name + (device.Exists ? "" : " (deleted)");
+}
+
+function normalizeSelectedEventTypes(eventTypes: ActivityEventType[]): ActivityEventType[] {
+  const selected = new Set(eventTypes);
+  return eventTypeOrder.filter((eventType) => selected.has(eventType));
+}
+
+function sameEventTypes(left: ActivityEventType[], right: ActivityEventType[]) {
+  const normalizedLeft = normalizeSelectedEventTypes(left);
+  const normalizedRight = normalizeSelectedEventTypes(right);
+
+  if (normalizedLeft.length !== normalizedRight.length) {
+    return false;
+  }
+
+  return normalizedLeft.every((eventType, index) => eventType === normalizedRight[index]);
+}
+
+function eventFilterOptionForTypes(eventTypes: ActivityEventType[]) {
+  return eventFilterOptions.find((option) => sameEventTypes(eventTypes, option.eventTypes));
 }
 
 export default Activity;
