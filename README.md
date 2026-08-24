@@ -1,223 +1,206 @@
-<h1><a href="https://github.com/aceberg/WatchYourLAN">
-    <img src="https://raw.githubusercontent.com/aceberg/WatchYourLAN/main/assets/logo.png" width="20" />
-</a>WatchYourLAN</h1>
-<br/>
+# WatchYourLAN2
 
-[![Docker](https://github.com/aceberg/WatchYourLAN/actions/workflows/main-docker-all.yml/badge.svg)](https://github.com/aceberg/WatchYourLAN/actions/workflows/main-docker-all.yml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/aceberg/WatchYourLAN)](https://goreportcard.com/report/github.com/aceberg/WatchYourLAN)
-[![Docker Image Size (latest semver)](https://img.shields.io/docker/image-size/aceberg/watchyourlan)](https://hub.docker.com/r/aceberg/watchyourlan)
-[![GitHub Discussions](https://img.shields.io/github/discussions/aceberg/WatchYourLAN)](https://github.com/aceberg/WatchYourLAN/discussions)   
+An actively developed fork of WatchYourLAN focused on a modern, self-contained interface and richer LAN monitoring history, events and device management.
 
-<a href="https://trendshift.io/repositories/11642" target="_blank"><img src="https://trendshift.io/api/badge/repositories/11642" alt="aceberg%2FWatchYourLAN | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
+> This project is currently under active development. Features, configuration and UI may change.
 
-Lightweight network IP scanner with web GUI. Features:
-- Send notification when new host is found
-- Monitor hosts online/offline history
-- Keep a list of all hosts in the network
-- Send data to `InfluxDB2` or `Prometheus` to make a `Grafana` dashboard 
+WatchYourLAN2 is based on [WatchYourLAN by aceberg](https://github.com/aceberg/WatchYourLAN). The original scanning and backend foundation comes from the upstream project; this repository contains additional fork work around the interface, offline runtime assets, history, events, retention and device management. Applicable upstream license and attribution notices are preserved.
 
-> [!IMPORTANT]   
-> Please, consider making a [donation](https://github.com/aceberg#donate). Even $10 will make a difference to me.
+## What's different in WatchYourLAN2
 
-![Screenshot_1](https://raw.githubusercontent.com/aceberg/WatchYourLAN/main/assets/Screenshot_1.png)  
+### Interface
 
-## More screenshots
+- Modern compact dashboard with responsive layout.
+- Dark and light color modes.
+- Locally bundled Open Sans.
+- Locally bundled Bootstrap Icons.
+- Locally bundled Bootswatch themes.
+- No automatic external UI asset dependency after build.
 
-<details>
-  <summary>Expand</summary>
+### Device management
 
-![Screenshot_5](https://raw.githubusercontent.com/aceberg/WatchYourLAN/main/assets/Screenshot_5.png)   
-![Screenshot_2](https://raw.githubusercontent.com/aceberg/WatchYourLAN/main/assets/Screenshot_2.png)   
-![Screenshot_3](https://raw.githubusercontent.com/aceberg/WatchYourLAN/main/assets/Screenshot_3.png)   
-![Screenshot_4](https://raw.githubusercontent.com/aceberg/WatchYourLAN/main/assets/Screenshot_4.png) 
-</details> 
+- Persistent Known/Unknown classification.
+- Persistent manual Device Type classification.
+- Device Type icon picker.
+- Host read mode.
+- Explicit Host edit mode.
 
-## Quick start
+### Presence
 
-<details>
-  <summary>Expand</summary>
+Presence is sampled online/offline visibility over time. The fork includes configurable Presence retention, day/night visualization and hour/day timeline boundaries.
 
-Replace `$YOURTIMEZONE` with correct time zone and `$YOURIFACE` with network interface you want to scan. Network mode must be `host`. Set `$DOCKERDATAPATH` for container to save data:
+### Events
+
+Events store meaningful transitions and actions rather than every scan sample. Current event types are:
+
+- `discovered`
+- `online`
+- `offline`
+- `known`
+- `unknown`
+- `device-type-changed`
+
+The UI includes a unified Events explorer, Device/Event filters, summary cards, Group By controls and Home panels split into Connectivity and Device Changes.
+
+### Retention
+
+- Presence samples use Presence retention.
+- Online/Offline events use configurable Connectivity event retention.
+- Device-change events remain while the device record exists.
+
+## Development Status
+
+WatchYourLAN2 is actively under development and is currently based on the upstream WatchYourLAN architecture. Not all existing upstream documentation may apply exactly to this fork yet. Migrations and backward compatibility are being kept in mind, but the fork should not be treated as a separately stabilized production release until that status is documented here.
+
+## Screenshots
+
+Updated WatchYourLAN2 screenshots will be added as development progresses.
+
+## Support Development
+
+If you find WatchYourLAN2 useful and would like to support development:
+
+[Support via Revolut](https://revolut.me/mirgeo)
+
+## Runtime Requirements
+
+WatchYourLAN2 inherits the upstream network discovery model:
+
+- Linux is the intended runtime for real LAN scanning.
+- `arp-scan` is required for real ARP discovery.
+- Host networking is typically required in containers so the scanner can see local network interfaces.
+- The web UI is served by the Go backend, normally on `http://0.0.0.0:8840` unless configured otherwise.
+
+The Go backend starts the scanner during normal application startup. Use the mock API described below when previewing the frontend without touching the LAN.
+
+## Development Preview
+
+The frontend can be previewed safely with mock data. This mode does not scan the LAN, send notifications, send Wake-on-LAN packets, perform port scans or write persistent production data.
 
 ```sh
-docker run --name wyl \
-	-e "IFACES=$YOURIFACE" \
-	-e "TZ=$YOURTIMEZONE" \
-	--network="host" \
-	-v $DOCKERDATAPATH/wyl:/data/WatchYourLAN \
-    aceberg/watchyourlan
-```
-Web GUI should be at http://localhost:8840
-
-</details> 
-
-## Auth
-
-<details>
-  <summary>Expand</summary>
-
-**WatchYourLAN** does not have built-in auth option. But you can use it with SSO tools like Authelia, or my simple auth app [ForAuth](https://github.com/aceberg/ForAuth).   
-Here is an example [docker-compose-auth.yml](https://github.com/aceberg/WatchYourLAN/blob/main/docker-compose-auth.yml).
-
-> :warning:  **WARNING!**   
-> Please, don't forget that WYL needs `host` network mode to work. So, WYL port will be exposed in this setup. You need to limit access to it with firewall or other measures.   
-
-</details> 
-
-## Install on Linux
-
-<details>
-  <summary>Expand</summary>
-
-All binary packages can be found in [latest](https://github.com/aceberg/WatchYourLAN/releases/latest) release. There are `.deb`, `.rpm`, `.apk` (Alpine Linux) and `.tar.gz` files.   
-
-Supported architectures: `amd64`, `i386`, `arm_v5`, `arm_v6`, `arm_v7`, `arm64`.   
-Dependencies: `arp-scan`, `tzdata`.
-
-For `amd64` there is a `deb` repo [available](https://github.com/aceberg/ppa)
-
-</details> 
-
-## Config
-<details>
-  <summary>Expand</summary>
-
-Configuration can be done through config file, GUI or environment variables. Variable names is `config_v2.yaml` file are the same, but in lowcase.
-
-### Basic config
-| Variable  | Description | Default |
-| --------  | ----------- | ------- |
-| TZ | Set your timezone for correct time | |
-| HOST | Listen address | 0.0.0.0 |
-| PORT   | Port for web GUI | 8840 |
-| THEME | Any theme name from https://bootswatch.com in lowcase or [additional](https://github.com/aceberg/aceberg-bootswatch-fork) | sand |
-| COLOR | Background color: light or dark | dark |
-| NODEPATH | Path to local node modules |  |
-| SHOUTRRR_URL | WatchYourLAN uses [Shoutrrr](https://github.com/nicholas-fedor/shoutrrr) to send notifications. It is already integrated, just needs a correct URL. Examples for Discord, Email, Gotify, Matrix, Ntfy, Pushover, Slack, Telegram, Generic Webhook and etc are [here](https://nicholas-fedor.github.io/shoutrrr/) | |
-
-### Scan settings
-| Variable  | Description | Default |
-| --------  | ----------- | ------- |
-| IFACES | Interfaces to scan. Could be one or more, separated by space. See [docs/VLAN_ARP_SCAN.md](https://github.com/aceberg/WatchYourLAN/blob/main/docs/VLAN_ARP_SCAN.md). | |
-| TIMEOUT | Time between scans (seconds) | 120 |
-| ARP_ARGS | Arguments for `arp-scan`. Enable `debug` log level to see resulting command. (Example: `-r 1`). See [docs/VLAN_ARP_SCAN.md](https://github.com/aceberg/WatchYourLAN/blob/main/docs/VLAN_ARP_SCAN.md). | |
-| ARP_STRS ARP_STRS_JOINED | See [docs/VLAN_ARP_SCAN.md](https://github.com/aceberg/WatchYourLAN/blob/main/docs/VLAN_ARP_SCAN.md). | |
-| LOG_LEVEL | Log level: `debug`, `info`, `warn` or `error` | info |
-| TRIM_HIST | Remove history after (hours) | 48 |
-| HIST_IN_DB | DEPRECATED since 2.1.3. Now History is always stored in DB. Use TRIM_HIST to reduce DB size |  |
-| USE_DB | Either `sqlite` or `postgres` | sqlite |
-| PG_CONNECT | Address to connect to PostgreSQL. (Example: `postgres://username:password@192.168.0.1:5432/dbname?sslmode=disable`). Full list of URL parameters [here](https://pkg.go.dev/github.com/lib/pq#hdr-Connection_String_Parameters) | |
-
-### InfluxDB2 config
-This config matches Grafana's config for InfluxDB data source
-
-| Variable  | Description | Default | Example |
-| --------  | ----------- | ------- | ------- |
-| INFLUX_ENABLE | Enable export to InfluxDB2 | false | true |
-| INFLUX_SKIP_TLS | Skip TLS Verify | false | true |
-| INFLUX_ADDR | Address:port of InfluxDB2 server | | https://192.168.2.3:8086/ |
-| INFLUX_BUCKET | InfluxDB2 bucket | | test |
-| INFLUX_ORG | InfluxDB2 org | | home |
-| INFLUX_TOKEN | Secret token, generated by InfluxDB2 | | |
-
-### Prometheus config
-This config configures the Prometheus data source
-
-| Variable  | Description | Default | Example |
-| --------  | ----------- | ------- | ------- |
-| PROMETHEUS_ENABLE | Enable the Prometheus `/metrics` endpoint | false | true |
-
-</details> 
-
-## Config file
-
-<details>
-  <summary>Expand</summary>
-
-Config file name is `config_v2.yaml`. Example:
-
-```yaml
-arp_args: ""
-color: dark
-host: 0.0.0.0
-ifaces: enp4s0
-influx_addr: ""
-influx_bucket: ""
-influx_enable: false
-influx_org: ""
-influx_skip_tls: false
-influx_token: ""
-log_level: info
-nodepath: ""
-pg_connect: ""
-port: "8840"
-prometheus_enable: false
-shoutrrr_url: "gotify://192.168.0.1:8083/AwQqpAae.rrl5Ob/?title=Unknown host detected&DisableTLS=yes"
-theme: sand
-timeout: 60
-trim_hist: 48
-use_db: sqlite
+cd frontend
+npm install
+npm run mock:api
 ```
 
-</details> 
+In another terminal:
 
-## Options
-
-<details>
-  <summary>Expand</summary>
-
-| Key  | Description | Default | 
-| --------  | ----------- | ------- | 
-| -d | Path to config dir | /data/WatchYourLAN | 
-| -n | Path to node modules (see below) | |
-
-</details> 
-
-## Local network only
-<details>
-  <summary>Expand</summary>
-
-By default, this app pulls themes, icons and fonts from the internet. But, in some cases, it may be useful to have an independent from global network setup. I created a separate [image](https://github.com/aceberg/my-dockerfiles/tree/main/node-bootstrap) with all necessary modules and fonts.
-Run with Docker:
 ```sh
-docker run --name node-bootstrap          \
-    -p 8850:8850                          \
-    aceberg/node-bootstrap
+cd frontend
+npm run dev -- --host 127.0.0.1
 ```
+
+Open [http://127.0.0.1:5173](http://127.0.0.1:5173). Vite proxies `/api` and `/fs` to the local mock API at `http://127.0.0.1:8840` during development.
+
+## Building From Source
+
+Build the frontend:
+
 ```sh
-docker run --name wyl \
-	-e "IFACES=$YOURIFACE" \
-	-e "TZ=$YOURTIMEZONE" \
-	--network="host" \
-	-v $DOCKERDATAPATH/wyl:/data/WatchYourLAN \
-    aceberg/watchyourlan -n "http://$YOUR_IP:8850"
+cd frontend
+npm run build
 ```
-Or use [docker-compose](docker-compose.yml)
 
-</details> 
+Run backend checks:
 
-## API & Integrations
+```sh
+cd backend
+go test ./...
+go vet ./...
+go build ./...
+```
 
-<details>
-  <summary>Expand</summary>
+To run the real backend from source, provide an intentional data/config directory:
 
-### API
-Moved to [docs/API.md](https://github.com/aceberg/WatchYourLAN/blob/main/docs/API.md)
+```sh
+cd backend
+go run ./cmd/WatchYourLAN -d /path/to/dev-data
+```
 
-### Integrations
-- [ArchLinux (AUR)](https://aur.archlinux.org/packages/watch-your-lan) by `gilcu3`
-- [Python API client](https://github.com/drwahl/py-watchyourlanclient) by [drwahl](https://github.com/drwahl)
-- [Umbrel](https://apps.umbrel.com/app/watch-your-lan) by [Jasper](https://github.com/ceramicwhite)
-- [YunoHost](https://apps.yunohost.org/app/watchyourlan)
-</details> 
+The backend creates or reads `config_v2.yaml` and `scan.db` in that directory. Real backend startup begins network scanning, so do this only on a machine where `arp-scan` is installed and LAN scanning is intended.
 
-## Thanks
-<details>
-  <summary>Expand</summary>
+## Installation Status
 
-- All go packages listed in [dependencies](https://github.com/aceberg/WatchYourLAN/network/dependencies)
-- Favicon and logo: [Access point icons created by Freepik - Flaticon](https://www.flaticon.com/free-icons/access-point)
-- [Bootstrap](https://getbootstrap.com/)
-- Themes: [Free themes for Bootstrap](https://bootswatch.com)
+WatchYourLAN2 does not currently document an independently published Docker image or packaged release artifact in this repository. Do not install `aceberg/watchyourlan` expecting to receive WatchYourLAN2 fork changes; that image belongs to the upstream project.
 
-</details> 
+The existing Dockerfile and compose files in this repository are inherited development references and may still contain upstream naming. Build and test from this checkout when evaluating fork behavior.
+
+## Configuration
+
+Configuration can be supplied through `config_v2.yaml`, the UI or environment variables. Keys in the config file match the environment variable names in lowercase.
+
+### Basic Config
+
+| Variable | Description | Default |
+| --- | --- | --- |
+| `TZ` | Time zone for correct timestamps. | |
+| `HOST` | Listen address. | `0.0.0.0` |
+| `PORT` | Web UI/API port. | `8840` |
+| `THEME` | Bundled Bootswatch theme name in lowercase. | `sand` |
+| `COLOR` | Color mode: `dark` or `light`. | `dark` |
+| `NODEPATH` | Legacy upstream compatibility setting. WatchYourLAN2 bundles UI assets locally. | |
+| `SHOUTRRR_URL` | Shoutrrr notification URL. See [Shoutrrr service documentation](https://shoutrrr.nickfedor.com/services/overview/). | |
+
+### Scan And Database Settings
+
+| Variable | Description | Default |
+| --- | --- | --- |
+| `IFACES` | Interfaces to scan, separated by spaces. See the upstream [VLAN and ARP scan guide](https://github.com/aceberg/WatchYourLAN/blob/main/docs/VLAN_ARP_SCAN.md). | |
+| `TIMEOUT` | Time between scans in seconds. | `120` |
+| `ARP_ARGS` | Additional arguments passed to `arp-scan`. | |
+| `ARP_STRS`, `ARP_STRS_JOINED` | Optional ARP result strings. See the upstream [VLAN and ARP scan guide](https://github.com/aceberg/WatchYourLAN/blob/main/docs/VLAN_ARP_SCAN.md). | |
+| `LOG_LEVEL` | Log level: `debug`, `info`, `warn` or `error`. | `info` |
+| `USE_DB` | Database backend: `sqlite` or `postgres`. | `sqlite` |
+| `PG_CONNECT` | PostgreSQL connection string. Parameters are documented by [lib/pq](https://pkg.go.dev/github.com/lib/pq#hdr-Connection_String_Parameters). | |
+
+### Retention Settings
+
+| Variable | Description | Default |
+| --- | --- | --- |
+| `TRIM_HIST` | Presence sample retention in hours. Used by the Presence page. | `48` |
+| `CONNECTIVITY_RETENTION` | Online/Offline Event retention in hours. When absent from an older config, the current implementation falls back to `TRIM_HIST`. | `TRIM_HIST` |
+| `HIST_IN_DB` | Deprecated upstream setting. History is stored in the database. | |
+
+### InfluxDB2
+
+| Variable | Description | Default |
+| --- | --- | --- |
+| `INFLUX_ENABLE` | Enable export to InfluxDB2. | `false` |
+| `INFLUX_SKIP_TLS` | Skip TLS verification. | `false` |
+| `INFLUX_ADDR` | InfluxDB2 server URL. | |
+| `INFLUX_BUCKET` | InfluxDB2 bucket. | |
+| `INFLUX_ORG` | InfluxDB2 organization. | |
+| `INFLUX_TOKEN` | InfluxDB2 token. | |
+
+### Prometheus
+
+| Variable | Description | Default |
+| --- | --- | --- |
+| `PROMETHEUS_ENABLE` | Enable the `/metrics` endpoint. | `false` |
+
+## Offline UI Assets
+
+The built WatchYourLAN2 UI is intended to be self-contained. Bootstrap Icons, Open Sans and Bootswatch themes are installed during development/build and bundled or copied into the application assets served by WatchYourLAN2 itself.
+
+The browser should not need Internet access to render the UI. User-clicked links to external repositories, documentation, Shoutrrr, Bootswatch, package documentation or donation pages remain normal external navigation.
+
+## API And Integrations
+
+- API notes: [docs/API.md](docs/API.md)
+- Prometheus: enable `PROMETHEUS_ENABLE` and read metrics from `/metrics`.
+- InfluxDB2: configure the InfluxDB settings above.
+
+Some integrations and packaging references may still live in upstream documentation. Treat those as upstream references unless they are updated in this fork.
+
+## Auth And Exposure
+
+WatchYourLAN2 does not currently provide built-in authentication. If you expose it beyond a trusted local network, place it behind suitable authentication and network controls. Remember that real scanning typically needs host network access.
+
+## Thanks And Attribution
+
+- Based on [WatchYourLAN by aceberg](https://github.com/aceberg/WatchYourLAN).
+- Favicon and logo: [Access point icons created by Freepik - Flaticon](https://www.flaticon.com/free-icons/access-point).
+- [Bootstrap](https://getbootstrap.com/).
+- [Bootswatch](https://bootswatch.com/).
+- [Bootstrap Icons](https://icons.getbootstrap.com/).
+- Go and JavaScript package authors listed in the project dependency manifests.
