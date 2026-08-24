@@ -59,15 +59,16 @@ func setupConfigRouter(t *testing.T) *gin.Engine {
 	}
 
 	conf.AppConfig = models.Conf{
-		Host:     "127.0.0.1",
-		Port:     "8840",
-		Theme:    "sand",
-		Color:    "dark",
-		ConfPath: confPath,
-		Timeout:  600,
-		TrimHist: 48,
-		UseDB:    "sqlite",
-		LogLevel: "info",
+		Host:                  "127.0.0.1",
+		Port:                  "8840",
+		Theme:                 "sand",
+		Color:                 "dark",
+		ConfPath:              confPath,
+		Timeout:               600,
+		TrimHist:              48,
+		ConnectivityRetention: 72,
+		UseDB:                 "sqlite",
+		LogLevel:              "info",
 	}
 
 	t.Cleanup(func() {
@@ -79,6 +80,33 @@ func setupConfigRouter(t *testing.T) *gin.Engine {
 	Routes(router)
 
 	return router
+}
+
+func TestSaveSettingsRejectsInvalidConnectivityRetention(t *testing.T) {
+	router := setupConfigRouter(t)
+	confPath := conf.AppConfig.ConfPath
+
+	body := strings.NewReader("log=info&arpargs=&ifaces=eth0&timeout=600&trim=48&connectivity_retention=-1&usedb=sqlite&pgconnect=")
+	req := httptest.NewRequest(http.MethodPost, "/api/config_settings/", body)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+	if conf.AppConfig.ConnectivityRetention != 72 {
+		t.Fatalf("ConnectivityRetention = %d, want unchanged 72", conf.AppConfig.ConnectivityRetention)
+	}
+
+	written, err := os.ReadFile(confPath)
+	if err != nil {
+		t.Fatalf("os.ReadFile: %v", err)
+	}
+	if strings.Contains(strings.ToLower(string(written)), "connectivity_retention: -1") {
+		t.Fatalf("config file persisted invalid connectivity retention: %s", string(written))
+	}
 }
 
 func TestSaveColorHandlerPersistsValidColor(t *testing.T) {

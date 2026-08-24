@@ -87,8 +87,21 @@ func saveSettingsHandler(c *gin.Context) {
 		return
 	}
 
+	connectivityRetention := conf.AppConfig.ConnectivityRetention
+	if connectivityRetention < 1 {
+		connectivityRetention = trimHist
+	}
+	if rawConnectivityRetention := c.PostForm("connectivity_retention"); rawConnectivityRetention != "" {
+		connectivityRetention, err = parsePositiveInt(rawConnectivityRetention)
+		if err != nil {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid connectivity_retention"})
+			return
+		}
+	}
+
 	conf.AppConfig.Timeout = timeout
 	conf.AppConfig.TrimHist = trimHist
+	conf.AppConfig.ConnectivityRetention = connectivityRetention
 
 	arpStrs := c.PostFormArray("arpstrs")
 	conf.AppConfig.ArpStrs = []string{}

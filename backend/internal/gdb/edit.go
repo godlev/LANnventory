@@ -84,11 +84,35 @@ func RecordHostEvent(host models.Host, eventType models.HostEventType, oldValue,
 	}
 }
 
-// DeleteOldEvents removes host activity events older than date.
-func DeleteOldEvents(date string) int64 {
+// DeleteOldConnectivityEvents removes online/offline activity events older than date.
+func DeleteOldConnectivityEvents(date string) int64 {
 
 	tab := db.Table("events")
-	result := tab.Where("\"DATE\" < ?", date).Delete(&models.HostEvent{})
+	result := tab.
+		Where("\"DATE\" < ?", date).
+		Where("\"EVENT_TYPE\" IN ?", []string{
+			string(models.EventOnline),
+			string(models.EventOffline),
+		}).
+		Delete(&models.HostEvent{})
+	check.IfError(result.Error)
+
+	return result.RowsAffected
+}
+
+// DeleteHostDeviceChangeEvents removes persistent device-change events for a deleted host record.
+func DeleteHostDeviceChangeEvents(hostID int) int64 {
+
+	tab := db.Table("events")
+	result := tab.
+		Where("\"HOST_ID\" = ?", hostID).
+		Where("\"EVENT_TYPE\" IN ?", []string{
+			string(models.EventDiscovered),
+			string(models.EventKnown),
+			string(models.EventUnknown),
+			string(models.EventDeviceTypeChanged),
+		}).
+		Delete(&models.HostEvent{})
 	check.IfError(result.Error)
 
 	return result.RowsAffected

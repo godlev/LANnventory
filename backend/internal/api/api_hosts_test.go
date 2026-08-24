@@ -308,6 +308,55 @@ func TestSetHostDeviceTypeCreatesEventsOnlyOnRealChange(t *testing.T) {
 	}
 }
 
+func TestDeleteHostRemovesDeviceChangeEventsButKeepsConnectivityEvents(t *testing.T) {
+	router := setupTestRouter(t)
+	host := seedHost(t, models.Host{
+		Name:       "printer",
+		IP:         "192.168.1.55",
+		Mac:        "AA:BB:CC:DD:EE:55",
+		Known:      1,
+		Now:        0,
+		DeviceType: "printer",
+	})
+
+	seededEvents := []models.HostEventType{
+		models.EventDiscovered,
+		models.EventKnown,
+		models.EventUnknown,
+		models.EventDeviceTypeChanged,
+		models.EventOnline,
+		models.EventOffline,
+	}
+	for i, eventType := range seededEvents {
+		event := models.NewHostEvent(host, eventType, "", "")
+		event.Date = "2026-08-24 10:0" + strconv.Itoa(i) + ":00"
+		if err := gdb.AddEvent(event); err != nil {
+			t.Fatalf("AddEvent %s: %v", eventType, err)
+		}
+	}
+
+	rec := getPath(router, "/api/host/del/"+itoa(host.ID))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("delete status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	events, ok := gdb.SelectEvents(10, "")
+	if !ok {
+		t.Fatal("SelectEvents failed")
+	}
+	if len(events) != 2 {
+		t.Fatalf("remaining events len = %d, want 2 connectivity events: %+v", len(events), events)
+	}
+	for _, event := range events {
+		if event.EventType != string(models.EventOnline) && event.EventType != string(models.EventOffline) {
+			t.Fatalf("remaining non-connectivity event after host delete: %+v", event)
+		}
+		if event.HostID != host.ID || event.Mac != host.Mac {
+			t.Fatalf("remaining connectivity event lost host snapshot: %+v, want host %+v", event, host)
+		}
+	}
+}
+
 func seedHost(t *testing.T, host models.Host) models.Host {
 	t.Helper()
 

@@ -2,22 +2,23 @@ package models
 
 // Conf - app config
 type Conf struct {
-	Host     string
-	Port     string
-	Theme    string
-	Color    string
-	DirPath  string
-	ConfPath string
-	DBPath   string
-	NodePath string
-	LogLevel string
-	Ifaces   string
-	ArpArgs  string
-	ArpStrs  []string
-	Timeout  int
-	TrimHist int
-	ShoutURL string
-	Version  string
+	Host                  string
+	Port                  string
+	Theme                 string
+	Color                 string
+	DirPath               string
+	ConfPath              string
+	DBPath                string
+	NodePath              string
+	LogLevel              string
+	Ifaces                string
+	ArpArgs               string
+	ArpStrs               []string
+	Timeout               int
+	TrimHist              int
+	ConnectivityRetention int
+	ShoutURL              string
+	Version               string
 	// PostgreSQL
 	UseDB     string
 	PGConnect string

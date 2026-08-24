@@ -42,6 +42,7 @@ export interface Conf {
 	ArpArgs:   string;
 	ArpStrs:   string[];
 	TrimHist:  number;
+	ConnectivityRetention: number;
 	ShoutURL:  string;
 	UseDB:     string;
 	PGConnect: string;
@@ -102,6 +103,7 @@ export const emptyConf:Conf = {
 	ArpArgs: "",
 	ArpStrs: [],
 	TrimHist: 48,
+	ConnectivityRetention: 48,
 	ShoutURL: "",
 	UseDB: "",
 	PGConnect: "",

@@ -34,6 +34,7 @@ func WriteErr(config models.Conf) error {
 	viper.Set("IFACES", config.Ifaces)
 	viper.Set("TIMEOUT", config.Timeout)
 	viper.Set("TRIM_HIST", config.TrimHist)
+	viper.Set("CONNECTIVITY_RETENTION", config.ConnectivityRetention)
 	viper.Set("SHOUTRRR_URL", config.ShoutURL)
 
 	viper.Set("USE_DB", config.UseDB)

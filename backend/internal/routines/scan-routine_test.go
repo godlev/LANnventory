@@ -177,7 +177,7 @@ func TestFailedScanDoesNotCreateOfflineEvent(t *testing.T) {
 	}
 }
 
-func TestDeleteOldEventsDeletesOnlyExpiredActivity(t *testing.T) {
+func TestRetentionDeletesOldPresenceAndOnlyOldConnectivity(t *testing.T) {
 	setupScanRoutineTest(t)
 
 	host := models.Host{
@@ -189,42 +189,79 @@ func TestDeleteOldEventsDeletesOnlyExpiredActivity(t *testing.T) {
 		Known: 1,
 		Now:   1,
 	}
-	oldEvent := models.NewHostEvent(host, models.EventOnline, "", "")
-	oldEvent.Date = "2026-08-22 08:00:00"
-	recentEvent := models.NewHostEvent(host, models.EventOffline, "", "")
-	recentEvent.Date = "2026-08-24 08:00:00"
 
-	if err := gdb.AddEvent(oldEvent); err != nil {
-		t.Fatalf("AddEvent old: %v", err)
+	seededEvents := []struct {
+		eventType models.HostEventType
+		date      string
+	}{
+		{models.EventOnline, "2026-08-22 08:00:00"},
+		{models.EventOffline, "2026-08-22 08:05:00"},
+		{models.EventOnline, "2026-08-24 08:00:00"},
+		{models.EventOffline, "2026-08-24 08:05:00"},
+		{models.EventDiscovered, "2026-08-22 08:10:00"},
+		{models.EventKnown, "2026-08-22 08:15:00"},
+		{models.EventUnknown, "2026-08-22 08:20:00"},
+		{models.EventDeviceTypeChanged, "2026-08-22 08:25:00"},
 	}
-	if err := gdb.AddEvent(recentEvent); err != nil {
-		t.Fatalf("AddEvent recent: %v", err)
+	for _, item := range seededEvents {
+		event := models.NewHostEvent(host, item.eventType, "", "")
+		event.Date = item.date
+		if err := gdb.AddEvent(event); err != nil {
+			t.Fatalf("AddEvent %s: %v", item.eventType, err)
+		}
 	}
 
 	gdb.Update("history", models.Host{
-		Name: "history-row",
+		Name: "old-presence-row",
 		Mac:  "AA:BB:CC:DD:EE:20",
 		Date: "2026-08-22 08:00:00",
 	})
+	gdb.Update("history", models.Host{
+		Name: "recent-presence-row",
+		Mac:  "AA:BB:CC:DD:EE:20",
+		Date: "2026-08-24 08:00:00",
+	})
 
-	if deleted := gdb.DeleteOldEvents("2026-08-23 00:00:00"); deleted != 1 {
-		t.Fatalf("DeleteOldEvents deleted = %d, want 1", deleted)
+	if deleted := gdb.DeleteOldHistory("2026-08-23 00:00:00"); deleted != 1 {
+		t.Fatalf("DeleteOldHistory deleted = %d, want 1", deleted)
+	}
+
+	if deleted := gdb.DeleteOldConnectivityEvents("2026-08-23 00:00:00"); deleted != 2 {
+		t.Fatalf("DeleteOldConnectivityEvents deleted = %d, want 2", deleted)
 	}
 
 	events, ok := gdb.SelectEvents(10, "")
 	if !ok {
 		t.Fatal("SelectEvents failed")
 	}
-	if len(events) != 1 || events[0].EventType != string(models.EventOffline) {
-		t.Fatalf("remaining events = %+v, want only offline recent event", events)
+	eventCounts := map[string]int{}
+	for _, event := range events {
+		eventCounts[event.EventType]++
+		if (event.EventType == string(models.EventOnline) || event.EventType == string(models.EventOffline)) && event.Date < "2026-08-23 00:00:00" {
+			t.Fatalf("old connectivity event remained: %+v", event)
+		}
+	}
+
+	wantCounts := map[models.HostEventType]int{
+		models.EventOnline:            1,
+		models.EventOffline:           1,
+		models.EventDiscovered:        1,
+		models.EventKnown:             1,
+		models.EventUnknown:           1,
+		models.EventDeviceTypeChanged: 1,
+	}
+	for eventType, want := range wantCounts {
+		if got := eventCounts[string(eventType)]; got != want {
+			t.Fatalf("remaining %s events = %d, want %d; events: %+v", eventType, got, want, events)
+		}
 	}
 
 	history, ok := gdb.Select("history")
 	if !ok {
 		t.Fatal("Select history failed")
 	}
-	if len(history) != 1 {
-		t.Fatalf("history len = %d, want 1", len(history))
+	if len(history) != 1 || history[0].Name != "recent-presence-row" {
+		t.Fatalf("history rows = %+v, want only recent presence row", history)
 	}
 }
 

@@ -48,8 +48,12 @@ function About() {
             <td class="config-field-value">can setup scans for <code>vlans</code>, <code>docker0</code> and etcetera. See <a href="https://github.com/aceberg/WatchYourLAN/blob/main/docs/VLAN_ARP_SCAN.md" target="_blank">docs</a> for more</td>
           </tr>
           <tr>
-            <td class="config-field-label"><b>Trim History</b></td>
-            <td class="config-field-value">remove history after (hours)</td>
+            <td class="config-field-label"><b>Presence retention</b></td>
+            <td class="config-field-value">remove sampled presence history after this many hours</td>
+          </tr>
+          <tr>
+            <td class="config-field-label"><b>Connectivity event retention</b></td>
+            <td class="config-field-value">remove online/offline event records after this many hours</td>
           </tr>
           <tr>
             <td class="config-field-label config-field-label-top"><b>PG Connect URL</b></td>

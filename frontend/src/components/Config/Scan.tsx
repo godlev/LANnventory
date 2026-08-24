@@ -45,8 +45,18 @@ function Scan() {
               </select></td>
             </tr>
             <tr>
-              <td class="config-field-label">Trim History (hours)</td>
-              <td class="config-field-value"><input name="trim" type="number" class="form-control" value={appConfig().TrimHist}></input></td>
+              <td class="config-field-label">Presence retention</td>
+              <td class="config-field-value">
+                <input name="trim" type="number" class="form-control" value={appConfig().TrimHist}></input>
+                <div class="config-field-helper">How long to keep sampled online/offline presence history, in hours.</div>
+              </td>
+            </tr>
+            <tr>
+              <td class="config-field-label">Connectivity event retention</td>
+              <td class="config-field-value">
+                <input name="connectivity_retention" type="number" class="form-control" value={appConfig().ConnectivityRetention}></input>
+                <div class="config-field-helper">How long to keep online/offline event records, in hours.</div>
+              </td>
             </tr>
             <tr>
               <td class="config-field-label">Use DB</td>

@@ -116,6 +116,7 @@ func delHost(c *gin.Context) {
 		return
 	}
 
+	gdb.DeleteHostDeviceChangeEvents(host.ID)
 	gdb.Delete("now", host.ID)
 	slog.Info("Deleting from DB", "host", host)
 	c.IndentedJSON(http.StatusOK, "OK")

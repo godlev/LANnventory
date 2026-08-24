@@ -114,6 +114,7 @@ const config = {
   ArpStrs: [],
   Timeout: 600,
   TrimHist: 48,
+  ConnectivityRetention: 168,
   ShoutURL: '',
   Version: 'dev-mock',
   UseDB: 'sqlite',
@@ -166,6 +167,11 @@ function isDeviceType(deviceType) {
   return typeof deviceType === 'string' && deviceTypes.has(deviceType);
 }
 
+function isPositiveIntegerValue(value) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0;
+}
+
 function parseRequestBody(body) {
   try {
     const parsed = JSON.parse(body);
@@ -195,6 +201,35 @@ function applyBasicConfigForm(body) {
   }
   if (typeof form.shout === 'string') {
     config.ShoutURL = form.shout;
+  }
+}
+
+function applySettingsConfigForm(body) {
+  const form = parseRequestBody(body);
+
+  if (typeof form.ifaces === 'string') {
+    config.Ifaces = form.ifaces;
+  }
+  if (typeof form.arpargs === 'string') {
+    config.ArpArgs = form.arpargs;
+  }
+  if (typeof form.log === 'string') {
+    config.LogLevel = form.log;
+  }
+  if (isPositiveIntegerValue(form.timeout)) {
+    config.Timeout = Number(form.timeout);
+  }
+  if (isPositiveIntegerValue(form.trim)) {
+    config.TrimHist = Number(form.trim);
+  }
+  if (isPositiveIntegerValue(form.connectivity_retention)) {
+    config.ConnectivityRetention = Number(form.connectivity_retention);
+  }
+  if (typeof form.usedb === 'string') {
+    config.UseDB = form.usedb;
+  }
+  if (typeof form.pgconnect === 'string') {
+    config.PGConnect = form.pgconnect;
   }
 }
 
@@ -536,6 +571,15 @@ async function routeSafeAction(req, res, url) {
   if (req.method === 'POST' && pathname === '/api/config/') {
     const body = await readBody(req);
     applyBasicConfigForm(body);
+    const referer = req.headers.referer || '/config';
+    res.writeHead(303, { location: referer });
+    res.end();
+    return true;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/config_settings/') {
+    const body = await readBody(req);
+    applySettingsConfigForm(body);
     const referer = req.headers.referer || '/config';
     res.writeHead(303, { location: referer });
     res.end();
