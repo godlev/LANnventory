@@ -394,6 +394,35 @@ html[data-bs-theme] body {
 .wyl-support-popover p:last-child {
     margin-bottom: 0;
 }
+.wyl-support-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.42rem;
+    width: 100%;
+    min-height: 2.25rem;
+    margin: 0.1rem 0 0.68rem;
+    padding: 0.42rem 0.7rem;
+    color: var(--wyl-control-text-strong) !important;
+    background-color: var(--wyl-control-bg);
+    border: 1px solid var(--wyl-control-border);
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 850;
+    line-height: 1.2;
+    text-decoration: none !important;
+}
+.wyl-support-action:hover,
+.wyl-support-action:focus-visible {
+    color: var(--wyl-control-text-strong) !important;
+    background-color: var(--wyl-control-hover-bg);
+    border-color: #597D7C;
+    text-decoration: none !important;
+}
+.wyl-support-footer {
+    padding-top: 0.62rem;
+    border-top: 1px solid var(--wyl-panel-border);
+}
 .wyl-support-popover a {
     color: var(--wyl-link);
     font-weight: 800;
