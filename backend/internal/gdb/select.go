@@ -10,6 +10,7 @@ type EventQuery struct {
 	Limit      int
 	Offset     int
 	Mac        string
+	Macs       []string
 	HostID     int
 	EventTypes []models.HostEventType
 }
@@ -79,8 +80,9 @@ func SelectEvents(limit int, mac string) (events []models.HostEvent, ok bool) {
 func SelectEventsFiltered(query EventQuery) (events []models.HostEvent, ok bool) {
 
 	tab := db.Table("events")
-	if query.Mac != "" {
-		tab = tab.Where("\"MAC\" = ?", query.Mac)
+	macs := eventQueryMacs(query)
+	if len(macs) > 0 {
+		tab = tab.Where("\"MAC\" IN ?", macs)
 	}
 	if query.HostID > 0 {
 		tab = tab.Where("\"HOST_ID\" = ?", query.HostID)
@@ -102,6 +104,106 @@ func SelectEventsFiltered(query EventQuery) (events []models.HostEvent, ok bool)
 	return events, !check.IfError(err)
 }
 
+// SelectEventStats returns faceted counts for retained activity events.
+func SelectEventStats(macs []string) (stats models.ActivityStats, ok bool) {
+
+	type eventStatRow struct {
+		EventType string `gorm:"column:EVENT_TYPE"`
+		Count     int64  `gorm:"column:count"`
+	}
+
+	tab := db.Table("events")
+	macs = normalizeMacs(macs)
+	if len(macs) > 0 {
+		tab = tab.Where("\"MAC\" IN ?", macs)
+	}
+
+	var rows []eventStatRow
+	err := tab.
+		Select("\"EVENT_TYPE\", COUNT(*) as count").
+		Group("EVENT_TYPE").
+		Scan(&rows).Error
+	if check.IfError(err) {
+		return stats, false
+	}
+
+	for _, row := range rows {
+		stats.Total += row.Count
+		switch models.HostEventType(row.EventType) {
+		case models.EventOnline:
+			stats.Online = row.Count
+		case models.EventOffline:
+			stats.Offline = row.Count
+		case models.EventDiscovered:
+			stats.Discovered = row.Count
+		case models.EventKnown:
+			stats.Known = row.Count
+		case models.EventUnknown:
+			stats.Unknown = row.Count
+		case models.EventDeviceTypeChanged:
+			stats.DeviceTypeChanged = row.Count
+		}
+	}
+
+	return stats, true
+}
+
+// SelectActivityDeviceOptions returns current hosts and retained event-only devices.
+func SelectActivityDeviceOptions() (devices []models.ActivityDeviceOption, ok bool) {
+
+	var hosts []models.Host
+	err := db.Table("now").
+		Order("\"NAME\" ASC").
+		Order("\"MAC\" ASC").
+		Find(&hosts).Error
+	if check.IfError(err) {
+		return devices, false
+	}
+
+	seen := make(map[string]struct{}, len(hosts))
+	for _, host := range hosts {
+		if host.Mac == "" {
+			continue
+		}
+		seen[host.Mac] = struct{}{}
+		devices = append(devices, models.ActivityDeviceOption{
+			HostID:     host.ID,
+			Mac:        host.Mac,
+			Name:       host.Name,
+			DeviceType: host.DeviceType,
+			Exists:     true,
+		})
+	}
+
+	var events []models.HostEvent
+	err = db.Table("events").
+		Order("\"DATE\" DESC").
+		Order("\"ID\" DESC").
+		Find(&events).Error
+	if check.IfError(err) {
+		return devices, false
+	}
+
+	for _, event := range events {
+		if event.Mac == "" {
+			continue
+		}
+		if _, ok := seen[event.Mac]; ok {
+			continue
+		}
+		seen[event.Mac] = struct{}{}
+		devices = append(devices, models.ActivityDeviceOption{
+			HostID:     event.HostID,
+			Mac:        event.Mac,
+			Name:       event.Name,
+			DeviceType: event.DeviceType,
+			Exists:     false,
+		})
+	}
+
+	return devices, true
+}
+
 // SelectEventsByHostID returns recent host activity events for one host, newest first.
 func SelectEventsByHostID(hostID int, limit int) (events []models.HostEvent, ok bool) {
 
@@ -109,4 +211,30 @@ func SelectEventsByHostID(hostID int, limit int) (events []models.HostEvent, ok 
 		Limit:  limit,
 		HostID: hostID,
 	})
+}
+
+func eventQueryMacs(query EventQuery) []string {
+	macs := query.Macs
+	if query.Mac != "" {
+		macs = append(macs, query.Mac)
+	}
+
+	return normalizeMacs(macs)
+}
+
+func normalizeMacs(macs []string) []string {
+	seen := make(map[string]struct{}, len(macs))
+	normalized := make([]string, 0, len(macs))
+	for _, mac := range macs {
+		if mac == "" {
+			continue
+		}
+		if _, ok := seen[mac]; ok {
+			continue
+		}
+		seen[mac] = struct{}{}
+		normalized = append(normalized, mac)
+	}
+
+	return normalized
 }

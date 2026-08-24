@@ -30,6 +30,7 @@ const deviceTypes = new Set([
 ]);
 const connectivityEvents = new Set(['online', 'offline']);
 const changeEvents = new Set(['discovered', 'known', 'unknown', 'device-type-changed']);
+const validActivityEvents = new Set([...connectivityEvents, ...changeEvents]);
 
 const fakeHosts = [
   {
@@ -309,13 +310,13 @@ function seedActivity() {
   addActivityMinutesAgo(fakeHosts[3], 'online', 2);
   addActivityMinutesAgo(deletedHostSnapshot, 'offline', 1440);
 
-  for (let i = 0; i < 60; i += 1) {
+  for (let i = 0; i < 120; i += 1) {
     const hostEntry = i % 3 === 0 ? fakeHosts[3] : i % 3 === 1 ? fakeHosts[2] : fakeHosts[1];
     addActivityMinutesAgo(hostEntry, i % 2 === 0 ? 'online' : 'offline', 20 + i);
   }
 
   const changeTypes = ['discovered', 'known', 'unknown', 'device-type-changed'];
-  for (let i = 0; i < 16; i += 1) {
+  for (let i = 0; i < 28; i += 1) {
     const hostEntry = fakeHosts[i % fakeHosts.length];
     const eventType = changeTypes[i % changeTypes.length];
     addActivityMinutesAgo(hostEntry, eventType, 90 + i * 3, {
@@ -359,6 +360,26 @@ function parseActivityCategory(url) {
   return null;
 }
 
+function parseActivityEventTypeSet(url) {
+  const values = url.searchParams.getAll('eventType');
+  if (values.length === 0) {
+    return { set: null };
+  }
+
+  for (const value of values) {
+    if (!validActivityEvents.has(value)) {
+      return { error: 'invalid eventType' };
+    }
+  }
+
+  return { set: new Set(values) };
+}
+
+function activityMacSet(url) {
+  const macs = url.searchParams.getAll('mac').filter(Boolean);
+  return macs.length === 0 ? null : new Set(macs);
+}
+
 function activityFor(url, predicate = () => true) {
   const limit = parseActivityLimit(url);
   if (limit === 0) {
@@ -375,10 +396,82 @@ function activityFor(url, predicate = () => true) {
     return { error: 'invalid category' };
   }
 
+  const eventTypeFilter = parseActivityEventTypeSet(url);
+  if (eventTypeFilter.error) {
+    return { error: eventTypeFilter.error };
+  }
+
   return sortedActivityEvents()
     .filter(categoryPredicate)
+    .filter((event) => eventTypeFilter.set === null || eventTypeFilter.set.has(event.EventType))
     .filter(predicate)
     .slice(offset, offset + limit);
+}
+
+function activityStatsFor(url) {
+  const macs = activityMacSet(url);
+  const stats = {
+    Total: 0,
+    Online: 0,
+    Offline: 0,
+    Discovered: 0,
+    Known: 0,
+    Unknown: 0,
+    DeviceTypeChanged: 0,
+  };
+
+  for (const event of activityEvents) {
+    if (macs !== null && !macs.has(event.Mac)) {
+      continue;
+    }
+
+    stats.Total += 1;
+    if (event.EventType === 'online') stats.Online += 1;
+    if (event.EventType === 'offline') stats.Offline += 1;
+    if (event.EventType === 'discovered') stats.Discovered += 1;
+    if (event.EventType === 'known') stats.Known += 1;
+    if (event.EventType === 'unknown') stats.Unknown += 1;
+    if (event.EventType === 'device-type-changed') stats.DeviceTypeChanged += 1;
+  }
+
+  return stats;
+}
+
+function activityDeviceOptions() {
+  const seen = new Set();
+  const options = [];
+
+  for (const hostEntry of fakeHosts) {
+    if (!hostEntry.Mac || seen.has(hostEntry.Mac)) {
+      continue;
+    }
+
+    seen.add(hostEntry.Mac);
+    options.push({
+      HostID: hostEntry.ID,
+      Mac: hostEntry.Mac,
+      Name: hostEntry.Name,
+      DeviceType: hostEntry.DeviceType,
+      Exists: true,
+    });
+  }
+
+  for (const event of sortedActivityEvents()) {
+    if (!event.Mac || seen.has(event.Mac)) {
+      continue;
+    }
+
+    seen.add(event.Mac);
+    options.push({
+      HostID: event.HostID,
+      Mac: event.Mac,
+      Name: event.Name,
+      DeviceType: event.DeviceType,
+      Exists: false,
+    });
+  }
+
+  return options;
 }
 
 function routeReadOnly(req, res, url) {
@@ -399,9 +492,19 @@ function routeReadOnly(req, res, url) {
     return true;
   }
 
+  if (req.method === 'GET' && pathname === '/api/activity/stats') {
+    sendJSON(res, activityStatsFor(url));
+    return true;
+  }
+
+  if (req.method === 'GET' && pathname === '/api/activity/devices') {
+    sendJSON(res, activityDeviceOptions());
+    return true;
+  }
+
   if (req.method === 'GET' && pathname === '/api/activity') {
-    const mac = url.searchParams.get('mac') ?? '';
-    const events = activityFor(url, (event) => mac === '' || event.Mac === mac);
+    const macs = activityMacSet(url);
+    const events = activityFor(url, (event) => macs === null || macs.has(event.Mac));
     if (events.error) {
       sendJSON(res, { error: events.error }, 400);
       return true;

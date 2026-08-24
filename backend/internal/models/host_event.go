@@ -53,6 +53,26 @@ type HostEvent struct {
 	NewValue   string `gorm:"column:NEW_VALUE"`
 }
 
+// ActivityStats summarizes retained host activity events.
+type ActivityStats struct {
+	Total             int64
+	Online            int64
+	Offline           int64
+	Discovered        int64
+	Known             int64
+	Unknown           int64
+	DeviceTypeChanged int64
+}
+
+// ActivityDeviceOption identifies a device represented in retained activity events.
+type ActivityDeviceOption struct {
+	HostID     int
+	Mac        string
+	Name       string
+	DeviceType string
+	Exists     bool
+}
+
 // NewHostEvent creates a snapshot event from the current Host fields.
 func NewHostEvent(host Host, eventType HostEventType, oldValue, newValue string) HostEvent {
 	return HostEvent{
