@@ -1,8 +1,9 @@
-import { createSignal, onCleanup, onMount } from "solid-js";
+import { createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js";
 import { A } from "@solidjs/router";
 
 import { apiGetActivity, type ActivityCategory } from "../../functions/api";
-import { bkpHosts, type HostEvent } from "../../functions/exports";
+import { allHosts, bkpHosts, filterState, type HostEvent } from "../../functions/exports";
+import { hasActiveHostFilters } from "../../functions/hostView";
 import ActivityFeed from "../ActivityFeed";
 
 const dashboardActivityLimit = 5;
@@ -19,23 +20,51 @@ function RecentActivityPanel() {
   const [connectivityEvents, setConnectivityEvents] = createSignal<HostEvent[]>([]);
   const [changeEvents, setChangeEvents] = createSignal<HostEvent[]>([]);
   let refreshTimer = 0;
+  let requestId = 0;
 
-  const loadActivity = async () => {
+  const visibleFilteredMacs = createMemo(() => {
+    if (!hasActiveHostFilters(filterState())) {
+      return undefined;
+    }
+
+    return allHosts.map((host) => host.Mac).filter((mac) => mac !== "");
+  });
+
+  const loadActivity = async (macs = visibleFilteredMacs()) => {
+    const activeRequest = ++requestId;
+
+    if (macs !== undefined && macs.length === 0) {
+      setConnectivityEvents([]);
+      setChangeEvents([]);
+      return;
+    }
+
     try {
       const [nextConnectivityEvents, nextChangeEvents] = await Promise.all([
-        loadActivityCategory("connectivity"),
-        loadActivityCategory("changes"),
+        loadActivityCategory("connectivity", macs),
+        loadActivityCategory("changes", macs),
       ]);
+      if (activeRequest !== requestId) {
+        return;
+      }
+
       setConnectivityEvents(nextConnectivityEvents);
       setChangeEvents(nextChangeEvents);
     } catch {
+      if (activeRequest !== requestId) {
+        return;
+      }
+
       setConnectivityEvents([]);
       setChangeEvents([]);
     }
   };
 
+  createEffect(() => {
+    loadActivity(visibleFilteredMacs());
+  });
+
   onMount(() => {
-    loadActivity();
     refreshTimer = window.setInterval(loadActivity, 60000);
   });
 
@@ -65,8 +94,8 @@ function RecentActivityPanel() {
   );
 }
 
-async function loadActivityCategory(category: ActivityCategory) {
-  return await apiGetActivity(dashboardActivityLimit, { category });
+async function loadActivityCategory(category: ActivityCategory, macs?: string[]) {
+  return await apiGetActivity(dashboardActivityLimit, { category, macs });
 }
 
 function DashboardActivityPanel(props: DashboardActivityPanelProps) {
