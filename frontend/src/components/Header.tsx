@@ -9,7 +9,6 @@ function Header() {
   const location = useLocation();
   const navItems = [
     { label: "Home", href: "/" },
-    { label: "Config", href: "/config" },
     { label: "Presence", href: "/history" },
     { label: "Events", href: "/activity" },
   ];
@@ -20,10 +19,11 @@ function Header() {
     return hostName ? "Host · " + hostName : "Host";
   };
   const showHostContext = () => currentPath().startsWith("/host/");
+  const isActivePath = (href: string) => currentPath() === (href.replace(/\/$/, "") || "/");
   const navClass = (href: string) => {
-    const path = href.replace(/\/$/, "") || "/";
-    return "nav-link wyl-nav-tab" + (currentPath() === path ? " is-active" : "");
+    return "nav-link wyl-nav-tab" + (isActivePath(href) ? " is-active" : "");
   };
+  const settingsUtilityClass = () => "nav-link wyl-navbar-utility wyl-navbar-settings" + (isActivePath("/config") ? " is-active" : "");
 
   const currentColor = () => normalizeColorMode(appConfig().Color);
   const nextColor = () => currentColor() === "dark" ? "light" : "dark";
@@ -69,7 +69,7 @@ function Header() {
         <ul class="navbar-nav wyl-nav-tabs me-auto">
           {navItems.map((item) =>
           <li class="nav-item">
-            <A class={navClass(item.href)} href={item.href} title={item.label} aria-current={navClass(item.href).includes("is-active") ? "page" : undefined}>{item.label}</A>
+            <A class={navClass(item.href)} href={item.href} title={item.label} aria-current={isActivePath(item.href) ? "page" : undefined}>{item.label}</A>
           </li>
           )}
           <Show when={showHostContext()}>
@@ -86,6 +86,17 @@ function Header() {
           </Show>
         </ul>
         <ul class="navbar-nav wyl-navbar-actions">
+          <li class="nav-item">
+            <A
+              class={settingsUtilityClass()}
+              href="/config"
+              title="Settings"
+              aria-label="Settings"
+              aria-current={isActivePath("/config") ? "page" : undefined}
+            >
+              <i class="bi bi-gear-fill" aria-hidden="true"></i>
+            </A>
+          </li>
           <li class="nav-item">
             <button
               type="button"
