@@ -27,7 +27,7 @@ function Retention() {
   };
 
   return (
-    <div id="data-retention" class="card wyl-panel config-panel">
+    <div class="card wyl-panel config-panel">
       <div class="card-header">Data retention</div>
       <div class="card-body table-responsive">
         <form onSubmit={handleSubmit}>

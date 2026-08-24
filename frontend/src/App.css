@@ -1616,37 +1616,11 @@ html[data-bs-theme] .activity-table > tbody > tr.activity-group-row:hover > td {
 }
 .settings-layout {
     display: grid;
-    grid-template-columns: 13rem minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1rem;
     align-items: start;
 }
-.settings-section-nav {
-    position: sticky;
-    top: 0.85rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.2rem;
-    padding: 0.35rem;
-    background-color: var(--wyl-panel-bg);
-    border: 1px solid var(--wyl-panel-border);
-    border-radius: 8px;
-}
-.settings-section-nav a {
-    display: block;
-    padding: 0.44rem 0.56rem;
-    color: var(--wyl-muted);
-    border-radius: 6px;
-    font-size: 0.78rem;
-    font-weight: 800;
-    line-height: 1.2;
-    text-decoration: none;
-}
-.settings-section-nav a:hover,
-.settings-section-nav a:focus-visible {
-    color: var(--wyl-link-hover);
-    background-color: var(--wyl-nav-hover-bg);
-}
-.settings-content {
+.settings-column {
     display: grid;
     gap: 1rem;
     min-width: 0;
@@ -2257,15 +2231,6 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     }
     .settings-layout {
         grid-template-columns: 1fr;
-    }
-    .settings-section-nav {
-        position: static;
-        flex-direction: row;
-        flex-wrap: wrap;
-    }
-    .settings-section-nav a {
-        flex: 1 1 auto;
-        text-align: center;
     }
     .wyl-support-popover {
         position: fixed;

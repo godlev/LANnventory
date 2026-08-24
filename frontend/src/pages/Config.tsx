@@ -7,14 +7,6 @@ import Retention from "../components/Config/Retention"
 import Scan from "../components/Config/Scan"
 
 function Config() {
-  const sections = [
-    { label: "General", href: "#general" },
-    { label: "Scanning & database", href: "#scanning" },
-    { label: "Data retention", href: "#data-retention" },
-    { label: "Integrations", href: "#integrations" },
-    { label: "About", href: "#about" },
-  ];
-
   onMount(() => {
     const scrollToHash = () => {
       const id = window.location.hash.slice(1);
@@ -34,17 +26,11 @@ function Config() {
     <div class="settings-page">
       <header class="settings-page-header">
         <h1>Settings</h1>
-        <p>Configure WatchYourLAN</p>
+        <p>Configure WatchYourLAN2</p>
       </header>
 
       <div class="settings-layout">
-        <nav class="settings-section-nav" aria-label="Settings sections">
-          {sections.map((section) =>
-            <a href={section.href}>{section.label}</a>
-          )}
-        </nav>
-
-        <div class="settings-content">
+        <div class="settings-column">
           <section id="general" class="settings-section" aria-label="General">
             <Basic></Basic>
           </section>
@@ -53,14 +39,16 @@ function Config() {
             <Scan></Scan>
           </section>
 
-          <section class="settings-section" aria-label="Data retention">
+          <section id="data-retention" class="settings-section" aria-label="Data retention">
             <Retention></Retention>
           </section>
+        </div>
 
+        <div class="settings-column">
           <section id="integrations" class="settings-section" aria-label="Integrations">
             <div class="settings-section-heading">
               <h2>Integrations</h2>
-              <p>Send WatchYourLAN metrics to external monitoring systems.</p>
+              <p>Send WatchYourLAN2 metrics to external monitoring systems.</p>
             </div>
             <Influx></Influx>
             <Prometheus></Prometheus>
