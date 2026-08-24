@@ -85,6 +85,49 @@ export function activityDeviceTypeLabel(value: string | null | undefined): strin
   return getDeviceTypeOption(value).label;
 }
 
+export function activityCategoryLabel(eventType: string): string {
+  switch (eventType) {
+    case "online":
+    case "offline":
+      return "Connectivity";
+    default:
+      return "Device changes";
+  }
+}
+
+export function activityEventLabel(eventType: string): string {
+  switch (eventType) {
+    case "online":
+      return "Online";
+    case "offline":
+      return "Offline";
+    case "known":
+      return "Marked known";
+    case "unknown":
+      return "Marked unknown";
+    case "device-type-changed":
+      return "Device type changed";
+    case "discovered":
+    default:
+      return "New device detected";
+  }
+}
+
+export function activityDayLabel(value: string): string {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) {
+    return "Unknown day";
+  }
+
+  const [, year, month, day] = match;
+  const date = new Date(Number(year), Number(month) - 1, Number(day));
+  return date.toLocaleDateString("en", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 export function relativeActivityTime(value: string): string {
   const date = parseActivityDate(value);
   if (date === null) {

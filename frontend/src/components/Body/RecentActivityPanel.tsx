@@ -46,7 +46,7 @@ function RecentActivityPanel() {
   const hostExists = (event: HostEvent) => bkpHosts().some((host) => host.ID === event.HostID && host.Mac === event.Mac);
 
   return (
-    <div class="activity-dashboard" aria-label="Recent activity">
+    <div class="activity-dashboard" aria-label="Recent events">
       <DashboardActivityPanel
         title="Connectivity"
         subtitle="Recent online/offline changes"
@@ -78,7 +78,7 @@ function DashboardActivityPanel(props: DashboardActivityPanelProps) {
           <div class="activity-panel-subtitle">{props.subtitle}</div>
         </div>
         <A class="activity-view-all" href="/activity">
-          <span>View all</span>
+          <span>View all events</span>
           <i class="bi bi-arrow-right" aria-hidden="true"></i>
         </A>
       </div>

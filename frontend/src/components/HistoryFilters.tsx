@@ -30,7 +30,7 @@ function HistoryFilters(props: ParentProps) {
   return (
     <div class="history-filter-group">
       <Show when={hasMultipleIfaces()}>
-        <select onChange={(event)=>{handleFilter("Iface", event)}} class={selectClass(filterState().Iface !== "") + " history-filter-iface"} title="Filter history by interface" value={filterState().Iface}>
+        <select onChange={(event)=>{handleFilter("Iface", event)}} class={selectClass(filterState().Iface !== "") + " history-filter-iface"} title="Filter presence by interface" value={filterState().Iface}>
           <option value="">All interfaces</option>
           <For each={ifaces()}>{(iface) =>
             <option value={iface}>{iface}</option>
@@ -42,14 +42,14 @@ function HistoryFilters(props: ParentProps) {
         <option value="1">Known devices</option>
         <option value="0">Unknown devices</option>
       </select>
-      <select onChange={(event)=>{handleFilter("Now", event)}} class={selectClass(filterState().Now !== "")} title="Filter history by online state" value={filterState().Now}>
+      <select onChange={(event)=>{handleFilter("Now", event)}} class={selectClass(filterState().Now !== "")} title="Filter presence by online state" value={filterState().Now}>
         <option value="">All statuses</option>
         <option value="1">Online devices</option>
         <option value="0">Offline devices</option>
       </select>
       {props.children}
       <Show when={hasActiveFilter()}>
-        <button onClick={handleReset} class="btn btn-sm device-reset-filter" title="Reset history filters">
+        <button onClick={handleReset} class="btn btn-sm device-reset-filter" title="Reset presence filters">
           <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>
           <span>Reset filter</span>
         </button>

@@ -1,13 +1,16 @@
 import { isDeviceTypeValue, type DeviceTypeValue } from "./deviceTypes";
-import type { Conf, Host, HostEvent } from "./exports";
+import type { ActivityDeviceOption, ActivityStats, Conf, Host, HostEvent } from "./exports";
 
 export const apiPath = '';
 export type ActivityCategory = "all" | "connectivity" | "changes";
+export type ActivityEventType = "discovered" | "online" | "offline" | "known" | "unknown" | "device-type-changed";
 
 type ActivityQuery = {
   category?: ActivityCategory;
+  eventTypes?: ActivityEventType[];
   offset?: number;
   mac?: string;
+  macs?: string[];
 };
 
 export const apiGetAllHosts = async () => {
@@ -38,17 +41,50 @@ export const apiGetActivity = async (limit = 20, query: ActivityQuery = {}): Pro
   if (query.category !== undefined) {
     params.set("category", query.category);
   }
+  query.eventTypes?.forEach((eventType) => {
+    params.append("eventType", eventType);
+  });
   if (query.offset !== undefined) {
     params.set("offset", String(query.offset));
   }
   if (query.mac) {
-    params.set("mac", query.mac);
+    params.append("mac", query.mac);
   }
+  query.macs?.forEach((mac) => {
+    if (mac) {
+      params.append("mac", mac);
+    }
+  });
 
   const url = apiPath+'/api/activity?'+params.toString();
   const events = await (await fetch(url)).json();
 
   return events;
+};
+
+export const apiGetActivityStats = async (query: Pick<ActivityQuery, "mac" | "macs"> = {}): Promise<ActivityStats> => {
+  const params = new URLSearchParams();
+  if (query.mac) {
+    params.append("mac", query.mac);
+  }
+  query.macs?.forEach((mac) => {
+    if (mac) {
+      params.append("mac", mac);
+    }
+  });
+
+  const suffix = params.toString();
+  const url = apiPath+'/api/activity/stats'+(suffix === "" ? "" : "?"+suffix);
+  const stats = await (await fetch(url)).json();
+
+  return stats;
+};
+
+export const apiGetActivityDevices = async (): Promise<ActivityDeviceOption[]> => {
+  const url = apiPath+'/api/activity/devices';
+  const devices = await (await fetch(url)).json();
+
+  return devices;
 };
 
 export const apiGetHostActivity = async (id: number | string, limit = 10): Promise<HostEvent[]> => {

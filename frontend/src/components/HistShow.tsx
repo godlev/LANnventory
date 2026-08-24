@@ -11,7 +11,7 @@ function HistShow(_props: any) {
 
   return (
     <label class="history-samples-control">
-      <span>Samples per device</span>
+      <span>Presence samples per device</span>
       <input
         class="form-control form-control-sm history-show-input"
         type="number"

@@ -29,6 +29,24 @@ export interface HostEvent {
 	NewValue:   string;
 };
 
+export interface ActivityStats {
+	Total:             number;
+	Online:            number;
+	Offline:           number;
+	Discovered:        number;
+	Known:             number;
+	Unknown:           number;
+	DeviceTypeChanged: number;
+};
+
+export interface ActivityDeviceOption {
+	HostID:     number;
+	Mac:        string;
+	Name:       string;
+	DeviceType: string;
+	Exists:     boolean;
+};
+
 export interface Conf {
 	Host:	   string;
 	Port:	   string;

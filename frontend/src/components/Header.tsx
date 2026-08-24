@@ -10,8 +10,8 @@ function Header() {
   const navItems = [
     { label: "Home", href: "/" },
     { label: "Config", href: "/config" },
-    { label: "History", href: "/history" },
-    { label: "Activity", href: "/activity" },
+    { label: "Presence", href: "/history" },
+    { label: "Events", href: "/activity" },
   ];
 
   const currentPath = () => location.pathname.replace(/\/$/, "") || "/";

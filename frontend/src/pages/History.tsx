@@ -25,8 +25,8 @@ function History() {
     <div class="card wyl-panel history-panel">
       <div class="card-header history-panel-header">
         <div class="history-panel-title-group">
-          <div class="history-panel-title">History</div>
-          <div class="history-panel-subtitle">Newest -&gt; Older</div>
+          <div class="history-panel-title">Presence</div>
+          <div class="history-panel-subtitle">Sampled online/offline presence over time</div>
         </div>
         <div class="history-toolbar">
           <HistoryFilters>
@@ -36,7 +36,7 @@ function History() {
       </div>
       <div class="card-body history-panel-body table-responsive">
         <div class="history-legend">
-          <span>Each block represents one recorded scan sample.</span>
+          <span>Each block represents one recorded presence sample.</span>
           <Show when={scanIntervalHint()}>
             <span>{scanIntervalHint()}</span>
           </Show>
