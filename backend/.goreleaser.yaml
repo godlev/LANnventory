@@ -22,9 +22,9 @@ nfpms:
     formats:
     - deb
     - rpm
-    maintainer: aceberg <aceberg_a@proton.me>
-    description: Lightweight network IP scanner with web GUI 
-    homepage: https://github.com/aceberg/watchyourlan
+    maintainer: LANventory maintainers
+    description: LAN inventory and presence monitoring web UI
+    homepage: https://github.com/godlev/WatchYourLAN2
     license: MIT
     section: utils
     dependencies: # Don't forget to edit!
@@ -39,9 +39,9 @@ nfpms:
   - id: alpine
     formats:
     - apk
-    maintainer: aceberg <aceberg_a@proton.me>
-    description: Lightweight network IP scanner with web GUI 
-    homepage: https://github.com/aceberg/watchyourlan
+    maintainer: LANventory maintainers
+    description: LAN inventory and presence monitoring web UI
+    homepage: https://github.com/godlev/WatchYourLAN2
     license: MIT
     section: utils
     dependencies: # Don't forget to edit!

@@ -132,7 +132,6 @@ Recent release-readiness work includes:
 ### Remaining validation work before the first beta
 
 - PostgreSQL runtime integration testing is still required.
-- Docker/container packaging and upgrade-path validation are being prepared separately.
 - The race detector has not been run in the current Windows development environment because CGO/gcc is unavailable there.
 
 ## Security and exposure
@@ -152,7 +151,9 @@ LANventory inherits the WatchYourLAN ARP discovery model.
 
 - Linux is the intended runtime for real LAN scanning.
 - `arp-scan` is required for real ARP discovery.
-- Container deployments typically need host networking so `arp-scan` can see the real LAN interfaces.
+- Container deployments on Linux typically need host networking so `arp-scan` can see real LAN interfaces instead of only the Docker bridge network.
+- Containerized scanning runs the `arp-scan` binary and requires raw-network privileges. The Compose example runs as root with `NET_RAW` and `NET_ADMIN` capabilities rather than `privileged: true`.
+- Docker Desktop on Windows/macOS does not provide the same LAN host-network behavior as native Linux Docker and should not be treated as validated for real LAN scanning.
 - The web UI/API normally listens on `0.0.0.0:8840` unless configured otherwise.
 
 Starting the real backend starts network scanning. Use the safe frontend mock mode below when working on UI without touching the LAN.
@@ -220,9 +221,101 @@ LANventory does not yet advertise a separately published Docker image or package
 
 Do **not** install `aceberg/watchyourlan` expecting LANventory features; that image belongs to the upstream WatchYourLAN project.
 
-Container packaging, clean-install validation, persistent-volume mapping and the operational WatchYourLAN → LANventory upgrade path are being prepared as part of the next packaging phase.
+Build the current development container image from this repository checkout:
 
-Until that work is complete, evaluate LANventory by building from this repository checkout.
+```sh
+docker build -t lanventory:dev .
+```
+
+The image is built from LANventory source in this repository. It does not fetch or substitute an upstream WatchYourLAN binary.
+
+### Docker / Compose development install
+
+The repository includes `docker-compose.yml` for local evaluation:
+
+```sh
+docker compose up --build
+```
+
+Before real scanning, edit `IFACES` in `docker-compose.yml` to match one or more real Linux host interfaces, for example `eth0 wlan0`.
+
+The Compose service:
+
+- builds `lanventory:dev` locally
+- uses `network_mode: host`
+- keeps the default web/API port at `8840`
+- persists data in `/data/WatchYourLAN`
+- adds `NET_RAW` and `NET_ADMIN`
+- uses `restart: unless-stopped`
+- health-checks `GET /api/health`
+
+Because host networking is used, Compose `ports:` mappings are intentionally not used. `PORT` controls the host port that LANventory binds.
+
+The optional `docker-compose-auth.yml` keeps the inherited ForAuth-style example but builds LANventory locally. Replace the example auth credentials before using that file.
+
+### Persistent data
+
+The default runtime data directory remains:
+
+```text
+/data/WatchYourLAN
+```
+
+This compatibility path is intentional. It preserves a realistic migration path for existing WatchYourLAN users and matches the current Go command default.
+
+Inside that directory LANventory creates or reads:
+
+```text
+config_v2.yaml
+scan.db
+scan.db-wal
+scan.db-shm
+```
+
+SQLite stores Hosts, Known / Unknown state, Presence history, Events and Device Type classifications in `scan.db` and its WAL side files. Mount or back up the entire data directory, not just `scan.db`.
+
+### Clean first run
+
+On an empty data directory, startup creates `config_v2.yaml`, opens SQLite at `scan.db`, migrates `now`, `history` and `events`, and serves the UI.
+
+Automated tests validate this first-run and reopen path without starting scanner routines. Real container runtime validation should still avoid configured LAN interfaces unless scanning is intentional.
+
+### Upgrade from WatchYourLAN
+
+For an existing SQLite WatchYourLAN installation:
+
+1. Stop WatchYourLAN.
+2. Back up the existing config directory, including `config_v2.yaml`.
+3. Back up the existing SQLite data directory, including `scan.db`, `scan.db-wal` and `scan.db-shm` if present.
+4. Verify the backup exists and can be copied elsewhere.
+5. Start LANventory against a copied data directory first when possible.
+6. Let LANventory run its additive startup migration.
+7. Confirm Hosts, Known state and Presence history are visible before discarding the backup.
+
+The current migration tests cover legacy SQLite tables and verify existing rows are preserved while `DEVICE_TYPE` and the `events` table are added.
+
+For upstream Docker users, the compatible volume target remains:
+
+```text
+/data/WatchYourLAN
+```
+
+Do not simply switch from `aceberg/watchyourlan` to a future LANventory image without a backup and a first run against copied data. Published LANventory image names are intentionally not final yet.
+
+Rollback:
+
+1. Stop LANventory.
+2. Restore the backed-up WatchYourLAN config/data directory.
+3. Start the previous WatchYourLAN deployment.
+4. Do not reuse a migrated database with an older upstream version unless you have verified that older version tolerates the additive schema.
+
+### Container shutdown
+
+The Go command handles SIGINT/SIGTERM, shuts down the HTTP server, signals background routines and closes the active database handle. An `arp-scan` subprocess already has a bounded timeout; in-flight scans may not stop until the subprocess exits or the container runtime terminates the process.
+
+### PostgreSQL deployments
+
+PostgreSQL configuration support is retained, but PostgreSQL runtime integration testing is still required before the first beta is declared fully validated for PostgreSQL deployments. SQLite is the primary packaging-validated path at this stage.
 
 ## Configuration
 
