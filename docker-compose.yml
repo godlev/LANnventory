@@ -1,28 +1,41 @@
-version: "3"
 services:
-  # node-bootstrap:                     # optional, local themes and icons
-  #   image: aceberg/node-bootstrap           # dockerhub
-  #   # image: ghcr.io/aceberg/node-bootstrap # or github
-  #   restart: unless-stopped
-  #   ports:
-  #   - 8850:8850
-  wyl:
-    image: aceberg/watchyourlan           # dockerhub
-    # image: ghcr.io/aceberg/watchyourlan # or github
-    network_mode: "host"      
+  lanventory:
+    build:
+      context: .
+    image: lanventory:dev
+    container_name: lanventory
+    network_mode: host
     restart: unless-stopped
-    # uncomment those if you are using local node-bootstrap:
-    # command: "-n http://YOUR_IP:8850"   # put your server IP or DNS name here
-    # depends_on:
-    #   - node-bootstrap
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
     volumes:
-    - ~/.dockerdata/wyl:/data/WatchYourLAN
+      - lanventory-data:/data/WatchYourLAN
     environment:
-      TZ: Asia/Novosibirsk              # required: needs your TZ for correct time
-      IFACES: "enp4s0 wlxf4ec3892dd51"  # required: 1 or more interface
-      # HOST: "0.0.0.0"                   # optional, default: 0.0.0.0
-      # PORT: "8840"                      # optional, default: 8840
-      # TIMEOUT: "120"                    # optional, time in seconds, default: 120
-      # SHOUTRRR_URL: ""                  # optional, set url to notify
-      # THEME: "sand"                     # optional
-      # COLOR: "dark"                     # optional
+      TZ: Etc/UTC
+      HOST: 0.0.0.0
+      PORT: "8840"
+      # Set IFACES to one or more real Linux host interfaces before scanning.
+      # Example: IFACES: "eth0 wlan0"
+      IFACES: ""
+      # Optional settings:
+      # TIMEOUT: "120"
+      # LOG_LEVEL: "info"
+      # THEME: "sand"
+      # COLOR: "dark"
+      # SHOUTRRR_URL: ""
+      # USE_DB: "sqlite"
+      # PG_CONNECT: ""
+      # INFLUX_ENABLE: "false"
+      # INFLUX_ADDR: ""
+      # INFLUX_TOKEN: ""
+      # PROMETHEUS_ENABLE: "false"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS \"http://127.0.0.1:$${PORT:-8840}/api/health\" >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  lanventory-data:

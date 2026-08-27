@@ -1,37 +1,48 @@
-version: "3"
 services:
-  wyl:
-    image: aceberg/watchyourlan
-    network_mode: "host"        
+  lanventory:
+    build:
+      context: .
+    image: lanventory:dev
+    container_name: lanventory
+    network_mode: host
     restart: unless-stopped
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
     volumes:
-    - ~/.dockerdata/wyl:/data/WatchYourLAN
+      - lanventory-data:/data/WatchYourLAN
     environment:
-      TZ: Asia/Novosibirsk              # required: needs your TZ for correct time
-      IFACES: "enp4s0 wlxf4ec3892dd51"  # required: 1 or more interface
-      HOST: "0.0.0.0"                   # optional, default: 0.0.0.0
-      PORT: "8840"                      # optional, default: 8840
-      TIMEOUT: "120"                    # optional, time in seconds, default: 120
-      SHOUTRRR_URL: ""                  # optional, set url to notify
-      THEME: "sand"                     # optional
-      COLOR: "dark"                     # optional
-
-# WARNING! WYL needs 'host' network mode to work. So, WYL port will be exposed in this setup. You need to limit access to it with firewall or other measures
+      TZ: Etc/UTC
+      HOST: 0.0.0.0
+      PORT: "8840"
+      IFACES: ""
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS \"http://127.0.0.1:$${PORT:-8840}/api/health\" >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
 
   forauth:
-    image: aceberg/forauth      
+    image: aceberg/forauth
     restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
-    - 8800:8800 # Proxy port
-    - 8801:8801 # Config port
+      - "8800:8800"
+      - "8801:8801"
     volumes:
-    - ~/.dockerdata/forauth:/data/ForAuth
+      - forauth-data:/data/ForAuth
     environment:
-      TZ: Asia/Novosibirsk          # required: needs your TZ for correct time
-      FA_TARGET: "YOUR_IP:8840"     # optional: path to wyl host:port  
-      FA_AUTH: "true"               # optional: true - enabled, default: false
-      FA_AUTH_EXPIRE: 7d            # optional: expiration time, default: 7d
-      FA_AUTH_PASSWORD: "$$2a$$10$$wGLUHXh2cRN1257uGg1s5eZvYgnjw8wB9vAcfcHqqqrxm5hvBqAzK" 
-      # WARNING! If password is set as environment variable, every '$' character must be escaped with another '$', like this '$$'
-      # optional: password encrypted with bcrypt, how-to: https://github.com/aceberg/ForAuth/blob/main/docs/BCRYPT.md (In this example FA_AUTH_PASSWORD=pw)
-      FA_AUTH_USER: user            # optional: username
+      TZ: Etc/UTC
+      FA_TARGET: "host.docker.internal:8840"
+      FA_AUTH: "true"
+      FA_AUTH_EXPIRE: 7d
+      # Example bcrypt hash for the demo password used by the inherited upstream sample.
+      # Replace both user and password hash before using this file.
+      FA_AUTH_USER: user
+      FA_AUTH_PASSWORD: "$$2a$$10$$wGLUHXh2cRN1257uGg1s5eZvYgnjw8wB9vAcfcHqqqrxm5hvBqAzK"
+
+volumes:
+  lanventory-data:
+  forauth-data:

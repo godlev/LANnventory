@@ -1,27 +1,71 @@
-FROM --platform=$BUILDPLATFORM tonistiigi/xx AS xx
+# syntax=docker/dockerfile:1.7
 
-FROM --platform=$BUILDPLATFORM golang:alpine AS builder
+ARG NODE_IMAGE=node:22-bookworm-slim
+ARG GO_IMAGE=golang:1.25-bookworm
+ARG RUNTIME_IMAGE=debian:bookworm-slim
 
-COPY --from=xx / /
+FROM ${NODE_IMAGE} AS frontend-build
+WORKDIR /src/frontend
 
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+
+COPY frontend/ ./
+RUN npm run build
+
+FROM ${GO_IMAGE} AS backend-build
 WORKDIR /src
 
-COPY backend/go.mod backend/go.sum ./
-RUN go mod download
+COPY backend/go.mod backend/go.sum ./backend/
+RUN cd backend && go mod download
 
-COPY backend/ .
+COPY backend/ ./backend/
+COPY --from=frontend-build /src/frontend/dist/assets/ ./backend/internal/web/public/assets/
+COPY --from=frontend-build /src/frontend/dist/fs/public/ ./backend/internal/web/public/
 
-ARG TARGETPLATFORM
-RUN CGO_ENABLED=0 xx-go build -ldflags='-w -s' -o /WatchYourLAN ./cmd/WatchYourLAN
+RUN set -eux; \
+    cd backend/internal/web/public/assets; \
+    sed -i 's/assets/fs\/public\/assets/g' index.js; \
+    sed -i 's|url(/assets/|url(/fs/public/assets/|g' index.css
 
+RUN cd backend && \
+    CGO_ENABLED=0 GOOS=linux go build \
+      -trimpath \
+      -ldflags='-s -w' \
+      -o /out/lanventory \
+      ./cmd/WatchYourLAN
 
-FROM alpine
+FROM ${RUNTIME_IMAGE} AS runtime
 
-WORKDIR /app
+ARG LANVENTORY_VERSION=dev
+LABEL org.opencontainers.image.title="LANventory" \
+      org.opencontainers.image.description="Self-contained LAN inventory and presence monitoring UI" \
+      org.opencontainers.image.source="https://github.com/godlev/WatchYourLAN2" \
+      org.opencontainers.image.version="${LANVENTORY_VERSION}" \
+      org.opencontainers.image.licenses="MIT"
 
-RUN apk add --no-cache arp-scan tzdata \
-    && mkdir /data
+ENV HOST=0.0.0.0 \
+    PORT=8840
 
-COPY --from=builder /WatchYourLAN /app/
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends \
+      arp-scan \
+      ca-certificates \
+      curl \
+      tzdata; \
+    rm -rf /var/lib/apt/lists/*; \
+    mkdir -p /data/WatchYourLAN
 
-ENTRYPOINT ["./WatchYourLAN"]
+COPY --from=backend-build /out/lanventory /usr/local/bin/lanventory
+RUN ln -s /usr/local/bin/lanventory /usr/local/bin/watchyourlan
+
+WORKDIR /data/WatchYourLAN
+VOLUME ["/data/WatchYourLAN"]
+EXPOSE 8840
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD curl -fsS "http://127.0.0.1:${PORT}/api/health" >/dev/null || exit 1
+
+ENTRYPOINT ["/usr/local/bin/lanventory"]
+CMD ["-d", "/data/WatchYourLAN"]
