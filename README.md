@@ -517,10 +517,10 @@ Thanks to:
 
 The product is branded **LANnventory**.
 
-The GitHub repository currently remains:
+The GitHub repository is:
 
 ```text
-godlev/WatchYourLAN2
+godlev/LANnventory
 ```
 
 The Go module currently remains:
@@ -529,4 +529,6 @@ The Go module currently remains:
 github.com/aceberg/WatchYourLAN
 ```
 
-Those names are scheduled for a dedicated independence/rename phase after packaging validation, so data/runtime compatibility changes can be reviewed separately.
+The Go module path is retained temporarily for compatibility and will be reviewed during the dedicated independence/rename phase.
+
+Legacy WatchYourLAN names may also remain in compatibility-sensitive paths, configuration, database migration logic, or upgrade documentation where changing them could affect existing installations.
