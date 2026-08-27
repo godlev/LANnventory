@@ -586,6 +586,11 @@ function routeReadOnly(req, res, url) {
     return true;
   }
 
+  if (req.method === 'GET' && pathname === '/api/health') {
+    sendText(res, 'OK');
+    return true;
+  }
+
   if (req.method === 'GET' && pathname === '/api/version') {
     sendJSON(res, config.Version);
     return true;

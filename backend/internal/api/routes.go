@@ -24,6 +24,7 @@ func Routes(router *gin.Engine) {
 		r0.GET("/host/add/:mac", addHost) // api-hosts.go
 
 		r0.GET("/config", getConfig)        // api-system.go
+		r0.GET("/health", getHealth)        // api-system.go
 		r0.GET("/notify_test", notifyTest)  // api-system.go
 		r0.GET("/status/*iface", getStatus) // api-system.go
 		r0.GET("/version", getVersion)      // api-system.go

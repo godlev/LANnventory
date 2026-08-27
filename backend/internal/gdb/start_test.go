@@ -2,6 +2,7 @@ package gdb
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -144,6 +145,79 @@ func TestConcurrentSQLiteReconnectsLeaveUsableDB(t *testing.T) {
 	}
 }
 
+func TestCleanSQLiteFirstRunCreatesConfigAndPersistentSchema(t *testing.T) {
+	oldConfig := conf.GetAppConfig()
+	dataDir := t.TempDir()
+	conf.Start(dataDir, "")
+	t.Cleanup(func() {
+		if err := Close(); err != nil {
+			t.Errorf("Close: %v", err)
+		}
+		conf.SetAppConfigForTest(oldConfig)
+	})
+
+	config := conf.GetAppConfig()
+	if filepath.Clean(config.ConfPath) != filepath.Join(dataDir, "config_v2.yaml") {
+		t.Fatalf("ConfPath = %q, want data dir config_v2.yaml", config.ConfPath)
+	}
+	if filepath.Clean(config.DBPath) != filepath.Join(dataDir, "scan.db") {
+		t.Fatalf("DBPath = %q, want data dir scan.db", config.DBPath)
+	}
+	if _, err := os.Stat(config.ConfPath); err != nil {
+		t.Fatalf("config file was not created: %v", err)
+	}
+
+	if err := StartErr(); err != nil {
+		t.Fatalf("StartErr first run: %v", err)
+	}
+	if _, err := os.Stat(config.DBPath); err != nil {
+		t.Fatalf("SQLite DB was not created: %v", err)
+	}
+	assertPackagingSchema(t)
+
+	host := models.Host{
+		Name:       "packaging-router",
+		Iface:      "eth0",
+		IP:         "192.168.1.1",
+		Mac:        "AA:BB:CC:DD:EE:40",
+		Hw:         "Packaging Fixture",
+		Date:       "2026-08-27 10:00:00",
+		Known:      1,
+		Now:        1,
+		DeviceType: "router",
+	}
+	if err := UpdateWithError("now", host); err != nil {
+		t.Fatalf("UpdateWithError now: %v", err)
+	}
+	savedHosts := SelectByMAC("now", host.Mac)
+	if len(savedHosts) != 1 {
+		t.Fatalf("SelectByMAC len = %d, want 1", len(savedHosts))
+	}
+	if err := AddEvent(models.NewHostEvent(savedHosts[0], models.EventDiscovered, "", "")); err != nil {
+		t.Fatalf("AddEvent: %v", err)
+	}
+
+	if err := Close(); err != nil {
+		t.Fatalf("Close before reopen: %v", err)
+	}
+	if err := StartErr(); err != nil {
+		t.Fatalf("StartErr reopen: %v", err)
+	}
+	assertPackagingSchema(t)
+
+	reopenedHosts := SelectByMAC("now", host.Mac)
+	if len(reopenedHosts) != 1 || reopenedHosts[0].DeviceType != "router" || reopenedHosts[0].Known != 1 {
+		t.Fatalf("reopened host did not preserve state: %+v", reopenedHosts)
+	}
+	events, ok := SelectEvents(10, "")
+	if !ok {
+		t.Fatal("SelectEvents failed after reopen")
+	}
+	if len(events) != 1 || events[0].EventType != string(models.EventDiscovered) || events[0].DeviceType != "router" {
+		t.Fatalf("reopened events did not preserve data: %+v", events)
+	}
+}
+
 func TestRedactDatabaseErrorRedactsPostgresSecrets(t *testing.T) {
 	got := redactDatabaseError(errors.New(
 		"failed postgres://wyl:url-secret@localhost/wyl password=keyword-secret user=wyl",
@@ -153,6 +227,24 @@ func TestRedactDatabaseErrorRedactsPostgresSecrets(t *testing.T) {
 	}
 	if !strings.Contains(got, "<redacted>") {
 		t.Fatalf("redacted error missing marker: %s", got)
+	}
+}
+
+func assertPackagingSchema(t *testing.T) {
+	t.Helper()
+
+	for _, table := range []string{"now", "history"} {
+		if !db.Table(table).Migrator().HasColumn(&models.Host{}, "DEVICE_TYPE") {
+			t.Fatalf("%s table missing DEVICE_TYPE column", table)
+		}
+	}
+	if !db.Migrator().HasTable("events") {
+		t.Fatal("events table missing")
+	}
+	for _, column := range []string{"EVENT_TYPE", "DEVICE_TYPE", "HOST_ID"} {
+		if !db.Table("events").Migrator().HasColumn(&models.HostEvent{}, column) {
+			t.Fatalf("events table missing %s column", column)
+		}
 	}
 }
 

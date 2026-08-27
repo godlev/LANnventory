@@ -1,10 +1,13 @@
 package web
 
 import (
+	"context"
 	"embed"
+	"errors"
 	"html/template"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/aceberg/WatchYourLAN/internal/api"
 	"github.com/aceberg/WatchYourLAN/internal/check"
@@ -23,8 +26,36 @@ var templFS embed.FS
 //go:embed public/*
 var pubFS embed.FS
 
+// NewRouter builds the LANventory web/API router without starting a listener.
+func NewRouter() *gin.Engine {
+	gin.SetMode(gin.ReleaseMode)
+	router := gin.New()
+	router.Use(gin.Recovery())
+
+	templ := template.Must(template.New("").ParseFS(templFS, "templates/*"))
+	router.SetHTMLTemplate(templ) // templates
+
+	router.StaticFS("/fs/", http.FS(pubFS)) // public
+
+	router.GET("/", indexHandler)          // index.go
+	router.GET("/config", indexHandler)    // index.go
+	router.GET("/history", indexHandler)   // index.go
+	router.GET("/activity", indexHandler)  // index.go
+	router.GET("/host/*any", indexHandler) // index.go
+	router.GET("/metrics", prometheus.Handler())
+
+	api.Routes(router)
+
+	return router
+}
+
 // Gui - start web server
 func Gui() {
+	check.IfError(GuiContext(context.Background()))
+}
+
+// GuiContext starts the web server and shuts it down when ctx is cancelled.
+func GuiContext(ctx context.Context) error {
 	const (
 		colorCyan  = "\033[36m"
 		colorReset = "\033[0m"
@@ -45,24 +76,25 @@ func Gui() {
 		"\n  Web GUI: http://" + address +
 		"\n=================================== " + colorReset)
 
-	gin.SetMode(gin.ReleaseMode)
-	router := gin.New()
-	router.Use(gin.Recovery())
+	server := &http.Server{
+		Addr:    address,
+		Handler: NewRouter(),
+	}
 
-	templ := template.Must(template.New("").ParseFS(templFS, "templates/*"))
-	router.SetHTMLTemplate(templ) // templates
+	go func() {
+		<-ctx.Done()
 
-	router.StaticFS("/fs/", http.FS(pubFS)) // public
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
 
-	router.GET("/", indexHandler)          // index.go
-	router.GET("/config", indexHandler)    // index.go
-	router.GET("/history", indexHandler)   // index.go
-	router.GET("/activity", indexHandler)  // index.go
-	router.GET("/host/*any", indexHandler) // index.go
-	router.GET("/metrics", prometheus.Handler())
+		if err := server.Shutdown(shutdownCtx); err != nil {
+			slog.Warn("Web server shutdown failed", "err", err)
+		}
+	}()
 
-	api.Routes(router)
-
-	err = router.Run(address)
-	check.IfError(err)
+	err = server.ListenAndServe()
+	if errors.Is(err, http.ErrServerClosed) {
+		return nil
+	}
+	return err
 }

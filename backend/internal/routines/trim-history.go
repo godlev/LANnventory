@@ -1,6 +1,7 @@
 package routines
 
 import (
+	"context"
 	"log/slog"
 	"time"
 
@@ -10,10 +11,18 @@ import (
 
 // HistoryTrim - routine for History
 func HistoryTrim() {
+	HistoryTrimContext(context.Background())
+}
 
+// HistoryTrimContext starts the history trim routine until ctx is cancelled.
+func HistoryTrimContext(ctx context.Context) {
 	go func() {
 		for {
-			time.Sleep(time.Duration(1) * time.Hour) // Every hour
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(time.Duration(1) * time.Hour): // Every hour
+			}
 
 			trimHistory(time.Now())
 		}

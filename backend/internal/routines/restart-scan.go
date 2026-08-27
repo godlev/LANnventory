@@ -27,6 +27,15 @@ func ScanRestart() {
 	go startScanFunc(quitScan) // scan-routine.go
 }
 
+// ScanStop signals the active scan routine to stop.
+func ScanStop() {
+	scanRestartMu.Lock()
+	defer scanRestartMu.Unlock()
+
+	close(quitScan)
+	quitScan = make(chan bool)
+}
+
 func setLogLevel() {
 	var level slog.Level
 	config := conf.GetAppConfig()

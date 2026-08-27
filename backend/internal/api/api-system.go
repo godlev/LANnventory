@@ -46,6 +46,17 @@ func getConfig(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, toPublicConfig(conf.GetAppConfig()))
 }
 
+// getHealth godoc
+// @Summary      Health check
+// @Description  Returns OK without triggering scans or mutations
+// @Tags         system
+// @Produce      plain
+// @Success      200  {string}  string  "OK"
+// @Router       /health [get]
+func getHealth(c *gin.Context) {
+	c.String(http.StatusOK, "OK")
+}
+
 // notifyTest godoc
 // @Summary      Send test notification
 // @Description  Trigger a test notification to verify notification settings

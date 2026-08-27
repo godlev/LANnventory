@@ -9,7 +9,11 @@
 package main
 
 import (
+	"context"
 	"flag"
+	"os"
+	"os/signal"
+	"syscall"
 	// "net/http"
 
 	// _ "net/http/pprof"
@@ -17,6 +21,7 @@ import (
 	// Import Swagger docs
 	_ "github.com/aceberg/WatchYourLAN/docs"
 
+	"github.com/aceberg/WatchYourLAN/internal/check"
 	"github.com/aceberg/WatchYourLAN/internal/conf"
 	"github.com/aceberg/WatchYourLAN/internal/gdb"
 	"github.com/aceberg/WatchYourLAN/internal/routines"
@@ -30,6 +35,8 @@ func main() {
 	dirPtr := flag.String("d", dirPath, "Path to config dir")
 	nodePtr := flag.String("n", nodePath, "Path to node modules")
 	flag.Parse()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
 	// pprof - memory leak detect
 	// go tool pprof -alloc_space http://localhost:8085/debug/pprof/heap
@@ -44,9 +51,14 @@ func main() {
 	conf.Start(*dirPtr, *nodePtr)
 
 	gdb.Start()
+	defer func() {
+		check.IfError(gdb.Close())
+	}()
 
 	routines.ScanRestart()
-	routines.HistoryTrim()
+	defer routines.ScanStop()
 
-	web.Gui()
+	routines.HistoryTrimContext(ctx)
+
+	check.IfError(web.GuiContext(ctx))
 }
