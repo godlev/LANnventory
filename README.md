@@ -1,20 +1,20 @@
 <h1>
-  <img src="frontend/public/fs/public/lanventory-128x128.png" width="48" alt="LANventory icon" />
-  LANventory
+  <img src="frontend/public/fs/public/lanventory-128x128.png" width="48" alt="LANnventory icon" />
+  LANnventory
 </h1>
 
-LANventory is an actively developed fork of [WatchYourLAN by aceberg](https://github.com/aceberg/WatchYourLAN), focused on modern LAN inventory, device presence history, event tracking, classification and a self-contained web interface.
+LANnventory is an independent project originally based on [WatchYourLAN by aceberg](https://github.com/aceberg/WatchYourLAN), focused on modern LAN inventory, device presence history, event tracking, classification and a self-contained web interface.
 
 > [!IMPORTANT]
-> LANventory is still under active development. Features, configuration, packaging and upgrade instructions may continue to change until the first beta release is prepared.
+> LANnventory is still under active development. Features, configuration, packaging and upgrade instructions may continue to change until the first beta release is prepared.
 
-Current repository: [godlev/WatchYourLAN2](https://github.com/godlev/WatchYourLAN2)
+Current repository: [godlev/LANnventory](https://github.com/godlev/LANnventory)
 
-The original WatchYourLAN scanning/backend foundation is preserved and credited. LANventory adds a substantially expanded interface, persistent event model, device classification, configurable retention, migration hardening, safer configuration handling and other reliability improvements.
+The original WatchYourLAN scanning/backend foundation is preserved and credited. LANnventory adds a substantially expanded interface, persistent event model, device classification, configurable retention, migration hardening, safer configuration handling and other reliability improvements.
 
-## LANventory dashboard
+## LANnventory dashboard
 
-![LANventory dashboard](assets/image.png)
+![LANnventory dashboard](assets/image.png)
 
 ## Highlights
 
@@ -25,7 +25,7 @@ The original WatchYourLAN scanning/backend foundation is preserved and credited.
 - Local Open Sans fonts.
 - Local Bootstrap Icons.
 - Local Bootswatch themes.
-- LANventory favicon and navbar icon assets bundled locally.
+- LANnventory favicon and navbar icon assets bundled locally.
 - No automatic external UI asset requests after build.
 
 ### Home dashboard
@@ -100,7 +100,7 @@ These panels follow the currently filtered device set on Home.
 
 ## Retention model
 
-LANventory deliberately separates sampled Presence history from Events.
+LANnventory deliberately separates sampled Presence history from Events.
 
 | Data | Retention behavior |
 | --- | --- |
@@ -108,7 +108,7 @@ LANventory deliberately separates sampled Presence history from Events.
 | `online` / `offline` Events | Controlled by `CONNECTIVITY_RETENTION` |
 | Device-change Events | Retained while the device record exists |
 
-If `CONNECTIVITY_RETENTION` is absent from an older configuration, LANventory falls back to the existing `TRIM_HIST` value for backward compatibility.
+If `CONNECTIVITY_RETENTION` is absent from an older configuration, LANnventory falls back to the existing `TRIM_HIST` value for backward compatibility.
 
 Retention can be configured from **Settings → Data retention** without restarting network scanning.
 
@@ -136,18 +136,18 @@ Recent release-readiness work includes:
 
 ## Security and exposure
 
-LANventory does **not** currently provide built-in authentication.
+LANnventory does **not** currently provide built-in authentication.
 
 > [!WARNING]
-> Do not expose LANventory directly to the public Internet. Use it on a trusted LAN, through a VPN, or behind an authenticated reverse proxy / SSO solution.
+> Do not expose LANnventory directly to the public Internet. Use it on a trusted LAN, through a VPN, or behind an authenticated reverse proxy / SSO solution.
 
-LANventory exposes administrative operations such as device editing/deletion, scan/configuration actions, Wake-on-LAN and port scanning. Protect access accordingly.
+LANnventory exposes administrative operations such as device editing/deletion, scan/configuration actions, Wake-on-LAN and port scanning. Protect access accordingly.
 
 Stored PostgreSQL, InfluxDB and Shoutrrr secret values are write-only in the web Settings interface and are redacted from `/api/config`. The local `config_v2.yaml` file still contains the real values and must be protected with normal filesystem permissions.
 
 ## Runtime requirements
 
-LANventory inherits the WatchYourLAN ARP discovery model.
+LANnventory inherits the WatchYourLAN ARP discovery model.
 
 - Linux is the intended runtime for real LAN scanning.
 - `arp-scan` is required for real ARP discovery.
@@ -217,17 +217,17 @@ The command path remains inherited for compatibility. Real backend startup begin
 
 ## Installation status
 
-LANventory does not yet advertise a separately published Docker image or packaged release artifact.
+LANnventory does not yet advertise a separately published Docker image or packaged release artifact.
 
-Do **not** install `aceberg/watchyourlan` expecting LANventory features; that image belongs to the upstream WatchYourLAN project.
+Do **not** install `aceberg/watchyourlan` expecting LANnventory features; that image belongs to the upstream WatchYourLAN project.
 
 Build the current development container image from this repository checkout:
 
 ```sh
-docker build -t lanventory:dev .
+docker build -t lannventory:dev .
 ```
 
-The image is built from LANventory source in this repository. It does not fetch or substitute an upstream WatchYourLAN binary.
+The image is built from LANnventory source in this repository. It does not fetch or substitute an upstream WatchYourLAN binary.
 
 ### Docker / Compose development install
 
@@ -239,9 +239,11 @@ docker compose up --build
 
 Before real scanning, edit `IFACES` in `docker-compose.yml` to match one or more real Linux host interfaces, for example `eth0 wlan0`.
 
+Leaving `IFACES` empty keeps the container from invoking `arp-scan`; this is how CI runs its safe runtime smoke test.
+
 The Compose service:
 
-- builds `lanventory:dev` locally
+- builds `lannventory:dev` locally
 - uses `network_mode: host`
 - keeps the default web/API port at `8840`
 - persists data in `/data/WatchYourLAN`
@@ -249,9 +251,9 @@ The Compose service:
 - uses `restart: unless-stopped`
 - health-checks `GET /api/health`
 
-Because host networking is used, Compose `ports:` mappings are intentionally not used. `PORT` controls the host port that LANventory binds.
+Because host networking is used, Compose `ports:` mappings are intentionally not used. `PORT` controls the host port that LANnventory binds.
 
-The optional `docker-compose-auth.yml` keeps the inherited ForAuth-style example but builds LANventory locally. Replace the example auth credentials before using that file.
+The optional `docker-compose-auth.yml` keeps the inherited ForAuth-style example but builds LANnventory locally. Replace the example auth credentials before using that file.
 
 ### Persistent data
 
@@ -263,7 +265,9 @@ The default runtime data directory remains:
 
 This compatibility path is intentional. It preserves a realistic migration path for existing WatchYourLAN users and matches the current Go command default.
 
-Inside that directory LANventory creates or reads:
+The canonical container image, container name and runtime binary are now `lannventory`, but the beta container still uses the legacy `/data/WatchYourLAN` mount point so existing WatchYourLAN data can be tested and upgraded without a destructive path move.
+
+Inside that directory LANnventory creates or reads:
 
 ```text
 config_v2.yaml
@@ -278,7 +282,7 @@ SQLite stores Hosts, Known / Unknown state, Presence history, Events and Device 
 
 On an empty data directory, startup creates `config_v2.yaml`, opens SQLite at `scan.db`, migrates `now`, `history` and `events`, and serves the UI.
 
-Automated tests validate this first-run and reopen path without starting scanner routines. Real container runtime validation should still avoid configured LAN interfaces unless scanning is intentional.
+Automated tests validate this first-run and reopen path without starting scanner routines. The packaging CI also runs a safe container smoke test with empty scan sources, verifies `/api/health`, verifies the web UI response, and starts a second container with the same temporary SQLite volume to prove the data directory is reused.
 
 ### Upgrade from WatchYourLAN
 
@@ -288,8 +292,8 @@ For an existing SQLite WatchYourLAN installation:
 2. Back up the existing config directory, including `config_v2.yaml`.
 3. Back up the existing SQLite data directory, including `scan.db`, `scan.db-wal` and `scan.db-shm` if present.
 4. Verify the backup exists and can be copied elsewhere.
-5. Start LANventory against a copied data directory first when possible.
-6. Let LANventory run its additive startup migration.
+5. Start LANnventory against a copied data directory first when possible.
+6. Let LANnventory run its additive startup migration.
 7. Confirm Hosts, Known state and Presence history are visible before discarding the backup.
 
 The current migration tests cover legacy SQLite tables and verify existing rows are preserved while `DEVICE_TYPE` and the `events` table are added.
@@ -300,11 +304,11 @@ For upstream Docker users, the compatible volume target remains:
 /data/WatchYourLAN
 ```
 
-Do not simply switch from `aceberg/watchyourlan` to a future LANventory image without a backup and a first run against copied data. Published LANventory image names are intentionally not final yet.
+Do not simply switch from `aceberg/watchyourlan` to a future LANnventory image without a backup and a first run against copied data. Published LANnventory image names are intentionally not final yet.
 
 Rollback:
 
-1. Stop LANventory.
+1. Stop LANnventory.
 2. Restore the backed-up WatchYourLAN config/data directory.
 3. Start the previous WatchYourLAN deployment.
 4. Do not reuse a migrated database with an older upstream version unless you have verified that older version tolerates the additive schema.
@@ -330,7 +334,7 @@ Configuration can be supplied through `config_v2.yaml`, the web Settings interfa
 | `PORT` | Web UI/API port. | `8840` |
 | `THEME` | Bundled Bootswatch theme name. | `sand` |
 | `COLOR` | Color mode: `dark` or `light`. | `dark` |
-| `NODEPATH` | Legacy upstream compatibility setting. LANventory UI assets are bundled locally. | |
+| `NODEPATH` | Legacy upstream compatibility setting. LANnventory UI assets are bundled locally. | |
 | `SHOUTRRR_URL` | Shoutrrr notification URL. See [Shoutrrr documentation](https://shoutrrr.nickfedor.com/services/overview/). | |
 
 ### Scanning and database
@@ -372,14 +376,14 @@ Configuration can be supplied through `config_v2.yaml`, the web Settings interfa
 
 ## Local / offline UI assets
 
-LANventory's built web UI is self-contained.
+LANnventory's built web UI is self-contained.
 
 The runtime serves local copies of:
 
 - Bootstrap Icons
 - Open Sans
 - Bootswatch themes
-- LANventory favicon/navbar icons
+- LANnventory favicon/navbar icons
 - JavaScript and CSS application bundles
 
 The browser does not need Internet access to render the interface. User-clicked external links to documentation, GitHub, Shoutrrr, package documentation or Revolut remain normal external navigation.
@@ -389,27 +393,27 @@ The browser does not need Internet access to render the interface. User-clicked 
 - API notes: [docs/API.md](docs/API.md)
 - Prometheus: enable `PROMETHEUS_ENABLE` and use `/metrics`.
 - InfluxDB2: configure the InfluxDB settings above.
-- Swagger metadata is branded for LANventory, while inherited API/module compatibility remains intact.
+- Swagger metadata is branded for LANnventory, while inherited API/module compatibility remains intact.
 
-Some integrations and packaging references may still exist only in upstream documentation. Treat them as upstream references unless explicitly updated for LANventory.
+Some integrations and packaging references may still exist only in upstream documentation. Treat them as upstream references unless explicitly updated for LANnventory.
 
 ## PostgreSQL status
 
-The current code retains PostgreSQL support and fork-added queries have been reviewed for portability, but an isolated real PostgreSQL runtime integration test is still required before LANventory is declared fully validated for PostgreSQL deployments.
+The current code retains PostgreSQL support and LANnventory-added queries have been reviewed for portability, but an isolated real PostgreSQL runtime integration test is still required before LANnventory is declared fully validated for PostgreSQL deployments.
 
-SQLite is currently the most extensively tested migration/runtime path in the fork.
+SQLite is currently the most extensively tested migration/runtime path in the project.
 
 ## Support development
 
-If you find LANventory useful and would like to support continued development:
+If you find LANnventory useful and would like to support continued development:
 
 [Support via Revolut](https://revolut.me/mirgeo)
 
 ## Upstream project and attribution
 
-LANventory is based on [WatchYourLAN by aceberg](https://github.com/aceberg/WatchYourLAN).
+LANnventory is originally based on [WatchYourLAN by aceberg](https://github.com/aceberg/WatchYourLAN).
 
-The fork intentionally preserves upstream attribution, compatibility-sensitive paths and applicable licensing notices while evolving the user-facing product independently.
+The project intentionally preserves upstream attribution, compatibility-sensitive paths and applicable licensing notices while evolving the user-facing product independently.
 
 Thanks to:
 
@@ -422,4 +426,4 @@ Thanks to:
 
 ## Repository naming
 
-The product is now branded **LANventory**, while the GitHub repository remains `godlev/WatchYourLAN2` for now. Repository/module renaming is intentionally deferred until compatibility, packaging and beta-release preparation are complete.
+The product and active repository are now branded **LANnventory** at `godlev/LANnventory`. The Go module remains `github.com/aceberg/WatchYourLAN` for compatibility and is intentionally not renamed in this packaging phase.
