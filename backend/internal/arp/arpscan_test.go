@@ -123,6 +123,29 @@ func TestScanReturnsTrueForSuccessfulEmptyResult(t *testing.T) {
 	}
 }
 
+func TestScanWithNoSourcesDoesNotRunCommand(t *testing.T) {
+	oldRunner := commandRunner
+	called := false
+	commandRunner = func(string, ...string) (string, bool) {
+		called = true
+		return "", false
+	}
+	t.Cleanup(func() {
+		commandRunner = oldRunner
+	})
+
+	hosts, ok := Scan("", "-r 1", []string{"", "   "})
+	if !ok {
+		t.Fatal("Scan returned ok=false, want true when no scan source is configured")
+	}
+	if called {
+		t.Fatal("Scan executed commandRunner with empty IFACES and empty ARP strings")
+	}
+	if len(hosts) != 0 {
+		t.Fatalf("Scan returned %d hosts, want 0", len(hosts))
+	}
+}
+
 func TestScanSplitsArpArgsAndIgnoresIfaceWhitespace(t *testing.T) {
 	oldRunner := commandRunner
 	var calls [][]string
