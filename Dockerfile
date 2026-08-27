@@ -32,16 +32,16 @@ RUN cd backend && \
     CGO_ENABLED=0 GOOS=linux go build \
       -trimpath \
       -ldflags='-s -w' \
-      -o /out/lanventory \
+      -o /out/lannventory \
       ./cmd/WatchYourLAN
 
 FROM ${RUNTIME_IMAGE} AS runtime
 
-ARG LANVENTORY_VERSION=dev
-LABEL org.opencontainers.image.title="LANventory" \
+ARG LANNVENTORY_VERSION=dev
+LABEL org.opencontainers.image.title="LANnventory" \
       org.opencontainers.image.description="Self-contained LAN inventory and presence monitoring UI" \
-      org.opencontainers.image.source="https://github.com/godlev/WatchYourLAN2" \
-      org.opencontainers.image.version="${LANVENTORY_VERSION}" \
+      org.opencontainers.image.source="https://github.com/godlev/LANnventory" \
+      org.opencontainers.image.version="${LANNVENTORY_VERSION}" \
       org.opencontainers.image.licenses="MIT"
 
 ENV HOST=0.0.0.0 \
@@ -57,8 +57,9 @@ RUN set -eux; \
     rm -rf /var/lib/apt/lists/*; \
     mkdir -p /data/WatchYourLAN
 
-COPY --from=backend-build /out/lanventory /usr/local/bin/lanventory
-RUN ln -s /usr/local/bin/lanventory /usr/local/bin/watchyourlan
+COPY --from=backend-build /out/lannventory /usr/local/bin/lannventory
+RUN ln -s /usr/local/bin/lannventory /usr/local/bin/lanventory && \
+    ln -s /usr/local/bin/lannventory /usr/local/bin/watchyourlan
 
 WORKDIR /data/WatchYourLAN
 VOLUME ["/data/WatchYourLAN"]
@@ -67,5 +68,5 @@ EXPOSE 8840
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD curl -fsS "http://127.0.0.1:${PORT}/api/health" >/dev/null || exit 1
 
-ENTRYPOINT ["/usr/local/bin/lanventory"]
+ENTRYPOINT ["/usr/local/bin/lannventory"]
 CMD ["-d", "/data/WatchYourLAN"]

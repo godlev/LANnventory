@@ -39,7 +39,7 @@ function HostPage() {
     setLoadError("");
     setCurrentHost(emptyHost);
     setPageContext({ kind: "host", hostName: "" });
-    document.title = "Host · LANventory";
+    document.title = "Host · LANnventory";
 
     apiGetHost(id)
       .then((host) => {
@@ -55,7 +55,7 @@ function HostPage() {
         }
 
         setPageContext({ kind: "host", hostName: "" });
-        document.title = "Host · LANventory";
+        document.title = "Host · LANnventory";
         setLoadError("Host details could not be loaded. The device may have been deleted or the backend may be unavailable.");
       });
   });
@@ -75,7 +75,7 @@ function HostPage() {
 
     const hostName = host.Name.trim();
     setPageContext({ kind: "host", hostName });
-    document.title = (hostName || "Host") + " · LANventory";
+    document.title = (hostName || "Host") + " · LANnventory";
   });
 
   return (

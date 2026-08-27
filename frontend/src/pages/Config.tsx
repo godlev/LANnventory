@@ -30,7 +30,7 @@ function Config() {
         setError("");
       })
       .catch(() => {
-        setError("Settings could not be loaded. Check that the LANventory backend is reachable, then reload this page.");
+        setError("Settings could not be loaded. Check that the LANnventory backend is reachable, then reload this page.");
       })
       .finally(() => {
         setLoading(false);
@@ -41,7 +41,7 @@ function Config() {
     <div class="settings-page">
       <header class="settings-page-header">
         <h1>Settings</h1>
-        <p>Configure LANventory</p>
+        <p>Configure LANnventory</p>
       </header>
 
       <Show when={!loading()} fallback={<div class="settings-status-panel" role="status">Loading settings</div>}>
@@ -65,7 +65,7 @@ function Config() {
               <section id="integrations" class="settings-section" aria-label="Integrations">
                 <div class="settings-section-heading">
                   <h2>Integrations</h2>
-                  <p>Send LANventory metrics to external monitoring systems.</p>
+                  <p>Send LANnventory metrics to external monitoring systems.</p>
                 </div>
                 <Influx></Influx>
                 <Prometheus></Prometheus>

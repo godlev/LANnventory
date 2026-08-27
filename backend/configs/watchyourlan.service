@@ -1,11 +1,11 @@
 [Unit]
-Description=LANventory
-Documentation=https://github.com/godlev/WatchYourLAN2
+Description=LANnventory
+Documentation=https://github.com/godlev/LANnventory
 After=network-online.target
 Wants=network-online.target
 
 [Service]
-ExecStart=/usr/bin/watchyourlan -d /etc/watchyourlan/
+ExecStart=/usr/bin/lannventory -d /etc/watchyourlan/
 Restart=on-failure
 TimeoutStopSec=30
 

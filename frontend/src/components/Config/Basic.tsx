@@ -75,7 +75,7 @@ function Basic() {
                   </Show>
                 }</For>
                 </select>
-                <div class="config-field-helper">Base Bootstrap/Bootswatch styling underneath the LANventory interface.</div>
+                <div class="config-field-helper">Base Bootstrap/Bootswatch styling underneath the LANnventory interface.</div>
               </td>
             </tr>
             <tr>
@@ -117,7 +117,7 @@ function Basic() {
               <td class="config-field-label config-field-label-top">Local node-bootstrap URL</td>
               <td class="config-field-value">
                 <input name="node" type="text" class="form-control" value={appConfig().NodePath}></input>
-                <div class="config-field-helper">Legacy compatibility setting. UI theme assets are bundled locally by LANventory.</div>
+                <div class="config-field-helper">Legacy compatibility setting. UI theme assets are bundled locally by LANnventory.</div>
               </td>
             </tr>
             <tr>

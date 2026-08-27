@@ -1,5 +1,5 @@
-PKG_NAME=WatchYourLAN
-USR_NAME=aceberg
+PKG_NAME=LANnventory
+USR_NAME=godlev
 
 build:
 	npm run build && \

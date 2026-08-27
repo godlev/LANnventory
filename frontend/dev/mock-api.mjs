@@ -863,5 +863,5 @@ const server = createServer(async (req, res) => {
 seedActivity();
 
 server.listen(port, host, () => {
-  console.log(`LANventory mock API listening at http://${host}:${port}`);
+  console.log(`LANnventory mock API listening at http://${host}:${port}`);
 });

@@ -1,16 +1,16 @@
 services:
-  lanventory:
+  lannventory:
     build:
       context: .
-    image: lanventory:dev
-    container_name: lanventory
+    image: lannventory:dev
+    container_name: lannventory
     network_mode: host
     restart: unless-stopped
     cap_add:
       - NET_RAW
       - NET_ADMIN
     volumes:
-      - lanventory-data:/data/WatchYourLAN
+      - lannventory-data:/data/WatchYourLAN
     environment:
       TZ: Etc/UTC
       HOST: 0.0.0.0
@@ -38,4 +38,4 @@ services:
       start_period: 20s
 
 volumes:
-  lanventory-data:
+  lannventory-data:

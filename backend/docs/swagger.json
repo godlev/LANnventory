@@ -2,9 +2,9 @@
     "swagger": "2.0",
     "info": {
         "description": "Local network inventory and monitoring application",
-        "title": "LANventory API",
+        "title": "LANnventory API",
         "contact": {
-            "url": "https://github.com/godlev/WatchYourLAN2"
+            "url": "https://github.com/godlev/LANnventory"
         },
         "license": {
             "name": "MIT",

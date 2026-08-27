@@ -26,7 +26,7 @@ var templFS embed.FS
 //go:embed public/*
 var pubFS embed.FS
 
-// NewRouter builds the LANventory web/API router without starting a listener.
+// NewRouter builds the LANnventory web/API router without starting a listener.
 func NewRouter() *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
@@ -69,7 +69,7 @@ func GuiContext(ctx context.Context) error {
 	address := config.Host + ":" + config.Port
 
 	slog.Info(colorCyan + "\n=================================== " +
-		"\n  LANventory Version: " + config.Version +
+		"\n  LANnventory Version: " + config.Version +
 		"\n  Config dir: " + config.DirPath +
 		"\n  Default DB: " + config.UseDB +
 		"\n  Log level: " + config.LogLevel +

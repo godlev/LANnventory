@@ -1,4 +1,5 @@
 #!/bin/sh
 
-cp watchyourlan /usr/bin/
-cp watchyourlan.service /lib/systemd/system/
+cp lannventory /usr/bin/
+ln -sf /usr/bin/lannventory /usr/bin/watchyourlan
+cp lannventory.service /lib/systemd/system/

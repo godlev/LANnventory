@@ -10,7 +10,7 @@ const docTemplate = `{
         "description": "{{escape .Description}}",
         "title": "{{.Title}}",
         "contact": {
-            "url": "https://github.com/godlev/WatchYourLAN2"
+            "url": "https://github.com/godlev/LANnventory"
         },
         "license": {
             "name": "MIT",
@@ -617,7 +617,7 @@ var SwaggerInfo = &swag.Spec{
 	Host:             "",
 	BasePath:         "/api/",
 	Schemes:          []string{},
-	Title:            "LANventory API",
+	Title:            "LANnventory API",
 	Description:      "Local network inventory and monitoring application",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,

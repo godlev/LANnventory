@@ -4,7 +4,7 @@ import { apiGetVersion } from "../../functions/api"
 function About() {
 
   const [version, setVersion] = createSignal('');
-  const forkHighlights = [
+  const projectHighlights = [
     "Modern responsive interface",
     "Fully local/offline UI assets",
     "Dark and light color modes",
@@ -32,7 +32,7 @@ function About() {
         <table class="table config-info-table"><tbody>
           <tr>
             <td class="config-field-label"><b>Project</b></td>
-            <td class="config-field-value"><b>LANventory</b></td>
+            <td class="config-field-value"><b>LANnventory</b></td>
           </tr>
           <tr>
             <td class="config-field-label"><b>Status</b></td>
@@ -40,11 +40,11 @@ function About() {
           </tr>
           <tr>
             <td class="config-field-label config-field-label-top"><b>Development status</b></td>
-            <td class="config-field-value">LANventory is an actively developed fork of WatchYourLAN. Features, UI and behavior may continue to change while development is in progress.</td>
+            <td class="config-field-value">LANnventory is an independent project originally based on WatchYourLAN. Features, UI and behavior may continue to change while development is in progress.</td>
           </tr>
           <tr>
             <td class="config-field-label"><b>Repository</b></td>
-            <td class="config-field-value"><a href="https://github.com/godlev/WatchYourLAN2" target="_blank" rel="noreferrer">godlev/WatchYourLAN2</a></td>
+            <td class="config-field-value"><a href="https://github.com/godlev/LANnventory" target="_blank" rel="noreferrer">godlev/LANnventory</a></td>
           </tr>
           <tr>
             <td class="config-field-label"><b>Upstream project</b></td>
@@ -57,10 +57,10 @@ function About() {
             </td>
           </tr>
           <tr>
-            <td class="config-field-label config-field-label-top"><b>Fork highlights</b></td>
+            <td class="config-field-label config-field-label-top"><b>Project highlights</b></td>
             <td class="config-field-value">
               <ul class="config-highlight-list">
-                <For each={forkHighlights}>{highlight =>
+                <For each={projectHighlights}>{highlight =>
                   <li>{highlight}</li>
                 }</For>
               </ul>
@@ -76,7 +76,7 @@ function About() {
           </tr>
           <tr>
             <td class="config-field-label config-field-label-top"><b>Upstream credit</b></td>
-            <td class="config-field-value">Based on <a href="https://github.com/aceberg/WatchYourLAN" target="_blank" rel="noreferrer">WatchYourLAN by aceberg</a>.</td>
+            <td class="config-field-value">Originally based on <a href="https://github.com/aceberg/WatchYourLAN" target="_blank" rel="noreferrer">WatchYourLAN by aceberg</a>.</td>
           </tr>
           <tr>
             <td class="config-field-label config-field-label-top"><b>Notifications</b></td>
