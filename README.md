@@ -3,14 +3,14 @@
   LANventory
 </h1>
 
-LANventory is an actively developed fork of [WatchYourLAN by aceberg](https://github.com/aceberg/WatchYourLAN), focused on modern LAN inventory, device presence history, event tracking, classification and a self-contained web interface.
+LANventory is an actively developed fork of [WatchYourLAN by aceberg](https://github.com/aceberg/WatchYourLAN), focused on fully local, self-hosted LAN inventory and monitoring with modern device discovery, presence history, event tracking, classification, notifications, a self-contained web interface and source-built Docker packaging.
 
 > [!IMPORTANT]
 > LANventory is still under active development. Features, configuration, packaging and upgrade instructions may continue to change until the first beta release is prepared.
 
-Current repository: [godlev/WatchYourLAN2](https://github.com/godlev/WatchYourLAN2)
+Current repository: [godlev/LANnventory](https://github.com/godlev/LANnventory)
 
-The original WatchYourLAN scanning/backend foundation is preserved and credited. LANventory adds a substantially expanded interface, persistent event model, device classification, configurable retention, migration hardening, safer configuration handling and other reliability improvements.
+The original WatchYourLAN scanning/backend foundation is preserved and credited. LANventory adds a substantially expanded interface, persistent event model, device classification, configurable retention, migration hardening, safer configuration handling, local/offline UI assets, source-built Docker packaging, runtime health checks, graceful shutdown handling and other reliability improvements.
 
 ## LANventory dashboard
 
@@ -128,11 +128,16 @@ Recent release-readiness work includes:
 - Global database lifecycle/reconnect operations are mutex-guarded.
 - Stored sensitive configuration values are no longer returned by `/api/config`.
 - Secret settings are write-only in the Settings UI and can be kept, replaced or explicitly cleared.
+- `GET /api/health` provides a side-effect-free runtime health endpoint used by container health checks.
+- SIGINT/SIGTERM handling now shuts down the HTTP server, signals background routines, stops scan scheduling and closes the active database handle.
+- Docker and Compose packaging build LANventory from this repository rather than substituting the upstream `aceberg/watchyourlan` image or binary.
+- GitHub Actions packaging validation checks frontend/backend builds and confirms the LANventory Docker image can be built from local source on Linux.
 
 ### Remaining validation work before the first beta
 
 - PostgreSQL runtime integration testing is still required.
 - The race detector has not been run in the current Windows development environment because CGO/gcc is unavailable there.
+- Docker Compose runtime, persistence across container recreation and real LAN scanning behavior still require a dedicated Linux runtime validation pass. The Docker image build itself now passes CI.
 
 ## Security and exposure
 
@@ -227,7 +232,7 @@ Build the current development container image from this repository checkout:
 docker build -t lanventory:dev .
 ```
 
-The image is built from LANventory source in this repository. It does not fetch or substitute an upstream WatchYourLAN binary.
+The image is built from LANventory source in this repository. It does not fetch or substitute an upstream WatchYourLAN binary. The packaging workflow now confirms this image builds successfully on a Linux GitHub Actions runner; full Compose runtime/persistence validation remains pending.
 
 ### Docker / Compose development install
 
@@ -422,4 +427,4 @@ Thanks to:
 
 ## Repository naming
 
-The product is now branded **LANventory**, while the GitHub repository remains `godlev/WatchYourLAN2` for now. Repository/module renaming is intentionally deferred until compatibility, packaging and beta-release preparation are complete.
+The product and GitHub repository are now branded **LANventory** at `godlev/LANnventory`. Compatibility-sensitive runtime paths, the inherited Go command path and other upstream-facing identifiers are intentionally preserved where changing them could break existing WatchYourLAN migrations or deployments.
