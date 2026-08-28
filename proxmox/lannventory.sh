@@ -38,7 +38,7 @@ info() {
 }
 
 run_in_ct() {
-  pct exec "$CTID" -- bash -lc "$1"
+  pct exec "$CTID" -- env LANG=C LC_ALL=C bash -lc "$1"
 }
 
 show_failure_diagnostics() {
@@ -200,11 +200,22 @@ detect_template_storages() {
 }
 
 detect_bridges() {
-  read_list "ip -o link show type bridge | awk -F': ' '{print \$2}' | sed 's/@.*//' | sort -u" BRIDGES
+  read_list "ip -o link show type bridge | awk -F': ' '{print \$2}' | sed 's/@.*//' | awk '!/^(fwbr|fwpr|fwln)/' | sort -u" BRIDGES
   if [[ "${#BRIDGES[@]}" -eq 0 && -f /etc/network/interfaces ]]; then
-    read_list "awk '/^iface[[:space:]]+vmbr[0-9]+/ {print \$2}' /etc/network/interfaces | sort -u" BRIDGES
+    read_list "awk '/^iface[[:space:]]+vmbr[0-9]+/ {print \$2}' /etc/network/interfaces | awk '!/^(fwbr|fwpr|fwln)/' | sort -u" BRIDGES
   fi
   [[ "${#BRIDGES[@]}" -gt 0 ]] || die "No Linux bridge was detected. Create or select a Proxmox bridge before running this installer."
+}
+
+default_bridge() {
+  local bridge
+  for bridge in "${BRIDGES[@]}"; do
+    if [[ "$bridge" == "vmbr0" ]]; then
+      printf '%s' "$bridge"
+      return
+    fi
+  done
+  printf '%s' "${BRIDGES[0]}"
 }
 
 validate_hostname() {
@@ -259,7 +270,7 @@ detect_arch_package_url() {
 }
 
 configure_interactively() {
-  local default_ctid default_rootfs default_template default_bridge ip_mode static_ip static_gw
+  local default_ctid default_rootfs default_template default_bridge_name ip_mode static_ip static_gw
 
   default_ctid="$(get_next_vmid)"
   detect_rootfs_storages
@@ -268,7 +279,7 @@ configure_interactively() {
 
   default_rootfs="${ROOTFS_STORAGES[0]}"
   default_template="${TEMPLATE_STORAGES[0]}"
-  default_bridge="${BRIDGES[0]}"
+  default_bridge_name="$(default_bridge)"
 
   printf '\n%s Proxmox LXC installer\n' "$APP_NAME"
   printf 'Repository: %s\n' "$REPO_URL"
@@ -281,7 +292,7 @@ configure_interactively() {
   validate_hostname "$HOSTNAME"
   ROOTFS_STORAGE="$(choose_from_list "rootfs storage" "$default_rootfs" "${ROOTFS_STORAGES[@]}")"
   TEMPLATE_STORAGE="$(choose_from_list "template storage" "$default_template" "${TEMPLATE_STORAGES[@]}")"
-  BRIDGE="$(choose_from_list "Linux bridge" "$default_bridge" "${BRIDGES[@]}")"
+  BRIDGE="$(choose_from_list "Linux bridge" "$default_bridge_name" "${BRIDGES[@]}")"
   CORES="$(prompt_positive_number "CPU cores" "$DEFAULT_CORES")"
   RAM="$(prompt_positive_number "RAM in MB" "$DEFAULT_RAM")"
   SWAP="$(prompt_positive_number "Swap in MB" "$DEFAULT_SWAP")"
@@ -323,6 +334,7 @@ configure_interactively() {
   printf '  Swap: %s MB\n' "$SWAP"
   printf '  Disk: %s GB\n' "$DISK_GB"
   printf '  IPv4: %s\n' "$IP_CONFIG"
+  printf '  Gateway: %s\n' "${GW_CONFIG:-DHCP}"
   printf '  Container type: unprivileged LXC\n'
   printf '  Start on boot: yes\n'
   confirm "Create this container?" || die "Installation cancelled before creating a container."
@@ -391,6 +403,12 @@ get_container_ip() {
     | head -n 1
 }
 
+configure_lannventory_iface() {
+  INSTALL_STAGE="LANnventory interface configuration"
+  info "Configuring initial LANnventory scan interface as ${DEFAULT_NET_IFACE}"
+  run_in_ct "install -d -m 0755 /etc/watchyourlan; touch /etc/watchyourlan/config_v2.yaml; if grep -q '^IFACES:' /etc/watchyourlan/config_v2.yaml; then sed -i 's/^IFACES:.*/IFACES: \"${DEFAULT_NET_IFACE}\"/' /etc/watchyourlan/config_v2.yaml; else printf '%s\n' 'IFACES: \"${DEFAULT_NET_IFACE}\"' >> /etc/watchyourlan/config_v2.yaml; fi"
+}
+
 install_lannventory() {
   local package_url
   package_url="$(detect_arch_package_url)"
@@ -402,6 +420,7 @@ install_lannventory() {
   INSTALL_STAGE="LANnventory package installation"
   info "Installing $APP_NAME $VERSION from official release package"
   run_in_ct "tmp_deb=\$(mktemp /tmp/lannventory.XXXXXX.deb); curl -fsSL '$package_url' -o \"\$tmp_deb\"; export DEBIAN_FRONTEND=noninteractive; apt-get install -y \"\$tmp_deb\"; rm -f \"\$tmp_deb\""
+  configure_lannventory_iface
 
   INSTALL_STAGE="service validation"
   info "Enabling and starting lannventory.service"

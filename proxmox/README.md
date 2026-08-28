@@ -22,10 +22,11 @@ Defaults:
 - Swap: 512 MB
 - Disk: 4 GB
 - Network: DHCP
+- Initial LANnventory interface: `eth0`
 - Start on boot: yes
 - Web port: `8840`
 
-The installer detects available CT IDs, rootfs storages, template storages and Linux bridges, then asks you to confirm or change the important values before creating the container. It never overwrites an existing CT or QEMU VMID.
+The installer detects available CT IDs, rootfs storages, template storages and Linux bridges, then asks you to confirm or change the important values before creating the container. Proxmox per-guest firewall bridges such as `fwbr*`, `fwpr*` and `fwln*` are filtered out of the normal bridge choices. If `vmbr0` exists, it is used as the default; otherwise the first valid non-firewall bridge is used. The installer never overwrites an existing CT or QEMU VMID.
 
 ## Installation Source
 
@@ -43,6 +44,7 @@ The Debian package declares the LANnventory runtime dependencies, including `arp
 
 - It does not perform a LAN scan during setup.
 - It does not execute `arp-scan`; it only verifies that `arp-scan` is available after package installation.
+- It does configure the fresh LANnventory service with `IFACES: "eth0"` before first start, so the installed service can begin its normal discovery after startup.
 - It does not build LANnventory from source.
 - It does not publish or modify GitHub releases.
 - It does not delete a partially created container if installation fails.
@@ -98,4 +100,6 @@ This installer currently installs `v0.1.0-beta.1`. Future installer versions can
 
 ## Notes About ARP Scanning In LXC
 
-LANnventory requires `arp-scan` for real LAN discovery. This installer keeps the container unprivileged by default and does not loosen AppArmor or add broad capabilities automatically. If your Proxmox/LXC network policy prevents ARP scanning from an unprivileged container, test and document the minimum required Proxmox setting for your environment before changing container security options.
+LANnventory requires `arp-scan` for real LAN discovery. A real test on Proxmox VE 9.2.10 with a Debian 13 amd64 unprivileged LXC confirmed that package installation, `lannventory.service`, `/api/health`, `/api/version`, `arp-scan` and LAN discovery work with `IFACES=eth0` and without extra capabilities, AppArmor relaxation or privileged mode.
+
+This installer keeps the container unprivileged by default and does not loosen AppArmor or add broad capabilities automatically. If your Proxmox/LXC network policy differs and prevents ARP scanning from an unprivileged container, test and document the minimum required Proxmox setting for your environment before changing container security options.
