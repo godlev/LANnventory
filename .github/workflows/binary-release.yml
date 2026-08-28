@@ -5,23 +5,29 @@ on:
   release:
     types: [created]
 
+permissions:
+  contents: write
+
 jobs:
   generate:
     name: Create release-artifacts
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@master
-
-      - uses: actions/setup-go@v4
+        uses: actions/checkout@v4
         with:
-          go-version: 'stable'
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
       - run: go version
 
       - uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
-          version: latest
+          version: v2.18.0
           args: release --clean
           workdir: backend
         env:
