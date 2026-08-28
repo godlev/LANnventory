@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - release-artifact-validation-phase-24r
+      - 'release-*'
   pull_request:
   workflow_dispatch:
 
