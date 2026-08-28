@@ -1,0 +1,158 @@
+name: Release Artifact Dry Run
+
+on:
+  push:
+    branches:
+      - main
+      - release-artifact-validation-phase-24r
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  goreleaser-snapshot:
+    name: Build release artifacts without publishing
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Show Go version
+        run: go version
+
+      - name: Check GoReleaser config
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: v2.18.0
+          args: check
+          workdir: backend
+
+      - name: Verify version ldflags wiring
+        working-directory: backend
+        run: |
+          set -euo pipefail
+          go test ./internal/version -ldflags="-X github.com/godlev/LANnventory/internal/version.Version=9.9.9-dry-run"
+          set +e
+          go test ./internal/version -ldflags="-X github.com/godlev/LANnventory/internal/version.Version=not-a-release-version" >/tmp/lannventory-version-negative.txt 2>&1
+          status=$?
+          set -e
+          cat /tmp/lannventory-version-negative.txt
+          if [ "$status" -eq 0 ]; then
+            echo "version package did not observe the ldflags override"
+            exit 1
+          fi
+
+      - name: Build GoReleaser snapshot
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: v2.18.0
+          args: release --snapshot --clean
+          workdir: backend
+
+      - name: Install package inspection tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends rpm
+
+      - name: Validate generated artifacts
+        working-directory: backend
+        run: |
+          set -euo pipefail
+          find dist -maxdepth 3 -type f | sort
+          test -f dist/checksums.txt
+
+          python3 - <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          artifact_path = Path("dist/artifacts.json")
+          if not artifact_path.exists():
+              sys.exit("dist/artifacts.json was not generated")
+
+          artifacts = json.loads(artifact_path.read_text())
+          expected_targets = {
+              ("linux", "386", ""),
+              ("linux", "amd64", ""),
+              ("linux", "arm64", ""),
+              ("linux", "arm", "5"),
+              ("linux", "arm", "6"),
+              ("linux", "arm", "7"),
+          }
+
+          def target_of(artifact):
+              return (
+                  artifact.get("goos", ""),
+                  artifact.get("goarch", ""),
+                  str(artifact.get("goarm", "") or ""),
+              )
+
+          def targets_for(predicate):
+              return {target_of(artifact) for artifact in artifacts if predicate(artifact)}
+
+          binaries = targets_for(lambda artifact: Path(artifact.get("path", "")).name == "lannventory")
+          archives = targets_for(lambda artifact: artifact.get("type", "").lower() == "archive")
+          debs = targets_for(lambda artifact: str(artifact.get("path", "")).endswith(".deb"))
+          rpms = targets_for(lambda artifact: str(artifact.get("path", "")).endswith(".rpm"))
+          apks = targets_for(lambda artifact: str(artifact.get("path", "")).endswith(".apk"))
+
+          checks = {
+              "binaries": binaries,
+              "archives": archives,
+              "deb packages": debs,
+              "rpm packages": rpms,
+              "apk packages": apks,
+          }
+
+          for label, actual in checks.items():
+              missing = expected_targets - actual
+              if missing:
+                  sys.exit(f"missing {label} for targets: {sorted(missing)}")
+
+          if not any(Path(artifact.get("path", "")).name == "checksums.txt" for artifact in artifacts):
+              sys.exit("checksums.txt is missing from artifacts metadata")
+
+          print("Validated release artifact targets:")
+          for target in sorted(expected_targets):
+              print(" - " + "/".join(part for part in target if part))
+          PY
+
+      - name: Inspect package contents
+        working-directory: backend
+        run: |
+          set -euo pipefail
+          deb="$(find dist -maxdepth 1 -type f -name '*.deb' | sort | head -n 1)"
+          rpm_pkg="$(find dist -maxdepth 1 -type f -name '*.rpm' | sort | head -n 1)"
+          apk="$(find dist -maxdepth 1 -type f -name '*.apk' | sort | head -n 1)"
+
+          echo "Inspecting ${deb}"
+          dpkg-deb --contents "$deb" | tee /tmp/lannventory-deb-contents.txt
+          grep -Fq '/usr/bin/lannventory' /tmp/lannventory-deb-contents.txt
+          grep -Fq '/lib/systemd/system/lannventory.service' /tmp/lannventory-deb-contents.txt
+
+          echo "Inspecting ${rpm_pkg}"
+          rpm -qpl "$rpm_pkg" | tee /tmp/lannventory-rpm-contents.txt
+          grep -Fq '/usr/bin/lannventory' /tmp/lannventory-rpm-contents.txt
+          grep -Fq '/lib/systemd/system/lannventory.service' /tmp/lannventory-rpm-contents.txt
+
+          echo "Inspecting ${apk}"
+          tar -tzf "$apk" | tee /tmp/lannventory-apk-contents.txt
+          grep -Fq 'usr/bin/lannventory' /tmp/lannventory-apk-contents.txt
+          grep -Fq 'etc/init.d/lannventory' /tmp/lannventory-apk-contents.txt
+
+          if grep -R -a -n -E 'WatchYourLAN2|godlev/WatchYourLAN2|LANventory' dist; then
+            echo "Found stale active identity in generated release artifacts"
+            exit 1
+          fi
