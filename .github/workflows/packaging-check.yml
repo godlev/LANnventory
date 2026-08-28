@@ -48,6 +48,10 @@ jobs:
         working-directory: backend
         run: go test ./...
 
+      - name: Race test backend
+        working-directory: backend
+        run: go test -race ./...
+
       - name: Vet backend
         working-directory: backend
         run: go vet ./...

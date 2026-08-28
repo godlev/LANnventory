@@ -1,20 +1,26 @@
 <h1>
-  <img src="frontend/public/fs/public/lanventory-128x128.png" width="48" alt="LANnventory icon" />
+  <img src="assets/lanventory-128x128.png" width="48" alt="LANnventory icon" />
   LANnventory
 </h1>
 
 LANnventory is an independent project originally based on [WatchYourLAN by aceberg](https://github.com/aceberg/WatchYourLAN), focused on modern LAN inventory, device presence history, event tracking, classification and a self-contained web interface.
 
 > [!IMPORTANT]
-> LANnventory is still under active development. Features, configuration, packaging and upgrade instructions may continue to change until the first beta release is prepared.
+> LANnventory is still under active development. Features, configuration, packaging and upgrade instructions may continue to change until the first beta is finalized.
 
 Current repository: [godlev/LANnventory](https://github.com/godlev/LANnventory)
+
+Current beta candidate: `0.1.0-beta.1`
 
 The original WatchYourLAN scanning/backend foundation is preserved and credited. LANnventory adds a substantially expanded interface, persistent event model, device classification, configurable retention, migration hardening, safer configuration handling and other reliability improvements.
 
 ## LANnventory dashboard
 
 ![LANnventory dashboard](assets/image.png)
+
+## Branding assets
+
+Source icon and screenshot assets live in `assets/`. Runtime UI icons are served from `frontend/public/fs/public` during frontend development and from `backend/internal/web/public` in the embedded Go application.
 
 ## Highlights
 
@@ -210,14 +216,14 @@ To run the real backend from source, provide an intentional data/config director
 
 ```sh
 cd backend
-go run ./cmd/WatchYourLAN -d /path/to/dev-data
+go run ./cmd/LANnventory -d /path/to/dev-data
 ```
 
-The command path remains inherited for compatibility. Real backend startup begins network scanning, so run it only where LAN scanning is intended and `arp-scan` is installed.
+Real backend startup begins network scanning, so run it only where LAN scanning is intended and `arp-scan` is installed. The default data path remains inherited for compatibility.
 
 ## Installation status
 
-LANnventory does not yet advertise a separately published Docker image or packaged release artifact.
+LANnventory does not yet advertise a separately published stable Docker image or packaged release artifact.
 
 Do **not** install `aceberg/watchyourlan` expecting LANnventory features; that image belongs to the upstream WatchYourLAN project.
 
@@ -304,7 +310,7 @@ For upstream Docker users, the compatible volume target remains:
 /data/WatchYourLAN
 ```
 
-Do not simply switch from `aceberg/watchyourlan` to a future LANnventory image without a backup and a first run against copied data. Published LANnventory image names are intentionally not final yet.
+Do not simply switch from `aceberg/watchyourlan` to a future LANnventory image without a backup and a first run against copied data. No published stable LANnventory image is available yet; build this beta candidate locally from the repository checkout.
 
 Rollback:
 
@@ -393,7 +399,7 @@ The browser does not need Internet access to render the interface. User-clicked 
 - API notes: [docs/API.md](docs/API.md)
 - Prometheus: enable `PROMETHEUS_ENABLE` and use `/metrics`.
 - InfluxDB2: configure the InfluxDB settings above.
-- Swagger metadata is branded for LANnventory, while inherited API/module compatibility remains intact.
+- Swagger metadata is branded for LANnventory, while inherited API compatibility remains intact.
 
 Some integrations and packaging references may still exist only in upstream documentation. Treat them as upstream references unless explicitly updated for LANnventory.
 
@@ -426,4 +432,6 @@ Thanks to:
 
 ## Repository naming
 
-The product and active repository are now branded **LANnventory** at `godlev/LANnventory`. The Go module remains `github.com/aceberg/WatchYourLAN` for compatibility and is intentionally not renamed in this packaging phase.
+The product and active repository are now branded **LANnventory** at `godlev/LANnventory`. The Go module is `github.com/godlev/LANnventory`.
+
+The default data path remains `/data/WatchYourLAN` intentionally for migration compatibility with existing WatchYourLAN installations.
