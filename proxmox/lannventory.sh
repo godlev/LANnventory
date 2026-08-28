@@ -230,7 +230,7 @@ select_debian_template() {
   info "Updating Proxmox template index"
   pveam update
 
-  available="$(pveam available --section system | awk '/debian-13.*amd64.*standard.*\.tar\.(zst|xz|gz)$/ {print $2}' | sort -V)"
+  available="$(pveam available --section system | awk '$2 ~ /^debian-13-standard_.*_amd64\.tar\.(zst|xz|gz)$/ {print $2}' | sort -V)"
   newest="$(printf '%s\n' "$available" | sed '/^[[:space:]]*$/d' | tail -n 1)"
   [[ -n "$newest" ]] || die "No Debian 13 amd64 standard LXC template was found. Run 'pveam update' and verify Debian 13 templates are available."
 
