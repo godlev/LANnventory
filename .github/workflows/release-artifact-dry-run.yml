@@ -30,6 +30,29 @@ jobs:
       - name: Show Go version
         run: go version
 
+      - name: Verify release workflow trigger
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          release_workflow = Path(".github/workflows/binary-release.yml").read_text()
+          goreleaser_config = Path("backend/.goreleaser.yaml").read_text()
+
+          required_release_trigger = "push:\n    tags:\n      - 'v*'"
+          if required_release_trigger not in release_workflow:
+              raise SystemExit("binary release workflow is not restricted to v* tag pushes")
+
+          if "workflow_dispatch" in release_workflow:
+              raise SystemExit("binary release workflow still has an unguarded manual dispatch path")
+
+          if "release:\n    types: [created]" in release_workflow:
+              raise SystemExit("binary release workflow still runs from GitHub Release creation")
+
+          if "release:\n  prerelease: auto" not in goreleaser_config:
+              raise SystemExit("GoReleaser prerelease auto setting is missing")
+          PY
+
       - name: Check GoReleaser config
         uses: goreleaser/goreleaser-action@v6
         with:
