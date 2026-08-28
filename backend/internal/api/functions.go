@@ -4,8 +4,8 @@ import (
 	"errors"
 	"strconv"
 
-	"github.com/aceberg/WatchYourLAN/internal/gdb"
-	"github.com/aceberg/WatchYourLAN/internal/models"
+	"github.com/godlev/LANnventory/internal/gdb"
+	"github.com/godlev/LANnventory/internal/models"
 )
 
 var errInvalidHostID = errors.New("invalid host id")

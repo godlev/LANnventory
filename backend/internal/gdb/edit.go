@@ -4,8 +4,8 @@ import (
 	"errors"
 	"log/slog"
 
-	"github.com/aceberg/WatchYourLAN/internal/check"
-	"github.com/aceberg/WatchYourLAN/internal/models"
+	"github.com/godlev/LANnventory/internal/check"
+	"github.com/godlev/LANnventory/internal/models"
 
 	"gorm.io/gorm"
 )

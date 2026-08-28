@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aceberg/WatchYourLAN/internal/check"
-	"github.com/aceberg/WatchYourLAN/internal/models"
+	"github.com/godlev/LANnventory/internal/check"
+	"github.com/godlev/LANnventory/internal/models"
 )
 
 var scanCommandTimeout = 2 * time.Minute

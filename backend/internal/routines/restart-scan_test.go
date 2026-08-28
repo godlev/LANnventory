@@ -4,7 +4,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/aceberg/WatchYourLAN/internal/conf"
+	"github.com/godlev/LANnventory/internal/conf"
 )
 
 func TestScanRestartConcurrentDoesNotPanic(t *testing.T) {

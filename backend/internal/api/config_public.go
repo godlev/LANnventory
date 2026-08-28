@@ -1,6 +1,6 @@
 package api
 
-import "github.com/aceberg/WatchYourLAN/internal/models"
+import "github.com/godlev/LANnventory/internal/models"
 
 type publicConfig struct {
 	Host                  string

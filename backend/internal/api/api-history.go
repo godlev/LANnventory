@@ -5,7 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/aceberg/WatchYourLAN/internal/gdb"
+	"github.com/godlev/LANnventory/internal/gdb"
 )
 
 // getHistory godoc

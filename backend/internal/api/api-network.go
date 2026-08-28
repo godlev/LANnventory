@@ -8,8 +8,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/linde12/gowol"
 
-	"github.com/aceberg/WatchYourLAN/internal/check"
-	"github.com/aceberg/WatchYourLAN/internal/portscan"
+	"github.com/godlev/LANnventory/internal/check"
+	"github.com/godlev/LANnventory/internal/portscan"
 )
 
 // getPortState godoc

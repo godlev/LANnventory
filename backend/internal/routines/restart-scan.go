@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"sync"
 
-	"github.com/aceberg/WatchYourLAN/internal/conf"
+	"github.com/godlev/LANnventory/internal/conf"
 )
 
 var (

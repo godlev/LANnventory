@@ -3,8 +3,8 @@ package conf
 import (
 	"sync"
 
-	"github.com/aceberg/WatchYourLAN/internal/check"
-	"github.com/aceberg/WatchYourLAN/internal/models"
+	"github.com/godlev/LANnventory/internal/check"
+	"github.com/godlev/LANnventory/internal/models"
 )
 
 // AppConfig - app config

@@ -8,10 +8,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/aceberg/WatchYourLAN/internal/conf"
-	"github.com/aceberg/WatchYourLAN/internal/gdb"
-	"github.com/aceberg/WatchYourLAN/internal/models"
-	"github.com/aceberg/WatchYourLAN/internal/routines"
+	"github.com/godlev/LANnventory/internal/conf"
+	"github.com/godlev/LANnventory/internal/gdb"
+	"github.com/godlev/LANnventory/internal/models"
+	"github.com/godlev/LANnventory/internal/routines"
 )
 
 var errInvalidPositiveInt = errors.New("invalid positive integer")

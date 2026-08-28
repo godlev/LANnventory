@@ -7,8 +7,8 @@ import (
 
 	"github.com/nicholas-fedor/shoutrrr"
 
-	"github.com/aceberg/WatchYourLAN/internal/conf"
-	"github.com/aceberg/WatchYourLAN/internal/models"
+	"github.com/godlev/LANnventory/internal/conf"
+	"github.com/godlev/LANnventory/internal/models"
 )
 
 // Unknown - send message to log and shoutrrr

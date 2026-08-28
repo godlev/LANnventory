@@ -1,11 +1,11 @@
 mod:
 	rm go.mod || true && \
 	rm go.sum || true && \
-	go mod init github.com/aceberg/WatchYourLAN && \
+	go mod init github.com/godlev/LANnventory && \
 	go mod tidy
 
 run:
-	cd cmd/WatchYourLAN/ && \
+	cd cmd/LANnventory/ && \
 	sudo \
 	go run . #-n http://192.168.2.3:8850
 
@@ -19,4 +19,4 @@ lint:
 check: fmt lint
 
 swag:
-	swag init -g main.go --dir cmd/WatchYourLAN,internal/api,internal/models
+	swag init -g main.go --dir cmd/LANnventory,internal/api,internal/models

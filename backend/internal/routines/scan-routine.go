@@ -4,14 +4,14 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/aceberg/WatchYourLAN/internal/arp"
-	"github.com/aceberg/WatchYourLAN/internal/check"
-	"github.com/aceberg/WatchYourLAN/internal/conf"
-	"github.com/aceberg/WatchYourLAN/internal/gdb"
-	"github.com/aceberg/WatchYourLAN/internal/influx"
-	"github.com/aceberg/WatchYourLAN/internal/models"
-	"github.com/aceberg/WatchYourLAN/internal/notify"
-	"github.com/aceberg/WatchYourLAN/internal/prometheus"
+	"github.com/godlev/LANnventory/internal/arp"
+	"github.com/godlev/LANnventory/internal/check"
+	"github.com/godlev/LANnventory/internal/conf"
+	"github.com/godlev/LANnventory/internal/gdb"
+	"github.com/godlev/LANnventory/internal/influx"
+	"github.com/godlev/LANnventory/internal/models"
+	"github.com/godlev/LANnventory/internal/notify"
+	"github.com/godlev/LANnventory/internal/prometheus"
 )
 
 func startScan(quit chan bool) {

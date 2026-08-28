@@ -1,5 +1,5 @@
 // @title LANnventory API
-// @version 0.1
+// @version 0.1.0-beta.1
 // @description Local network inventory and monitoring application
 // @contact.url   https://github.com/godlev/LANnventory
 // @license.name  MIT
@@ -19,13 +19,13 @@ import (
 	// _ "net/http/pprof"
 
 	// Import Swagger docs
-	_ "github.com/aceberg/WatchYourLAN/docs"
+	_ "github.com/godlev/LANnventory/docs"
 
-	"github.com/aceberg/WatchYourLAN/internal/check"
-	"github.com/aceberg/WatchYourLAN/internal/conf"
-	"github.com/aceberg/WatchYourLAN/internal/gdb"
-	"github.com/aceberg/WatchYourLAN/internal/routines"
-	"github.com/aceberg/WatchYourLAN/internal/web"
+	"github.com/godlev/LANnventory/internal/check"
+	"github.com/godlev/LANnventory/internal/conf"
+	"github.com/godlev/LANnventory/internal/gdb"
+	"github.com/godlev/LANnventory/internal/routines"
+	"github.com/godlev/LANnventory/internal/web"
 )
 
 const dirPath = "/data/WatchYourLAN"

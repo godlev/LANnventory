@@ -1,10 +1,12 @@
 version: 2
 project_name: lannventory
 builds:
-  - main: ./cmd/WatchYourLAN/
+  - main: ./cmd/LANnventory/
     binary: lannventory
     id: default
     env: [CGO_ENABLED=0]
+    ldflags:
+      - -s -w -X github.com/godlev/LANnventory/internal/version.Version={{ .Version }}
     goos:
       - linux
     goarch:

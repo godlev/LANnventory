@@ -8,9 +8,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/aceberg/WatchYourLAN/internal/conf"
-	"github.com/aceberg/WatchYourLAN/internal/models"
 	sqlite "github.com/aceberg/gorm-sqlite"
+	"github.com/godlev/LANnventory/internal/conf"
+	"github.com/godlev/LANnventory/internal/models"
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
 )

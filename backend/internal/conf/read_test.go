@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/aceberg/WatchYourLAN/internal/models"
+	"github.com/godlev/LANnventory/internal/models"
 	"github.com/spf13/viper"
 )
 

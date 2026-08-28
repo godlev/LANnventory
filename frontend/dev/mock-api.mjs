@@ -118,7 +118,7 @@ const config = {
   ConnectivityRetention: 168,
   ShoutURL: '',
   ShoutURLConfigured: false,
-  Version: 'dev-mock',
+  Version: '0.1.0-beta.1-dev-mock',
   UseDB: 'sqlite',
   PGConnect: '',
   PGConnectConfigured: false,

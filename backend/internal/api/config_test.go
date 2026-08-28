@@ -12,10 +12,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/aceberg/WatchYourLAN/internal/conf"
-	"github.com/aceberg/WatchYourLAN/internal/gdb"
-	"github.com/aceberg/WatchYourLAN/internal/models"
 	"github.com/gin-gonic/gin"
+	"github.com/godlev/LANnventory/internal/conf"
+	"github.com/godlev/LANnventory/internal/gdb"
+	"github.com/godlev/LANnventory/internal/models"
 )
 
 func TestParsePositiveInt(t *testing.T) {

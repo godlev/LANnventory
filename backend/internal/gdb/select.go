@@ -1,8 +1,8 @@
 package gdb
 
 import (
-	"github.com/aceberg/WatchYourLAN/internal/check"
-	"github.com/aceberg/WatchYourLAN/internal/models"
+	"github.com/godlev/LANnventory/internal/check"
+	"github.com/godlev/LANnventory/internal/models"
 )
 
 // EventQuery describes filters for persistent activity event selection.

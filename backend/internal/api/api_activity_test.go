@@ -8,8 +8,8 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/aceberg/WatchYourLAN/internal/gdb"
-	"github.com/aceberg/WatchYourLAN/internal/models"
+	"github.com/godlev/LANnventory/internal/gdb"
+	"github.com/godlev/LANnventory/internal/models"
 )
 
 func TestActivityEndpointReturnsEmptyTable(t *testing.T) {

@@ -3,6 +3,7 @@
 ARG NODE_IMAGE=node:22-bookworm-slim
 ARG GO_IMAGE=golang:1.25-bookworm
 ARG RUNTIME_IMAGE=debian:bookworm-slim
+ARG LANNVENTORY_VERSION=0.1.0-beta.1
 
 FROM ${NODE_IMAGE} AS frontend-build
 WORKDIR /src/frontend
@@ -14,6 +15,7 @@ COPY frontend/ ./
 RUN npm run build
 
 FROM ${GO_IMAGE} AS backend-build
+ARG LANNVENTORY_VERSION
 WORKDIR /src
 
 COPY backend/go.mod backend/go.sum ./backend/
@@ -31,13 +33,13 @@ RUN set -eux; \
 RUN cd backend && \
     CGO_ENABLED=0 GOOS=linux go build \
       -trimpath \
-      -ldflags='-s -w' \
+      -ldflags="-s -w -X github.com/godlev/LANnventory/internal/version.Version=${LANNVENTORY_VERSION}" \
       -o /out/lannventory \
-      ./cmd/WatchYourLAN
+      ./cmd/LANnventory
 
 FROM ${RUNTIME_IMAGE} AS runtime
 
-ARG LANNVENTORY_VERSION=dev
+ARG LANNVENTORY_VERSION
 LABEL org.opencontainers.image.title="LANnventory" \
       org.opencontainers.image.description="Self-contained LAN inventory and presence monitoring UI" \
       org.opencontainers.image.source="https://github.com/godlev/LANnventory" \

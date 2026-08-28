@@ -9,11 +9,12 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/aceberg/WatchYourLAN/internal/api"
-	"github.com/aceberg/WatchYourLAN/internal/check"
-	"github.com/aceberg/WatchYourLAN/internal/conf"
-	"github.com/aceberg/WatchYourLAN/internal/prometheus"
 	"github.com/gin-gonic/gin"
+	"github.com/godlev/LANnventory/internal/api"
+	"github.com/godlev/LANnventory/internal/check"
+	"github.com/godlev/LANnventory/internal/conf"
+	"github.com/godlev/LANnventory/internal/prometheus"
+	"github.com/godlev/LANnventory/internal/version"
 )
 
 // templFS - html templates
@@ -61,9 +62,7 @@ func GuiContext(ctx context.Context) error {
 		colorReset = "\033[0m"
 	)
 
-	file, err := pubFS.ReadFile("public/version")
-	check.IfError(err)
-	conf.SetVersion(string(file)[8:])
+	conf.SetVersion(version.Version)
 
 	config := conf.GetAppConfig()
 	address := config.Host + ":" + config.Port
@@ -92,7 +91,7 @@ func GuiContext(ctx context.Context) error {
 		}
 	}()
 
-	err = server.ListenAndServe()
+	err := server.ListenAndServe()
 	if errors.Is(err, http.ErrServerClosed) {
 		return nil
 	}

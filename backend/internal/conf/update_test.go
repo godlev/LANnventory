@@ -7,7 +7,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/aceberg/WatchYourLAN/internal/models"
+	"github.com/godlev/LANnventory/internal/models"
 )
 
 func TestUpdateAppConfigSerializesConcurrentUpdates(t *testing.T) {
