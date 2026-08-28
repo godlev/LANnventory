@@ -7,8 +7,8 @@ import (
 
 	"github.com/nicholas-fedor/shoutrrr"
 
-	"github.com/aceberg/WatchYourLAN/internal/conf"
-	"github.com/aceberg/WatchYourLAN/internal/models"
+	"github.com/godlev/LANnventory/internal/conf"
+	"github.com/godlev/LANnventory/internal/models"
 )
 
 // Unknown - send message to log and shoutrrr
@@ -32,10 +32,11 @@ func Test() {
 func shout(msg string) {
 
 	hostname, _ := os.Hostname()
-	wyl := "WatchYourLAN on '" + hostname + "': "
+	wyl := "LANnventory on '" + hostname + "': "
+	config := conf.GetAppConfig()
 
-	if conf.AppConfig.ShoutURL != "" {
-		err := shoutrrr.Send(conf.AppConfig.ShoutURL, wyl+msg)
+	if config.ShoutURL != "" {
+		err := shoutrrr.Send(config.ShoutURL, wyl+msg)
 		if err != nil {
 			slog.Error("Notification failed (shoutrrr): ", "", err)
 		}

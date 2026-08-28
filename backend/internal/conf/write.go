@@ -5,12 +5,24 @@ import (
 
 	"github.com/spf13/viper"
 
-	"github.com/aceberg/WatchYourLAN/internal/check"
-	"github.com/aceberg/WatchYourLAN/internal/models"
+	"github.com/godlev/LANnventory/internal/check"
+	"github.com/godlev/LANnventory/internal/models"
 )
 
 // Write - write config to file
 func Write(config models.Conf) {
+	check.IfError(WriteErr(config))
+}
+
+// WriteErr - write config to file and return any persistence error
+func WriteErr(config models.Conf) error {
+	appConfigMu.Lock()
+	defer appConfigMu.Unlock()
+
+	return writeErrNoLock(config)
+}
+
+func writeErrNoLock(config models.Conf) error {
 
 	slog.Info("Writing new config to " + config.ConfPath)
 
@@ -29,6 +41,7 @@ func Write(config models.Conf) {
 	viper.Set("IFACES", config.Ifaces)
 	viper.Set("TIMEOUT", config.Timeout)
 	viper.Set("TRIM_HIST", config.TrimHist)
+	viper.Set("CONNECTIVITY_RETENTION", config.ConnectivityRetention)
 	viper.Set("SHOUTRRR_URL", config.ShoutURL)
 
 	viper.Set("USE_DB", config.UseDB)
@@ -43,6 +56,5 @@ func Write(config models.Conf) {
 
 	viper.Set("PROMETHEUS_ENABLE", config.PrometheusEnable)
 
-	err := viper.WriteConfig()
-	check.IfError(err)
+	return viper.WriteConfig()
 }

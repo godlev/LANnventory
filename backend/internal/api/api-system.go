@@ -5,11 +5,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/aceberg/WatchYourLAN/internal/conf"
-	"github.com/aceberg/WatchYourLAN/internal/gdb"
-	"github.com/aceberg/WatchYourLAN/internal/models"
-	"github.com/aceberg/WatchYourLAN/internal/notify"
-	"github.com/aceberg/WatchYourLAN/internal/routines"
+	"github.com/godlev/LANnventory/internal/conf"
+	"github.com/godlev/LANnventory/internal/gdb"
+	"github.com/godlev/LANnventory/internal/models"
+	"github.com/godlev/LANnventory/internal/notify"
+	"github.com/godlev/LANnventory/internal/routines"
 )
 
 // getVersion godoc
@@ -20,7 +20,7 @@ import (
 // @Success      200  {string}  string
 // @Router       /version [get]
 func getVersion(c *gin.Context) {
-	c.IndentedJSON(http.StatusOK, conf.AppConfig.Version)
+	c.IndentedJSON(http.StatusOK, conf.GetAppConfig().Version)
 }
 
 // triggerRescan godoc
@@ -43,7 +43,18 @@ func triggerRescan(c *gin.Context) {
 // @Success      200  {object}  models.Conf
 // @Router       /config [get]
 func getConfig(c *gin.Context) {
-	c.IndentedJSON(http.StatusOK, conf.AppConfig)
+	c.IndentedJSON(http.StatusOK, toPublicConfig(conf.GetAppConfig()))
+}
+
+// getHealth godoc
+// @Summary      Health check
+// @Description  Returns OK without triggering scans or mutations
+// @Tags         system
+// @Produce      plain
+// @Success      200  {string}  string  "OK"
+// @Router       /health [get]
+func getHealth(c *gin.Context) {
+	c.String(http.StatusOK, "OK")
 }
 
 // notifyTest godoc

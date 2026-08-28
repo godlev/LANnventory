@@ -2,16 +2,21 @@ package routines
 
 import (
 	"log/slog"
+	"sync"
 
-	"github.com/aceberg/WatchYourLAN/internal/conf"
+	"github.com/godlev/LANnventory/internal/conf"
 )
 
 var (
-	quitScan = make(chan bool)
+	quitScan      = make(chan bool)
+	scanRestartMu sync.Mutex
+	startScanFunc = startScan
 )
 
 // ScanRestart - start or update routines
 func ScanRestart() {
+	scanRestartMu.Lock()
+	defer scanRestartMu.Unlock()
 
 	close(quitScan)
 
@@ -19,15 +24,25 @@ func ScanRestart() {
 	setLogLevel()
 
 	quitScan = make(chan bool)
-	go startScan(quitScan) // scan-routine.go
+	go startScanFunc(quitScan) // scan-routine.go
+}
+
+// ScanStop signals the active scan routine to stop.
+func ScanStop() {
+	scanRestartMu.Lock()
+	defer scanRestartMu.Unlock()
+
+	close(quitScan)
+	quitScan = make(chan bool)
 }
 
 func setLogLevel() {
 	var level slog.Level
+	config := conf.GetAppConfig()
 
-	slog.Info("Log level: " + conf.AppConfig.LogLevel)
+	slog.Info("Log level: " + config.LogLevel)
 
-	switch conf.AppConfig.LogLevel {
+	switch config.LogLevel {
 	case "debug":
 		level = slog.LevelDebug
 	case "info":

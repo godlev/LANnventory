@@ -1,10 +1,12 @@
 version: 2
-project_name: watchyourlan
+project_name: lannventory
 builds:
-  - main: ./cmd/WatchYourLAN/
-    binary: watchyourlan
+  - main: ./cmd/LANnventory/
+    binary: lannventory
     id: default
     env: [CGO_ENABLED=0]
+    ldflags:
+      - -s -w -X github.com/godlev/LANnventory/internal/version.Version={{ .Version }}
     goos:
       - linux
     goarch:
@@ -22,9 +24,9 @@ nfpms:
     formats:
     - deb
     - rpm
-    maintainer: aceberg <aceberg_a@proton.me>
-    description: Lightweight network IP scanner with web GUI 
-    homepage: https://github.com/aceberg/watchyourlan
+    maintainer: LANnventory maintainers
+    description: LAN inventory and presence monitoring web UI
+    homepage: https://github.com/godlev/LANnventory
     license: MIT
     section: utils
     dependencies: # Don't forget to edit!
@@ -32,16 +34,16 @@ nfpms:
     - tzdata
     contents:
     - src: ./configs/watchyourlan.service
-      dst: /lib/systemd/system/watchyourlan.service
+      dst: /lib/systemd/system/lannventory.service
     scripts:
       postinstall: ./configs/postinstall.sh
 
   - id: alpine
     formats:
     - apk
-    maintainer: aceberg <aceberg_a@proton.me>
-    description: Lightweight network IP scanner with web GUI 
-    homepage: https://github.com/aceberg/watchyourlan
+    maintainer: LANnventory maintainers
+    description: LAN inventory and presence monitoring web UI
+    homepage: https://github.com/godlev/LANnventory
     license: MIT
     section: utils
     dependencies: # Don't forget to edit!
@@ -49,13 +51,13 @@ nfpms:
     - tzdata
     contents:
     - src: ./configs/watchyourlan
-      dst: /etc/init.d/watchyourlan
+      dst: /etc/init.d/lannventory
 
 archives:
   - files:
     - LICENSE
     - src: ./configs/watchyourlan.service
-      dst: watchyourlan.service
+      dst: lannventory.service
     - src: ./configs/install.sh
       dst: install.sh
     wrap_in_directory: true

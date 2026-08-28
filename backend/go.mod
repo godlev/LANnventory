@@ -1,4 +1,4 @@
-module github.com/aceberg/WatchYourLAN
+module github.com/godlev/LANnventory
 
 go 1.25.1
 

@@ -3,12 +3,13 @@ package api
 import (
 	"log/slog"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/linde12/gowol"
 
-	"github.com/aceberg/WatchYourLAN/internal/check"
-	"github.com/aceberg/WatchYourLAN/internal/portscan"
+	"github.com/godlev/LANnventory/internal/check"
+	"github.com/godlev/LANnventory/internal/portscan"
 )
 
 // getPortState godoc
@@ -23,6 +24,13 @@ import (
 func getPortState(c *gin.Context) {
 	addr := c.Param("addr")
 	port := c.Param("port")
+
+	portNumber, err := strconv.Atoi(port)
+	if err != nil || portNumber < 1 || portNumber > 65535 {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid port"})
+		return
+	}
+
 	state := portscan.IsOpen(addr, port)
 	c.IndentedJSON(http.StatusOK, state)
 }

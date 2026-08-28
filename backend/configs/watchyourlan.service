@@ -1,12 +1,13 @@
 [Unit]
-Description=watchyourlan
-Documentation=https://github.com/aceberg/WatchYourLAN
+Description=LANnventory
+Documentation=https://github.com/godlev/LANnventory
 After=network-online.target
 Wants=network-online.target
 
 [Service]
-ExecStart=/usr/bin/watchyourlan -d /etc/watchyourlan/
+ExecStart=/usr/bin/lannventory -d /etc/watchyourlan/
 Restart=on-failure
+TimeoutStopSec=30
 
 [Install]
 WantedBy=multi-user.target

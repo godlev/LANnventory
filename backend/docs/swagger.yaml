@@ -96,13 +96,13 @@ definitions:
     type: object
 info:
   contact:
-    url: https://github.com/aceberg/WatchYourLAN
-  description: Lightweight network IP scanner written in Go
+    url: https://github.com/godlev/LANnventory
+  description: Local network inventory and monitoring application
   license:
     name: MIT
     url: https://opensource.org/licenses/MIT
-  title: WatchYourLAN API
-  version: "0.1"
+  title: LANnventory API
+version: "0.1.0-beta.1"
 paths:
   /all:
     get:

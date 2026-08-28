@@ -1,14 +1,16 @@
-PKG_NAME=WatchYourLAN
-USR_NAME=aceberg
+PKG_NAME=LANnventory
+USR_NAME=godlev
 
 build:
 	npm run build && \
-	rm ../backend/internal/web/public/assets/* && \
+	rm -rf ../backend/internal/web/public/assets/* && \
 	cp -r dist/assets ../backend/internal/web/public
 
 replace:
 	cd ../backend/internal/web/public/assets/ && \
-	cat index.js | sed 's/assets/fs\/public\/assets/g;s/http:\/\/0.0.0.0:8840//' > tmp && \
-	mv tmp index.js
+	cat index.js | sed 's/assets/fs\/public\/assets/g' > tmp && \
+	mv tmp index.js && \
+	cat index.css | sed 's|url(/assets/|url(/fs/public/assets/|g' > tmp && \
+	mv tmp index.css
 
 all: build replace

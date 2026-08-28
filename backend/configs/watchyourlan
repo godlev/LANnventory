@@ -1,6 +1,6 @@
 #!/sbin/openrc-run
-name="WatchYourLAN"
-description="Lightweight network IP scanner with web GUI"
-command="/usr/bin/watchyourlan"
+name="LANnventory"
+description="LAN inventory and presence monitoring web UI"
+command="/usr/bin/lannventory"
 command_background=true
-pidfile="/run/watchyourlan.pid"
+pidfile="/run/lannventory.pid"

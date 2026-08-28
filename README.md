@@ -1,82 +1,75 @@
-<p align="center">
-  <img src="assets/lanventory-128x128.png" width="96" alt="LANnventory icon" />
-</p>
+<h1>
+  <img src="assets/lanventory-128x128.png" width="48" alt="LANnventory icon" />
+  LANnventory
+</h1>
 
-<h1 align="center">LANnventory</h1>
-
-<p align="center">
-  Modern local-first LAN inventory, presence monitoring and device event tracking.
-</p>
-
-LANnventory is an independently developed project based on the original [WatchYourLAN by aceberg](https://github.com/aceberg/WatchYourLAN). It keeps the lightweight ARP-scanning foundation while expanding the project with a modern interface, persistent device classification, Presence history, Events, configurable retention, safer configuration handling and release-readiness hardening.
+LANnventory is an independent project originally based on [WatchYourLAN by aceberg](https://github.com/aceberg/WatchYourLAN), focused on modern LAN inventory, device presence history, event tracking, classification and a self-contained web interface.
 
 > [!IMPORTANT]
-> LANnventory is still under active development. Packaging, installation and upgrade-path validation are still being completed before the first beta release.
+> LANnventory is still under active development. Features, configuration, packaging and upgrade instructions may continue to change until the first beta is finalized.
 
 Current repository: [godlev/LANnventory](https://github.com/godlev/LANnventory)
 
-## Dashboard
+Current beta candidate: `0.1.0-beta.1`
+
+The original WatchYourLAN scanning/backend foundation is preserved and credited. LANnventory adds a substantially expanded interface, persistent event model, device classification, configurable retention, migration hardening, safer configuration handling and other reliability improvements.
+
+## LANnventory dashboard
 
 ![LANnventory dashboard](assets/image.png)
+
+## Branding assets
+
+Source icon and screenshot assets live in `assets/`. Runtime UI icons are served from `frontend/public/fs/public` during frontend development and from `backend/internal/web/public` in the embedded Go application.
 
 ## Highlights
 
 ### Modern local-first interface
 
 - Compact responsive dashboard.
-- Dark and light modes.
+- Dark and light color modes.
 - Local Open Sans fonts.
 - Local Bootstrap Icons.
 - Local Bootswatch themes.
-- Dedicated LANnventory favicon and navbar icons.
+- LANnventory favicon and navbar icon assets bundled locally.
 - No automatic external UI asset requests after build.
 
 ### Home dashboard
 
 - Summary cards for Total, Online, Offline, Known and Unknown devices.
-- Filtering by interface, Device Type, Known/Unknown state and Online/Offline state.
-- Search across device information such as name, IP, MAC and hardware.
-- Device Type filtering integrated with dashboard counts and recent events.
-- Compact device table with sticky headings.
-- Device names link to Host details.
-- Direct Host edit shortcut.
-- Separate recent **Connectivity** and **Device Changes** panels.
-- Recent-event panels automatically follow the currently filtered device set.
+- Shared filtering by interface, device type, recognition state, online state and search.
+- Search across device information such as name and IP.
+- Device Type filtering integrated with dashboard counts and recent event panels.
+- Compact device table with sticky column headings.
+- Device names link to read-only Host details.
+- Direct edit shortcut from the device table.
 
 ### Device management
 
 - Persistent Known / Unknown classification.
 - Persistent manual Device Type classification.
 - Device Type icon picker.
+- Current supported types include router, switch, access point, firewall, server, NAS, desktop, laptop, phone, tablet, TV, printer, camera, IoT, virtual machine, container, game console and other.
 - Host page defaults to read mode.
-- Explicit Host edit mode.
+- Explicit Host edit mode for editable properties.
 - Wake-on-LAN and port-scan actions remain available where supported.
 
-Supported Device Types currently include:
+### Presence
 
-`Router`, `Switch`, `Access Point`, `Firewall`, `Server`, `NAS`, `Desktop`, `Laptop`, `Phone`, `Tablet`, `TV`, `Printer`, `Camera`, `IoT`, `Virtual Machine`, `Container`, `Game Console`, and `Other`.
+Presence is sampled online/offline visibility over time.
 
-## Presence
-
-Presence represents sampled online/offline visibility over time.
-
-Features include:
-
-- Search by device name, IP and other shared device fields.
-- Interface filtering.
-- Device Type filtering.
-- Known / Unknown filtering.
-- Current Online / Offline filtering.
+- Search by device name, IP and other shared host fields.
+- Filter by interface, device type, recognition and current status.
 - Day/night visualization.
 - Hour and day timeline boundaries.
 - Configurable Presence retention.
 - Presence data remains separate from discrete Events.
 
-## Events
+### Events
 
-Events record meaningful state transitions and device changes instead of treating every scan sample as an event.
+Events record meaningful state transitions and device changes instead of storing every scan as an event.
 
-Current Event types:
+Current event types:
 
 - `discovered`
 - `online`
@@ -88,39 +81,28 @@ Current Event types:
 Events features include:
 
 - Unified Events explorer.
-- Summary-card filtering.
-- Ctrl/Cmd-click multi-select for Event summary cards.
-- Device filtering.
-- Multiple Event Type selection.
-- Active filter/grouping indicators.
-- Sticky Events table header.
-- Deterministic pagination.
-- Load More support.
-- Group By controls.
-- Collapse All / Expand All.
-- Stable collapsed state while loading additional Events.
+- Summary cards with event filtering.
+- Ctrl/Cmd-click multi-select on event summary cards.
+- Device filter.
+- Event Type presets and custom multiple-event selections.
+- Group By: Device, Event, Category, Device Type, IP, Interface and Day.
+- Collapse All / Expand All for grouped results.
+- Sticky Events table headings.
+- Persistent reminder when Events filters/grouping are active.
+- Device display preference: `Name + icon`, `Name only`, or `Icon only`.
+- `Icon only` is the default for new/invalid preferences.
+- Clickable device icons link to Host details when the Host still exists.
+- Deleted-host connectivity events remain readable snapshots without stale links.
+- Deterministic pagination ordering by event date and ID.
 
-Available Group By options include:
+### Home recent events
 
-- Device
-- Event
-- Category
-- Device Type
-- IP
-- Interface
-- Day
+Home contains two independent recent-event streams:
 
-### Event device display
+- Connectivity
+- Device Changes
 
-The Device column can be displayed as:
-
-- `Name + icon`
-- `Name only`
-- `Icon only`
-
-`Icon only` is the default for new or invalid preferences.
-
-When a Host still exists, the device icon/name can link to its Host page. If a Host has been deleted, retained connectivity Events remain readable historical snapshots and do not link to an unrelated Host that later reuses the same numeric ID.
+These panels follow the currently filtered device set on Home.
 
 ## Retention model
 
@@ -134,141 +116,67 @@ LANnventory deliberately separates sampled Presence history from Events.
 
 If `CONNECTIVITY_RETENTION` is absent from an older configuration, LANnventory falls back to the existing `TRIM_HIST` value for backward compatibility.
 
-Retention can be configured from **Settings → Data retention** without restarting the network scanner.
+Retention can be configured from **Settings → Data retention** without restarting network scanning.
 
 ## Reliability and migration work
 
-LANnventory has completed a major release-readiness audit and hardening pass.
-
-Current validation includes:
+Recent release-readiness work includes:
 
 - Non-destructive migration tests against a legacy WatchYourLAN SQLite schema.
-- Existing Host and History rows survive migration.
-- Device Type and Events schema additions are migration-tested.
-- Migration is idempotent.
-- Reopening an already migrated database is safe.
-- Failed scans do not create false Offline state changes.
-- Failed scans do not create false Offline Events.
+- Additive migration for Device Type and Events storage.
+- Idempotent database reopen/migration validation.
+- Failed scans do not create false offline state changes or false offline Events.
 - Repeated scans do not create duplicate transition Events.
-- Host return after a failed scan produces the correct transition.
-- Presence and connectivity-event retention are independent.
-- Device-change Events are not removed by age-based connectivity retention.
-- Missing Host IDs are rejected instead of producing zero-value Hosts.
-- Configuration validation is atomic.
-- Invalid configuration changes do not partially mutate runtime configuration.
-- Invalid scan settings do not accidentally restart scanning.
-- Database-setting changes trigger schema migration after reconnect.
-- Runtime configuration access is synchronized for concurrent readers/writers.
-- Global database lifecycle and reconnect operations are mutex-guarded.
+- Event retention and Presence retention are tested independently.
+- Missing Host IDs are rejected rather than becoming zero-value Hosts.
+- Configuration updates are validated atomically before applying changes.
+- Configuration access is synchronized for concurrent runtime readers/writers.
+- Global database lifecycle/reconnect operations are mutex-guarded.
+- Stored sensitive configuration values are no longer returned by `/api/config`.
+- Secret settings are write-only in the Settings UI and can be kept, replaced or explicitly cleared.
 
-## Configuration security hardening
+### Remaining validation work before the first beta
 
-Sensitive configuration values are no longer returned by `/api/config`.
-
-Sensitive settings include values such as:
-
-- PostgreSQL connection credentials.
-- InfluxDB token.
-- Shoutrrr notification URL/credentials.
-
-These values are write-only from the web Settings interface.
-
-Existing secret values can be:
-
-- kept unchanged,
-- replaced,
-- explicitly cleared.
-
-Leaving a secret field blank does **not** overwrite the stored value. The frontend only receives whether a secret is configured, not the stored plaintext secret itself.
-
-## Frontend failure handling
-
-Critical UI flows have been hardened so API failures do not appear as legitimate empty/default data.
-
-Examples include:
-
-- Missing Host handling.
-- Settings load failures.
-- Settings save failures.
-- Host API failures.
-- Presence API failures.
-- Events API failures.
-
-The Settings page no longer displays fake/default configuration values as though they were the current stored configuration after a load failure.
+- PostgreSQL runtime integration testing is still required.
+- The race detector has not been run in the current Windows development environment because CGO/gcc is unavailable there.
 
 ## Security and exposure
 
 LANnventory does **not** currently provide built-in authentication.
 
 > [!WARNING]
-> Do not expose LANnventory directly to the public Internet.
+> Do not expose LANnventory directly to the public Internet. Use it on a trusted LAN, through a VPN, or behind an authenticated reverse proxy / SSO solution.
 
-Recommended deployment:
+LANnventory exposes administrative operations such as device editing/deletion, scan/configuration actions, Wake-on-LAN and port scanning. Protect access accordingly.
 
-- trusted local network,
-- VPN,
-- authenticated reverse proxy,
-- SSO-protected reverse proxy.
-
-LANnventory exposes administrative operations including device editing/deletion, scan configuration, runtime configuration, Wake-on-LAN and port scanning. Protect access accordingly.
-
-Stored PostgreSQL, InfluxDB and Shoutrrr secrets are protected from browser readback, but the local `config_v2.yaml` file still contains the real values. Protect the LANnventory data/config directory using appropriate filesystem permissions.
+Stored PostgreSQL, InfluxDB and Shoutrrr secret values are write-only in the web Settings interface and are redacted from `/api/config`. The local `config_v2.yaml` file still contains the real values and must be protected with normal filesystem permissions.
 
 ## Runtime requirements
 
-LANnventory currently uses the WatchYourLAN ARP discovery model.
+LANnventory inherits the WatchYourLAN ARP discovery model.
 
-Real LAN scanning is intended primarily for Linux.
+- Linux is the intended runtime for real LAN scanning.
+- `arp-scan` is required for real ARP discovery.
+- Container deployments on Linux typically need host networking so `arp-scan` can see real LAN interfaces instead of only the Docker bridge network.
+- Containerized scanning runs the `arp-scan` binary and requires raw-network privileges. The Compose example runs as root with `NET_RAW` and `NET_ADMIN` capabilities rather than `privileged: true`.
+- Docker Desktop on Windows/macOS does not provide the same LAN host-network behavior as native Linux Docker and should not be treated as validated for real LAN scanning.
+- The web UI/API normally listens on `0.0.0.0:8840` unless configured otherwise.
 
-Requirements include:
-
-- `arp-scan`
-- `tzdata`
-- access to the physical LAN interface being scanned.
-
-The web UI/API normally listens on:
-
-```text
-0.0.0.0:8840
-```
-
-unless configured otherwise.
-
-### Container networking
-
-Real ARP-based LAN discovery generally requires access to the host network interfaces. For container deployments, host networking is typically required. Docker bridge networking may expose only the container network rather than the physical LAN.
-
-Container packaging and network-permission behavior are still being formally validated before the first beta.
+Starting the real backend starts network scanning. Use the safe frontend mock mode below when working on UI without touching the LAN.
 
 ## Safe development preview
 
-The frontend includes a localhost-only mock API for UI development.
+The frontend includes a localhost-only in-memory mock API. It does not run `arp-scan`, scan the LAN, send Wake-on-LAN packets, send notifications, perform real port scans or write production data.
 
-The mock environment does **not**:
-
-- run `arp-scan`,
-- scan the LAN,
-- send Wake-on-LAN packets,
-- run real port scans,
-- send notifications,
-- connect to production InfluxDB,
-- connect to production PostgreSQL,
-- modify production LANnventory data.
-
-Install frontend dependencies:
+Terminal 1:
 
 ```sh
 cd frontend
 npm install
-```
-
-Start the mock API:
-
-```sh
 npm run mock:api
 ```
 
-In another terminal:
+Terminal 2:
 
 ```sh
 cd frontend
@@ -281,11 +189,11 @@ Open:
 http://127.0.0.1:5173
 ```
 
-Vite proxies `/api` and `/fs` to the local mock API on `127.0.0.1:8840` during development.
+Vite proxies `/api` and `/fs` to the safe mock API on `127.0.0.1:8840` during development.
 
 ## Build from source
 
-### Frontend
+Frontend:
 
 ```sh
 cd frontend
@@ -295,7 +203,7 @@ npm audit
 npm audit --omit=dev
 ```
 
-### Backend
+Backend:
 
 ```sh
 cd backend
@@ -304,35 +212,124 @@ go vet ./...
 go build ./...
 ```
 
-To run the real backend from source, provide an intentional development data directory:
+To run the real backend from source, provide an intentional data/config directory:
 
 ```sh
 cd backend
-go run ./cmd/WatchYourLAN -d /path/to/dev-data
+go run ./cmd/LANnventory -d /path/to/dev-data
 ```
 
-The command path is still inherited for compatibility at the current development stage. Real backend startup begins network scanning, so only run it where LAN scanning is intended and `arp-scan` is available.
+Real backend startup begins network scanning, so run it only where LAN scanning is intended and `arp-scan` is installed. The default data path remains inherited for compatibility.
 
 ## Installation status
 
-LANnventory does not yet advertise a separately published stable Docker image or release package.
+LANnventory does not yet advertise a separately published stable Docker image or packaged release artifact.
 
-> [!CAUTION]
-> Do not install `aceberg/watchyourlan` expecting LANnventory functionality. That image belongs to the upstream WatchYourLAN project.
+Do **not** install `aceberg/watchyourlan` expecting LANnventory features; that image belongs to the upstream WatchYourLAN project.
 
-Docker/container packaging, persistent-volume mapping, clean-install validation and the operational WatchYourLAN → LANnventory upgrade path are being prepared before the first beta release.
+Build the current development container image from this repository checkout:
 
-Until that work is completed, LANnventory should be evaluated by building directly from this repository.
+```sh
+docker build -t lannventory:dev .
+```
+
+The image is built from LANnventory source in this repository. It does not fetch or substitute an upstream WatchYourLAN binary.
+
+### Docker / Compose development install
+
+The repository includes `docker-compose.yml` for local evaluation:
+
+```sh
+docker compose up --build
+```
+
+Before real scanning, edit `IFACES` in `docker-compose.yml` to match one or more real Linux host interfaces, for example `eth0 wlan0`.
+
+Leaving `IFACES` empty keeps the container from invoking `arp-scan`; this is how CI runs its safe runtime smoke test.
+
+The Compose service:
+
+- builds `lannventory:dev` locally
+- uses `network_mode: host`
+- keeps the default web/API port at `8840`
+- persists data in `/data/WatchYourLAN`
+- adds `NET_RAW` and `NET_ADMIN`
+- uses `restart: unless-stopped`
+- health-checks `GET /api/health`
+
+Because host networking is used, Compose `ports:` mappings are intentionally not used. `PORT` controls the host port that LANnventory binds.
+
+The optional `docker-compose-auth.yml` keeps the inherited ForAuth-style example but builds LANnventory locally. Replace the example auth credentials before using that file.
+
+### Persistent data
+
+The default runtime data directory remains:
+
+```text
+/data/WatchYourLAN
+```
+
+This compatibility path is intentional. It preserves a realistic migration path for existing WatchYourLAN users and matches the current Go command default.
+
+The canonical container image, container name and runtime binary are now `lannventory`, but the beta container still uses the legacy `/data/WatchYourLAN` mount point so existing WatchYourLAN data can be tested and upgraded without a destructive path move.
+
+Inside that directory LANnventory creates or reads:
+
+```text
+config_v2.yaml
+scan.db
+scan.db-wal
+scan.db-shm
+```
+
+SQLite stores Hosts, Known / Unknown state, Presence history, Events and Device Type classifications in `scan.db` and its WAL side files. Mount or back up the entire data directory, not just `scan.db`.
+
+### Clean first run
+
+On an empty data directory, startup creates `config_v2.yaml`, opens SQLite at `scan.db`, migrates `now`, `history` and `events`, and serves the UI.
+
+Automated tests validate this first-run and reopen path without starting scanner routines. The packaging CI also runs a safe container smoke test with empty scan sources, verifies `/api/health`, verifies the web UI response, and starts a second container with the same temporary SQLite volume to prove the data directory is reused.
+
+### Upgrade from WatchYourLAN
+
+For an existing SQLite WatchYourLAN installation:
+
+1. Stop WatchYourLAN.
+2. Back up the existing config directory, including `config_v2.yaml`.
+3. Back up the existing SQLite data directory, including `scan.db`, `scan.db-wal` and `scan.db-shm` if present.
+4. Verify the backup exists and can be copied elsewhere.
+5. Start LANnventory against a copied data directory first when possible.
+6. Let LANnventory run its additive startup migration.
+7. Confirm Hosts, Known state and Presence history are visible before discarding the backup.
+
+The current migration tests cover legacy SQLite tables and verify existing rows are preserved while `DEVICE_TYPE` and the `events` table are added.
+
+For upstream Docker users, the compatible volume target remains:
+
+```text
+/data/WatchYourLAN
+```
+
+Do not simply switch from `aceberg/watchyourlan` to a future LANnventory image without a backup and a first run against copied data. No published stable LANnventory image is available yet; build this beta candidate locally from the repository checkout.
+
+Rollback:
+
+1. Stop LANnventory.
+2. Restore the backed-up WatchYourLAN config/data directory.
+3. Start the previous WatchYourLAN deployment.
+4. Do not reuse a migrated database with an older upstream version unless you have verified that older version tolerates the additive schema.
+
+### Container shutdown
+
+The Go command handles SIGINT/SIGTERM, shuts down the HTTP server, signals background routines and closes the active database handle. An `arp-scan` subprocess already has a bounded timeout; in-flight scans may not stop until the subprocess exits or the container runtime terminates the process.
+
+### PostgreSQL deployments
+
+PostgreSQL configuration support is retained, but PostgreSQL runtime integration testing is still required before the first beta is declared fully validated for PostgreSQL deployments. SQLite is the primary packaging-validated path at this stage.
 
 ## Configuration
 
-Configuration can be supplied through:
-
-- `config_v2.yaml`
-- Web Settings
-- environment variables
-
-Config-file keys use lowercase equivalents of the environment variable names.
+Configuration can be supplied through `config_v2.yaml`, the web Settings interface or environment variables. Config-file keys use lowercase equivalents of the environment variable names.
 
 ### General
 
@@ -343,42 +340,35 @@ Config-file keys use lowercase equivalents of the environment variable names.
 | `PORT` | Web UI/API port. | `8840` |
 | `THEME` | Bundled Bootswatch theme name. | `sand` |
 | `COLOR` | Color mode: `dark` or `light`. | `dark` |
-| `NODEPATH` | Legacy compatibility setting. LANnventory bundles UI assets locally. | |
-| `SHOUTRRR_URL` | Shoutrrr notification URL. | |
-
-Shoutrrr documentation: [shoutrrr.nickfedor.com](https://shoutrrr.nickfedor.com/services/overview/)
+| `NODEPATH` | Legacy upstream compatibility setting. LANnventory UI assets are bundled locally. | |
+| `SHOUTRRR_URL` | Shoutrrr notification URL. See [Shoutrrr documentation](https://shoutrrr.nickfedor.com/services/overview/). | |
 
 ### Scanning and database
 
 | Variable | Description | Default |
 | --- | --- | --- |
-| `IFACES` | Interfaces to scan, separated by spaces. | |
+| `IFACES` | Interfaces to scan, separated by spaces. See the upstream [VLAN / ARP scan guide](https://github.com/aceberg/WatchYourLAN/blob/main/docs/VLAN_ARP_SCAN.md). | |
 | `TIMEOUT` | Time between scans in seconds. | `120` |
 | `ARP_ARGS` | Additional arguments passed to `arp-scan`. | |
-| `ARP_STRS` | Optional ARP result configuration inherited from upstream. | |
-| `ARP_STRS_JOINED` | Optional ARP result configuration inherited from upstream. | |
+| `ARP_STRS`, `ARP_STRS_JOINED` | Optional ARP result strings. See the upstream [VLAN / ARP scan guide](https://github.com/aceberg/WatchYourLAN/blob/main/docs/VLAN_ARP_SCAN.md). | |
 | `LOG_LEVEL` | `debug`, `info`, `warn` or `error`. | `info` |
 | `USE_DB` | Database backend: `sqlite` or `postgres`. | `sqlite` |
-| `PG_CONNECT` | PostgreSQL connection string. | |
-
-Upstream VLAN / ARP scan documentation: [VLAN_ARP_SCAN.md](https://github.com/aceberg/WatchYourLAN/blob/main/docs/VLAN_ARP_SCAN.md)
-
-PostgreSQL connection parameters: [lib/pq](https://pkg.go.dev/github.com/lib/pq#hdr-Connection_String_Parameters)
+| `PG_CONNECT` | PostgreSQL connection string. Parameters: [lib/pq](https://pkg.go.dev/github.com/lib/pq#hdr-Connection_String_Parameters). | |
 
 ### Data retention
 
 | Variable | Description | Default |
 | --- | --- | --- |
 | `TRIM_HIST` | Presence sample retention in hours. | `48` |
-| `CONNECTIVITY_RETENTION` | Online / Offline Event retention in hours. | `TRIM_HIST` |
-| `HIST_IN_DB` | Deprecated compatibility setting. History is always stored in the database. | |
+| `CONNECTIVITY_RETENTION` | `online` / `offline` Event retention in hours. Older configs without this key inherit `TRIM_HIST`. | `TRIM_HIST` |
+| `HIST_IN_DB` | Deprecated upstream compatibility setting. History is stored in the database. | |
 
 ### InfluxDB2
 
 | Variable | Description | Default |
 | --- | --- | --- |
 | `INFLUX_ENABLE` | Enable export to InfluxDB2. | `false` |
-| `INFLUX_SKIP_TLS` | Skip TLS certificate verification. | `false` |
+| `INFLUX_SKIP_TLS` | Skip TLS verification. | `false` |
 | `INFLUX_ADDR` | InfluxDB2 server URL. | |
 | `INFLUX_BUCKET` | InfluxDB2 bucket. | |
 | `INFLUX_ORG` | InfluxDB2 organization. | |
@@ -392,116 +382,44 @@ PostgreSQL connection parameters: [lib/pq](https://pkg.go.dev/github.com/lib/pq#
 
 ## Local / offline UI assets
 
-LANnventory's built web interface is self-contained.
+LANnventory's built web UI is self-contained.
 
-Runtime UI assets are local, including:
+The runtime serves local copies of:
 
-- Bootstrap Icons,
-- Open Sans,
-- Bootswatch themes,
-- LANnventory favicon assets,
-- LANnventory navbar icon,
-- JavaScript bundles,
-- CSS bundles.
+- Bootstrap Icons
+- Open Sans
+- Bootswatch themes
+- LANnventory favicon/navbar icons
+- JavaScript and CSS application bundles
 
-The repository's current branding/icon source set is stored under [`assets/`](assets/), including small favicon sizes and high-resolution artwork.
-
-No CDN, Google Fonts or other automatic external UI asset request is required for rendering the LANnventory interface. User-clicked external links remain normal external navigation.
-
-## Branding assets
-
-Current source assets include:
-
-- [`assets/favicon.png`](assets/favicon.png)
-- [`assets/lanventory-16x16.png`](assets/lanventory-16x16.png)
-- [`assets/lanventory-32x32.png`](assets/lanventory-32x32.png)
-- [`assets/lanventory-48x48.png`](assets/lanventory-48x48.png)
-- [`assets/lanventory-64x64.png`](assets/lanventory-64x64.png)
-- [`assets/lanventory-128x128.png`](assets/lanventory-128x128.png)
-- [`assets/lanventory-180x180.png`](assets/lanventory-180x180.png)
-- [`assets/lanventory-192x192.png`](assets/lanventory-192x192.png)
-- [`assets/lanventory-256x256.png`](assets/lanventory-256x256.png)
-- [`assets/lanventory-512x512.png`](assets/lanventory-512x512.png)
-- [`assets/lanventory-1254-1254.png`](assets/lanventory-1254-1254.png)
-- [`assets/lanventory-navbar.png`](assets/lanventory-navbar.png)
-- [`assets/lanventory.ico`](assets/lanventory.ico)
-
-The product name is **LANnventory**. Asset filenames currently retain the existing `lanventory-*` filename prefix.
+The browser does not need Internet access to render the interface. User-clicked external links to documentation, GitHub, Shoutrrr, package documentation or Revolut remain normal external navigation.
 
 ## API and integrations
 
-- API documentation: [docs/API.md](docs/API.md)
+- API notes: [docs/API.md](docs/API.md)
 - Prometheus: enable `PROMETHEUS_ENABLE` and use `/metrics`.
-- InfluxDB2 remains supported through the configuration options above.
-- Swagger metadata is branded for LANnventory while compatibility-sensitive API/module paths remain intact for now.
+- InfluxDB2: configure the InfluxDB settings above.
+- Swagger metadata is branded for LANnventory, while inherited API compatibility remains intact.
+
+Some integrations and packaging references may still exist only in upstream documentation. Treat them as upstream references unless explicitly updated for LANnventory.
 
 ## PostgreSQL status
 
-LANnventory retains PostgreSQL support and fork-added database operations have been reviewed for PostgreSQL/GORM portability.
+The current code retains PostgreSQL support and LANnventory-added queries have been reviewed for portability, but an isolated real PostgreSQL runtime integration test is still required before LANnventory is declared fully validated for PostgreSQL deployments.
 
-> [!NOTE]
-> A real isolated PostgreSQL runtime integration test is still required before the first beta is declared fully validated for PostgreSQL deployments.
-
-SQLite is currently the most extensively tested migration and runtime path.
-
-## Current validation status
-
-Recent development validation has included:
-
-```text
-npm audit
-npm audit --omit=dev
-npm run build
-node --check frontend/dev/mock-api.mjs
-
-go test ./...
-go vet ./...
-go build ./...
-```
-
-Recent dependency audits reported **0 vulnerabilities**.
-
-The Go race detector has not been run in the current Windows development environment because CGO is disabled and gcc is not installed there. No toolchain was installed solely to enable race testing.
-
-## Current development focus
-
-Major completed work includes:
-
-- UI modernization.
-- Responsive dashboard.
-- Dark/light themes.
-- Fully local runtime UI assets.
-- LANnventory branding and icon set.
-- Device Type persistence and filtering.
-- Persistent Events.
-- Presence / Events separation.
-- Event retention controls.
-- Event grouping and multi-filtering.
-- Event Device display preferences.
-- Deleted-host Event snapshot safety.
-- Settings redesign.
-- API validation hardening.
-- Legacy SQLite migration testing.
-- Scanner failure/Event semantics testing.
-- Configuration atomicity.
-- Sensitive config write-only handling.
-- Configuration concurrency hardening.
-- Database lifecycle hardening.
-- Critical frontend failure-state hardening.
-
-Current focus: **Docker / packaging / installation / upgrade-path validation before the first beta release.**
+SQLite is currently the most extensively tested migration/runtime path in the project.
 
 ## Support development
 
 If you find LANnventory useful and would like to support continued development:
 
-[Support LANnventory via Revolut](https://revolut.me/mirgeo)
+[Support via Revolut](https://revolut.me/mirgeo)
 
 ## Upstream project and attribution
 
-LANnventory is independently developed from a codebase originally based on [WatchYourLAN by aceberg](https://github.com/aceberg/WatchYourLAN).
+LANnventory is originally based on [WatchYourLAN by aceberg](https://github.com/aceberg/WatchYourLAN).
 
-The project preserves applicable upstream attribution and licensing notices while evolving independently.
+The project intentionally preserves upstream attribution, compatibility-sensitive paths and applicable licensing notices while evolving the user-facing product independently.
 
 Thanks to:
 
@@ -510,25 +428,10 @@ Thanks to:
 - [Bootswatch](https://bootswatch.com/)
 - [Bootstrap Icons](https://icons.getbootstrap.com/)
 - Open Sans / Fontsource
-- Go package authors
-- JavaScript package authors
+- Go and JavaScript package authors listed in the dependency manifests
 
 ## Repository naming
 
-The product is branded **LANnventory**.
+The product and active repository are now branded **LANnventory** at `godlev/LANnventory`. The Go module is `github.com/godlev/LANnventory`.
 
-The GitHub repository is:
-
-```text
-godlev/LANnventory
-```
-
-The Go module currently remains:
-
-```text
-github.com/aceberg/WatchYourLAN
-```
-
-The Go module path is retained temporarily for compatibility and will be reviewed during the dedicated independence/rename phase.
-
-Legacy WatchYourLAN names may also remain in compatibility-sensitive paths, configuration, database migration logic, or upgrade documentation where changing them could affect existing installations.
+The default data path remains `/data/WatchYourLAN` intentionally for migration compatibility with existing WatchYourLAN installations.

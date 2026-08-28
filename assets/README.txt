@@ -1,4 +1,4 @@
-LANventory icon pack
+LANnventory icon pack
 
 Files:
 - favicon.png                512x512 canonical project source
