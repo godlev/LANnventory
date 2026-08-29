@@ -3,7 +3,7 @@ import { apiDelHost, apiEditHost, apiSetDeviceType, apiWOL } from "../../functio
 import { Host } from "../../functions/exports";
 import { formatLastSeen } from "../../functions/dateFormat";
 import { deviceDisplayName } from "../../functions/deviceIdentity";
-import { getDeviceTypeOption, type DeviceTypeValue } from "../../functions/deviceTypes";
+import { deviceTypeTitle, getDeviceTypeOption, type DeviceTypeValue } from "../../functions/deviceTypes";
 import { updateHostInView } from "../../functions/hostView";
 import DeviceTypePicker from "../DeviceTypePicker";
 
@@ -33,7 +33,7 @@ function HostCard(_props: HostCardProps) {
   const statusText = () => isOnline() ? "Online" : "Offline";
   const formattedLastSeen = () => formatLastSeen(_props.host.Date);
   const deviceType = () => getDeviceTypeOption(_props.host.DeviceType);
-  const deviceTypeTitle = () => deviceType().value === "" ? "Device type not set" : "Device type: " + deviceType().label;
+  const hostDeviceTypeTitle = () => deviceTypeTitle(_props.host.DeviceType);
   const displayName = () => deviceDisplayName({ ..._props.host, Name: name() });
   const modeTitle = () => _props.editMode ? "Done editing host" : "Edit host";
 
@@ -127,8 +127,8 @@ function HostCard(_props: HostCardProps) {
               fallback={
                 <span
                   class="host-static-value host-static-device-type"
-                  title={deviceTypeTitle()}
-                  aria-label={deviceTypeTitle()}
+                  title={hostDeviceTypeTitle()}
+                  aria-label={hostDeviceTypeTitle()}
                   role="img"
                 >
                   <i class={"bi " + deviceType().icon} aria-hidden="true"></i>

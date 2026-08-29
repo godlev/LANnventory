@@ -3,6 +3,7 @@ import { editNames, hasMultipleIfaces, selectedIDs, setSelectedIDs } from "../..
 import { apiEditHost, apiSetDeviceType } from "../../functions/api";
 import { formatLastSeen } from "../../functions/dateFormat";
 import { deviceDisplayName } from "../../functions/deviceIdentity";
+import { isUnknownHardware } from "../../functions/hardware";
 import { updateHostInView } from "../../functions/hostView";
 import type { DeviceTypeValue } from "../../functions/deviceTypes";
 import DeviceTypePicker from "../DeviceTypePicker";
@@ -27,11 +28,7 @@ function TableRow(_props: any) {
   const statusText = () => isOnline() ? "Online" : "Offline";
   const displayName = () => deviceDisplayName({ ..._props.host, Name: name() });
   const hardwareText = () => (_props.host.Hw ?? "").trim() || "Unknown";
-  const isUnknownHardware = () => {
-    const hardware = hardwareText().toLowerCase();
-    return hardware === "unknown" || hardware === "(unknown)" || hardware.startsWith("unknown:");
-  };
-  const hardwareClass = () => "device-hardware-text" + (isUnknownHardware() ? " device-hardware-text-muted" : "");
+  const hardwareClass = () => "device-hardware-text" + (isUnknownHardware(_props.host.Hw) ? " device-hardware-text-muted" : "");
 
   const debouncedApi = debounce(async (val: string) => {
     await apiEditHost(_props.host.ID, val, "");

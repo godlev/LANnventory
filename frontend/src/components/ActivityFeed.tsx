@@ -9,6 +9,7 @@ import {
   activityTone,
   relativeActivityTime,
 } from "../functions/activity";
+import { deviceTypeTitle } from "../functions/deviceTypes";
 import { homeDeviceDisplayLabel, type HomeDeviceDisplayMode } from "../functions/deviceIdentity";
 import type { HostEvent } from "../functions/exports";
 
@@ -36,7 +37,12 @@ function ActivityFeed(props: ActivityFeedProps) {
             <span class="activity-event-icon" aria-hidden="true">
               <i class={"bi " + activityIcon(event.EventType)}></i>
             </span>
-            <span class="activity-host-icon" aria-hidden="true">
+            <span
+              class="activity-host-icon"
+              title={deviceTypeTitle(event.DeviceType)}
+              aria-label={deviceTypeTitle(event.DeviceType)}
+              role="img"
+            >
               <i class={"bi " + activityDeviceIcon(event)}></i>
             </span>
             <span class="activity-main">

@@ -1,5 +1,5 @@
 import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
-import { deviceTypes, getDeviceTypeOption, type DeviceTypeOption, type DeviceTypeValue } from "../functions/deviceTypes";
+import { deviceTypes, deviceTypeTitle, getDeviceTypeOption, type DeviceTypeOption, type DeviceTypeValue } from "../functions/deviceTypes";
 
 type DeviceTypePickerProps = {
   value: string | null | undefined;
@@ -30,7 +30,7 @@ function DeviceTypePicker(props: DeviceTypePickerProps) {
     "device-type-tone-" + selected().tone,
     saveError() ? "has-error" : "",
   ].filter(Boolean).join(" ");
-  const triggerTitle = () => selected().value === "" ? "Device type not set" : "Device type: " + selected().label;
+  const triggerTitle = () => deviceTypeTitle(props.value);
   const triggerAriaLabel = () => props.ariaLabel ?? triggerTitle();
 
   createEffect(() => {

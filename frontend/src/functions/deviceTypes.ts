@@ -74,6 +74,11 @@ export function getDeviceTypeOption(value: string | null | undefined): DeviceTyp
   return deviceTypeByValue.get(normalizeDeviceType(value)) ?? deviceTypes[0];
 }
 
+export function deviceTypeTitle(value: string | null | undefined): string {
+  const option = getDeviceTypeOption(value);
+  return option.value === "" ? "Device type not set" : "Device type: " + option.label;
+}
+
 export function normalizeDeviceTypeFilter(value: unknown): string {
   if (value === deviceTypeNotSetFilterValue || value === legacyDeviceTypeNotSetFilterValue) {
     return deviceTypeNotSetFilterValue;
