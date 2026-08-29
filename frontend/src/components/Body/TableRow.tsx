@@ -1,8 +1,8 @@
 import { createSignal, Show } from "solid-js";
 import { editNames, hasMultipleIfaces, selectedIDs, setSelectedIDs } from "../../functions/exports";
 import { apiEditHost, apiSetDeviceType } from "../../functions/api";
-import { getHosts } from "../../functions/atstart";
 import { formatLastSeen } from "../../functions/dateFormat";
+import { deviceDisplayName } from "../../functions/deviceIdentity";
 import { updateHostInView } from "../../functions/hostView";
 import type { DeviceTypeValue } from "../../functions/deviceTypes";
 import DeviceTypePicker from "../DeviceTypePicker";
@@ -25,6 +25,13 @@ function TableRow(_props: any) {
     ? "Known device - click to mark unknown"
     : "Unknown device - click to mark known";
   const statusText = () => isOnline() ? "Online" : "Offline";
+  const displayName = () => deviceDisplayName({ ..._props.host, Name: name() });
+  const hardwareText = () => (_props.host.Hw ?? "").trim() || "Unknown";
+  const isUnknownHardware = () => {
+    const hardware = hardwareText().toLowerCase();
+    return hardware === "unknown" || hardware === "(unknown)" || hardware.startsWith("unknown:");
+  };
+  const hardwareClass = () => "device-hardware-text" + (isUnknownHardware() ? " device-hardware-text-muted" : "");
 
   const debouncedApi = debounce(async (val: string) => {
     await apiEditHost(_props.host.ID, val, "");
@@ -32,11 +39,12 @@ function TableRow(_props: any) {
 
   const handleInput = async (n: string) => {
     setName(n);
+    updateHostInView({ ..._props.host, Name: n });
     debouncedApi(n);
   };
   const handleToggle = async () => {
     await apiEditHost(_props.host.ID, name(), "toggle");
-    await getHosts();
+    updateHostInView({ ..._props.host, Name: name(), Known: known() ? 0 : 1 });
   };
 
   const handleDeviceTypeChange = async (deviceType: DeviceTypeValue) => {
@@ -89,7 +97,7 @@ function TableRow(_props: any) {
       <td class="device-table-name">
         <Show
           when={editNames()}
-          fallback={<a href={"/host/" + _props.host.ID} class={"device-name-link " + nameClass()}>{name()}</a>}
+          fallback={<a href={"/host/" + _props.host.ID} class={"device-name-link " + nameClass()}>{displayName()}</a>}
         >
           <input type="text" class="form-control" value={name()}
             onInput={e => handleInput(e.target.value)}></input>
@@ -122,7 +130,7 @@ function TableRow(_props: any) {
       </Show>
       <td class="device-table-mac"><span class="device-cell-muted">{_props.host.Mac}</span></td>
       <td class="device-table-hardware" title={_props.host.Hw}>
-        <span class="device-hardware-text">{_props.host.Hw}</span>
+        <span class={hardwareClass()}>{hardwareText()}</span>
       </td>
       <td class="device-table-last-seen" title={_props.host.Date}>
         <span class="device-cell-muted">{lastSeen()}</span>

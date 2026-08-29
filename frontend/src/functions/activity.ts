@@ -1,4 +1,5 @@
 import { getDeviceTypeOption } from "./deviceTypes";
+import { deviceDisplayName } from "./deviceIdentity";
 import type { HostEvent } from "./exports";
 
 export type ActivityTone = "discovered" | "online" | "offline" | "known" | "unknown" | "type";
@@ -74,7 +75,7 @@ export function activityDetails(event: HostEvent): string {
 }
 
 export function activityHostName(event: HostEvent): string {
-  return event.Name.trim() || event.Mac || "Unknown device";
+  return deviceDisplayName(event);
 }
 
 export function activityDeviceIcon(event: HostEvent): string {

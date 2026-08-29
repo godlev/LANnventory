@@ -7,7 +7,10 @@ function Header() {
 
   const [themeError, setThemeError] = createSignal(false);
   const [supportOpen, setSupportOpen] = createSignal(false);
+  const [mobileNavOpen, setMobileNavOpen] = createSignal(false);
   const location = useLocation();
+  let mobileNavButtonRef: HTMLButtonElement | undefined;
+  let mobileNavPanelRef: HTMLDivElement | undefined;
   let supportButtonRef: HTMLButtonElement | undefined;
   let supportPanelRef: HTMLDivElement | undefined;
   const navItems = [
@@ -27,6 +30,21 @@ function Header() {
     return "nav-link wyl-nav-tab" + (isActivePath(href) ? " is-active" : "");
   };
   const settingsUtilityClass = () => "nav-link wyl-navbar-utility wyl-navbar-settings" + (isActivePath("/config") ? " is-active" : "");
+  const activeSectionLabel = () => {
+    if (showHostContext()) {
+      return hostNavLabel();
+    }
+    if (isActivePath("/history")) {
+      return "Presence";
+    }
+    if (isActivePath("/activity")) {
+      return "Events";
+    }
+    if (isActivePath("/config")) {
+      return "Settings";
+    }
+    return "Home";
+  };
 
   const currentColor = () => normalizeColorMode(appConfig().Color);
   const nextColor = () => currentColor() === "dark" ? "light" : "dark";
@@ -63,8 +81,20 @@ function Header() {
     }
   };
 
+  const closeMobileNav = (returnFocus = false) => {
+    setMobileNavOpen(false);
+
+    if (returnFocus) {
+      queueMicrotask(() => mobileNavButtonRef?.focus());
+    }
+  };
+
   const handleSupportToggle = () => {
     setSupportOpen((open) => !open);
+  };
+
+  const handleMobileNavToggle = () => {
+    setMobileNavOpen((open) => !open);
   };
 
   onMount(() => {
@@ -74,25 +104,31 @@ function Header() {
     });
 
     const handlePointerDown = (event: PointerEvent) => {
-      if (!supportOpen()) {
-        return;
-      }
-
       const target = event.target as Node;
-      if (supportButtonRef?.contains(target) || supportPanelRef?.contains(target)) {
-        return;
+
+      if (supportOpen() && !supportButtonRef?.contains(target) && !supportPanelRef?.contains(target)) {
+        closeSupport();
       }
 
-      closeSupport();
+      if (mobileNavOpen() && !mobileNavButtonRef?.contains(target) && !mobileNavPanelRef?.contains(target)) {
+        closeMobileNav();
+      }
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape" || !supportOpen()) {
+      if (event.key !== "Escape") {
         return;
       }
 
-      event.preventDefault();
-      closeSupport(true);
+      if (supportOpen()) {
+        event.preventDefault();
+        closeSupport(true);
+      }
+
+      if (mobileNavOpen()) {
+        event.preventDefault();
+        closeMobileNav(true);
+      }
     };
 
     document.addEventListener("pointerdown", handlePointerDown);
@@ -107,6 +143,7 @@ function Header() {
   createEffect(() => {
     currentPath();
     setSupportOpen(false);
+    setMobileNavOpen(false);
   });
 
   return (
@@ -116,7 +153,55 @@ function Header() {
         <a class="navbar-brand" href="/" title="LANnventory" aria-label="LANnventory home">
           <img src="/fs/public/lanventory-navbar.png" class="wyl-navbar-logo" alt="LANnventory"/>
         </a>
-        <ul class="navbar-nav wyl-nav-tabs me-auto">
+        <div class="wyl-mobile-nav">
+          <button
+            ref={mobileNavButtonRef}
+            type="button"
+            class="nav-link wyl-nav-tab wyl-mobile-nav-toggle"
+            title="Open navigation"
+            aria-label="Open navigation"
+            aria-expanded={mobileNavOpen() ? "true" : "false"}
+            aria-controls="mobile-primary-nav"
+            onClick={handleMobileNavToggle}
+          >
+            <i class="bi bi-list" aria-hidden="true"></i>
+            <span>{activeSectionLabel()}</span>
+          </button>
+          <Show when={mobileNavOpen()}>
+            <div
+              ref={mobileNavPanelRef}
+              id="mobile-primary-nav"
+              class="wyl-mobile-nav-menu"
+              role="menu"
+            >
+              {navItems.map((item) =>
+                <A
+                  class={navClass(item.href)}
+                  href={item.href}
+                  role="menuitem"
+                  title={item.label}
+                  aria-current={isActivePath(item.href) ? "page" : undefined}
+                  onClick={() => closeMobileNav()}
+                >
+                  {item.label}
+                </A>
+              )}
+              <Show when={showHostContext()}>
+                <A
+                  class="nav-link wyl-nav-tab wyl-nav-context is-active"
+                  href={currentPath()}
+                  role="menuitem"
+                  title={hostNavLabel()}
+                  aria-current="page"
+                  onClick={() => closeMobileNav()}
+                >
+                  {hostNavLabel()}
+                </A>
+              </Show>
+            </div>
+          </Show>
+        </div>
+        <ul class="navbar-nav wyl-nav-tabs wyl-nav-tabs-desktop me-auto">
           {navItems.map((item) =>
           <li class="nav-item">
             <A class={navClass(item.href)} href={item.href} title={item.label} aria-current={isActivePath(item.href) ? "page" : undefined}>{item.label}</A>
