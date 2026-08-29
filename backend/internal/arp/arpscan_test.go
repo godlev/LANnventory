@@ -39,8 +39,8 @@ func TestParseOutputValidRows(t *testing.T) {
 	if first.Now != 1 {
 		t.Errorf("Now = %d, want 1", first.Now)
 	}
-	if _, err := time.Parse("2006-01-02 15:04:05", first.Date); err != nil {
-		t.Errorf("Date = %q, want layout 2006-01-02 15:04:05: %v", first.Date, err)
+	if _, err := time.Parse(time.RFC3339, first.Date); err != nil {
+		t.Errorf("Date = %q, want RFC3339: %v", first.Date, err)
 	}
 }
 

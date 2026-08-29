@@ -1,6 +1,6 @@
 package models
 
-import "time"
+import "github.com/godlev/LANnventory/internal/timestamp"
 
 // HostEventType is a validated machine-readable activity event type.
 type HostEventType string
@@ -80,7 +80,7 @@ func NewHostEvent(host Host, eventType HostEventType, oldValue, newValue string)
 		Mac:        host.Mac,
 		Name:       host.Name,
 		EventType:  string(eventType),
-		Date:       time.Now().Format("2006-01-02 15:04:05"),
+		Date:       timestamp.Now(),
 		IP:         host.IP,
 		Iface:      host.Iface,
 		DeviceType: host.DeviceType,

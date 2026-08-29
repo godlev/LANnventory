@@ -12,6 +12,7 @@ import (
 	"github.com/godlev/LANnventory/internal/models"
 	"github.com/godlev/LANnventory/internal/notify"
 	"github.com/godlev/LANnventory/internal/prometheus"
+	"github.com/godlev/LANnventory/internal/timestamp"
 )
 
 func startScan(quit chan bool) {
@@ -93,7 +94,7 @@ func compareHosts(foundHostsMap map[string]models.Host) {
 		}
 
 		aHost.ID = 0
-		aHost.Date = time.Now().Format("2006-01-02 15:04:05")
+		aHost.Date = timestamp.Now()
 		gdb.Update("history", aHost)
 
 		if config.InfluxEnable {

@@ -7,6 +7,7 @@ import (
 
 	"github.com/godlev/LANnventory/internal/conf"
 	"github.com/godlev/LANnventory/internal/gdb"
+	"github.com/godlev/LANnventory/internal/timestamp"
 )
 
 // HistoryTrim - routine for History
@@ -33,7 +34,7 @@ func trimHistory(now time.Time) {
 	config := conf.GetAppConfig()
 	presenceHours := config.TrimHist
 	presenceCutoff := now.Add(-time.Duration(presenceHours) * time.Hour)
-	presenceDate := presenceCutoff.Format("2006-01-02 15:04:05")
+	presenceDate := timestamp.Format(presenceCutoff)
 
 	slog.Info("Removing all Presence before", "date", presenceDate)
 
@@ -45,7 +46,7 @@ func trimHistory(now time.Time) {
 		connectivityHours = config.TrimHist
 	}
 	connectivityCutoff := now.Add(-time.Duration(connectivityHours) * time.Hour)
-	connectivityDate := connectivityCutoff.Format("2006-01-02 15:04:05")
+	connectivityDate := timestamp.Format(connectivityCutoff)
 
 	n = gdb.DeleteOldConnectivityEvents(connectivityDate)
 	slog.Info("Removed old Connectivity events", "n", n)

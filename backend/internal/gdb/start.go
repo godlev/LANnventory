@@ -19,6 +19,7 @@ import (
 	"github.com/godlev/LANnventory/internal/check"
 	"github.com/godlev/LANnventory/internal/conf"
 	"github.com/godlev/LANnventory/internal/models"
+	"github.com/godlev/LANnventory/internal/timestamp"
 )
 
 var db *gorm.DB
@@ -122,7 +123,62 @@ func migrate(candidate *gorm.DB) error {
 	if err := candidate.Table("history").AutoMigrate(&models.Host{}); err != nil {
 		return err
 	}
-	return candidate.Table("events").AutoMigrate(&models.HostEvent{})
+	if err := candidate.Table("events").AutoMigrate(&models.HostEvent{}); err != nil {
+		return err
+	}
+	return normalizeStoredTimestamps(candidate)
+}
+
+func normalizeStoredTimestamps(candidate *gorm.DB) error {
+	return candidate.Transaction(func(tx *gorm.DB) error {
+		if err := normalizeHostTableTimestamps(tx, "now"); err != nil {
+			return err
+		}
+		if err := normalizeHostTableTimestamps(tx, "history"); err != nil {
+			return err
+		}
+		return normalizeEventTimestamps(tx)
+	})
+}
+
+func normalizeHostTableTimestamps(tx *gorm.DB, table string) error {
+	var hosts []models.Host
+	if err := tx.Table(table).Select("ID", "DATE").Where("\"DATE\" NOT LIKE ?", "%Z").Find(&hosts).Error; err != nil {
+		return err
+	}
+
+	for _, host := range hosts {
+		normalized, ok := timestamp.NormalizeStored(host.Date)
+		if !ok || normalized == host.Date {
+			continue
+		}
+
+		if err := tx.Table(table).Where("\"ID\" = ?", host.ID).Update("DATE", normalized).Error; err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func normalizeEventTimestamps(tx *gorm.DB) error {
+	var events []models.HostEvent
+	if err := tx.Table("events").Select("ID", "DATE").Where("\"DATE\" NOT LIKE ?", "%Z").Find(&events).Error; err != nil {
+		return err
+	}
+
+	for _, event := range events {
+		normalized, ok := timestamp.NormalizeStored(event.Date)
+		if !ok || normalized == event.Date {
+			continue
+		}
+
+		if err := tx.Table("events").Where("\"ID\" = ?", event.ID).Update("DATE", normalized).Error; err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func closeDB(target *gorm.DB) error {

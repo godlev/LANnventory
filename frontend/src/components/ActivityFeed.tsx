@@ -12,6 +12,7 @@ import {
 import { deviceTypeTitle } from "../functions/deviceTypes";
 import { homeDeviceDisplayLabel, type HomeDeviceDisplayMode } from "../functions/deviceIdentity";
 import type { HostEvent } from "../functions/exports";
+import { formatTimestampTitle } from "../functions/timestamps";
 
 type ActivityFeedProps = {
   events: HostEvent[];
@@ -54,7 +55,7 @@ function ActivityFeed(props: ActivityFeedProps) {
               </Show>
               <span class="activity-description">{activityDescription(event)}</span>
             </span>
-            <time class="activity-time" dateTime={event.Date} title={event.Date}>
+            <time class="activity-time" dateTime={event.Date} title={formatTimestampTitle(event.Date)}>
               {relativeActivityTime(event.Date)}
             </time>
           </div>

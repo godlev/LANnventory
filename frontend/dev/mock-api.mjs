@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 const host = '127.0.0.1';
 const port = 8840;
-const now = '2026-08-23 10:15:00';
+const now = formatDate(new Date('2026-08-23T10:15:00Z'));
 let nextActivityId = 1;
 const deviceTypes = new Set([
   '',
@@ -93,7 +93,7 @@ const fakeHosts = [
     IP: '192.168.1.120',
     Mac: 'AA:BB:CC:00:01:20',
     Hw: '(Unknown: locally administered)',
-    Date: '2025-12-30 18:42:09',
+    Date: '2025-12-30T18:42:09Z',
     Known: 1,
     Now: 0,
     DeviceType: '',
@@ -341,7 +341,7 @@ function applyRetentionConfigBody(body) {
 function historyFor(mac, datePrefix = '') {
   const hostEntry = fakeHosts.find((item) => item.Mac === mac) ?? fakeHosts[0];
   const rows = [];
-  const baseDate = new Date('2026-08-23T10:15:00');
+  const baseDate = new Date('2026-08-23T10:15:00Z');
 
   for (let i = 0; i < 210; i += 1) {
     const sampleDate = new Date(baseDate.getTime() - i * config.Timeout * 1000);
@@ -361,14 +361,7 @@ function findHostByID(id) {
 }
 
 function formatDate(date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const hour = String(date.getHours()).padStart(2, '0');
-  const minute = String(date.getMinutes()).padStart(2, '0');
-  const second = String(date.getSeconds()).padStart(2, '0');
-
-  return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
+  return date.toISOString().replace(/\.\d{3}Z$/, 'Z');
 }
 
 function addActivity(hostEntry, eventType, options = {}) {

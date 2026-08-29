@@ -9,6 +9,7 @@ import (
 
 	"github.com/godlev/LANnventory/internal/check"
 	"github.com/godlev/LANnventory/internal/models"
+	"github.com/godlev/LANnventory/internal/timestamp"
 )
 
 var scanCommandTimeout = 2 * time.Minute
@@ -78,7 +79,7 @@ func parseOutput(text, iface string) []models.Host {
 			slog.Warn("Ignoring incomplete arp-scan row", "iface", iface, "row", host)
 			continue
 		}
-		oneHost.Date = time.Now().Format("2006-01-02 15:04:05")
+		oneHost.Date = timestamp.Now()
 		oneHost.Now = 1
 		foundHosts = append(foundHosts, oneHost)
 	}

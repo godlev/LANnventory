@@ -5,6 +5,7 @@ import { formatLastSeen } from "../../functions/dateFormat";
 import { deviceDisplayName } from "../../functions/deviceIdentity";
 import { isUnknownHardware } from "../../functions/hardware";
 import { updateHostInView } from "../../functions/hostView";
+import { formatTimestampTitle } from "../../functions/timestamps";
 import type { DeviceTypeValue } from "../../functions/deviceTypes";
 import DeviceTypePicker from "../DeviceTypePicker";
 
@@ -129,7 +130,7 @@ function TableRow(_props: any) {
       <td class="device-table-hardware" title={_props.host.Hw}>
         <span class={hardwareClass()}>{hardwareText()}</span>
       </td>
-      <td class="device-table-last-seen" title={_props.host.Date}>
+      <td class="device-table-last-seen" title={formatTimestampTitle(_props.host.Date)}>
         <span class="device-cell-muted">{lastSeen()}</span>
       </td>
     </tr>

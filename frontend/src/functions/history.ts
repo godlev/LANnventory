@@ -1,5 +1,6 @@
 import { apiGetHistory, apiGetHistoryByDate } from "./api";
 import { Host } from "./exports";
+import { compareApiTimestampsDesc } from "./timestamps";
 
 export async function getHistoryForMac(mac: string, date: string) {
     let h:Host[] = [];
@@ -14,7 +15,7 @@ export async function getHistoryForMac(mac: string, date: string) {
     }
     
     if (h != null) {
-        h.sort((a:Host, b:Host) => (a.Date < b.Date ? 1 : -1));
+        h.sort((a:Host, b:Host) => compareApiTimestampsDesc(a.Date, b.Date));
         return h;    
     }
     return [];

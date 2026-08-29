@@ -17,8 +17,11 @@ func Path(path string) bool {
 		err = os.MkdirAll(dir, os.ModePerm)
 		IfError(err)
 
-		_, err = os.Create(path)
+		file, err := os.Create(path)
 		IfError(err)
+		if file != nil {
+			IfError(file.Close())
+		}
 
 		return false
 	}

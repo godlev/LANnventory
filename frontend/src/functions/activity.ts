@@ -1,6 +1,7 @@
 import { getDeviceTypeOption } from "./deviceTypes";
 import { deviceDisplayName } from "./deviceIdentity";
 import type { HostEvent } from "./exports";
+import { localDayLabel, parseApiTimestamp } from "./timestamps";
 
 export type ActivityTone = "discovered" | "online" | "offline" | "known" | "unknown" | "type";
 
@@ -115,27 +116,16 @@ export function activityEventLabel(eventType: string): string {
 }
 
 export function activityDayLabel(value: string): string {
-  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (!match) {
-    return "Unknown day";
-  }
-
-  const [, year, month, day] = match;
-  const date = new Date(Number(year), Number(month) - 1, Number(day));
-  return date.toLocaleDateString("en", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+  return localDayLabel(value);
 }
 
-export function relativeActivityTime(value: string): string {
-  const date = parseActivityDate(value);
+export function relativeActivityTime(value: string, now = new Date()): string {
+  const date = parseApiTimestamp(value);
   if (date === null) {
     return "";
   }
 
-  const seconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+  const seconds = Math.max(0, Math.floor((now.getTime() - date.getTime()) / 1000));
   if (seconds < 60) {
     return "now";
   }
@@ -163,21 +153,4 @@ function compactNetworkDetail(event: HostEvent): string {
   }
 
   return event.IP || event.Iface || "";
-}
-
-function parseActivityDate(value: string): Date | null {
-  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})$/);
-  if (!match) {
-    return null;
-  }
-
-  const [, year, month, day, hour, minute, second] = match;
-  return new Date(
-    Number(year),
-    Number(month) - 1,
-    Number(day),
-    Number(hour),
-    Number(minute),
-    Number(second),
-  );
 }

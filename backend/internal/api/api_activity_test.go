@@ -415,6 +415,40 @@ func TestActivityEndpointNewestFirstByDateAndID(t *testing.T) {
 	}
 }
 
+func TestActivityEndpointNewestFirstByCanonicalDateAndID(t *testing.T) {
+	router := setupTestRouter(t)
+	host := seedHost(t, models.Host{Name: "NAS", Mac: "AA:BB:CC:DD:EE:20"})
+
+	first := models.NewHostEvent(host, models.EventDiscovered, "", "")
+	first.Date = "2026-08-24T10:00:00Z"
+	second := models.NewHostEvent(host, models.EventKnown, "", "")
+	second.Date = "2026-08-24T10:00:00Z"
+	third := models.NewHostEvent(host, models.EventOffline, "", "")
+	third.Date = "2026-08-24T10:05:00Z"
+
+	for _, event := range []models.HostEvent{first, second, third} {
+		if err := gdb.AddEvent(event); err != nil {
+			t.Fatalf("AddEvent: %v", err)
+		}
+	}
+
+	rec := getPath(router, "/api/activity?limit=2")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	events := decodeActivityEvents(t, rec)
+	if len(events) != 2 {
+		t.Fatalf("events len = %d, want 2", len(events))
+	}
+	want := []models.HostEventType{models.EventOffline, models.EventKnown}
+	for i, eventType := range want {
+		if events[i].EventType != string(eventType) {
+			t.Fatalf("events[%d].EventType = %q, want %q; events: %+v", i, events[i].EventType, eventType, events)
+		}
+	}
+}
+
 func TestActivityEndpointFiltersByMacAndHostID(t *testing.T) {
 	router := setupTestRouter(t)
 	routerHost := seedHost(t, models.Host{Name: "router", Mac: "AA:BB:CC:DD:EE:01"})

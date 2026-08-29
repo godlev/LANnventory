@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	sqlite "github.com/aceberg/gorm-sqlite"
 	"github.com/godlev/LANnventory/internal/conf"
@@ -15,8 +16,10 @@ import (
 	"gorm.io/gorm/schema"
 )
 
-func TestStartMigratesLegacySQLiteSchemaWithoutChangingRows(t *testing.T) {
+func TestStartMigratesLegacySQLiteSchemaAndNormalizesRows(t *testing.T) {
 	oldConfig := conf.GetAppConfig()
+	oldLocal := time.Local
+	time.Local = time.UTC
 	dbPath := filepath.Join(t.TempDir(), "legacy-watchyourlan.db")
 
 	legacyDB := openMigrationFixtureDB(t, dbPath)
@@ -37,6 +40,7 @@ func TestStartMigratesLegacySQLiteSchemaWithoutChangingRows(t *testing.T) {
 			t.Errorf("Close: %v", err)
 		}
 		conf.SetAppConfigForTest(oldConfig)
+		time.Local = oldLocal
 	})
 
 	Start()
@@ -50,6 +54,47 @@ func TestStartMigratesLegacySQLiteSchemaWithoutChangingRows(t *testing.T) {
 	Start()
 	assertMigratedLegacyRows(t)
 	assertNoInventedEvents(t)
+}
+
+func TestStartNormalizesLegacyTimestampsWithServerLocalTimezone(t *testing.T) {
+	oldConfig := conf.GetAppConfig()
+	oldLocal := time.Local
+	time.Local = time.FixedZone("UTC+03", 3*60*60)
+	dbPath := filepath.Join(t.TempDir(), "legacy-localtime.db")
+
+	legacyDB := openMigrationFixtureDB(t, dbPath)
+	createLegacyHostTable(t, legacyDB, "now")
+	createLegacyHostTable(t, legacyDB, "history")
+	createLegacyEventTable(t, legacyDB)
+	insertLegacyHost(t, legacyDB, "now", 1, "router", "router.lan", "eth0", "192.168.1.1", "AA:BB:CC:DD:EE:01", "Gateway Vendor", "2026-08-24 10:00:00", 1, 1)
+	insertLegacyHost(t, legacyDB, "history", 10, "router", "router.lan", "eth0", "192.168.1.1", "AA:BB:CC:DD:EE:01", "Gateway Vendor", "not-a-date", 1, 1)
+	insertLegacyEvent(t, legacyDB, 100, "2026-08-24 10:30:00")
+	closeFixtureDB(t, legacyDB)
+
+	conf.SetAppConfigForTest(models.Conf{
+		UseDB:  "sqlite",
+		DBPath: dbPath,
+	})
+	t.Cleanup(func() {
+		if err := Close(); err != nil {
+			t.Errorf("Close: %v", err)
+		}
+		conf.SetAppConfigForTest(oldConfig)
+		time.Local = oldLocal
+	})
+
+	if err := StartErr(); err != nil {
+		t.Fatalf("StartErr: %v", err)
+	}
+	assertTimezoneNormalizedRows(t)
+
+	if err := Close(); err != nil {
+		t.Fatalf("Close before idempotent restart: %v", err)
+	}
+	if err := StartErr(); err != nil {
+		t.Fatalf("StartErr idempotent restart: %v", err)
+	}
+	assertTimezoneNormalizedRows(t)
 }
 
 func TestReconnectKeepsCurrentSQLiteDBWhenCandidateFails(t *testing.T) {
@@ -307,6 +352,39 @@ func insertLegacyHost(t *testing.T, fixtureDB *gorm.DB, table string, id int, na
 	}
 }
 
+func createLegacyEventTable(t *testing.T, fixtureDB *gorm.DB) {
+	t.Helper()
+
+	if err := fixtureDB.Exec(`
+		CREATE TABLE events (
+			ID integer PRIMARY KEY AUTOINCREMENT,
+			HOST_ID integer,
+			MAC text,
+			NAME text,
+			EVENT_TYPE text,
+			DATE text,
+			IP text,
+			IFACE text,
+			DEVICE_TYPE text,
+			OLD_VALUE text,
+			NEW_VALUE text
+		)
+	`).Error; err != nil {
+		t.Fatalf("create legacy events table: %v", err)
+	}
+}
+
+func insertLegacyEvent(t *testing.T, fixtureDB *gorm.DB, id int, date string) {
+	t.Helper()
+
+	if err := fixtureDB.Exec(`
+		INSERT INTO events (ID, HOST_ID, MAC, NAME, EVENT_TYPE, DATE, IP, IFACE, DEVICE_TYPE, OLD_VALUE, NEW_VALUE)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, id, 1, "AA:BB:CC:DD:EE:01", "router", "online", date, "192.168.1.1", "eth0", "router", "", "").Error; err != nil {
+		t.Fatalf("insert legacy event row %d: %v", id, err)
+	}
+}
+
 func assertMigratedLegacyRows(t *testing.T) {
 	t.Helper()
 
@@ -326,8 +404,8 @@ func assertMigratedLegacyRows(t *testing.T) {
 	if len(hosts) != 2 {
 		t.Fatalf("now rows len = %d, want 2: %+v", len(hosts), hosts)
 	}
-	assertHostRow(t, hosts[0], 1, "router", "router.lan", "eth0", "192.168.1.1", "AA:BB:CC:DD:EE:01", "Gateway Vendor", "2026-08-24 08:00:00", 1, 1)
-	assertHostRow(t, hosts[1], 2, "unknown", "", "wifi0", "192.168.1.50", "AA:BB:CC:DD:EE:50", "Mobile Vendor", "2026-08-24 07:55:00", 0, 0)
+	assertHostRow(t, hosts[0], 1, "router", "router.lan", "eth0", "192.168.1.1", "AA:BB:CC:DD:EE:01", "Gateway Vendor", "2026-08-24T08:00:00Z", 1, 1)
+	assertHostRow(t, hosts[1], 2, "unknown", "", "wifi0", "192.168.1.50", "AA:BB:CC:DD:EE:50", "Mobile Vendor", "2026-08-24T07:55:00Z", 0, 0)
 
 	var history []models.Host
 	if err := db.Table("history").Order("\"ID\" ASC").Find(&history).Error; err != nil {
@@ -336,8 +414,8 @@ func assertMigratedLegacyRows(t *testing.T) {
 	if len(history) != 2 {
 		t.Fatalf("history rows len = %d, want 2: %+v", len(history), history)
 	}
-	assertHostRow(t, history[0], 10, "router", "router.lan", "eth0", "192.168.1.1", "AA:BB:CC:DD:EE:01", "Gateway Vendor", "2026-08-24 07:00:00", 1, 1)
-	assertHostRow(t, history[1], 11, "unknown", "", "wifi0", "192.168.1.50", "AA:BB:CC:DD:EE:50", "Mobile Vendor", "2026-08-24 07:05:00", 0, 0)
+	assertHostRow(t, history[0], 10, "router", "router.lan", "eth0", "192.168.1.1", "AA:BB:CC:DD:EE:01", "Gateway Vendor", "2026-08-24T07:00:00Z", 1, 1)
+	assertHostRow(t, history[1], 11, "unknown", "", "wifi0", "192.168.1.50", "AA:BB:CC:DD:EE:50", "Mobile Vendor", "2026-08-24T07:05:00Z", 0, 0)
 }
 
 func assertHostRow(t *testing.T, host models.Host, id int, name, dns, iface, ip, mac, hw, date string, known, now int) {
@@ -354,7 +432,35 @@ func assertHostRow(t *testing.T, host models.Host, id int, name, dns, iface, ip,
 		host.Known != known ||
 		host.Now != now ||
 		host.DeviceType != "" {
-		t.Fatalf("host row = %+v, want unchanged legacy row with empty DeviceType", host)
+		t.Fatalf("host row = %+v, want migrated row with empty DeviceType", host)
+	}
+}
+
+func assertTimezoneNormalizedRows(t *testing.T) {
+	t.Helper()
+
+	var hosts []models.Host
+	if err := db.Table("now").Order("\"ID\" ASC").Find(&hosts).Error; err != nil {
+		t.Fatalf("read normalized now rows: %v", err)
+	}
+	if len(hosts) != 1 || hosts[0].Date != "2026-08-24T07:00:00Z" {
+		t.Fatalf("normalized now rows = %+v", hosts)
+	}
+
+	var history []models.Host
+	if err := db.Table("history").Order("\"ID\" ASC").Find(&history).Error; err != nil {
+		t.Fatalf("read normalized history rows: %v", err)
+	}
+	if len(history) != 1 || history[0].Date != "not-a-date" {
+		t.Fatalf("normalized history rows = %+v", history)
+	}
+
+	var events []models.HostEvent
+	if err := db.Table("events").Order("\"ID\" ASC").Find(&events).Error; err != nil {
+		t.Fatalf("read normalized events rows: %v", err)
+	}
+	if len(events) != 1 || events[0].Date != "2026-08-24T07:30:00Z" {
+		t.Fatalf("normalized events rows = %+v", events)
 	}
 }
 

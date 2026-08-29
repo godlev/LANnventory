@@ -7,6 +7,7 @@ import (
 	"github.com/godlev/LANnventory/internal/conf"
 	"github.com/godlev/LANnventory/internal/gdb"
 	"github.com/godlev/LANnventory/internal/models"
+	"github.com/godlev/LANnventory/internal/timestamp"
 )
 
 func TestTrimHistoryUsesIndependentPresenceAndConnectivityRetention(t *testing.T) {
@@ -23,15 +24,15 @@ func TestTrimHistoryUsesIndependentPresenceAndConnectivityRetention(t *testing.T
 		Known: 1,
 		Now:   1,
 	}
-	seedPresenceHistory(t, "old-presence", "2026-08-22 11:59:59")
-	seedPresenceHistory(t, "cutoff-presence", "2026-08-22 12:00:00")
-	seedPresenceHistory(t, "new-presence", "2026-08-23 12:00:00")
-	seedEvent(t, host, models.EventOnline, "2026-08-23 11:59:59")
-	seedEvent(t, host, models.EventOffline, "2026-08-23 12:00:00")
-	seedEvent(t, host, models.EventDiscovered, "2026-08-21 12:00:00")
-	seedEvent(t, host, models.EventKnown, "2026-08-21 13:00:00")
-	seedEvent(t, host, models.EventUnknown, "2026-08-21 14:00:00")
-	seedEvent(t, host, models.EventDeviceTypeChanged, "2026-08-21 15:00:00")
+	seedPresenceHistory(t, "old-presence", utcStamp(2026, 8, 22, 11, 59, 59))
+	seedPresenceHistory(t, "cutoff-presence", utcStamp(2026, 8, 22, 12, 0, 0))
+	seedPresenceHistory(t, "new-presence", utcStamp(2026, 8, 23, 12, 0, 0))
+	seedEvent(t, host, models.EventOnline, utcStamp(2026, 8, 23, 11, 59, 59))
+	seedEvent(t, host, models.EventOffline, utcStamp(2026, 8, 23, 12, 0, 0))
+	seedEvent(t, host, models.EventDiscovered, utcStamp(2026, 8, 21, 12, 0, 0))
+	seedEvent(t, host, models.EventKnown, utcStamp(2026, 8, 21, 13, 0, 0))
+	seedEvent(t, host, models.EventUnknown, utcStamp(2026, 8, 21, 14, 0, 0))
+	seedEvent(t, host, models.EventDeviceTypeChanged, utcStamp(2026, 8, 21, 15, 0, 0))
 
 	now := time.Date(2026, 8, 24, 12, 0, 0, 0, time.UTC)
 	trimHistory(now)
@@ -90,8 +91,8 @@ func TestTrimHistoryFallsBackToPresenceRetentionWhenConnectivityRetentionMissing
 		Known: 1,
 		Now:   1,
 	}
-	seedEvent(t, host, models.EventOnline, "2026-08-22 11:59:59")
-	seedEvent(t, host, models.EventOffline, "2026-08-22 12:00:00")
+	seedEvent(t, host, models.EventOnline, utcStamp(2026, 8, 22, 11, 59, 59))
+	seedEvent(t, host, models.EventOffline, utcStamp(2026, 8, 22, 12, 0, 0))
 
 	now := time.Date(2026, 8, 24, 12, 0, 0, 0, time.UTC)
 	trimHistory(now)
@@ -103,9 +104,13 @@ func TestTrimHistoryFallsBackToPresenceRetentionWhenConnectivityRetentionMissing
 	if len(events) != 1 {
 		t.Fatalf("events len = %d, want 1: %+v", len(events), events)
 	}
-	if events[0].EventType != string(models.EventOffline) || events[0].Date != "2026-08-22 12:00:00" {
+	if events[0].EventType != string(models.EventOffline) || events[0].Date != utcStamp(2026, 8, 22, 12, 0, 0) {
 		t.Fatalf("remaining event = %+v, want cutoff offline event", events[0])
 	}
+}
+
+func utcStamp(year int, month time.Month, day, hour, minute, second int) string {
+	return timestamp.Format(time.Date(year, month, day, hour, minute, second, 0, time.UTC))
 }
 
 func seedPresenceHistory(t *testing.T, name, date string) {

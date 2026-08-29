@@ -5,6 +5,7 @@ import { formatLastSeen } from "../../functions/dateFormat";
 import { deviceDisplayName } from "../../functions/deviceIdentity";
 import { deviceTypeTitle, getDeviceTypeOption, type DeviceTypeValue } from "../../functions/deviceTypes";
 import { updateHostInView } from "../../functions/hostView";
+import { formatTimestampTitle } from "../../functions/timestamps";
 import DeviceTypePicker from "../DeviceTypePicker";
 
 import { debounce } from "@solid-primitives/scheduled";
@@ -166,7 +167,7 @@ function HostCard(_props: HostCardProps) {
           <div class="host-field-value">{_props.host.Hw || <span class="device-cell-muted">Unknown</span>}</div>
 
           <div class="host-field-label">Last seen</div>
-          <div class="host-field-value" title={_props.host.Date}>{formattedLastSeen()}</div>
+          <div class="host-field-value" title={formatTimestampTitle(_props.host.Date)}>{formattedLastSeen()}</div>
 
           <div class="host-field-label">Known</div>
           <div class="host-field-value">

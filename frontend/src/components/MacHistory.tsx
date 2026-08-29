@@ -3,6 +3,7 @@ import { getHistoryForMac } from "../functions/history";
 import { Host, show } from "../functions/exports";
 import { createStore } from "solid-js/store";
 import { getHistoryPeriod, historyPeriodLabel, parseHistoryTimestamp } from "../functions/historyPeriods";
+import { formatTimestampTitle } from "../functions/timestamps";
 
 function MacHistory(_props: any) {
 
@@ -29,7 +30,7 @@ function MacHistory(_props: any) {
   const sampleTitle = (host: Host) => {
     const period = host.Now === 1 ? historyPeriodLabel(getHistoryPeriod(host.Date)) : "";
 
-    return "Date: " + host.Date
+    return "Date: " + formatTimestampTitle(host.Date)
       + "\nStatus: " + statusLabel(host)
       + (period ? "\nPeriod: " + period : "")
       + "\nIface: " + host.Iface

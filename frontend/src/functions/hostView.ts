@@ -1,5 +1,7 @@
 import { bkpHosts, FilterState, filterState, Host, setAllHosts, setBkpHosts, sortState } from "./exports";
 import { deviceTypeFilterMatches, getDeviceTypeOption, normalizeDeviceType } from "./deviceTypes";
+import { formatLastSeen } from "./dateFormat";
+import { compareApiTimestampsDesc } from "./timestamps";
 
 export type HostFilterKey = keyof FilterState;
 
@@ -65,6 +67,8 @@ function sortHosts(hosts: Host[]) {
     sortedHosts.sort((a, b) => sortIP(a, b, ascending));
   } else if (currentSort.field === "DeviceType") {
     sortedHosts.sort((a, b) => byString(normalizeDeviceType(a.DeviceType), normalizeDeviceType(b.DeviceType), ascending));
+  } else if (currentSort.field === "Date") {
+    sortedHosts.sort((a, b) => ascending ? -compareApiTimestampsDesc(a.Date, b.Date) : compareApiTimestampsDesc(a.Date, b.Date));
   } else {
     sortedHosts.sort((a, b) => byField(a, b, currentSort.field as keyof Host, ascending));
   }
@@ -80,6 +84,8 @@ function searchItem(host: Host, search: string) {
   const deviceType = getDeviceTypeOption(host.DeviceType);
   const deviceTypeValue = deviceType.value.toLowerCase();
   const deviceTypeLabel = deviceType.label.toLowerCase();
+  const rawDate = host.Date.toLowerCase();
+  const displayDate = formatLastSeen(host.Date).toLowerCase();
 
   return name.includes(search)
     || iface.includes(search)
@@ -88,7 +94,8 @@ function searchItem(host: Host, search: string) {
     || hardware.includes(search)
     || deviceTypeValue.includes(search)
     || deviceTypeLabel.includes(search)
-    || host.Date.includes(search);
+    || rawDate.includes(search)
+    || displayDate.includes(search);
 }
 
 function byString(a: string, b: string, ascending: boolean) {

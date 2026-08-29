@@ -1,6 +1,10 @@
 package models
 
-import "testing"
+import (
+	"strings"
+	"testing"
+	"time"
+)
 
 func TestHostEventAutoMigrateCreatesEventsTable(t *testing.T) {
 	db := openTempSQLite(t)
@@ -25,5 +29,23 @@ func TestHostEventTypeValidation(t *testing.T) {
 
 	if IsValidHostEventType("renamed") {
 		t.Fatal("renamed should not be a valid Phase 10 event type")
+	}
+}
+
+func TestNewHostEventUsesTimezoneExplicitTimestamp(t *testing.T) {
+	event := NewHostEvent(Host{
+		ID:         1,
+		Mac:        "AA:BB:CC:DD:EE:01",
+		Name:       "router",
+		IP:         "192.168.1.1",
+		Iface:      "eth0",
+		DeviceType: "router",
+	}, EventDiscovered, "", "")
+
+	if !strings.HasSuffix(event.Date, "Z") {
+		t.Fatalf("Date = %q, want explicit UTC suffix", event.Date)
+	}
+	if _, err := time.Parse(time.RFC3339, event.Date); err != nil {
+		t.Fatalf("Date = %q, want RFC3339: %v", event.Date, err)
 	}
 }

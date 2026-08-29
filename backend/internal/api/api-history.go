@@ -53,7 +53,7 @@ func getHistoryByMAC(c *gin.Context) {
 // @Tags         history
 // @Produce      json
 // @Param        mac   path      string  true  "MAC address of the host"
-// @Param        date  path      string  true  "Date filter (supports YYYY, YYYY-MM, YYYY-MM-DD, YYYY-MM-DD HH:mm:ss)"
+// @Param        date  path      string  true  "UTC date prefix filter (supports YYYY, YYYY-MM, YYYY-MM-DD, YYYY-MM-DDTHH:mm:ssZ)"
 // @Success      200   {array}   models.Host
 // @Router       /history/{mac}/{date} [get]
 func getHistoryByDate(c *gin.Context) {

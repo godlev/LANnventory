@@ -21,6 +21,7 @@ import {
   relativeActivityTime,
 } from "../functions/activity";
 import { appConfig, bkpHosts, type ActivityDeviceOption, type ActivityStats, type HostEvent } from "../functions/exports";
+import { formatTimestampTitle, localDayKey } from "../functions/timestamps";
 
 type EventFilterKey =
   | "all"
@@ -698,7 +699,7 @@ function eventRow(event: HostEvent, hostExists: (event: HostEvent) => boolean, d
   return (
     <tr class={"activity-table-row activity-row-" + activityTone(event.EventType)}>
       <td data-label="Time" class="activity-table-time-cell">
-        <time class="activity-time" dateTime={event.Date} title={event.Date}>
+        <time class="activity-time" dateTime={event.Date} title={formatTimestampTitle(event.Date)}>
           {relativeActivityTime(event.Date)}
         </time>
       </td>
@@ -754,7 +755,7 @@ function groupKey(event: HostEvent, groupBy: GroupByKey) {
     case "iface":
       return "iface:" + (event.Iface || "none");
     case "day":
-      return "day:" + event.Date.slice(0, 10);
+      return "day:" + (localDayKey(event.Date) || "unknown");
     case "none":
     default:
       return "all";
