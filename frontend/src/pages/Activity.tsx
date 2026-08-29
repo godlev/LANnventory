@@ -1,5 +1,5 @@
 import { A } from "@solidjs/router";
-import { createEffect, createMemo, createSignal, For, onMount, Show } from "solid-js";
+import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js";
 
 import {
   apiGetActivity,
@@ -60,10 +60,10 @@ type EventGroup = {
 };
 
 const eventsPageSize = 100;
-const customEventFilterValue = "custom";
 const eventsDeviceDisplayStorageKey = "eventsDeviceDisplay";
 const defaultDeviceDisplayMode: DeviceDisplayMode = "icon";
 const eventTypeOrder: ActivityEventType[] = ["online", "offline", "discovered", "known", "unknown", "device-type-changed"];
+const eventTypeDropdownId = "activity-event-type-filter";
 
 const emptyStats: ActivityStats = {
   Total: 0,
@@ -76,7 +76,7 @@ const emptyStats: ActivityStats = {
 };
 
 const eventFilterOptions: EventFilterOption[] = [
-  { key: "all", label: "All events", eventTypes: [] },
+  { key: "all", label: "All events", eventTypes: eventTypeOrder },
   { key: "connectivity", label: "Connectivity", eventTypes: ["online", "offline"] },
   { key: "online", label: "Online", eventTypes: ["online"] },
   { key: "offline", label: "Offline", eventTypes: ["offline"] },
@@ -107,7 +107,7 @@ const deviceDisplayOptions: { key: DeviceDisplayMode; label: string }[] = [
 
 function Activity() {
   const [selectedMac, setSelectedMac] = createSignal("");
-  const [selectedEventTypes, setSelectedEventTypes] = createSignal<ActivityEventType[]>([]);
+  const [selectedEventTypes, setSelectedEventTypes] = createSignal<ActivityEventType[]>(normalizeSelectedEventTypes(eventTypeOrder));
   const [groupBy, setGroupBy] = createSignal<GroupByKey>("none");
   const [deviceDisplayMode, setDeviceDisplayMode] = createSignal<DeviceDisplayMode>(defaultDeviceDisplayMode);
   const [events, setEvents] = createSignal<HostEvent[]>([]);
@@ -119,22 +119,26 @@ function Activity() {
   const [loading, setLoading] = createSignal(false);
   const [error, setError] = createSignal("");
   const [statsError, setStatsError] = createSignal(false);
+  const [eventTypeDropdownOpen, setEventTypeDropdownOpen] = createSignal(false);
   let eventsRequest = 0;
   let statsRequest = 0;
+  let eventTypeTriggerRef: HTMLButtonElement | undefined;
+  let eventTypeDropdownRef: HTMLDivElement | undefined;
 
   const selectedEventTypeSet = createMemo(() => new Set(selectedEventTypes()));
-  const currentEventOption = () => eventFilterOptionForTypes(selectedEventTypes());
-  const eventFilterSelectValue = () => currentEventOption()?.key ?? customEventFilterValue;
   const currentGroupOption = () => groupByOptions.find((option) => option.key === groupBy()) ?? groupByOptions[0];
   const hostExists = (event: HostEvent) => bkpHosts().some((host) => host.ID === event.HostID && host.Mac === event.Mac);
-  const filtersActive = () => selectedMac() !== "" || selectedEventTypes().length > 0;
+  const allEventTypesSelected = () => selectedEventTypes().length === eventTypeOrder.length;
+  const noEventTypesSelected = () => selectedEventTypes().length === 0;
+  const eventTypeFilterActive = () => !allEventTypesSelected();
+  const filtersActive = () => selectedMac() !== "" || eventTypeFilterActive();
   const selectedDeviceLabel = () => {
     const mac = selectedMac();
     const device = devices().find((option) => option.Mac === mac);
     return device ? deviceOptionLabel(device) : mac;
   };
-  const eventTypeSummary = () => selectedEventTypes().map(activityEventLabel).join(" + ");
-  const eventTypeTooltipSummary = () => selectedEventTypes().map(activityEventLabel).join(", ");
+  const eventTypeSummary = () => eventTypeClosedSummary(selectedEventTypes());
+  const eventTypeTooltipSummary = () => eventTypeTooltip(selectedEventTypes());
   const tableStateSummary = createMemo(() => {
     const active: string[] = [];
 
@@ -144,7 +148,7 @@ function Activity() {
     if (selectedMac() !== "") {
       active.push(selectedDeviceLabel());
     }
-    if (selectedEventTypes().length > 0) {
+    if (eventTypeFilterActive()) {
       active.push(eventTypeSummary());
     }
     if (groupBy() !== "none") {
@@ -159,7 +163,7 @@ function Activity() {
     if (selectedMac() !== "") {
       activeFilters.push("Device: " + selectedDeviceLabel());
     }
-    if (selectedEventTypes().length > 0) {
+    if (eventTypeFilterActive()) {
       activeFilters.push(eventTypeTooltipSummary());
     }
 
@@ -190,7 +194,6 @@ function Activity() {
     const mac = selectedMac();
     const offset = reset ? 0 : events().length;
 
-    setLoading(true);
     setError("");
     if (reset) {
       setEvents([]);
@@ -198,9 +201,17 @@ function Activity() {
       setCollapsedGroups({});
     }
 
+    if (eventTypes.length === 0) {
+      setLoading(false);
+      setHasMore(false);
+      return;
+    }
+
+    setLoading(true);
+
     try {
       const nextEvents = await apiGetActivity(eventsPageSize, {
-        eventTypes: eventTypes.length === 0 ? undefined : eventTypes,
+        eventTypes: eventTypes.length === eventTypeOrder.length ? undefined : eventTypes,
         macs: mac === "" ? undefined : [mac],
         offset,
       });
@@ -266,6 +277,34 @@ function Activity() {
   onMount(() => {
     setDeviceDisplayMode(readStoredEventsDeviceDisplay());
     loadDevices();
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node) || !eventTypeDropdownOpen()) {
+        return;
+      }
+      if (eventTypeTriggerRef?.contains(target) || eventTypeDropdownRef?.contains(target)) {
+        return;
+      }
+
+      setEventTypeDropdownOpen(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || !eventTypeDropdownOpen()) {
+        return;
+      }
+
+      event.preventDefault();
+      setEventTypeDropdownOpen(false);
+      eventTypeTriggerRef?.focus();
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    onCleanup(() => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    });
   });
 
   const summaryCards = createMemo<EventSummaryCard[]>(() => {
@@ -354,7 +393,10 @@ function Activity() {
   const groupAllControlLabel = () => hasExpandedGroups() ? "Collapse all" : "Expand all";
   const isSummaryCardActive = (card: EventSummaryCard) => {
     if (card.key === "all") {
-      return selectedEventTypes().length === 0;
+      return allEventTypesSelected();
+    }
+    if (allEventTypesSelected()) {
+      return false;
     }
 
     const selected = selectedEventTypeSet();
@@ -363,12 +405,12 @@ function Activity() {
 
   const handleReset = () => {
     setSelectedMac("");
-    setSelectedEventTypes([]);
+    setSelectedEventTypes(normalizeSelectedEventTypes(eventTypeOrder));
   };
 
   const handleSummaryClick = (event: MouseEvent, card: EventSummaryCard) => {
     if (card.key === "all") {
-      setSelectedEventTypes([]);
+      setSelectedEventTypes(normalizeSelectedEventTypes(eventTypeOrder));
       return;
     }
 
@@ -390,7 +432,7 @@ function Activity() {
 
     setSelectedEventTypes(
       sameEventTypes(selectedEventTypes(), card.eventTypes)
-        ? []
+        ? normalizeSelectedEventTypes(eventTypeOrder)
         : normalizeSelectedEventTypes(card.eventTypes),
     );
   };
@@ -414,13 +456,48 @@ function Activity() {
     setCollapsedGroups(nextGroups);
   };
 
-  const handleEventFilterChange = (event: Event & { currentTarget: HTMLSelectElement }) => {
-    const key = event.currentTarget.value as EventFilterKey | typeof customEventFilterValue;
-    const option = eventFilterOptions.find((candidate) => candidate.key === key);
-
-    if (option) {
-      setSelectedEventTypes(normalizeSelectedEventTypes(option.eventTypes));
+  const handleEventTypeToggle = (eventType: ActivityEventType) => {
+    const selected = new Set(selectedEventTypes());
+    if (selected.has(eventType)) {
+      selected.delete(eventType);
+    } else {
+      selected.add(eventType);
     }
+
+    setSelectedEventTypes(normalizeSelectedEventTypes([...selected]));
+  };
+
+  const handleEventTypeGroupToggle = (eventTypes: ActivityEventType[]) => {
+    const selected = new Set(selectedEventTypes());
+    const allSelected = eventTypes.every((eventType) => selected.has(eventType));
+
+    for (const eventType of eventTypes) {
+      if (allSelected) {
+        selected.delete(eventType);
+      } else {
+        selected.add(eventType);
+      }
+    }
+
+    setSelectedEventTypes(normalizeSelectedEventTypes([...selected]));
+  };
+
+  const handleEventTypeSelectAll = () => {
+    setSelectedEventTypes(normalizeSelectedEventTypes(eventTypeOrder));
+  };
+
+  const handleEventTypeDeselectAll = () => {
+    setSelectedEventTypes([]);
+  };
+
+  const eventTypeGroupState = (eventTypes: ActivityEventType[]) => {
+    const selected = selectedEventTypeSet();
+    const selectedCount = eventTypes.filter((eventType) => selected.has(eventType)).length;
+
+    return {
+      checked: selectedCount === eventTypes.length,
+      indeterminate: selectedCount > 0 && selectedCount < eventTypes.length,
+    };
   };
 
   const handleDeviceDisplayChange = (event: Event & { currentTarget: HTMLSelectElement }) => {
@@ -478,21 +555,103 @@ function Activity() {
               }</For>
             </select>
           </label>
-          <label class="activity-filter-field">
+          <div class="activity-filter-field activity-multiselect-field">
             <span class="activity-filter-label">Event type</span>
-            <select
-              class={"form-select form-select-sm activity-filter-select" + (selectedEventTypes().length > 0 ? " is-active" : "")}
-              value={eventFilterSelectValue()}
-              onChange={handleEventFilterChange}
+            <button
+              ref={eventTypeTriggerRef}
+              type="button"
+              class={"form-select form-select-sm activity-filter-select activity-multiselect-trigger" + (eventTypeFilterActive() ? " is-active" : "")}
+              aria-expanded={eventTypeDropdownOpen() ? "true" : "false"}
+              aria-controls={eventTypeDropdownId}
+              aria-label={"Event type filter: " + eventTypeTooltipSummary()}
+              title={eventTypeTooltipSummary()}
+              onClick={() => setEventTypeDropdownOpen(!eventTypeDropdownOpen())}
             >
-              <Show when={eventFilterSelectValue() === customEventFilterValue}>
-                <option value={customEventFilterValue}>Multiple event types</option>
-              </Show>
-              <For each={eventFilterOptions}>{(option) =>
-                <option value={option.key}>{option.label}</option>
-              }</For>
-            </select>
-          </label>
+              <span>{eventTypeSummary()}</span>
+            </button>
+            <Show when={eventTypeDropdownOpen()}>
+              <div
+                ref={eventTypeDropdownRef}
+                id={eventTypeDropdownId}
+                class="activity-multiselect-panel"
+                role="group"
+                aria-label="Event type options"
+              >
+                <div class="activity-multiselect-actions">
+                  <button type="button" class="btn btn-sm activity-multiselect-action" onClick={handleEventTypeSelectAll}>
+                    Select all
+                  </button>
+                  <button type="button" class="btn btn-sm activity-multiselect-action" onClick={handleEventTypeDeselectAll}>
+                    Deselect all
+                  </button>
+                </div>
+                <div class="activity-multiselect-options">
+                  <EventTypeCheckbox
+                    label="Connectivity"
+                    className="activity-multiselect-parent"
+                    checked={eventTypeGroupState(["online", "offline"]).checked}
+                    indeterminate={eventTypeGroupState(["online", "offline"]).indeterminate}
+                    onChange={() => handleEventTypeGroupToggle(["online", "offline"])}
+                  />
+                  <EventTypeCheckbox
+                    label="Online"
+                    className="activity-multiselect-child"
+                    checked={selectedEventTypeSet().has("online")}
+                    onChange={() => handleEventTypeToggle("online")}
+                  />
+                  <EventTypeCheckbox
+                    label="Offline"
+                    className="activity-multiselect-child"
+                    checked={selectedEventTypeSet().has("offline")}
+                    onChange={() => handleEventTypeToggle("offline")}
+                  />
+                  <EventTypeCheckbox
+                    label="Device changes"
+                    className="activity-multiselect-parent"
+                    checked={eventTypeGroupState(["discovered", "known", "unknown", "device-type-changed"]).checked}
+                    indeterminate={eventTypeGroupState(["discovered", "known", "unknown", "device-type-changed"]).indeterminate}
+                    onChange={() => handleEventTypeGroupToggle(["discovered", "known", "unknown", "device-type-changed"])}
+                  />
+                  <EventTypeCheckbox
+                    label="New device detected"
+                    className="activity-multiselect-child"
+                    checked={selectedEventTypeSet().has("discovered")}
+                    onChange={() => handleEventTypeToggle("discovered")}
+                  />
+                  <EventTypeCheckbox
+                    label="Recognition changes"
+                    className="activity-multiselect-child activity-multiselect-parent"
+                    checked={eventTypeGroupState(["known", "unknown"]).checked}
+                    indeterminate={eventTypeGroupState(["known", "unknown"]).indeterminate}
+                    onChange={() => handleEventTypeGroupToggle(["known", "unknown"])}
+                  />
+                  <EventTypeCheckbox
+                    label="Marked known"
+                    className="activity-multiselect-grandchild"
+                    checked={selectedEventTypeSet().has("known")}
+                    onChange={() => handleEventTypeToggle("known")}
+                  />
+                  <EventTypeCheckbox
+                    label="Marked unknown"
+                    className="activity-multiselect-grandchild"
+                    checked={selectedEventTypeSet().has("unknown")}
+                    onChange={() => handleEventTypeToggle("unknown")}
+                  />
+                  <EventTypeCheckbox
+                    label="Device type changed"
+                    className="activity-multiselect-child"
+                    checked={selectedEventTypeSet().has("device-type-changed")}
+                    onChange={() => handleEventTypeToggle("device-type-changed")}
+                  />
+                </div>
+                <div class="activity-multiselect-footer">
+                  <button type="button" class="btn btn-sm device-reset-filter" onClick={() => setEventTypeDropdownOpen(false)}>
+                    Done
+                  </button>
+                </div>
+              </div>
+            </Show>
+          </div>
           <label class="activity-filter-field">
             <span class="activity-filter-label">Group by</span>
             <select
@@ -620,7 +779,7 @@ function Activity() {
             </table>
           </div>
           <Show when={!loading() && events().length === 0 && error() === ""}>
-            <div class="activity-empty">No events match the current filters</div>
+            <div class="activity-empty">{noEventTypesSelected() ? "No event types selected" : "No events match the current filters"}</div>
           </Show>
           <Show when={error()}>
             <div class="activity-empty" role="status">{error()}</div>
@@ -857,6 +1016,60 @@ function groupLabel(event: HostEvent, groupBy: GroupByKey) {
 function deviceOptionLabel(device: ActivityDeviceOption) {
   const name = device.Name.trim() || device.Mac || "Unknown device";
   return name + (device.Exists ? "" : " (deleted)");
+}
+
+function EventTypeCheckbox(props: {
+  label: string;
+  checked: boolean;
+  indeterminate?: boolean;
+  className?: string;
+  onChange: () => void;
+}) {
+  let checkboxRef: HTMLInputElement | undefined;
+
+  createEffect(() => {
+    if (checkboxRef) {
+      checkboxRef.indeterminate = props.indeterminate ?? false;
+    }
+  });
+
+  return (
+    <label class={"activity-multiselect-option " + (props.className ?? "")}>
+      <input
+        ref={checkboxRef}
+        type="checkbox"
+        checked={props.checked}
+        aria-checked={props.indeterminate ? "mixed" : props.checked ? "true" : "false"}
+        aria-label={props.label}
+        onChange={props.onChange}
+      />
+      <span>{props.label}</span>
+    </label>
+  );
+}
+
+function eventTypeClosedSummary(eventTypes: ActivityEventType[]) {
+  if (eventTypes.length === 0) {
+    return "No event types";
+  }
+
+  const option = eventFilterOptionForTypes(eventTypes);
+  if (option) {
+    return option.label;
+  }
+
+  return eventTypes.length + " of " + eventTypeOrder.length + " event types";
+}
+
+function eventTypeTooltip(eventTypes: ActivityEventType[]) {
+  if (eventTypes.length === 0) {
+    return "No event types selected";
+  }
+  if (eventTypes.length === eventTypeOrder.length) {
+    return "All event types selected";
+  }
+
+  return "Selected event types: " + eventTypes.map(activityEventLabel).join(", ");
 }
 
 function normalizeSelectedEventTypes(eventTypes: ActivityEventType[]): ActivityEventType[] {

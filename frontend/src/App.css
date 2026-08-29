@@ -1491,6 +1491,110 @@ html[data-bs-theme] .device-table > tbody > tr.device-row-unknown:hover > td {
     background-color: var(--wyl-card-active-bg);
     border-color: #597D7C;
 }
+.activity-multiselect-field {
+    position: relative;
+}
+.activity-multiselect-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: calc(1.5em + 0.5rem + 2px);
+    padding-right: 2rem;
+    text-align: left;
+}
+.activity-multiselect-trigger span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.activity-multiselect-panel {
+    position: absolute;
+    top: calc(100% + 0.32rem);
+    left: 0;
+    z-index: 40;
+    display: grid;
+    gap: 0.55rem;
+    width: min(22rem, calc(100vw - 2rem));
+    max-height: min(27rem, calc(100vh - 8rem));
+    padding: 0.68rem;
+    overflow-y: auto;
+    color: var(--bs-body-color);
+    background-color: var(--wyl-panel-bg);
+    border: 1px solid var(--wyl-panel-border);
+    border-radius: 8px;
+    box-shadow: 0 0.85rem 2.5rem rgba(0, 0, 0, 0.28);
+}
+.activity-multiselect-actions,
+.activity-multiselect-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+.activity-multiselect-footer {
+    justify-content: flex-end;
+    padding-top: 0.1rem;
+}
+.activity-multiselect-action {
+    color: var(--wyl-link);
+    background-color: transparent;
+    border: 1px solid var(--wyl-control-border);
+    border-radius: 6px;
+    font-size: 0.74rem;
+    font-weight: 800;
+    line-height: 1.2;
+    font-variant-caps: all-small-caps;
+}
+.activity-multiselect-action:hover,
+.activity-multiselect-action:focus-visible {
+    color: var(--wyl-link-hover);
+    background-color: var(--wyl-control-hover-bg);
+    border-color: var(--wyl-link-hover);
+}
+.activity-multiselect-options {
+    display: grid;
+    gap: 0.08rem;
+}
+.activity-multiselect-option {
+    display: flex;
+    align-items: center;
+    gap: 0.52rem;
+    min-height: 2rem;
+    margin: 0;
+    padding: 0.22rem 0.28rem;
+    border-radius: 6px;
+    color: var(--bs-body-color);
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+.activity-multiselect-option:hover,
+.activity-multiselect-option:focus-within {
+    background-color: var(--wyl-control-hover-bg);
+}
+.activity-multiselect-option input {
+    flex: 0 0 auto;
+    width: 1rem;
+    height: 1rem;
+    accent-color: var(--wyl-link);
+}
+.activity-multiselect-option span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.activity-multiselect-parent {
+    color: var(--wyl-control-text-strong);
+    font-weight: 850;
+}
+.activity-multiselect-child {
+    padding-left: 1.35rem;
+}
+.activity-multiselect-grandchild {
+    padding-left: 2.7rem;
+}
 .activity-filter-reset,
 .activity-group-all-toggle {
     flex: 0 0 auto;
