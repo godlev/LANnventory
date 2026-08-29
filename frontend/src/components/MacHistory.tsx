@@ -83,18 +83,20 @@ function MacHistory(_props: any) {
   };
 
   return (
-    <For each={hist}>{(h, index) =>
-      <Show
-        when={index() < show()}
-      >
-        <i
-          title={sampleTitle(h)}
-          aria-label={sampleTitle(h)}
-          role="img"
-          class={sampleClass(h) + " history-sample" + boundaryClass(h, index())}
-        ></i>
-      </Show>
-    }</For>
+    <div class="history-sample-strip" aria-label="Presence samples">
+      <For each={hist}>{(h, index) =>
+        <Show
+          when={index() < show()}
+        >
+          <i
+            title={sampleTitle(h)}
+            aria-label={sampleTitle(h)}
+            role="img"
+            class={sampleClass(h) + " history-sample" + boundaryClass(h, index())}
+          ></i>
+        </Show>
+      }</For>
+    </div>
   )
 }
 

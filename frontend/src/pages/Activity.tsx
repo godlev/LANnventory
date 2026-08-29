@@ -645,6 +645,7 @@ function Activity() {
 }
 
 function eventRow(event: HostEvent, hostExists: (event: HostEvent) => boolean, deviceDisplayMode: () => DeviceDisplayMode) {
+  const [detailsExpanded, setDetailsExpanded] = createSignal(false);
   const canLinkHost = () => event.HostID > 0 && hostExists(event);
   const deviceName = () => activityHostName(event);
   const deviceTypeLabel = () => activityDeviceTypeLabel(event.DeviceType);
@@ -652,6 +653,8 @@ function eventRow(event: HostEvent, hostExists: (event: HostEvent) => boolean, d
   const iconOnlyAria = () => canLinkHost()
     ? "Open " + deviceName() + " device details"
     : deviceName() + " \u00b7 " + deviceTypeLabel() + " \u00b7 Device no longer exists";
+  const mobileToggleLabel = () => (detailsExpanded() ? "Hide" : "Show") + " event details for " + deviceName();
+  const mobileDetailsText = () => eventTechnicalDetails(event).join(" \u00b7 ") || "No technical details recorded";
   const nameContent = () => (
     <Show
       when={canLinkHost()}
@@ -694,9 +697,44 @@ function eventRow(event: HostEvent, hostExists: (event: HostEvent) => boolean, d
       </A>
     </Show>
   );
+  const mobileDeviceContent = () => (
+    <Show
+      when={canLinkHost()}
+      fallback={<span class="activity-mobile-device-name">{deviceName()}</span>}
+    >
+      <A href={"/host/" + event.HostID} class="activity-mobile-device-link">{deviceName()}</A>
+    </Show>
+  );
 
   return (
     <tr class={"activity-table-row activity-row-" + activityTone(event.EventType)}>
+      <td class="activity-table-mobile-cell">
+        <div class="activity-mobile-event-row">
+          <span class="activity-event-icon activity-mobile-event-icon" aria-hidden="true">
+            <i class={"bi " + activityIcon(event.EventType)}></i>
+          </span>
+          <span class="activity-mobile-device">
+            {mobileDeviceContent()}
+          </span>
+          <span class="activity-mobile-description">{activityDescription(event)}</span>
+          <time class="activity-mobile-time activity-time" dateTime={event.Date} title={event.Date}>
+            {relativeActivityTime(event.Date)}
+          </time>
+          <button
+            type="button"
+            class="activity-mobile-expand"
+            aria-expanded={detailsExpanded() ? "true" : "false"}
+            aria-label={mobileToggleLabel()}
+            title={mobileToggleLabel()}
+            onClick={() => setDetailsExpanded(!detailsExpanded())}
+          >
+            <i class={"bi " + (detailsExpanded() ? "bi-chevron-up" : "bi-chevron-down")} aria-hidden="true"></i>
+          </button>
+        </div>
+        <Show when={detailsExpanded()}>
+          <div class="activity-mobile-details">{mobileDetailsText()}</div>
+        </Show>
+      </td>
       <td data-label="Time" class="activity-table-time-cell">
         <time class="activity-time" dateTime={event.Date} title={event.Date}>
           {relativeActivityTime(event.Date)}
@@ -732,6 +770,39 @@ function eventRow(event: HostEvent, hostExists: (event: HostEvent) => boolean, d
       <td data-label="Details" class="activity-table-muted activity-table-details-cell">{activityDetails(event) || " "}</td>
     </tr>
   );
+}
+
+function eventTechnicalDetails(event: HostEvent) {
+  const parts: string[] = [];
+  const ip = cleanEventValue(event.IP);
+  const mac = cleanEventValue(event.Mac);
+  const iface = cleanEventValue(event.Iface);
+  const details = cleanEventValue(activityDetails(event));
+
+  if (ip) {
+    parts.push("IP " + ip);
+  }
+  if (mac) {
+    parts.push("MAC " + mac);
+  }
+  if (iface) {
+    parts.push(iface);
+  }
+  if (details && !isDuplicateNetworkDetail(details, ip, iface)) {
+    parts.push(details);
+  }
+
+  return parts;
+}
+
+function isDuplicateNetworkDetail(details: string, ip: string, iface: string) {
+  return details === ip
+    || details === iface
+    || (ip !== "" && iface !== "" && details === ip + " / " + iface);
+}
+
+function cleanEventValue(value: string | null | undefined) {
+  return (value ?? "").trim();
 }
 
 function tableSubtitle(count: number, groupBy: GroupByKey) {

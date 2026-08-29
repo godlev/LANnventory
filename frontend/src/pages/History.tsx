@@ -1,5 +1,5 @@
 import { For, onMount, Show } from "solid-js"
-import { allHosts, appConfig, hostsLoadError, setShow } from "../functions/exports"
+import { allHosts, appConfig, hostsLoadError, setShow, type Host } from "../functions/exports"
 import MacHistory from "../components/MacHistory"
 import HistShow from "../components/HistShow"
 import HistoryFilters from "../components/HistoryFilters"
@@ -68,11 +68,20 @@ function History() {
         <table class="table table-hover history-table">
           <tbody>
             <For each={allHosts}>{(host, index) =>
-            <tr>
+            <tr class="history-device-row">
               <td class="history-table-index opacity-50">{index()+1}.</td>
               <td class="history-host-cell">
-                <a href={"/host/"+host.ID}>{host.Name}</a><br></br>
-                <a href={"http://"+host.IP}>{host.IP}</a>
+                <div class="history-device-identity">
+                  <a class="history-host-name-link" href={"/host/"+host.ID} title={historyPrimaryLabel(host)}>
+                    {historyPrimaryLabel(host)}
+                  </a>
+                  <Show when={historySecondaryLabel(host)}>
+                    {(secondary) => <>
+                      <span class="history-device-separator" aria-hidden="true">{"\u00b7"}</span>
+                      <a class="history-host-ip-link" href={"http://"+secondary()} title={secondary()}>{secondary()}</a>
+                    </>}
+                  </Show>
+                </div>
               </td>
               <td class="history-mac-cell">
                 <MacHistory mac={host.Mac} date=""></MacHistory>
@@ -85,6 +94,21 @@ function History() {
     </div>
     </>
   )
+}
+
+function historyPrimaryLabel(host: Host) {
+  return cleanHistoryValue(host.Name) || cleanHistoryValue(host.IP) || cleanHistoryValue(host.Mac) || "Unknown device";
+}
+
+function historySecondaryLabel(host: Host) {
+  const primary = historyPrimaryLabel(host);
+  const ip = cleanHistoryValue(host.IP);
+
+  return ip && ip !== primary ? ip : "";
+}
+
+function cleanHistoryValue(value: string | null | undefined) {
+  return (value ?? "").trim();
 }
 
 function formatInterval(seconds: number) {

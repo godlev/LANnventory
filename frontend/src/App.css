@@ -1610,6 +1610,9 @@ html[data-bs-theme] .activity-table > tbody > tr:hover > td {
     padding: 0.52rem 0.75rem;
     vertical-align: middle;
 }
+.activity-table-mobile-cell {
+    display: none;
+}
 .activity-table-device-heading,
 .activity-table-device-cell {
     width: 15%;
@@ -1726,6 +1729,88 @@ html[data-bs-theme] .activity-table > tbody > tr.activity-group-row:hover > td {
 .activity-table-muted {
     color: var(--wyl-muted);
     font-size: 0.88rem;
+}
+.activity-mobile-event-row {
+    display: grid;
+    grid-template-columns: 1.55rem minmax(0, 1.35fr) minmax(0, 1fr) max-content 2rem;
+    align-items: center;
+    gap: 0.34rem;
+    min-width: 0;
+}
+.activity-mobile-event-icon {
+    width: 1.55rem !important;
+    height: 1.55rem !important;
+    font-size: 0.78rem;
+}
+.activity-mobile-device,
+.activity-mobile-description,
+.activity-mobile-time {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.activity-mobile-device {
+    font-size: 0.86rem;
+    font-weight: 800;
+}
+.activity-mobile-device-name,
+.activity-mobile-device-link {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--bs-body-color);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.activity-mobile-device-link {
+    color: var(--wyl-link);
+    text-decoration: none;
+}
+.activity-mobile-device-link:hover,
+.activity-mobile-device-link:focus-visible {
+    color: var(--wyl-link-hover);
+    text-decoration: underline;
+}
+.activity-mobile-description {
+    color: var(--bs-body-color);
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+.activity-mobile-time {
+    font-size: 0.72rem;
+}
+.activity-mobile-expand {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    color: var(--wyl-muted);
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    line-height: 1;
+}
+.activity-mobile-expand:hover,
+.activity-mobile-expand:focus-visible {
+    color: var(--wyl-link-hover);
+    background-color: var(--wyl-control-hover-bg);
+    border-color: var(--wyl-control-border);
+}
+.activity-mobile-expand:focus-visible {
+    outline: 2px solid var(--wyl-link-hover);
+    outline-offset: 2px;
+}
+.activity-mobile-details {
+    margin-top: 0.34rem;
+    padding-left: 1.9rem;
+    color: var(--wyl-muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
 }
 .activity-table-actions {
     display: flex;
@@ -2079,6 +2164,22 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
 .history-host-cell {
     min-width: 11rem;
 }
+.history-device-identity {
+    display: grid;
+    gap: 0.06rem;
+    min-width: 0;
+}
+.history-host-name-link,
+.history-host-ip-link {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.history-device-separator {
+    display: none;
+    color: var(--wyl-muted);
+}
 .history-host-cell a {
     color: var(--wyl-link);
     text-decoration: none;
@@ -2089,6 +2190,10 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
 }
 .history-mac-cell {
     white-space: normal;
+    line-height: 1.05;
+}
+.history-sample-strip {
+    min-width: 0;
     line-height: 1.05;
 }
 .history-samples-control {
@@ -2577,18 +2682,23 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     .activity-time {
         grid-column: 2;
     }
+    .activity-table-body .table-responsive {
+        overflow-x: visible;
+    }
+    .activity-table {
+        table-layout: fixed;
+        width: 100%;
+    }
     .activity-table thead {
         display: none;
     }
     .activity-table,
     .activity-table tbody,
-    .activity-table tr,
-    .activity-table td {
+    .activity-table tr {
         display: block;
         width: 100%;
     }
     .activity-table tr {
-        padding: 0.58rem 0;
         border-top: 1px solid var(--wyl-panel-border);
     }
     .activity-table tr:first-child {
@@ -2598,25 +2708,15 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
         border-bottom-width: 0;
     }
     .activity-table td {
-        display: grid;
-        grid-template-columns: 5rem minmax(0, 1fr);
-        gap: 0.7rem;
-        padding: 0.18rem 0.75rem;
+        display: none;
     }
-    .activity-table td::before {
-        content: attr(data-label);
-        color: var(--wyl-muted);
-        font-size: 0.68rem;
-        font-weight: 800;
-        line-height: 1.4;
-        text-transform: uppercase;
-    }
+    .activity-table .activity-table-mobile-cell,
     .activity-table .activity-group-cell {
         display: block;
         width: 100%;
     }
-    .activity-table .activity-group-cell::before {
-        content: none;
+    .activity-table .activity-table-mobile-cell {
+        padding: 0.44rem 0.58rem;
     }
     .activity-table-device-heading,
     .activity-table-device-cell,
@@ -2635,6 +2735,68 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     }
     .activity-table .activity-time {
         grid-column: auto;
+    }
+    .history-panel-body.table-responsive {
+        overflow-x: visible;
+    }
+    .history-table,
+    .history-table tbody,
+    .history-table tr,
+    .history-table td {
+        display: block;
+        width: 100%;
+    }
+    .history-table tr.history-device-row {
+        padding: 0.5rem 0.62rem 0.62rem;
+        border-top: 1px solid var(--wyl-panel-border);
+    }
+    .history-table tr.history-device-row:first-child {
+        border-top: 0;
+    }
+    html[data-bs-theme] .history-table > tbody > tr.history-device-row > td {
+        border-bottom-width: 0;
+    }
+    .history-table .history-table-index {
+        display: none;
+    }
+    .history-host-cell,
+    .history-mac-cell {
+        padding-right: 0 !important;
+        padding-left: 0 !important;
+    }
+    .history-host-cell {
+        min-width: 0;
+        padding-top: 0 !important;
+        padding-bottom: 0.34rem !important;
+    }
+    .history-mac-cell {
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+    }
+    .history-device-identity {
+        display: flex;
+        align-items: center;
+        gap: 0.32rem;
+        width: 100%;
+        min-width: 0;
+        white-space: nowrap;
+    }
+    .history-host-name-link {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+    .history-host-ip-link {
+        flex: 0 1 auto;
+        max-width: 45%;
+    }
+    .history-device-separator {
+        display: inline;
+        flex: 0 0 auto;
+    }
+    .history-sample-strip {
+        width: 100%;
+        max-width: 100%;
+        overflow-wrap: anywhere;
     }
 }
 
