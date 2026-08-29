@@ -9,16 +9,22 @@ import {
   activityTone,
   relativeActivityTime,
 } from "../functions/activity";
+import { deviceTypeTitle } from "../functions/deviceTypes";
+import { homeDeviceDisplayLabel, type HomeDeviceDisplayMode } from "../functions/deviceIdentity";
 import type { HostEvent } from "../functions/exports";
 
 type ActivityFeedProps = {
   events: HostEvent[];
   emptyText: string;
   hostExists?: (event: HostEvent) => boolean;
+  deviceDisplayMode?: HomeDeviceDisplayMode;
 };
 
 function ActivityFeed(props: ActivityFeedProps) {
   const canLinkHost = (event: HostEvent) => event.HostID > 0 && (props.hostExists?.(event) ?? false);
+  const hostLabel = (event: HostEvent) => props.deviceDisplayMode
+    ? homeDeviceDisplayLabel(event, props.deviceDisplayMode)
+    : activityHostName(event);
 
   return (
     <Show
@@ -31,15 +37,20 @@ function ActivityFeed(props: ActivityFeedProps) {
             <span class="activity-event-icon" aria-hidden="true">
               <i class={"bi " + activityIcon(event.EventType)}></i>
             </span>
-            <span class="activity-host-icon" aria-hidden="true">
+            <span
+              class="activity-host-icon"
+              title={deviceTypeTitle(event.DeviceType)}
+              aria-label={deviceTypeTitle(event.DeviceType)}
+              role="img"
+            >
               <i class={"bi " + activityDeviceIcon(event)}></i>
             </span>
             <span class="activity-main">
               <Show
                 when={canLinkHost(event)}
-                fallback={<span class="activity-host-name">{activityHostName(event)}</span>}
+                fallback={<span class="activity-host-name">{hostLabel(event)}</span>}
               >
-                <A href={"/host/" + event.HostID} class="activity-host-link">{activityHostName(event)}</A>
+                <A href={"/host/" + event.HostID} class="activity-host-link">{hostLabel(event)}</A>
               </Show>
               <span class="activity-description">{activityDescription(event)}</span>
             </span>

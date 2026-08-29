@@ -3,6 +3,7 @@ import { editNames, selectedIDs } from "../../functions/exports";
 import Filter from "../Filter";
 import Search from "../Search";
 import { apiDelHost } from "../../functions/api";
+import DeviceDisplaySelect from "./DeviceDisplaySelect";
 
 function CardHead() {
 
@@ -22,6 +23,7 @@ function CardHead() {
         <Filter></Filter>
       </div>
       <div class="device-toolbar-actions">
+        <DeviceDisplaySelect></DeviceDisplaySelect>
         <Search></Search>
         <Show when={editNames() && selectedIDs().length > 0}>
           <button type="button" onClick={handleDel} title="Delete selected hosts" class="btn btn-sm wyl-button device-delete-button">

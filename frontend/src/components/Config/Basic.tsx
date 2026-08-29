@@ -1,4 +1,4 @@
-import { createSignal, For, Show } from "solid-js";
+import { createSignal, Show } from "solid-js";
 import { apiPath, apiTestNotify } from "../../functions/api"
 import { saveErrorMessage, submitConfigForm } from "../../functions/configForms";
 import { appConfig } from "../../functions/exports"
@@ -7,8 +7,6 @@ import { applyColorMode, cacheColorMode, isColorMode } from "../../functions/the
 function Basic() {
   const [status, setStatus] = createSignal("");
   const [error, setError] = createSignal("");
-
-  const themes = ["cerulean", "cosmo", "cyborg", "darkly", "emerald", "flatly", "grass", "grayscale", "journal", "litera", "lumen", "lux", "materia", "minty", "morph", "ocean", "pulse", "quartz", "sand", "sandstone", "simplex", "sketchy", "slate", "solar", "spacelab", "superhero", "united", "vapor", "wood", "yeti", "zephyr"];
 
   const handleTestNotify = () => {
     apiTestNotify();
@@ -46,6 +44,7 @@ function Basic() {
       <div class="card-header">General</div>
       <div class="card-body table-responsive">
         <form action={apiPath + '/api/config/'} method="post" onSubmit={handleSubmit}>
+          <input type="hidden" name="theme" value={appConfig().Theme || "sand"}></input>
           <table class="table table-borderless">
           <tbody>
             <tr class="config-subsection-row">
@@ -61,22 +60,6 @@ function Basic() {
             </tr>
             <tr class="config-subsection-row">
               <td colSpan={2}>Appearance</td>
-            </tr>
-            <tr>
-              <td class="config-field-label">Base theme</td>
-              <td class="config-field-value">
-                <select name="theme" class="form-select">
-                <For each={themes}>{theme =>
-                  <Show
-                    when={theme == appConfig().Theme}
-                    fallback={<option value={theme}>{theme}</option>}
-                  >
-                    <option value={theme} selected>{theme}</option>
-                  </Show>
-                }</For>
-                </select>
-                <div class="config-field-helper">Base Bootstrap/Bootswatch styling underneath the LANnventory interface.</div>
-              </td>
             </tr>
             <tr>
                <td class="config-field-label">Color mode</td>

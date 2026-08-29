@@ -126,15 +126,17 @@ function TableHead() {
               onKeyDown={(event) => handleKeyDown(event, header.field)}
             >
               <span class="device-header-content">
-                <Show when={header.icon} fallback={header.label}>
-                  <i class={"bi " + header.icon} aria-hidden="true"></i>
+                <span class="device-header-label">
+                  <Show when={header.icon} fallback={header.label}>
+                    <i class={"bi " + header.icon} aria-hidden="true"></i>
+                  </Show>
+                </span>
+                <Show when={sortState().field === header.field}>
+                  <span class="device-sort-indicator" aria-hidden="true">
+                    <i class={"bi " + sortIcon(sortState().direction)}></i>
+                  </span>
                 </Show>
               </span>
-              <Show when={sortState().field === header.field}>
-                <span class="device-sort-indicator" aria-hidden="true">
-                  <i class={"bi " + sortIcon(sortState().direction)}></i>
-                </span>
-              </Show>
             </th>
             </Show>
             <Show when={index() === 0}>

@@ -1,5 +1,5 @@
 import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
-import { deviceTypes, getDeviceTypeOption, type DeviceTypeOption, type DeviceTypeValue } from "../functions/deviceTypes";
+import { deviceTypes, deviceTypeTitle, getDeviceTypeOption, type DeviceTypeOption, type DeviceTypeValue } from "../functions/deviceTypes";
 
 type DeviceTypePickerProps = {
   value: string | null | undefined;
@@ -30,8 +30,8 @@ function DeviceTypePicker(props: DeviceTypePickerProps) {
     "device-type-tone-" + selected().tone,
     saveError() ? "has-error" : "",
   ].filter(Boolean).join(" ");
-  const triggerLabel = () => selected().label;
-  const triggerAriaLabel = () => props.ariaLabel ?? "Device type: " + selected().label;
+  const triggerTitle = () => deviceTypeTitle(props.value);
+  const triggerAriaLabel = () => props.ariaLabel ?? triggerTitle();
 
   createEffect(() => {
     if (!open()) {
@@ -97,7 +97,7 @@ function DeviceTypePicker(props: DeviceTypePickerProps) {
       <button
         type="button"
         class={triggerClass()}
-        title={saveError() ? "Device type could not be saved" : triggerLabel()}
+        title={saveError() ? "Device type could not be saved" : triggerTitle()}
         aria-label={saveError() ? "Device type could not be saved" : triggerAriaLabel()}
         aria-haspopup="listbox"
         aria-expanded={open()}

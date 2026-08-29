@@ -134,7 +134,7 @@ export const apiTestNotify = async () => {
 
 export const apiEditHost = async (id:number, name:string, known:string) => {
 
-  const url = apiPath+'/api/edit/'+id+'/'+name+'/'+known;
+  const url = apiPath+'/api/edit/'+encodeURIComponent(String(id))+'/'+encodeURIComponent(name)+'/'+encodeURIComponent(known);
   const res = await apiJSON<string>(url);
 
   return res;

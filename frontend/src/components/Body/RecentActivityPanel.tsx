@@ -2,6 +2,7 @@ import { createEffect, createMemo, createSignal, onCleanup, onMount } from "soli
 import { A } from "@solidjs/router";
 
 import { apiGetActivity, type ActivityCategory } from "../../functions/api";
+import { homeDeviceDisplayMode } from "../../functions/deviceIdentity";
 import { allHosts, bkpHosts, filterState, type HostEvent } from "../../functions/exports";
 import { hasActiveHostFilters } from "../../functions/hostView";
 import ActivityFeed from "../ActivityFeed";
@@ -116,6 +117,7 @@ function DashboardActivityPanel(props: DashboardActivityPanelProps) {
           events={props.events}
           emptyText={props.emptyText}
           hostExists={props.hostExists}
+          deviceDisplayMode={homeDeviceDisplayMode()}
         ></ActivityFeed>
       </div>
     </section>

@@ -40,7 +40,7 @@ const fakeHosts = [
     Iface: 'eth0',
     IP: '192.168.1.1',
     Mac: 'AA:BB:CC:00:00:01',
-    Hw: 'Example Networks Gateway',
+    Hw: 'LG Electronics',
     Date: now,
     Known: 1,
     Now: 1,
@@ -53,7 +53,7 @@ const fakeHosts = [
     Iface: 'eth0',
     IP: '192.168.1.20',
     Mac: 'AA:BB:CC:00:00:20',
-    Hw: 'Storage Appliance',
+    Hw: 'Unknown',
     Date: now,
     Known: 1,
     Now: 1,
@@ -66,7 +66,7 @@ const fakeHosts = [
     Iface: 'eth0',
     IP: '192.168.1.42',
     Mac: 'AA:BB:CC:00:00:42',
-    Hw: 'Workstation NIC',
+    Hw: '(Unknown)',
     Date: now,
     Known: 1,
     Now: 1,
@@ -79,7 +79,7 @@ const fakeHosts = [
     Iface: 'wifi0',
     IP: '192.168.1.83',
     Mac: 'AA:BB:CC:00:00:83',
-    Hw: 'Mobile Device',
+    Hw: 'Unknown: locally administered',
     Date: now,
     Known: 0,
     Now: 1,
@@ -92,7 +92,7 @@ const fakeHosts = [
     Iface: 'eth0',
     IP: '192.168.1.120',
     Mac: 'AA:BB:CC:00:01:20',
-    Hw: 'Legacy Device',
+    Hw: '(Unknown: locally administered)',
     Date: '2025-12-30 18:42:09',
     Known: 1,
     Now: 0,
@@ -410,6 +410,7 @@ function seedActivity() {
   addActivityMinutesAgo(fakeHosts[1], 'device-type-changed', 65, { oldValue: '', newValue: 'nas' });
   addActivityMinutesAgo(fakeHosts[0], 'known', 28);
   addActivityMinutesAgo(fakeHosts[4], 'discovered', 12);
+  addActivityMinutesAgo(fakeHosts[4], 'offline', 10);
   addActivityMinutesAgo(fakeHosts[3], 'offline', 8);
   addActivityMinutesAgo(fakeHosts[3], 'online', 2);
   addActivityMinutesAgo(deletedHostSnapshot, 'offline', 1440);

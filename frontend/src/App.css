@@ -313,6 +313,47 @@ html[data-bs-theme] body {
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+.wyl-mobile-nav {
+    position: relative;
+    display: none;
+    align-items: stretch;
+    align-self: stretch;
+    min-width: 0;
+}
+.wyl-mobile-nav-toggle {
+    gap: 0.38rem;
+    max-width: min(13rem, 48vw);
+    overflow: hidden;
+}
+.wyl-mobile-nav-toggle .bi {
+    flex: 0 0 auto;
+    font-size: 1.05rem;
+    line-height: 1;
+}
+.wyl-mobile-nav-toggle span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.wyl-mobile-nav-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 1200;
+    display: grid;
+    min-width: 11rem;
+    overflow: hidden;
+    background-color: var(--wyl-nav-bg);
+    border: 1px solid var(--wyl-panel-border);
+    border-top: 0;
+    box-shadow: 0 0.8rem 2rem rgba(0, 0, 0, 0.24);
+}
+.wyl-mobile-nav-menu .wyl-nav-tab {
+    justify-content: flex-start;
+    min-height: 2.55rem;
+    height: 2.55rem;
+}
 .wyl-navbar-logo {
     width: 1.62rem;
     height: 1.62rem;
@@ -838,8 +879,16 @@ html[data-bs-theme] .device-table > tbody > tr.device-row-unknown:hover > td {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    gap: 0.12rem;
     min-height: 1rem;
     white-space: nowrap;
+    line-height: 1;
+}
+.device-header-label {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
     line-height: 1;
 }
 .device-filter-indicator {
@@ -861,12 +910,9 @@ html[data-bs-theme] .device-table > tbody > tr.device-row-unknown:hover > td {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    position: absolute;
-    top: 50%;
-    right: 0.12rem;
+    position: static;
     width: 0.8rem;
     height: 0.8rem;
-    transform: translateY(-50%);
     color: var(--wyl-link-hover);
     font-size: 0.8rem;
     line-height: 1;
@@ -890,7 +936,9 @@ html[data-bs-theme] .device-table > tbody > tr.device-row-unknown:hover > td {
     text-align: center;
 }
 .device-table-ip {
-    min-width: 9.25rem;
+    width: 8.15rem;
+    min-width: 8.15rem;
+    max-width: 8.15rem;
 }
 .device-table-mac {
     min-width: 10.5rem;
@@ -920,6 +968,10 @@ html[data-bs-theme] .device-table > tbody > tr.device-row-unknown:hover > td {
     text-overflow: ellipsis;
     vertical-align: bottom;
     white-space: nowrap;
+}
+.device-hardware-text-muted {
+    color: var(--wyl-muted);
+    opacity: 0.82;
 }
 .device-table-last-seen {
     min-width: 7.5rem;
@@ -1040,6 +1092,11 @@ html[data-bs-theme] .device-table > tbody > tr.device-row-unknown:hover > td {
 }
 .device-action-checkbox {
     margin: 0;
+}
+.home-device-display-select {
+    flex: 0 0 8.8rem;
+    width: 8.8rem !important;
+    min-width: 8.8rem !important;
 }
 
 .device-type-picker {
@@ -2158,9 +2215,19 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     font-weight: 700;
 }
 .host-known-toggle {
-    width: 2rem;
+    gap: 0.42rem;
+    width: auto;
+    min-width: 2rem;
     height: 2rem;
+    padding: 0 0.5rem;
     font-size: 1rem;
+}
+.host-known-toggle-label {
+    color: var(--bs-body-color);
+    font-size: 0.86rem;
+    font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
 }
 .host-status-value {
     display: inline-flex;
@@ -2333,6 +2400,31 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
 }
 
 @media (max-width: 767.98px) {
+    .wyl-navbar .container-lg {
+        flex-wrap: nowrap;
+        padding-right: 0.35rem;
+        padding-left: 0.35rem;
+    }
+    .wyl-nav-tabs-desktop {
+        display: none !important;
+    }
+    .wyl-mobile-nav {
+        display: flex;
+    }
+    .wyl-navbar-actions {
+        flex: 0 0 auto;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        margin-left: auto;
+    }
+    .wyl-navbar-actions .nav-item {
+        flex: 0 0 auto;
+    }
+    .wyl-navbar-utility {
+        min-width: 2.4rem;
+        padding-right: 0.42rem !important;
+        padding-left: 0.42rem !important;
+    }
     .overview-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -2351,6 +2443,69 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     .device-search {
         flex: 1 1 100%;
         width: 100%;
+    }
+    .device-table-wrap {
+        overflow-x: visible !important;
+    }
+    .device-table {
+        table-layout: fixed;
+        width: 100%;
+    }
+    .device-table thead th,
+    .device-table tbody td {
+        padding-right: 0.18rem;
+        padding-left: 0.18rem;
+    }
+    .device-table-index {
+        display: none;
+    }
+    .device-table-known,
+    .device-table-actions {
+        width: 1.6rem;
+    }
+    .device-table-name {
+        width: auto;
+        min-width: 0;
+    }
+    .device-name-link {
+        max-width: 100%;
+    }
+    .device-table-type {
+        width: 2rem;
+        min-width: 2rem;
+        max-width: 2rem;
+    }
+    .device-table-ip {
+        width: 7.75rem;
+        min-width: 7.75rem;
+        max-width: 7.75rem;
+    }
+    .device-table .device-known-toggle,
+    .device-table .device-header-action,
+    .device-table .device-action-link,
+    .device-table .device-type-trigger {
+        width: 1.45rem;
+        min-width: 1.45rem;
+        height: 1.45rem;
+        font-size: 0.82rem;
+    }
+    .device-ip-with-status {
+        gap: 0.2rem;
+        min-width: 0;
+    }
+    .device-table-iface,
+    .device-table-mac,
+    .device-table-hardware,
+    .device-table-last-seen {
+        display: none;
+    }
+    .device-toolbar-actions {
+        flex-wrap: wrap;
+    }
+    .home-device-display-select {
+        flex: 1 1 100%;
+        width: 100% !important;
+        min-width: 0 !important;
     }
     .settings-page {
         max-width: none;

@@ -2,7 +2,9 @@ import { createEffect, createSignal, Show } from "solid-js";
 import { apiDelHost, apiEditHost, apiSetDeviceType, apiWOL } from "../../functions/api";
 import { Host } from "../../functions/exports";
 import { formatLastSeen } from "../../functions/dateFormat";
-import { getDeviceTypeOption, type DeviceTypeValue } from "../../functions/deviceTypes";
+import { deviceDisplayName } from "../../functions/deviceIdentity";
+import { deviceTypeTitle, getDeviceTypeOption, type DeviceTypeValue } from "../../functions/deviceTypes";
+import { updateHostInView } from "../../functions/hostView";
 import DeviceTypePicker from "../DeviceTypePicker";
 
 import { debounce } from "@solid-primitives/scheduled";
@@ -31,6 +33,8 @@ function HostCard(_props: HostCardProps) {
   const statusText = () => isOnline() ? "Online" : "Offline";
   const formattedLastSeen = () => formatLastSeen(_props.host.Date);
   const deviceType = () => getDeviceTypeOption(_props.host.DeviceType);
+  const hostDeviceTypeTitle = () => deviceTypeTitle(_props.host.DeviceType);
+  const displayName = () => deviceDisplayName({ ..._props.host, Name: name() });
   const modeTitle = () => _props.editMode ? "Done editing host" : "Edit host";
 
   const debouncedApi = debounce(async (val: string) => {
@@ -38,20 +42,25 @@ function HostCard(_props: HostCardProps) {
     }, 300);
 
   const handleInput = async (n: string) => {
+    const updatedHost = { ..._props.host, Name: n };
     setName(n);
-    _props.onHostChange?.({ ..._props.host, Name: n });
+    updateHostInView(updatedHost);
+    _props.onHostChange?.(updatedHost);
     debouncedApi(n);
   };
 
   const handleToggle = async () => {
-    const nextName = name() === "" ? _props.host.Name : name();
+    const nextName = name();
+    const updatedHost = { ..._props.host, Name: nextName, Known: isKnown() ? 0 : 1 };
 
     await apiEditHost(_props.host.ID, nextName, 'toggle');
-    _props.onHostChange?.({ ..._props.host, Name: nextName, Known: isKnown() ? 0 : 1 });
+    updateHostInView(updatedHost);
+    _props.onHostChange?.(updatedHost);
   };
 
   const handleDeviceTypeChange = async (deviceType: DeviceTypeValue) => {
     const updatedHost = await apiSetDeviceType(_props.host.ID, deviceType);
+    updateHostInView(updatedHost);
     _props.onHostChange?.(updatedHost);
   };
 
@@ -98,7 +107,7 @@ function HostCard(_props: HostCardProps) {
           <div class="host-field-value">
             <Show
               when={_props.editMode}
-              fallback={<span>{name() || <span class="device-cell-muted">Unnamed host</span>}</span>}
+              fallback={<span>{displayName()}</span>}
             >
               <input
                 id="host-name-input"
@@ -116,7 +125,12 @@ function HostCard(_props: HostCardProps) {
             <Show
               when={_props.editMode}
               fallback={
-                <span class="host-static-value host-static-device-type" title={"Device type: " + deviceType().label}>
+                <span
+                  class="host-static-value host-static-device-type"
+                  title={hostDeviceTypeTitle()}
+                  aria-label={hostDeviceTypeTitle()}
+                  role="img"
+                >
                   <i class={"bi " + deviceType().icon} aria-hidden="true"></i>
                   <span>{deviceType().label}</span>
                 </span>
@@ -156,29 +170,18 @@ function HostCard(_props: HostCardProps) {
 
           <div class="host-field-label">Known</div>
           <div class="host-field-value">
-            <Show
-              when={_props.editMode}
-              fallback={
-                <span
-                  class={isKnown() ? "host-static-value host-known-static device-known-toggle-known" : "host-static-value host-known-static device-known-toggle-unknown"}
-                  title={knownText()}
-                >
-                  <i class={isKnown() ? "bi bi-bookmark-check-fill" : "bi bi-question-circle-fill"} aria-hidden="true"></i>
-                  <span>{knownText()}</span>
-                </span>
-              }
+            <button
+              type="button"
+              class={isKnown() ? "device-known-toggle device-known-toggle-known host-known-toggle" : "device-known-toggle device-known-toggle-unknown host-known-toggle"}
+              title={knownTitle()}
+              aria-label={knownTitle()}
+              aria-pressed={isKnown()}
+              disabled={_props.host.ID === 0}
+              onClick={handleToggle}
             >
-              <button
-                type="button"
-                class={isKnown() ? "device-known-toggle device-known-toggle-known host-known-toggle" : "device-known-toggle device-known-toggle-unknown host-known-toggle"}
-                title={knownTitle()}
-                aria-label={knownTitle()}
-                aria-pressed={isKnown()}
-                onClick={handleToggle}
-              >
-                <i class={isKnown() ? "bi bi-bookmark-check-fill" : "bi bi-question-circle-fill"} aria-hidden="true"></i>
-              </button>
-            </Show>
+              <i class={isKnown() ? "bi bi-bookmark-check-fill" : "bi bi-question-circle-fill"} aria-hidden="true"></i>
+              <span class="host-known-toggle-label">{knownText()}</span>
+            </button>
           </div>
 
           <div class="host-field-label">Status</div>

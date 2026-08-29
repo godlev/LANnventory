@@ -2,6 +2,7 @@ import { useLocation, useNavigate, useParams } from "@solidjs/router";
 import { createEffect, createSignal, onCleanup, Show } from "solid-js";
 
 import { apiGetHost } from "../functions/api";
+import { deviceDisplayName } from "../functions/deviceIdentity";
 
 import HostCard from "../components/HostPage/HostCard";
 import Ping from "../components/HostPage/Ping";
@@ -73,9 +74,9 @@ function HostPage() {
       return;
     }
 
-    const hostName = host.Name.trim();
+    const hostName = deviceDisplayName(host);
     setPageContext({ kind: "host", hostName });
-    document.title = (hostName || "Host") + " · LANnventory";
+    document.title = hostName + " · LANnventory";
   });
 
   return (
