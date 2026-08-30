@@ -1,4 +1,4 @@
-import { createSignal, Show } from "solid-js";
+import { createSignal, onCleanup, Show } from "solid-js";
 import { editNames, hasMultipleIfaces, selectedIDs, setSelectedIDs } from "../../functions/exports";
 import { apiEditHost, apiSetDeviceType } from "../../functions/api";
 import { formatLastSeen } from "../../functions/dateFormat";
@@ -8,7 +8,7 @@ import { updateHostInView } from "../../functions/hostView";
 import type { DeviceTypeValue } from "../../functions/deviceTypes";
 import DeviceTypePicker from "../DeviceTypePicker";
 
-import { debounce } from "@solid-primitives/scheduled"; 
+import { debounce } from "@solid-primitives/scheduled";
 
 function TableRow(_props: any) {
 
@@ -30,18 +30,53 @@ function TableRow(_props: any) {
   const hardwareText = () => (_props.host.Hw ?? "").trim() || "Unknown";
   const hardwareClass = () => "device-hardware-text" + (isUnknownHardware(_props.host.Hw) ? " device-hardware-text-muted" : "");
 
-  const debouncedApi = debounce(async (val: string) => {
-    await apiEditHost(_props.host.ID, val, "");
+  let nameSaveQueue: Promise<unknown> = Promise.resolve();
+  let hasPendingNameChange = false;
+
+  const queueNameSave = (val: string) => {
+    nameSaveQueue = nameSaveQueue
+      .catch(() => undefined)
+      .then(() => apiEditHost(_props.host.ID, val, ""));
+
+    return nameSaveQueue;
+  };
+
+  const debouncedApi = debounce((val: string) => {
+    void queueNameSave(val);
   }, 300);
 
-  const handleInput = async (n: string) => {
+  const syncNameToView = () => {
+    const currentName = name();
+
+    debouncedApi.clear();
+    if (hasPendingNameChange) {
+      hasPendingNameChange = false;
+      void queueNameSave(currentName);
+    }
+    updateHostInView({ ID: _props.host.ID, Name: currentName });
+  };
+
+  onCleanup(() => {
+    debouncedApi.clear();
+    if (hasPendingNameChange) {
+      void queueNameSave(name());
+    }
+  });
+
+  const handleInput = (n: string) => {
     setName(n);
-    updateHostInView({ ..._props.host, Name: n });
+    hasPendingNameChange = true;
     debouncedApi(n);
+  };
+
+  const handleNameKeyDown = (event: KeyboardEvent & { currentTarget: HTMLInputElement }) => {
+    if (event.key === "Enter") {
+      event.currentTarget.blur();
+    }
   };
   const handleToggle = async () => {
     await apiEditHost(_props.host.ID, name(), "toggle");
-    updateHostInView({ ..._props.host, Name: name(), Known: known() ? 0 : 1 });
+    updateHostInView({ ID: _props.host.ID, Name: name(), Known: known() ? 0 : 1 });
   };
 
   const handleDeviceTypeChange = async (deviceType: DeviceTypeValue) => {
@@ -97,7 +132,9 @@ function TableRow(_props: any) {
           fallback={<a href={"/host/" + _props.host.ID} class={"device-name-link " + nameClass()}>{displayName()}</a>}
         >
           <input type="text" class="form-control" value={name()}
-            onInput={e => handleInput(e.target.value)}></input>
+            onInput={e => handleInput(e.target.value)}
+            onBlur={syncNameToView}
+            onKeyDown={handleNameKeyDown}></input>
         </Show>
       </td>
       <td class="device-table-type">

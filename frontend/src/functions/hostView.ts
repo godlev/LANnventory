@@ -14,7 +14,7 @@ export function applyHostView() {
   setAllHosts(sortHosts(hosts));
 }
 
-export function updateHostInView(updatedHost: Host) {
+export function updateHostInView(updatedHost: Partial<Host> & Pick<Host, "ID">) {
   setBkpHosts((hosts) => hosts.map((host) => host.ID === updatedHost.ID ? { ...host, ...updatedHost } : host));
   applyHostView();
 }
