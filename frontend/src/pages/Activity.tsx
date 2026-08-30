@@ -36,6 +36,7 @@ type EventFilterKey =
 
 type GroupByKey = "none" | "device" | "event" | "category" | "device-type" | "ip" | "iface" | "day";
 type DeviceDisplayMode = "name-icon" | "name" | "icon";
+type DeviceSelectionMode = "all" | "custom" | "none";
 
 type EventFilterOption = {
   key: EventFilterKey;
@@ -63,6 +64,7 @@ const eventsPageSize = 100;
 const eventsDeviceDisplayStorageKey = "eventsDeviceDisplay";
 const defaultDeviceDisplayMode: DeviceDisplayMode = "icon";
 const eventTypeOrder: ActivityEventType[] = ["online", "offline", "discovered", "known", "unknown", "device-type-changed"];
+const deviceDropdownId = "activity-device-filter";
 const eventTypeDropdownId = "activity-event-type-filter";
 
 const emptyStats: ActivityStats = {
@@ -106,7 +108,9 @@ const deviceDisplayOptions: { key: DeviceDisplayMode; label: string }[] = [
 ];
 
 function Activity() {
-  const [selectedMac, setSelectedMac] = createSignal("");
+  const [deviceSelectionMode, setDeviceSelectionMode] = createSignal<DeviceSelectionMode>("all");
+  const [selectedMacs, setSelectedMacs] = createSignal<string[]>([]);
+  const [deviceSearch, setDeviceSearch] = createSignal("");
   const [selectedEventTypes, setSelectedEventTypes] = createSignal<ActivityEventType[]>(normalizeSelectedEventTypes(eventTypeOrder));
   const [groupBy, setGroupBy] = createSignal<GroupByKey>("none");
   const [deviceDisplayMode, setDeviceDisplayMode] = createSignal<DeviceDisplayMode>(defaultDeviceDisplayMode);
@@ -119,9 +123,12 @@ function Activity() {
   const [loading, setLoading] = createSignal(false);
   const [error, setError] = createSignal("");
   const [statsError, setStatsError] = createSignal(false);
+  const [deviceDropdownOpen, setDeviceDropdownOpen] = createSignal(false);
   const [eventTypeDropdownOpen, setEventTypeDropdownOpen] = createSignal(false);
   let eventsRequest = 0;
   let statsRequest = 0;
+  let deviceTriggerRef: HTMLButtonElement | undefined;
+  let deviceDropdownRef: HTMLDivElement | undefined;
   let eventTypeTriggerRef: HTMLButtonElement | undefined;
   let eventTypeDropdownRef: HTMLDivElement | undefined;
 
@@ -131,12 +138,63 @@ function Activity() {
   const allEventTypesSelected = () => selectedEventTypes().length === eventTypeOrder.length;
   const noEventTypesSelected = () => selectedEventTypes().length === 0;
   const eventTypeFilterActive = () => !allEventTypesSelected();
-  const filtersActive = () => selectedMac() !== "" || eventTypeFilterActive();
+  const deviceFilterActive = () => deviceSelectionMode() !== "all";
+  const noDevicesSelected = () => deviceSelectionMode() === "none";
+  const normalizedSelectedMacs = createMemo(() => normalizeSelectedMacs(selectedMacs()));
+  const selectedMacSet = createMemo(() => new Set(normalizedSelectedMacs()));
+  const deviceOptionsByMac = createMemo(() => {
+    const options = new Map<string, ActivityDeviceOption>();
+    for (const device of devices()) {
+      if (device.Mac && !options.has(device.Mac)) {
+        options.set(device.Mac, device);
+      }
+    }
+    return options;
+  });
+  const filtersActive = () => deviceFilterActive() || eventTypeFilterActive();
+  const deviceRequestMacs = () => deviceSelectionMode() === "custom" ? normalizedSelectedMacs() : undefined;
   const selectedDeviceLabel = () => {
-    const mac = selectedMac();
-    const device = devices().find((option) => option.Mac === mac);
-    return device ? deviceOptionLabel(device) : mac;
+    const macs = normalizedSelectedMacs();
+    if (deviceSelectionMode() === "all") {
+      return "All devices";
+    }
+    if (deviceSelectionMode() === "none" || macs.length === 0) {
+      return "No devices";
+    }
+    if (macs.length === 1) {
+      const device = deviceOptionsByMac().get(macs[0]);
+      return device ? deviceOptionLabel(device) : macs[0];
+    }
+    return macs.length + " devices";
   };
+  const deviceFilterTooltip = () => {
+    const mode = deviceSelectionMode();
+    const macs = normalizedSelectedMacs();
+    if (mode === "all") {
+      return "All devices included";
+    }
+    if (mode === "none" || macs.length === 0) {
+      return "No devices selected";
+    }
+
+    const labels = macs.map((mac) => {
+      const device = deviceOptionsByMac().get(mac);
+      return device ? deviceOptionLabel(device) + " (" + mac + ")" : mac;
+    });
+    const visibleLabels = labels.slice(0, 8);
+    const remainder = labels.length - visibleLabels.length;
+    const suffix = remainder > 0 ? ", +" + remainder + " more" : "";
+
+    return "Selected devices: " + visibleLabels.join(", ") + suffix;
+  };
+  const filteredDeviceOptions = createMemo(() => {
+    const needle = deviceSearch().trim().toLowerCase();
+    if (needle === "") {
+      return devices();
+    }
+
+    return devices().filter((device) => deviceSearchText(device).includes(needle));
+  });
   const eventTypeSummary = () => eventTypeClosedSummary(selectedEventTypes());
   const eventTypeTooltipSummary = () => eventTypeTooltip(selectedEventTypes());
   const tableStateSummary = createMemo(() => {
@@ -145,7 +203,7 @@ function Activity() {
     if (filtersActive()) {
       active.push("Filtered");
     }
-    if (selectedMac() !== "") {
+    if (deviceFilterActive()) {
       active.push(selectedDeviceLabel());
     }
     if (eventTypeFilterActive()) {
@@ -160,8 +218,8 @@ function Activity() {
   const tableStateTooltip = createMemo(() => {
     const activeFilters: string[] = [];
 
-    if (selectedMac() !== "") {
-      activeFilters.push("Device: " + selectedDeviceLabel());
+    if (deviceFilterActive()) {
+      activeFilters.push("Device: " + deviceFilterTooltip());
     }
     if (eventTypeFilterActive()) {
       activeFilters.push(eventTypeTooltipSummary());
@@ -191,7 +249,8 @@ function Activity() {
   const loadEvents = async (reset: boolean) => {
     const activeRequest = ++eventsRequest;
     const eventTypes = selectedEventTypes();
-    const mac = selectedMac();
+    const deviceMode = deviceSelectionMode();
+    const macs = deviceRequestMacs();
     const offset = reset ? 0 : events().length;
 
     setError("");
@@ -206,13 +265,18 @@ function Activity() {
       setHasMore(false);
       return;
     }
+    if (deviceMode === "none") {
+      setLoading(false);
+      setHasMore(false);
+      return;
+    }
 
     setLoading(true);
 
     try {
       const nextEvents = await apiGetActivity(eventsPageSize, {
         eventTypes: eventTypes.length === eventTypeOrder.length ? undefined : eventTypes,
-        macs: mac === "" ? undefined : [mac],
+        macs,
         offset,
       });
       if (activeRequest !== eventsRequest) {
@@ -237,12 +301,18 @@ function Activity() {
 
   const loadStats = async () => {
     const activeRequest = ++statsRequest;
-    const mac = selectedMac();
+    const deviceMode = deviceSelectionMode();
+    const macs = deviceRequestMacs();
     setStatsError(false);
+
+    if (deviceMode === "none") {
+      setStats(emptyStats);
+      return;
+    }
 
     try {
       const nextStats = await apiGetActivityStats({
-        macs: mac === "" ? undefined : [mac],
+        macs,
       });
       if (activeRequest === statsRequest) {
         setStats(nextStats);
@@ -264,13 +334,15 @@ function Activity() {
   };
 
   createEffect(() => {
-    selectedMac();
+    deviceSelectionMode();
+    normalizedSelectedMacs();
     selectedEventTypes();
     loadEvents(true);
   });
 
   createEffect(() => {
-    selectedMac();
+    deviceSelectionMode();
+    normalizedSelectedMacs();
     loadStats();
   });
 
@@ -280,23 +352,30 @@ function Activity() {
 
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target;
-      if (!(target instanceof Node) || !eventTypeDropdownOpen()) {
+      if (!(target instanceof Node)) {
         return;
       }
-      if (eventTypeTriggerRef?.contains(target) || eventTypeDropdownRef?.contains(target)) {
-        return;
+      if (deviceDropdownOpen() && !deviceTriggerRef?.contains(target) && !deviceDropdownRef?.contains(target)) {
+        setDeviceDropdownOpen(false);
       }
-
-      setEventTypeDropdownOpen(false);
+      if (eventTypeDropdownOpen() && !eventTypeTriggerRef?.contains(target) && !eventTypeDropdownRef?.contains(target)) {
+        setEventTypeDropdownOpen(false);
+      }
     };
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape" || !eventTypeDropdownOpen()) {
+      if (event.key !== "Escape") {
         return;
       }
 
-      event.preventDefault();
-      setEventTypeDropdownOpen(false);
-      eventTypeTriggerRef?.focus();
+      if (deviceDropdownOpen()) {
+        event.preventDefault();
+        setDeviceDropdownOpen(false);
+        deviceTriggerRef?.focus();
+      } else if (eventTypeDropdownOpen()) {
+        event.preventDefault();
+        setEventTypeDropdownOpen(false);
+        eventTypeTriggerRef?.focus();
+      }
     };
 
     document.addEventListener("pointerdown", handlePointerDown);
@@ -404,8 +483,49 @@ function Activity() {
   };
 
   const handleReset = () => {
-    setSelectedMac("");
+    setDeviceSelectionMode("all");
+    setSelectedMacs([]);
+    setDeviceSearch("");
     setSelectedEventTypes(normalizeSelectedEventTypes(eventTypeOrder));
+  };
+
+  const openDeviceDropdown = () => {
+    const nextOpen = !deviceDropdownOpen();
+    setDeviceDropdownOpen(nextOpen);
+    if (nextOpen) {
+      setEventTypeDropdownOpen(false);
+    }
+  };
+
+  const openEventTypeDropdown = () => {
+    const nextOpen = !eventTypeDropdownOpen();
+    setEventTypeDropdownOpen(nextOpen);
+    if (nextOpen) {
+      setDeviceDropdownOpen(false);
+    }
+  };
+
+  const handleDeviceToggle = (mac: string) => {
+    const selected = new Set(deviceSelectionMode() === "custom" ? normalizedSelectedMacs() : []);
+    if (selected.has(mac)) {
+      selected.delete(mac);
+    } else {
+      selected.add(mac);
+    }
+
+    const nextMacs = normalizeSelectedMacs([...selected]);
+    setSelectedMacs(nextMacs);
+    setDeviceSelectionMode(nextMacs.length > 0 ? "custom" : "none");
+  };
+
+  const handleDeviceSelectAll = () => {
+    setDeviceSelectionMode("all");
+    setSelectedMacs([]);
+  };
+
+  const handleDeviceClearAll = () => {
+    setDeviceSelectionMode("none");
+    setSelectedMacs([]);
   };
 
   const handleSummaryClick = (event: MouseEvent, card: EventSummaryCard) => {
@@ -542,19 +662,68 @@ function Activity() {
 
       <section class="card wyl-panel activity-filter-panel" aria-label="Event filters">
         <div class="card-body activity-filter-grid">
-          <label class="activity-filter-field">
+          <div class="activity-filter-field activity-multiselect-field activity-device-filter-field">
             <span class="activity-filter-label">Device</span>
-            <select
-              class={"form-select form-select-sm activity-filter-select" + (selectedMac() !== "" ? " is-active" : "")}
-              value={selectedMac()}
-              onChange={(event) => setSelectedMac(event.currentTarget.value)}
+            <button
+              ref={deviceTriggerRef}
+              type="button"
+              class={"form-select form-select-sm activity-filter-select activity-multiselect-trigger" + (deviceFilterActive() ? " is-active" : "")}
+              aria-expanded={deviceDropdownOpen() ? "true" : "false"}
+              aria-controls={deviceDropdownId}
+              aria-label={"Device filter: " + deviceFilterTooltip()}
+              title={deviceFilterTooltip()}
+              onClick={openDeviceDropdown}
             >
-              <option value="">All devices</option>
-              <For each={devices()}>{(device) =>
-                <option value={device.Mac}>{deviceOptionLabel(device)}</option>
-              }</For>
-            </select>
-          </label>
+              <span>{selectedDeviceLabel()}</span>
+            </button>
+            <Show when={deviceDropdownOpen()}>
+              <div
+                ref={deviceDropdownRef}
+                id={deviceDropdownId}
+                class="activity-multiselect-panel activity-device-multiselect-panel"
+                role="group"
+                aria-label="Device filter options"
+              >
+                <label class="activity-multiselect-search-field">
+                  <span class="visually-hidden">Search devices</span>
+                  <input
+                    type="search"
+                    class="form-control form-control-sm activity-multiselect-search"
+                    value={deviceSearch()}
+                    placeholder="Search devices"
+                    onInput={(event) => setDeviceSearch(event.currentTarget.value)}
+                  />
+                </label>
+                <div class="activity-multiselect-actions">
+                  <button type="button" class="btn btn-sm activity-multiselect-action" onClick={handleDeviceSelectAll}>
+                    Select all
+                  </button>
+                  <button type="button" class="btn btn-sm activity-multiselect-action" onClick={handleDeviceClearAll}>
+                    Clear all
+                  </button>
+                </div>
+                <div class="activity-multiselect-options">
+                  <Show
+                    when={filteredDeviceOptions().length > 0}
+                    fallback={<div class="activity-multiselect-empty">No matching devices</div>}
+                  >
+                    <For each={filteredDeviceOptions()}>{(device) =>
+                      <DeviceCheckbox
+                        device={device}
+                        checked={deviceSelectionMode() === "custom" && selectedMacSet().has(device.Mac)}
+                        onChange={() => handleDeviceToggle(device.Mac)}
+                      />
+                    }</For>
+                  </Show>
+                </div>
+                <div class="activity-multiselect-footer">
+                  <button type="button" class="btn btn-sm device-reset-filter" onClick={() => setDeviceDropdownOpen(false)}>
+                    Done
+                  </button>
+                </div>
+              </div>
+            </Show>
+          </div>
           <div class="activity-filter-field activity-multiselect-field">
             <span class="activity-filter-label">Event type</span>
             <button
@@ -565,7 +734,7 @@ function Activity() {
               aria-controls={eventTypeDropdownId}
               aria-label={"Event type filter: " + eventTypeTooltipSummary()}
               title={eventTypeTooltipSummary()}
-              onClick={() => setEventTypeDropdownOpen(!eventTypeDropdownOpen())}
+              onClick={openEventTypeDropdown}
             >
               <span>{eventTypeSummary()}</span>
             </button>
@@ -779,7 +948,7 @@ function Activity() {
             </table>
           </div>
           <Show when={!loading() && events().length === 0 && error() === ""}>
-            <div class="activity-empty">{noEventTypesSelected() ? "No event types selected" : "No events match the current filters"}</div>
+            <div class="activity-empty">{noEventTypesSelected() ? "No event types selected" : noDevicesSelected() ? "No devices selected" : "No events match the current filters"}</div>
           </Show>
           <Show when={error()}>
             <div class="activity-empty" role="status">{error()}</div>
@@ -1016,6 +1185,61 @@ function groupLabel(event: HostEvent, groupBy: GroupByKey) {
 function deviceOptionLabel(device: ActivityDeviceOption) {
   const name = device.Name.trim() || device.Mac || "Unknown device";
   return name + (device.Exists ? "" : " (deleted)");
+}
+
+function deviceOptionMeta(device: ActivityDeviceOption) {
+  return [device.IP, device.Mac].filter(Boolean).join(" · ");
+}
+
+function deviceSearchText(device: ActivityDeviceOption) {
+  return [
+    deviceOptionLabel(device),
+    device.Mac,
+    device.IP,
+  ].join(" ").toLowerCase();
+}
+
+function normalizeSelectedMacs(macs: string[]) {
+  const seen = new Set<string>();
+  const normalized: string[] = [];
+
+  for (const mac of macs) {
+    const value = mac.trim();
+    if (value === "" || seen.has(value)) {
+      continue;
+    }
+    seen.add(value);
+    normalized.push(value);
+  }
+
+  return normalized;
+}
+
+function DeviceCheckbox(props: {
+  device: ActivityDeviceOption;
+  checked: boolean;
+  onChange: () => void;
+}) {
+  const label = () => deviceOptionLabel(props.device);
+  const meta = () => deviceOptionMeta(props.device);
+  const title = () => meta() ? label() + " - " + meta() : label();
+
+  return (
+    <label class={"activity-multiselect-option activity-device-option" + (props.device.Exists ? "" : " activity-device-option-deleted")} title={title()}>
+      <input
+        type="checkbox"
+        checked={props.checked}
+        aria-label={title()}
+        onChange={props.onChange}
+      />
+      <span class="activity-device-option-text">
+        <span class="activity-device-option-name">{label()}</span>
+        <Show when={meta()}>
+          <span class="activity-device-option-meta">{meta()}</span>
+        </Show>
+      </span>
+    </label>
+  );
 }
 
 function EventTypeCheckbox(props: {

@@ -43,6 +43,7 @@ export interface ActivityDeviceOption {
 	HostID:     number;
 	Mac:        string;
 	Name:       string;
+	IP:         string;
 	DeviceType: string;
 	Exists:     boolean;
 };

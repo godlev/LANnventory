@@ -556,6 +556,7 @@ function activityDeviceOptions() {
       HostID: hostEntry.ID,
       Mac: hostEntry.Mac,
       Name: hostEntry.Name,
+      IP: hostEntry.IP,
       DeviceType: hostEntry.DeviceType,
       Exists: true,
     });
@@ -571,6 +572,7 @@ function activityDeviceOptions() {
       HostID: event.HostID,
       Mac: event.Mac,
       Name: event.Name,
+      IP: event.IP,
       DeviceType: event.DeviceType,
       Exists: false,
     });

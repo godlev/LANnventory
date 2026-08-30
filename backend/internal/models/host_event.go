@@ -69,6 +69,7 @@ type ActivityDeviceOption struct {
 	HostID     int
 	Mac        string
 	Name       string
+	IP         string
 	DeviceType string
 	Exists     bool
 }

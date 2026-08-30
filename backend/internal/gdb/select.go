@@ -222,6 +222,7 @@ func SelectActivityDeviceOptions() (devices []models.ActivityDeviceOption, ok bo
 			HostID:     host.ID,
 			Mac:        host.Mac,
 			Name:       host.Name,
+			IP:         host.IP,
 			DeviceType: host.DeviceType,
 			Exists:     true,
 		})
@@ -248,6 +249,7 @@ func SelectActivityDeviceOptions() (devices []models.ActivityDeviceOption, ok bo
 			HostID:     event.HostID,
 			Mac:        event.Mac,
 			Name:       event.Name,
+			IP:         event.IP,
 			DeviceType: event.DeviceType,
 			Exists:     false,
 		})

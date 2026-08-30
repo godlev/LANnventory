@@ -548,17 +548,20 @@ func TestActivityDevicesEndpointIncludesCurrentAndDeletedEventDevices(t *testing
 	router := setupTestRouter(t)
 	currentHost := seedHost(t, models.Host{
 		Name:       "router",
+		IP:         "192.168.1.1",
 		Mac:        "AA:BB:CC:DD:EE:01",
 		DeviceType: "router",
 	})
 	quietHost := seedHost(t, models.Host{
 		Name:       "quiet NAS",
+		IP:         "192.168.1.20",
 		Mac:        "AA:BB:CC:DD:EE:20",
 		DeviceType: "nas",
 	})
 	deletedHost := models.Host{
 		ID:         99,
 		Name:       "deleted tablet",
+		IP:         "192.168.1.70",
 		Mac:        "AA:BB:CC:DD:EE:70",
 		DeviceType: "tablet",
 	}
@@ -577,13 +580,13 @@ func TestActivityDevicesEndpointIncludesCurrentAndDeletedEventDevices(t *testing
 		byMac[device.Mac] = device
 	}
 
-	if device, ok := byMac[currentHost.Mac]; !ok || !device.Exists || device.HostID != currentHost.ID || device.DeviceType != "router" {
+	if device, ok := byMac[currentHost.Mac]; !ok || !device.Exists || device.HostID != currentHost.ID || device.IP != currentHost.IP || device.DeviceType != "router" {
 		t.Fatalf("current host option = %+v, ok=%v; devices=%+v", device, ok, devices)
 	}
-	if device, ok := byMac[quietHost.Mac]; !ok || !device.Exists || device.HostID != quietHost.ID || device.DeviceType != "nas" {
+	if device, ok := byMac[quietHost.Mac]; !ok || !device.Exists || device.HostID != quietHost.ID || device.IP != quietHost.IP || device.DeviceType != "nas" {
 		t.Fatalf("quiet current host option = %+v, ok=%v; devices=%+v", device, ok, devices)
 	}
-	if device, ok := byMac[deletedHost.Mac]; !ok || device.Exists || device.HostID != deletedHost.ID || device.DeviceType != "tablet" {
+	if device, ok := byMac[deletedHost.Mac]; !ok || device.Exists || device.HostID != deletedHost.ID || device.IP != deletedHost.IP || device.DeviceType != "tablet" {
 		t.Fatalf("deleted event host option = %+v, ok=%v; devices=%+v", device, ok, devices)
 	}
 }
