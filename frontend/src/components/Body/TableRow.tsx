@@ -5,7 +5,7 @@ import { formatLastSeen } from "../../functions/dateFormat";
 import { deviceDisplayName } from "../../functions/deviceIdentity";
 import { isUnknownHardware } from "../../functions/hardware";
 import { updateHostInView } from "../../functions/hostView";
-import type { DeviceTypeValue } from "../../functions/deviceTypes";
+import { getDeviceTypeOption, type DeviceTypeValue } from "../../functions/deviceTypes";
 import DeviceTypePicker from "../DeviceTypePicker";
 
 import { debounce } from "@solid-primitives/scheduled";
@@ -27,8 +27,16 @@ function TableRow(_props: any) {
     : "Unknown device - click to mark known";
   const statusText = () => isOnline() ? "Online" : "Offline";
   const displayName = () => deviceDisplayName({ ..._props.host, Name: name() });
+  const mobileIdentity = () => {
+    const currentName = displayName();
+    return _props.host.IP && currentName !== _props.host.IP
+      ? currentName + " · " + _props.host.IP
+      : currentName;
+  };
   const hardwareText = () => (_props.host.Hw ?? "").trim() || "Unknown";
   const hardwareClass = () => "device-hardware-text" + (isUnknownHardware(_props.host.Hw) ? " device-hardware-text-muted" : "");
+  const deviceTypeOption = () => getDeviceTypeOption(_props.host.DeviceType);
+  const mobileToggleLabel = () => (_props.mobileExpanded ? "Hide" : "Show") + " device details for " + displayName();
 
   let nameSaveQueue: Promise<unknown> = Promise.resolve();
   let hasPendingNameChange = false;
@@ -97,6 +105,86 @@ function TableRow(_props: any) {
 
   return (
     <tr class={rowClass()}>
+      <td class="device-table-mobile-cell">
+        <div class="device-mobile-row">
+          <span class="device-mobile-known">
+            <button
+              type="button"
+              class={known() ? "device-known-toggle device-known-toggle-known" : "device-known-toggle device-known-toggle-unknown"}
+              title={knownTitle()}
+              aria-label={knownTitle()}
+              aria-pressed={known()}
+              onClick={handleToggle}
+            >
+              <i class={known() ? "bi bi-bookmark-check-fill" : "bi bi-question-circle-fill"} aria-hidden="true"></i>
+            </button>
+          </span>
+          <span class="device-mobile-type">
+            <DeviceTypePicker
+              value={_props.host.DeviceType}
+              mode="icon"
+              onChange={handleDeviceTypeChange}
+            ></DeviceTypePicker>
+          </span>
+          <span class="device-mobile-identity">
+            <Show
+              when={editNames()}
+              fallback={<a href={"/host/" + _props.host.ID} class={"device-mobile-name-link " + nameClass()}>{mobileIdentity()}</a>}
+            >
+              <input
+                type="text"
+                class="form-control form-control-sm device-mobile-name-input"
+                value={name()}
+                onInput={e => handleInput(e.target.value)}
+                onBlur={syncNameToView}
+                onKeyDown={handleNameKeyDown}
+              ></input>
+            </Show>
+          </span>
+          <span
+            class={isOnline() ? "device-status-icon device-status-icon-online" : "device-status-icon device-status-icon-offline"}
+            title={statusText()}
+            aria-label={statusText()}
+            role="img"
+          >
+            <i class={isOnline() ? "bi bi-check-circle-fill" : "bi bi-x-circle-fill"} aria-hidden="true"></i>
+          </span>
+          <button
+            type="button"
+            class="device-mobile-expand"
+            aria-expanded={_props.mobileExpanded ? "true" : "false"}
+            aria-label={mobileToggleLabel()}
+            title={mobileToggleLabel()}
+            onClick={_props.onToggleMobileExpanded}
+          >
+            <i class={"bi " + (_props.mobileExpanded ? "bi-chevron-up" : "bi-chevron-down")} aria-hidden="true"></i>
+          </button>
+        </div>
+        <Show when={_props.mobileExpanded}>
+          <div class="device-mobile-details">
+            <span class="device-mobile-detail-label">Name</span>
+            <span class="device-mobile-detail-value">{displayName()}</span>
+            <span class="device-mobile-detail-label">Type</span>
+            <span class="device-mobile-detail-value">{deviceTypeOption().label}</span>
+            <span class="device-mobile-detail-label">Status</span>
+            <span class="device-mobile-detail-value">{statusText()}</span>
+            <span class="device-mobile-detail-label">IP</span>
+            <span class="device-mobile-detail-value">{_props.host.IP}</span>
+            <span class="device-mobile-detail-label">MAC</span>
+            <span class="device-mobile-detail-value">{_props.host.Mac}</span>
+            <span class="device-mobile-detail-label">Hardware</span>
+            <span class="device-mobile-detail-value">{hardwareText()}</span>
+            <Show when={(_props.host.Iface ?? "").trim()}>
+              <span class="device-mobile-detail-label">Interface</span>
+              <span class="device-mobile-detail-value">{_props.host.Iface}</span>
+            </Show>
+            <span class="device-mobile-detail-label">Last Seen</span>
+            <span class="device-mobile-detail-value">{lastSeen()}</span>
+            <span class="device-mobile-detail-label">Known</span>
+            <span class="device-mobile-detail-value">{known() ? "Yes" : "No"}</span>
+          </div>
+        </Show>
+      </td>
       <td class="device-table-index opacity-50">{_props.index}.</td>
       <td class="device-table-known">
         <button

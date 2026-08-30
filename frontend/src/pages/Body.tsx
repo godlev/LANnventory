@@ -1,4 +1,4 @@
-import { For, onMount, Show } from "solid-js";
+import { createSignal, For, onMount, Show } from "solid-js";
 
 import { allHosts, filterState, hostsLoadError } from "../functions/exports";
 
@@ -11,6 +11,7 @@ import { getHosts } from "../functions/atstart";
 import { deviceTypeFilterLabel } from "../functions/deviceTypes";
 
 function Body() {
+  const [expandedDeviceRows, setExpandedDeviceRows] = createSignal<Record<string, boolean>>({});
 
   onMount(() => {
     getHosts();
@@ -49,6 +50,16 @@ function Body() {
     return text;
   };
 
+  const deviceExpansionKey = (host: { ID: number; Mac: string }) => host.Mac || "id:" + host.ID;
+  const isDeviceExpanded = (host: { ID: number; Mac: string }) => expandedDeviceRows()[deviceExpansionKey(host)] === true;
+  const toggleDeviceExpanded = (host: { ID: number; Mac: string }) => {
+    const key = deviceExpansionKey(host);
+    setExpandedDeviceRows((current) => ({
+      ...current,
+      [key]: current[key] !== true,
+    }));
+  };
+
   return (
     <>
     <Show when={hostsLoadError()}>
@@ -72,7 +83,12 @@ function Body() {
           <TableHead></TableHead>
           <tbody>
             <For each={allHosts}>{(host, index) =>
-            <TableRow host={host} index={index() + 1}></TableRow>
+            <TableRow
+              host={host}
+              index={index() + 1}
+              mobileExpanded={isDeviceExpanded(host)}
+              onToggleMobileExpanded={() => toggleDeviceExpanded(host)}
+            ></TableRow>
             }</For>
           </tbody> 
         </table>

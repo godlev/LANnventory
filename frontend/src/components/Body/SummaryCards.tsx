@@ -5,6 +5,7 @@ import { filterHosts, hasActiveHostFilters } from "../../functions/hostView";
 
 type SummaryItem = {
   label: string;
+  shortLabel: string;
   value: number;
   detail: string;
   icon: string;
@@ -41,6 +42,7 @@ function SummaryCards() {
     return [
       {
         label: "Total Devices",
+        shortLabel: "ALL",
         value: filtersActive ? visible : total,
         detail: filtersActive
           ? visible + " visible / " + total + " total"
@@ -51,6 +53,7 @@ function SummaryCards() {
       },
       {
         label: "Online",
+        shortLabel: "ON",
         value: online,
         detail: facetDetail(online, statusFacetHosts.length),
         icon: "bi-check-circle-fill",
@@ -60,6 +63,7 @@ function SummaryCards() {
       },
       {
         label: "Offline",
+        shortLabel: "OFF",
         value: offline,
         detail: facetDetail(offline, statusFacetHosts.length),
         icon: "bi-slash-circle-fill",
@@ -69,6 +73,7 @@ function SummaryCards() {
       },
       {
         label: "Known",
+        shortLabel: "KNOWN",
         value: known,
         detail: facetDetail(known, knownFacetHosts.length),
         icon: "bi-bookmark-check-fill",
@@ -78,6 +83,7 @@ function SummaryCards() {
       },
       {
         label: "Unknown",
+        shortLabel: "UNK",
         value: unknown,
         detail: facetDetail(unknown, knownFacetHosts.length),
         icon: "bi-question-circle-fill",
@@ -119,7 +125,10 @@ function SummaryCards() {
         <i class={"bi " + item.icon}></i>
       </div>
       <div>
-        <div class="overview-card-label">{item.label}</div>
+        <div class="overview-card-label">
+          <span class="overview-card-label-full">{item.label}</span>
+          <span class="overview-card-label-short" aria-hidden="true">{item.shortLabel}</span>
+        </div>
         <div class="overview-card-value">{item.value}</div>
         <div class="overview-card-detail">{item.detail}</div>
       </div>
@@ -133,6 +142,8 @@ function SummaryCards() {
           ? <button
               type="button"
               class={"overview-card overview-card-button overview-card-" + item.tone + (isActive(item) ? " is-active" : "")}
+              title={item.label + ": " + item.value + ". " + item.detail}
+              aria-label={item.label + ": " + item.value + ". " + item.detail}
               aria-pressed={isActive(item)}
               onClick={[handleQuickFilter, item]}
             >
