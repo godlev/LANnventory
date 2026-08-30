@@ -10,7 +10,9 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -31,11 +33,47 @@ import (
 const dirPath = "/data/WatchYourLAN"
 const nodePath = ""
 
+type appRuntime struct {
+	startConfig func(dirPath, nodePath string)
+	startDB     func() error
+	closeDB     func() error
+	scanRestart func()
+	scanStop    func()
+	historyTrim func(context.Context)
+	webGUI      func(context.Context) error
+}
+
 func main() {
-	dirPtr := flag.String("d", dirPath, "Path to config dir")
-	nodePtr := flag.String("n", nodePath, "Path to node modules")
-	flag.Parse()
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	if err := run(context.Background(), os.Args[1:], defaultAppRuntime()); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return
+		}
+		slog.Error("LANnventory stopped due to fatal runtime error", "err", err)
+		os.Exit(1)
+	}
+}
+
+func defaultAppRuntime() appRuntime {
+	return appRuntime{
+		startConfig: conf.Start,
+		startDB:     gdb.StartErr,
+		closeDB:     gdb.Close,
+		scanRestart: routines.ScanRestart,
+		scanStop:    routines.ScanStop,
+		historyTrim: routines.HistoryTrimContext,
+		webGUI:      web.GuiContext,
+	}
+}
+
+func run(parentCtx context.Context, args []string, runtime appRuntime) error {
+	flags := flag.NewFlagSet("LANnventory", flag.ContinueOnError)
+	dirPtr := flags.String("d", dirPath, "Path to config dir")
+	nodePtr := flags.String("n", nodePath, "Path to node modules")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+
+	ctx, stop := signal.NotifyContext(parentCtx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	// pprof - memory leak detect
@@ -48,17 +86,19 @@ func main() {
 	// }()
 
 	// Make AppConfig
-	conf.Start(*dirPtr, *nodePtr)
+	runtime.startConfig(*dirPtr, *nodePtr)
 
-	gdb.Start()
+	if err := runtime.startDB(); err != nil {
+		return err
+	}
 	defer func() {
-		check.IfError(gdb.Close())
+		check.IfError(runtime.closeDB())
 	}()
 
-	routines.ScanRestart()
-	defer routines.ScanStop()
+	runtime.scanRestart()
+	defer runtime.scanStop()
 
-	routines.HistoryTrimContext(ctx)
+	runtime.historyTrim(ctx)
 
-	check.IfError(web.GuiContext(ctx))
+	return runtime.webGUI(ctx)
 }

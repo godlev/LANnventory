@@ -7,6 +7,7 @@ Wants=network-online.target
 [Service]
 ExecStart=/usr/bin/lannventory -d /etc/watchyourlan/
 Restart=on-failure
+RestartSec=5s
 TimeoutStopSec=30
 
 [Install]
