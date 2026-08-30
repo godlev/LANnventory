@@ -142,6 +142,7 @@ function Activity() {
   const noDevicesSelected = () => deviceSelectionMode() === "none";
   const normalizedSelectedMacs = createMemo(() => normalizeSelectedMacs(selectedMacs()));
   const selectedMacSet = createMemo(() => new Set(normalizedSelectedMacs()));
+  const availableDeviceMacs = createMemo(() => normalizeSelectedMacs(devices().map((device) => device.Mac)));
   const deviceOptionsByMac = createMemo(() => {
     const options = new Map<string, ActivityDeviceOption>();
     for (const device of devices()) {
@@ -506,6 +507,13 @@ function Activity() {
   };
 
   const handleDeviceToggle = (mac: string) => {
+    if (deviceSelectionMode() === "all") {
+      const nextMacs = availableDeviceMacs().filter((deviceMac) => deviceMac !== mac);
+      setSelectedMacs(nextMacs);
+      setDeviceSelectionMode(nextMacs.length > 0 ? "custom" : "none");
+      return;
+    }
+
     const selected = new Set(deviceSelectionMode() === "custom" ? normalizedSelectedMacs() : []);
     if (selected.has(mac)) {
       selected.delete(mac);
@@ -710,7 +718,7 @@ function Activity() {
                     <For each={filteredDeviceOptions()}>{(device) =>
                       <DeviceCheckbox
                         device={device}
-                        checked={deviceSelectionMode() === "custom" && selectedMacSet().has(device.Mac)}
+                        checked={deviceSelectionMode() === "all" || (deviceSelectionMode() === "custom" && selectedMacSet().has(device.Mac))}
                         onChange={() => handleDeviceToggle(device.Mac)}
                       />
                     }</For>
