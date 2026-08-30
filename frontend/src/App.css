@@ -510,6 +510,15 @@ html[data-bs-theme] body {
     grid-template-columns: repeat(5, minmax(0, 1fr));
     margin-bottom: 1rem;
 }
+.home-overview-grid {
+    display: flex;
+    flex-wrap: nowrap;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-gutter: stable;
+}
 .overview-card {
     display: flex;
     align-items: center;
@@ -522,6 +531,10 @@ html[data-bs-theme] body {
     border-radius: 8px;
     box-shadow: var(--wyl-shadow);
     text-align: left;
+}
+.home-overview-grid .overview-card {
+    flex: 1 0 10.5rem;
+    min-width: 10.5rem;
 }
 .overview-card-total {
     border-left-color: var(--wyl-accent-total);
@@ -546,6 +559,9 @@ html[data-bs-theme] body {
     color: inherit;
     cursor: pointer;
     font: inherit;
+}
+.home-overview-grid .overview-card-button {
+    width: auto;
 }
 .overview-card-button:hover,
 .overview-card-button:focus-visible {
@@ -614,6 +630,8 @@ html[data-bs-theme] body {
 }
 
 .card.device-panel {
+    width: 100%;
+    max-width: 100%;
     overflow: visible;
     background-color: var(--wyl-panel-bg);
     border-color: var(--wyl-panel-border) !important;
@@ -625,11 +643,13 @@ html[data-bs-theme] body {
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
+    min-width: 0;
     background-color: var(--wyl-panel-header-bg);
     border-bottom-color: var(--wyl-panel-border);
 }
 .device-panel-title-group {
-    flex: 0 0 auto;
+    flex: 0 1 auto;
+    min-width: 0;
 }
 .device-panel-title {
     font-size: 1.05rem;
@@ -643,6 +663,9 @@ html[data-bs-theme] body {
     font-size: 0.78rem;
     font-variant-caps: all-small-caps;
     letter-spacing: 0.035em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 .device-toolbar {
     display: flex;
@@ -650,31 +673,37 @@ html[data-bs-theme] body {
     justify-content: flex-end;
     flex: 1 1 auto;
     gap: 0.65rem;
-    min-width: min(34rem, 100%);
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
     flex-wrap: nowrap;
+    scrollbar-gutter: stable;
 }
 .device-toolbar-filters,
 .device-toolbar-actions {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    flex-wrap: nowrap;
 }
 .device-toolbar-filters {
-    flex: 0 1 auto;
-    min-width: 0;
+    flex: 0 0 auto;
+    min-width: max-content;
 }
 .device-toolbar-actions {
-    flex: 1 1 auto;
+    flex: 0 0 auto;
     justify-content: flex-end;
     flex-wrap: nowrap;
-    min-width: 0;
+    min-width: max-content;
 }
 .device-filter-group {
     display: flex;
     align-items: center;
     gap: 0.45rem;
     width: auto;
-    min-width: 0;
+    min-width: max-content;
+    flex-wrap: nowrap;
 }
 .device-filter-group .form-select {
     width: auto;
@@ -734,7 +763,7 @@ html[data-bs-theme] body {
 .device-search {
     flex: 0 1 18rem;
     width: 18rem;
-    min-width: 12rem;
+    min-width: 10rem;
     max-width: 100%;
 }
 .device-search::placeholder {
@@ -790,10 +819,15 @@ html[data-bs-theme] body {
 }
 .device-table-wrap {
     padding: 0;
-    overflow-x: visible !important;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto !important;
+    overflow-y: visible;
+    scrollbar-gutter: stable;
 }
 .device-table {
     background-color: var(--wyl-table-bg);
+    min-width: 64rem;
     margin-bottom: 0;
     vertical-align: middle;
     --bs-table-bg: var(--wyl-table-row-bg);
@@ -2554,35 +2588,29 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     .overview-grid {
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
-    .device-panel-header,
-    .device-toolbar {
-        align-items: stretch;
-        flex-direction: column;
+    .device-panel-header {
+        align-items: center;
+        flex-direction: row;
     }
     .device-toolbar {
-        flex: 0 1 auto;
+        flex: 1 1 auto;
         min-width: 0;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
     }
-    .device-toolbar,
     .device-toolbar-filters,
     .device-toolbar-actions,
     .history-toolbar,
     .history-filter-group {
-        width: 100%;
         justify-content: flex-start;
     }
     .history-filter-group {
         flex-wrap: wrap;
     }
-    .device-filter-group {
-        width: 100%;
-    }
     .device-table-wrap {
         overflow-x: auto !important;
     }
     .device-toolbar-actions {
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
     }
     .history-samples-control {
         flex-wrap: wrap;
@@ -2612,6 +2640,9 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
 }
 
 @media (max-width: 767.98px) {
+    .overview-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
     .wyl-navbar .container-lg {
         flex-wrap: nowrap;
         padding-right: 0.35rem;
@@ -2637,9 +2668,6 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
         padding-right: 0.42rem !important;
         padding-left: 0.42rem !important;
     }
-    .overview-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
 }
 
 @media (max-width: 575.98px) {
@@ -2650,18 +2678,18 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
         min-height: 5.75rem;
     }
     .device-toolbar-actions {
-        align-items: stretch;
+        align-items: center;
     }
     .device-search {
-        flex: 1 1 100%;
-        width: 100%;
+        flex: 0 1 10rem;
+        width: 10rem;
     }
     .device-table-wrap {
-        overflow-x: visible !important;
+        overflow-x: auto !important;
     }
     .device-table {
-        table-layout: fixed;
-        width: 100%;
+        table-layout: auto;
+        width: max-content;
     }
     .device-table thead th,
     .device-table tbody td {
@@ -2676,8 +2704,7 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
         width: 1.6rem;
     }
     .device-table-name {
-        width: auto;
-        min-width: 0;
+        min-width: 9rem;
     }
     .device-name-link {
         max-width: 100%;
@@ -2705,19 +2732,13 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
         gap: 0.2rem;
         min-width: 0;
     }
-    .device-table-iface,
-    .device-table-mac,
-    .device-table-hardware,
-    .device-table-last-seen {
-        display: none;
-    }
     .device-toolbar-actions {
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
     }
     .home-device-display-select {
-        flex: 1 1 100%;
-        width: 100% !important;
-        min-width: 0 !important;
+        flex: 0 0 8.8rem;
+        width: 8.8rem !important;
+        min-width: 8.8rem !important;
     }
     .settings-page {
         max-width: none;

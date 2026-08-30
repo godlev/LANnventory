@@ -127,7 +127,7 @@ function SummaryCards() {
   );
 
   return (
-    <section class="overview-grid" aria-label="Device overview">
+    <section class="overview-grid home-overview-grid" aria-label="Device overview">
       <For each={summary()}>{(item) =>
         item.filterField || item.clearsFilters
           ? <button
