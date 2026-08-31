@@ -1663,6 +1663,89 @@ html[data-bs-theme] .device-table > tbody > tr.device-row-unknown:hover > td {
 .activity-device-option-deleted .activity-device-option-name {
     color: var(--wyl-muted);
 }
+.activity-groupby-panel {
+    right: 0;
+    left: auto;
+    width: min(25rem, calc(100vw - 3rem));
+}
+.activity-groupby-options {
+    gap: 0.14rem;
+}
+.activity-groupby-option-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.32rem;
+    border-radius: 6px;
+}
+.activity-groupby-option-row.is-selected {
+    background-color: var(--wyl-card-active-bg);
+}
+.activity-groupby-option {
+    min-width: 0;
+}
+.activity-groupby-option-main {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.38rem;
+    min-width: 0;
+}
+.activity-multiselect-option .activity-groupby-option-main {
+    overflow: visible;
+}
+.activity-multiselect-option .activity-groupby-order {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 1.28rem;
+    width: 1.28rem;
+    height: 1.28rem;
+    color: var(--wyl-link);
+    background-color: var(--wyl-control-bg);
+    border: 1px solid var(--wyl-control-border);
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 850;
+    line-height: 1;
+    overflow: visible;
+}
+.activity-multiselect-option .activity-groupby-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.activity-groupby-move-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.18rem;
+    padding-right: 0.18rem;
+}
+.activity-groupby-move {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.55rem;
+    height: 1.55rem;
+    padding: 0;
+    color: var(--wyl-link);
+    background-color: transparent;
+    border: 1px solid var(--wyl-control-border);
+    border-radius: 6px;
+    line-height: 1;
+}
+.activity-groupby-move:hover,
+.activity-groupby-move:focus-visible {
+    color: var(--wyl-link-hover);
+    background-color: var(--wyl-control-hover-bg);
+    border-color: var(--wyl-link-hover);
+}
+.activity-groupby-move:disabled {
+    color: var(--wyl-muted);
+    background-color: transparent;
+    border-color: var(--wyl-control-border);
+    opacity: 0.48;
+}
 .activity-multiselect-empty {
     padding: 0.45rem 0.28rem;
     color: var(--wyl-muted);
@@ -1877,16 +1960,31 @@ html[data-bs-theme] .activity-table > tbody > tr.activity-group-row:hover > td {
     outline: 2px solid var(--wyl-link-hover);
     outline-offset: -3px;
 }
+.activity-group-toggle-level-1 {
+    padding-left: 1.45rem;
+}
+.activity-group-toggle-level-2 {
+    padding-left: 2.15rem;
+}
+.activity-group-toggle-level-3 {
+    padding-left: 2.85rem;
+}
+.activity-group-toggle-level-4 {
+    padding-left: 3.55rem;
+}
+.activity-group-toggle-level-5 {
+    padding-left: 4.25rem;
+}
 .activity-group-title {
     display: inline-flex;
     align-items: center;
     gap: 0.45rem;
+    flex: 1 1 auto;
     min-width: 0;
     overflow: hidden;
     font-size: 0.88rem;
     font-weight: 800;
     line-height: 1.2;
-    text-overflow: ellipsis;
     text-transform: uppercase;
     white-space: nowrap;
 }
@@ -1894,7 +1992,23 @@ html[data-bs-theme] .activity-table > tbody > tr.activity-group-row:hover > td {
     flex: 0 0 auto;
     font-size: 0.82rem;
 }
+.activity-group-dimension {
+    flex: 0 0 auto;
+    color: var(--wyl-muted);
+}
+.activity-group-separator {
+    flex: 0 0 auto;
+    color: var(--wyl-muted);
+}
+.activity-group-label {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--bs-body-color);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
 .activity-group-count {
+    flex: 0 0 auto;
     color: var(--wyl-muted);
     font-size: 0.74rem;
     font-weight: 800;
@@ -3088,6 +3202,33 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     }
     .activity-table .activity-table-mobile-cell {
         padding: 0.44rem 0.58rem;
+    }
+    .activity-group-toggle {
+        gap: 0.48rem;
+        min-height: 2.35rem;
+        padding-right: 0.58rem;
+    }
+    .activity-group-toggle-level-1 {
+        padding-left: 1rem;
+    }
+    .activity-group-toggle-level-2 {
+        padding-left: 1.34rem;
+    }
+    .activity-group-toggle-level-3 {
+        padding-left: 1.68rem;
+    }
+    .activity-group-toggle-level-4 {
+        padding-left: 2.02rem;
+    }
+    .activity-group-toggle-level-5 {
+        padding-left: 2.36rem;
+    }
+    .activity-group-title {
+        gap: 0.28rem;
+        font-size: 0.8rem;
+    }
+    .activity-group-count {
+        font-size: 0.68rem;
     }
     .activity-table-device-heading,
     .activity-table-device-cell,

@@ -34,7 +34,7 @@ type EventFilterKey =
   | "unknown"
   | "device-type-changed";
 
-type GroupByKey = "none" | "device" | "event" | "category" | "device-type" | "ip" | "iface" | "day";
+type GroupByKey = "device" | "event" | "category" | "device-type" | "ip" | "iface" | "day";
 type DeviceDisplayMode = "name-icon" | "name" | "icon";
 type DeviceSelectionMode = "all" | "custom" | "none";
 
@@ -55,9 +55,18 @@ type EventSummaryCard = {
 };
 
 type EventGroup = {
-  key: string;
+  pathKey: string;
+  dimension: GroupByKey;
+  dimensionLabel: string;
   label: string;
+  eventsCount: number;
+  children: EventGroup[];
   events: HostEvent[];
+};
+
+type GroupValue = {
+  identity: string;
+  label: string;
 };
 
 const eventsPageSize = 100;
@@ -66,6 +75,9 @@ const defaultDeviceDisplayMode: DeviceDisplayMode = "icon";
 const eventTypeOrder: ActivityEventType[] = ["online", "offline", "discovered", "known", "unknown", "device-type-changed"];
 const deviceDropdownId = "activity-device-filter";
 const eventTypeDropdownId = "activity-event-type-filter";
+const groupByDropdownId = "activity-group-by-filter";
+const maxGroupHierarchySummaryLevels = 3;
+const maxGroupIndentLevel = 5;
 
 const emptyStats: ActivityStats = {
   Total: 0,
@@ -91,7 +103,6 @@ const eventFilterOptions: EventFilterOption[] = [
 ];
 
 const groupByOptions: { key: GroupByKey; label: string }[] = [
-  { key: "none", label: "None" },
   { key: "device", label: "Device" },
   { key: "event", label: "Event" },
   { key: "category", label: "Category" },
@@ -112,7 +123,7 @@ function Activity() {
   const [selectedMacs, setSelectedMacs] = createSignal<string[]>([]);
   const [deviceSearch, setDeviceSearch] = createSignal("");
   const [selectedEventTypes, setSelectedEventTypes] = createSignal<ActivityEventType[]>(normalizeSelectedEventTypes(eventTypeOrder));
-  const [groupBy, setGroupBy] = createSignal<GroupByKey>("none");
+  const [groupByKeys, setGroupByKeys] = createSignal<GroupByKey[]>([]);
   const [deviceDisplayMode, setDeviceDisplayMode] = createSignal<DeviceDisplayMode>(defaultDeviceDisplayMode);
   const [events, setEvents] = createSignal<HostEvent[]>([]);
   const [stats, setStats] = createSignal<ActivityStats>(emptyStats);
@@ -125,19 +136,23 @@ function Activity() {
   const [statsError, setStatsError] = createSignal(false);
   const [deviceDropdownOpen, setDeviceDropdownOpen] = createSignal(false);
   const [eventTypeDropdownOpen, setEventTypeDropdownOpen] = createSignal(false);
+  const [groupByDropdownOpen, setGroupByDropdownOpen] = createSignal(false);
   let eventsRequest = 0;
   let statsRequest = 0;
   let deviceTriggerRef: HTMLButtonElement | undefined;
   let deviceDropdownRef: HTMLDivElement | undefined;
   let eventTypeTriggerRef: HTMLButtonElement | undefined;
   let eventTypeDropdownRef: HTMLDivElement | undefined;
+  let groupByTriggerRef: HTMLButtonElement | undefined;
+  let groupByDropdownRef: HTMLDivElement | undefined;
 
   const selectedEventTypeSet = createMemo(() => new Set(selectedEventTypes()));
-  const currentGroupOption = () => groupByOptions.find((option) => option.key === groupBy()) ?? groupByOptions[0];
+  const normalizedGroupByKeys = createMemo(() => normalizeGroupByKeys(groupByKeys()));
   const hostExists = (event: HostEvent) => bkpHosts().some((host) => host.ID === event.HostID && host.Mac === event.Mac);
   const allEventTypesSelected = () => selectedEventTypes().length === eventTypeOrder.length;
   const noEventTypesSelected = () => selectedEventTypes().length === 0;
   const eventTypeFilterActive = () => !allEventTypesSelected();
+  const groupingActive = () => normalizedGroupByKeys().length > 0;
   const deviceFilterActive = () => deviceSelectionMode() !== "all";
   const noDevicesSelected = () => deviceSelectionMode() === "none";
   const normalizedSelectedMacs = createMemo(() => normalizeSelectedMacs(selectedMacs()));
@@ -198,6 +213,8 @@ function Activity() {
   });
   const eventTypeSummary = () => eventTypeClosedSummary(selectedEventTypes());
   const eventTypeTooltipSummary = () => eventTypeTooltip(selectedEventTypes());
+  const groupBySummary = () => groupByClosedSummary(normalizedGroupByKeys());
+  const groupByTooltipSummary = () => groupByTooltip(normalizedGroupByKeys());
   const tableStateSummary = createMemo(() => {
     const active: string[] = [];
 
@@ -210,8 +227,8 @@ function Activity() {
     if (eventTypeFilterActive()) {
       active.push(eventTypeSummary());
     }
-    if (groupBy() !== "none") {
-      active.push("Grouped by " + currentGroupOption().label);
+    if (groupingActive()) {
+      active.push("Grouped by " + groupByTableSummary(normalizedGroupByKeys()));
     }
 
     return active.join(" · ");
@@ -226,7 +243,7 @@ function Activity() {
       activeFilters.push(eventTypeTooltipSummary());
     }
 
-    const groupedBy = groupBy() !== "none" ? "Grouped by " + currentGroupOption().label : "";
+    const groupedBy = groupingActive() ? "Grouped by " + groupByFullSummary(normalizedGroupByKeys()) : "";
     if (activeFilters.length > 0 && groupedBy) {
       return "Active filters - " + activeFilters.join(", ") + ". " + groupedBy + ".";
     }
@@ -362,6 +379,9 @@ function Activity() {
       if (eventTypeDropdownOpen() && !eventTypeTriggerRef?.contains(target) && !eventTypeDropdownRef?.contains(target)) {
         setEventTypeDropdownOpen(false);
       }
+      if (groupByDropdownOpen() && !groupByTriggerRef?.contains(target) && !groupByDropdownRef?.contains(target)) {
+        setGroupByDropdownOpen(false);
+      }
     };
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") {
@@ -376,6 +396,10 @@ function Activity() {
         event.preventDefault();
         setEventTypeDropdownOpen(false);
         eventTypeTriggerRef?.focus();
+      } else if (groupByDropdownOpen()) {
+        event.preventDefault();
+        setGroupByDropdownOpen(false);
+        groupByTriggerRef?.focus();
       }
     };
 
@@ -448,26 +472,16 @@ function Activity() {
   });
 
   const groupedEvents = createMemo<EventGroup[]>(() => {
-    if (groupBy() === "none") {
+    const keys = normalizedGroupByKeys();
+    if (keys.length === 0) {
       return [];
     }
 
-    const groups = new Map<string, EventGroup>();
-    for (const event of events()) {
-      const key = groupKey(event, groupBy());
-      const label = groupLabel(event, groupBy());
-      const existing = groups.get(key);
-      if (existing) {
-        existing.events.push(event);
-      } else {
-        groups.set(key, { key, label, events: [event] });
-      }
-    }
-
-    return [...groups.values()];
+    return buildEventGroupTree(events(), keys);
   });
-  const isGroupCollapsed = (key: string) => collapsedGroups()[key] ?? groupsCollapsedByDefault();
-  const hasExpandedGroups = () => groupBy() !== "none" && groupedEvents().some((group) => !isGroupCollapsed(group.key));
+  const allGroupNodes = createMemo(() => flattenEventGroups(groupedEvents()));
+  const isGroupCollapsed = (pathKey: string) => collapsedGroups()[pathKey] ?? groupsCollapsedByDefault();
+  const hasExpandedGroups = () => groupingActive() && allGroupNodes().some((group) => !isGroupCollapsed(group.pathKey));
   const groupAllControlTitle = () => hasExpandedGroups() ? "Collapse all groups" : "Expand all groups";
   const groupAllControlIcon = () => hasExpandedGroups() ? "bi-arrows-collapse" : "bi-arrows-expand";
   const groupAllControlLabel = () => hasExpandedGroups() ? "Collapse all" : "Expand all";
@@ -495,6 +509,7 @@ function Activity() {
     setDeviceDropdownOpen(nextOpen);
     if (nextOpen) {
       setEventTypeDropdownOpen(false);
+      setGroupByDropdownOpen(false);
     }
   };
 
@@ -503,6 +518,16 @@ function Activity() {
     setEventTypeDropdownOpen(nextOpen);
     if (nextOpen) {
       setDeviceDropdownOpen(false);
+      setGroupByDropdownOpen(false);
+    }
+  };
+
+  const openGroupByDropdown = () => {
+    const nextOpen = !groupByDropdownOpen();
+    setGroupByDropdownOpen(nextOpen);
+    if (nextOpen) {
+      setDeviceDropdownOpen(false);
+      setEventTypeDropdownOpen(false);
     }
   };
 
@@ -534,6 +559,43 @@ function Activity() {
   const handleDeviceClearAll = () => {
     setDeviceSelectionMode("none");
     setSelectedMacs([]);
+  };
+
+  const applyGroupByKeys = (keys: GroupByKey[]) => {
+    const normalized = normalizeGroupByKeys(keys);
+    if (sameGroupByKeys(normalizedGroupByKeys(), normalized)) {
+      return;
+    }
+
+    setGroupByKeys(normalized);
+    setGroupsCollapsedByDefault(false);
+    setCollapsedGroups({});
+  };
+
+  const handleGroupByToggle = (key: GroupByKey) => {
+    const keys = normalizedGroupByKeys();
+    if (keys.includes(key)) {
+      applyGroupByKeys(keys.filter((groupKey) => groupKey !== key));
+      return;
+    }
+
+    applyGroupByKeys([...keys, key]);
+  };
+
+  const handleGroupByMove = (key: GroupByKey, direction: -1 | 1) => {
+    const keys = [...normalizedGroupByKeys()];
+    const index = keys.indexOf(key);
+    const nextIndex = index + direction;
+    if (index < 0 || nextIndex < 0 || nextIndex >= keys.length) {
+      return;
+    }
+
+    [keys[index], keys[nextIndex]] = [keys[nextIndex], keys[index]];
+    applyGroupByKeys(keys);
+  };
+
+  const handleGroupByClear = () => {
+    applyGroupByKeys([]);
   };
 
   const handleSummaryClick = (event: MouseEvent, card: EventSummaryCard) => {
@@ -576,8 +638,8 @@ function Activity() {
     const nextCollapsed = hasExpandedGroups();
     const nextGroups: Record<string, boolean> = {};
 
-    for (const group of groupedEvents()) {
-      nextGroups[group.key] = nextCollapsed;
+    for (const group of allGroupNodes()) {
+      nextGroups[group.pathKey] = nextCollapsed;
     }
 
     setGroupsCollapsedByDefault(nextCollapsed);
@@ -829,18 +891,56 @@ function Activity() {
               </div>
             </Show>
           </div>
-          <label class="activity-filter-field">
+          <div class="activity-filter-field activity-multiselect-field activity-groupby-filter-field">
             <span class="activity-filter-label">Group by</span>
-            <select
-              class={"form-select form-select-sm activity-filter-select" + (groupBy() !== "none" ? " is-active" : "")}
-              value={groupBy()}
-              onChange={(event) => setGroupBy(event.currentTarget.value as GroupByKey)}
+            <button
+              ref={groupByTriggerRef}
+              type="button"
+              class={"form-select form-select-sm activity-filter-select activity-multiselect-trigger" + (groupingActive() ? " is-active" : "")}
+              aria-expanded={groupByDropdownOpen() ? "true" : "false"}
+              aria-controls={groupByDropdownId}
+              aria-label={"Group by: " + groupByTooltipSummary()}
+              title={groupByTooltipSummary()}
+              onClick={openGroupByDropdown}
             >
-              <For each={groupByOptions}>{(option) =>
-                <option value={option.key}>{option.label}</option>
-              }</For>
-            </select>
-          </label>
+              <span>{groupBySummary()}</span>
+            </button>
+            <Show when={groupByDropdownOpen()}>
+              <div
+                ref={groupByDropdownRef}
+                id={groupByDropdownId}
+                class="activity-multiselect-panel activity-groupby-panel"
+                role="group"
+                aria-label="Group by options"
+              >
+                <div class="activity-multiselect-options activity-groupby-options">
+                  <For each={groupByOptions}>{(option) =>
+                    <GroupByOptionControl
+                      option={option}
+                      selectedIndex={normalizedGroupByKeys().indexOf(option.key)}
+                      selectedCount={normalizedGroupByKeys().length}
+                      onToggle={() => handleGroupByToggle(option.key)}
+                      onMoveUp={() => handleGroupByMove(option.key, -1)}
+                      onMoveDown={() => handleGroupByMove(option.key, 1)}
+                    />
+                  }</For>
+                </div>
+                <div class="activity-multiselect-footer">
+                  <button
+                    type="button"
+                    class="btn btn-sm activity-multiselect-action"
+                    disabled={!groupingActive()}
+                    onClick={handleGroupByClear}
+                  >
+                    Clear grouping
+                  </button>
+                  <button type="button" class="btn btn-sm device-reset-filter" onClick={() => setGroupByDropdownOpen(false)}>
+                    Done
+                  </button>
+                </div>
+              </div>
+            </Show>
+          </div>
           <label class="activity-filter-field activity-display-field">
             <span class="activity-filter-label">Device display</span>
             <select
@@ -854,7 +954,7 @@ function Activity() {
               }</For>
             </select>
           </label>
-          <Show when={groupBy() !== "none"}>
+          <Show when={groupingActive()}>
             <button
               type="button"
               class="btn btn-sm device-reset-filter activity-group-all-toggle"
@@ -891,7 +991,7 @@ function Activity() {
                 </span>
               </Show>
             </div>
-            <div class="activity-table-subtitle">{tableSubtitle(events().length, groupBy())}</div>
+            <div class="activity-table-subtitle">{tableSubtitle(events().length, normalizedGroupByKeys())}</div>
           </div>
         </div>
         <div class="card-body activity-table-body">
@@ -923,30 +1023,17 @@ function Activity() {
               </thead>
               <tbody>
                 <Show
-                  when={groupBy() === "none"}
+                  when={!groupingActive()}
                   fallback={
                     <For each={groupedEvents()}>{(group) =>
-                      <>
-                        <tr class="activity-group-row">
-                          <td colSpan={6} class="activity-group-cell" data-label="Group">
-                            <button
-                              type="button"
-                              class="activity-group-toggle"
-                              aria-expanded={!isGroupCollapsed(group.key)}
-                              onClick={[handleGroupToggle, group.key]}
-                            >
-                              <span class="activity-group-title">
-                                <i class={"bi " + (isGroupCollapsed(group.key) ? "bi-chevron-right" : "bi-chevron-down")} aria-hidden="true"></i>
-                                <span>{group.label}</span>
-                              </span>
-                              <span class="activity-group-count">{group.events.length} loaded {group.events.length === 1 ? "event" : "events"}</span>
-                            </button>
-                          </td>
-                        </tr>
-                        <Show when={!isGroupCollapsed(group.key)}>
-                          <For each={group.events}>{(event) => eventRow(event, hostExists, deviceDisplayMode)}</For>
-                        </Show>
-                      </>
+                      <EventGroupRows
+                        group={group}
+                        level={0}
+                        isGroupCollapsed={isGroupCollapsed}
+                        onGroupToggle={handleGroupToggle}
+                        hostExists={hostExists}
+                        deviceDisplayMode={deviceDisplayMode}
+                      />
                     }</For>
                   }
                 >
@@ -977,6 +1064,60 @@ function Activity() {
         </div>
       </section>
     </div>
+  );
+}
+
+function EventGroupRows(props: {
+  group: EventGroup;
+  level: number;
+  isGroupCollapsed: (pathKey: string) => boolean;
+  onGroupToggle: (pathKey: string) => void;
+  hostExists: (event: HostEvent) => boolean;
+  deviceDisplayMode: () => DeviceDisplayMode;
+}) {
+  const collapsed = () => props.isGroupCollapsed(props.group.pathKey);
+  const visualLevel = () => Math.min(props.level, maxGroupIndentLevel);
+  const groupTitle = () => props.group.dimensionLabel + " - " + props.group.label;
+
+  return (
+    <>
+      <tr class={"activity-group-row activity-group-row-level-" + visualLevel()} data-group-level={props.level}>
+        <td colSpan={6} class="activity-group-cell" data-label="Group">
+          <button
+            type="button"
+            class={"activity-group-toggle activity-group-toggle-level-" + visualLevel()}
+            aria-expanded={!collapsed()}
+            title={groupTitle()}
+            onClick={() => props.onGroupToggle(props.group.pathKey)}
+          >
+            <span class="activity-group-title">
+              <i class={"bi " + (collapsed() ? "bi-chevron-right" : "bi-chevron-down")} aria-hidden="true"></i>
+              <span class="activity-group-dimension">{props.group.dimensionLabel}</span>
+              <span class="activity-group-separator">·</span>
+              <span class="activity-group-label">{props.group.label}</span>
+            </span>
+            <span class="activity-group-count">{props.group.eventsCount} loaded {props.group.eventsCount === 1 ? "event" : "events"}</span>
+          </button>
+        </td>
+      </tr>
+      <Show when={!collapsed()}>
+        <Show
+          when={props.group.children.length > 0}
+          fallback={<For each={props.group.events}>{(event) => eventRow(event, props.hostExists, props.deviceDisplayMode)}</For>}
+        >
+          <For each={props.group.children}>{(child) =>
+            <EventGroupRows
+              group={child}
+              level={props.level + 1}
+              isGroupCollapsed={props.isGroupCollapsed}
+              onGroupToggle={props.onGroupToggle}
+              hostExists={props.hostExists}
+              deviceDisplayMode={props.deviceDisplayMode}
+            />
+          }</For>
+        </Show>
+      </Show>
+    </>
   );
 }
 
@@ -1141,53 +1282,167 @@ function cleanEventValue(value: string | null | undefined) {
   return (value ?? "").trim();
 }
 
-function tableSubtitle(count: number, groupBy: GroupByKey) {
+function tableSubtitle(count: number, groupByKeys: GroupByKey[]) {
   const base = count + " loaded " + (count === 1 ? "event" : "events");
-  return groupBy === "none" ? base : base + " grouped by " + groupByOptions.find((option) => option.key === groupBy)?.label;
+  return groupByKeys.length === 0 ? base : base + " grouped by " + groupByFullSummary(groupByKeys);
 }
 
-function groupKey(event: HostEvent, groupBy: GroupByKey) {
+function buildEventGroupTree(
+  sourceEvents: HostEvent[],
+  groupByKeys: GroupByKey[],
+  level = 0,
+  parentPath: [GroupByKey, string][] = [],
+): EventGroup[] {
+  const dimension = groupByKeys[level];
+  if (dimension === undefined) {
+    return [];
+  }
+
+  const groups = new Map<string, { value: GroupValue; events: HostEvent[] }>();
+  for (const event of sourceEvents) {
+    const value = groupValue(event, dimension);
+    const existing = groups.get(value.identity);
+    if (existing) {
+      existing.events.push(event);
+    } else {
+      groups.set(value.identity, { value, events: [event] });
+    }
+  }
+
+  return [...groups.values()].map((group) => {
+    const path = [...parentPath, [dimension, group.value.identity] as [GroupByKey, string]];
+    const isLeaf = level === groupByKeys.length - 1;
+
+    return {
+      pathKey: JSON.stringify(path),
+      dimension,
+      dimensionLabel: groupByLabel(dimension),
+      label: group.value.label,
+      eventsCount: group.events.length,
+      children: isLeaf ? [] : buildEventGroupTree(group.events, groupByKeys, level + 1, path),
+      events: isLeaf ? group.events : [],
+    };
+  });
+}
+
+function flattenEventGroups(groups: EventGroup[]) {
+  const flattened: EventGroup[] = [];
+  const visit = (nodes: EventGroup[]) => {
+    for (const node of nodes) {
+      flattened.push(node);
+      visit(node.children);
+    }
+  };
+
+  visit(groups);
+  return flattened;
+}
+
+function groupValue(event: HostEvent, groupBy: GroupByKey): GroupValue {
   switch (groupBy) {
     case "device":
-      return "device:" + (event.Mac || event.HostID || activityHostName(event));
+      return {
+        identity: event.Mac
+          ? "mac:" + event.Mac
+          : event.HostID > 0
+            ? "host:" + event.HostID
+            : "name:" + activityHostName(event),
+        label: activityHostName(event),
+      };
     case "event":
-      return "event:" + event.EventType;
+      return {
+        identity: "event:" + event.EventType,
+        label: activityEventLabel(event.EventType),
+      };
     case "category":
-      return "category:" + activityCategoryLabel(event.EventType);
+      return {
+        identity: "category:" + activityCategoryKey(event.EventType),
+        label: activityCategoryLabel(event.EventType),
+      };
     case "device-type":
-      return "device-type:" + (event.DeviceType || "not-set");
+      return {
+        identity: "device-type:" + (cleanEventValue(event.DeviceType) || "not-set"),
+        label: activityDeviceTypeLabel(event.DeviceType),
+      };
     case "ip":
-      return "ip:" + (event.IP || "none");
+      return {
+        identity: cleanEventValue(event.IP) ? "ip:" + cleanEventValue(event.IP) : "missing-ip",
+        label: cleanEventValue(event.IP) || "No IP",
+      };
     case "iface":
-      return "iface:" + (event.Iface || "none");
+      return {
+        identity: cleanEventValue(event.Iface) ? "iface:" + cleanEventValue(event.Iface) : "missing-iface",
+        label: cleanEventValue(event.Iface) || "No interface",
+      };
     case "day":
-      return "day:" + event.Date.slice(0, 10);
-    case "none":
+      return {
+        identity: activityDayKey(event.Date),
+        label: activityDayLabel(event.Date),
+      };
     default:
-      return "all";
+      return {
+        identity: "unknown",
+        label: "Unknown",
+      };
   }
 }
 
-function groupLabel(event: HostEvent, groupBy: GroupByKey) {
-  switch (groupBy) {
-    case "device":
-      return activityHostName(event);
-    case "event":
-      return activityEventLabel(event.EventType);
-    case "category":
-      return activityCategoryLabel(event.EventType);
-    case "device-type":
-      return activityDeviceTypeLabel(event.DeviceType);
-    case "ip":
-      return event.IP || "No IP";
-    case "iface":
-      return event.Iface || "No interface";
-    case "day":
-      return activityDayLabel(event.Date);
-    case "none":
-    default:
-      return "Events";
+function activityCategoryKey(eventType: string) {
+  return eventType === "online" || eventType === "offline" ? "connectivity" : "changes";
+}
+
+function activityDayKey(value: string) {
+  return value.match(/^(\d{4}-\d{2}-\d{2})/)?.[1] ?? "missing-day";
+}
+
+function groupByLabel(key: GroupByKey) {
+  return groupByOptions.find((option) => option.key === key)?.label ?? key;
+}
+
+function groupByFullSummary(keys: GroupByKey[]) {
+  return keys.map(groupByLabel).join(" → ");
+}
+
+function groupByClosedSummary(keys: GroupByKey[]) {
+  if (keys.length === 0) {
+    return "None";
   }
+  if (keys.length > maxGroupHierarchySummaryLevels) {
+    return keys.length + " levels";
+  }
+
+  return groupByFullSummary(keys);
+}
+
+function groupByTableSummary(keys: GroupByKey[]) {
+  return groupByClosedSummary(keys);
+}
+
+function groupByTooltip(keys: GroupByKey[]) {
+  return keys.length === 0 ? "No grouping" : "Grouped by " + groupByFullSummary(keys);
+}
+
+function normalizeGroupByKeys(keys: GroupByKey[]) {
+  const seen = new Set<GroupByKey>();
+  const normalized: GroupByKey[] = [];
+
+  for (const key of keys) {
+    if (!groupByOptions.some((option) => option.key === key) || seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    normalized.push(key);
+  }
+
+  return normalized;
+}
+
+function sameGroupByKeys(left: GroupByKey[], right: GroupByKey[]) {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  return left.every((key, index) => key === right[index]);
 }
 
 function deviceOptionLabel(device: ActivityDeviceOption) {
@@ -1221,6 +1476,64 @@ function normalizeSelectedMacs(macs: string[]) {
   }
 
   return normalized;
+}
+
+function GroupByOptionControl(props: {
+  option: { key: GroupByKey; label: string };
+  selectedIndex: number;
+  selectedCount: number;
+  onToggle: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+}) {
+  const selected = () => props.selectedIndex >= 0;
+  const order = () => props.selectedIndex + 1;
+  const checkboxLabel = () => selected()
+    ? "Remove " + props.option.label + " from grouping level " + order()
+    : "Add " + props.option.label + " to grouping";
+
+  return (
+    <div class={"activity-groupby-option-row" + (selected() ? " is-selected" : "")}>
+      <label class="activity-multiselect-option activity-groupby-option" title={checkboxLabel()}>
+        <input
+          type="checkbox"
+          checked={selected()}
+          aria-label={checkboxLabel()}
+          onChange={props.onToggle}
+        />
+        <span class="activity-groupby-option-main">
+          <Show when={selected()}>
+            <span class="activity-groupby-order" aria-hidden="true">{order()}</span>
+          </Show>
+          <span class="activity-groupby-label">{props.option.label}</span>
+        </span>
+      </label>
+      <Show when={selected()}>
+        <span class="activity-groupby-move-controls" aria-label={props.option.label + " grouping order controls"}>
+          <button
+            type="button"
+            class="btn btn-sm activity-groupby-move"
+            disabled={props.selectedIndex === 0}
+            title={"Move " + props.option.label + " up"}
+            aria-label={"Move " + props.option.label + " up"}
+            onClick={props.onMoveUp}
+          >
+            <i class="bi bi-chevron-up" aria-hidden="true"></i>
+          </button>
+          <button
+            type="button"
+            class="btn btn-sm activity-groupby-move"
+            disabled={props.selectedIndex === props.selectedCount - 1}
+            title={"Move " + props.option.label + " down"}
+            aria-label={"Move " + props.option.label + " down"}
+            onClick={props.onMoveDown}
+          >
+            <i class="bi bi-chevron-down" aria-hidden="true"></i>
+          </button>
+        </span>
+      </Show>
+    </div>
+  );
 }
 
 function DeviceCheckbox(props: {
