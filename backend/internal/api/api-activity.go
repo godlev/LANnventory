@@ -71,12 +71,17 @@ func getActivity(c *gin.Context) {
 		return
 	}
 
-	events, _ := gdb.SelectEventsFiltered(gdb.EventQuery{
+	events, ok := gdb.SelectEventsFiltered(gdb.EventQuery{
 		Limit:      limit,
 		Offset:     offset,
 		Macs:       parseActivityMacs(c),
 		EventTypes: eventTypes,
 	})
+	if !ok {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to load activity events"})
+		return
+	}
+
 	c.IndentedJSON(http.StatusOK, events)
 }
 
@@ -138,7 +143,12 @@ func getHostActivity(c *gin.Context) {
 		return
 	}
 
-	events, _ := gdb.SelectEventsByHostID(host.ID, limit)
+	events, ok := gdb.SelectEventsByHostID(host.ID, limit)
+	if !ok {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to load host activity"})
+		return
+	}
+
 	c.IndentedJSON(http.StatusOK, events)
 }
 

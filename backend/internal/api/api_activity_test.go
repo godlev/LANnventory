@@ -29,6 +29,18 @@ func TestActivityEndpointReturnsEmptyTable(t *testing.T) {
 	}
 }
 
+func TestActivityEndpointReportsDatabaseFailure(t *testing.T) {
+	router := setupTestRouter(t)
+	if err := gdb.Close(); err != nil {
+		t.Fatalf("gdb.Close: %v", err)
+	}
+
+	rec := getPath(router, "/api/activity")
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusInternalServerError, rec.Body.String())
+	}
+}
+
 func TestActivityEndpointDefaultAndExplicitLimit(t *testing.T) {
 	router := setupTestRouter(t)
 	host := seedHost(t, models.Host{Name: "router", Mac: "AA:BB:CC:DD:EE:01"})
