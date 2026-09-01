@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"testing"
 
 	"github.com/godlev/LANnventory/internal/gdb"
@@ -338,6 +339,126 @@ func TestActivityEndpointPaginatesWithEventTypeFilter(t *testing.T) {
 	}
 }
 
+func TestActivityEndpointCursorPaginatesSameTimestampWithIDTieBreak(t *testing.T) {
+	router := setupTestRouter(t)
+	host := seedHost(t, models.Host{Name: "NAS", Mac: "AA:BB:CC:DD:EE:20"})
+
+	seedLabeledActivityEvent(t, host, models.EventOnline, "2026-08-31 22:00:00", "first-same-date")
+	seedLabeledActivityEvent(t, host, models.EventOffline, "2026-08-31 22:00:00", "second-same-date")
+	seedLabeledActivityEvent(t, host, models.EventKnown, "2026-08-31 22:00:00", "third-same-date")
+	seedLabeledActivityEvent(t, host, models.EventUnknown, "2026-08-31 21:59:59", "older")
+
+	rec := getPath(router, "/api/activity?limit=2")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("first page status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	firstPage := decodeActivityEvents(t, rec)
+	assertActivityEventMarkers(t, firstPage, []string{"third-same-date", "second-same-date"})
+
+	rec = getPath(router, "/api/activity?limit=2&"+activityCursorQuery(firstPage[len(firstPage)-1]))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("cursor page status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	assertActivityEventMarkers(t, decodeActivityEvents(t, rec), []string{"first-same-date", "older"})
+}
+
+func TestActivityEndpointCursorIsStableAfterNewerInsert(t *testing.T) {
+	router := setupTestRouter(t)
+	host := seedHost(t, models.Host{Name: "router", Mac: "AA:BB:CC:DD:EE:01"})
+
+	for i := 1; i <= 6; i++ {
+		seedLabeledActivityEvent(t, host, models.EventOnline, fmt.Sprintf("2026-08-31 10:%02d:00", i), fmt.Sprintf("E%02d", i))
+	}
+
+	rec := getPath(router, "/api/activity?limit=3")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("first page status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	firstPage := decodeActivityEvents(t, rec)
+	assertActivityEventMarkers(t, firstPage, []string{"E06", "E05", "E04"})
+
+	seedLabeledActivityEvent(t, host, models.EventOffline, "2026-08-31 11:00:00", "NEW")
+
+	rec = getPath(router, "/api/activity?limit=3&"+activityCursorQuery(firstPage[len(firstPage)-1]))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("cursor page status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	secondPage := decodeActivityEvents(t, rec)
+	assertActivityEventMarkers(t, secondPage, []string{"E03", "E02", "E01"})
+	assertNoActivityEventIDOverlap(t, firstPage, secondPage)
+
+	rec = getPath(router, "/api/activity?limit=3")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("fresh first page status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	assertActivityEventMarkers(t, decodeActivityEvents(t, rec), []string{"NEW", "E06", "E05"})
+}
+
+func TestActivityEndpointCursorAppliesAfterFilters(t *testing.T) {
+	router := setupTestRouter(t)
+	routerHost := seedHost(t, models.Host{Name: "router", Mac: "AA:BB:CC:DD:EE:01"})
+	nasHost := seedHost(t, models.Host{Name: "NAS", Mac: "AA:BB:CC:DD:EE:20"})
+
+	seedLabeledActivityEvent(t, nasHost, models.EventOnline, "2026-08-31 10:06:00", "N06")
+	seedLabeledActivityEvent(t, routerHost, models.EventOnline, "2026-08-31 10:05:00", "R05")
+	seedLabeledActivityEvent(t, routerHost, models.EventOffline, "2026-08-31 10:04:00", "R04")
+	seedLabeledActivityEvent(t, routerHost, models.EventKnown, "2026-08-31 10:03:00", "R03")
+	seedLabeledActivityEvent(t, routerHost, models.EventOnline, "2026-08-31 10:02:00", "R02")
+	seedLabeledActivityEvent(t, nasHost, models.EventOffline, "2026-08-31 10:01:00", "N01")
+	seedLabeledActivityEvent(t, routerHost, models.EventDeviceTypeChanged, "2026-08-31 10:00:00", "R00")
+
+	tests := []struct {
+		name       string
+		query      string
+		wantFirst  []string
+		wantSecond []string
+	}{
+		{
+			name:       "repeated MAC",
+			query:      "limit=2&mac=" + url.QueryEscape(routerHost.Mac) + "&mac=" + url.QueryEscape(routerHost.Mac),
+			wantFirst:  []string{"R05", "R04"},
+			wantSecond: []string{"R03", "R02"},
+		},
+		{
+			name:       "one event type",
+			query:      "limit=2&eventType=online",
+			wantFirst:  []string{"N06", "R05"},
+			wantSecond: []string{"R02"},
+		},
+		{
+			name:       "multiple event types",
+			query:      "limit=3&eventType=online&eventType=offline",
+			wantFirst:  []string{"N06", "R05", "R04"},
+			wantSecond: []string{"R02", "N01"},
+		},
+		{
+			name:       "category",
+			query:      "limit=3&category=connectivity",
+			wantFirst:  []string{"N06", "R05", "R04"},
+			wantSecond: []string{"R02", "N01"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rec := getPath(router, "/api/activity?"+tt.query)
+			if rec.Code != http.StatusOK {
+				t.Fatalf("first page status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+			}
+			firstPage := decodeActivityEvents(t, rec)
+			assertActivityEventMarkers(t, firstPage, tt.wantFirst)
+
+			rec = getPath(router, "/api/activity?"+tt.query+"&"+activityCursorQuery(firstPage[len(firstPage)-1]))
+			if rec.Code != http.StatusOK {
+				t.Fatalf("cursor page status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+			}
+			secondPage := decodeActivityEvents(t, rec)
+			assertActivityEventMarkers(t, secondPage, tt.wantSecond)
+			assertNoActivityEventIDOverlap(t, firstPage, secondPage)
+		})
+	}
+}
+
 func TestActivityEndpointRejectsInvalidOffset(t *testing.T) {
 	router := setupTestRouter(t)
 
@@ -352,6 +473,48 @@ func TestActivityEndpointRejectsInvalidOffset(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestActivityEndpointRejectsInvalidCursor(t *testing.T) {
+	router := setupTestRouter(t)
+	validDate := url.QueryEscape("2026-08-31 22:00:00")
+
+	for _, path := range []string{
+		"/api/activity?beforeDate=" + validDate,
+		"/api/activity?beforeId=1",
+		"/api/activity?beforeDate=" + validDate + "&beforeId=0",
+		"/api/activity?beforeDate=" + validDate + "&beforeId=-1",
+		"/api/activity?beforeDate=" + validDate + "&beforeId=abc",
+		"/api/activity?beforeDate=" + url.QueryEscape("2026-08-31T22:00:00") + "&beforeId=1",
+		"/api/activity?beforeDate=" + validDate + "&beforeId=1&offset=1",
+	} {
+		t.Run(path, func(t *testing.T) {
+			rec := getPath(router, path)
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+			}
+		})
+	}
+}
+
+func TestActivityEndpointAllowsCursorWithZeroOffset(t *testing.T) {
+	router := setupTestRouter(t)
+	host := seedHost(t, models.Host{Name: "router", Mac: "AA:BB:CC:DD:EE:01"})
+
+	seedLabeledActivityEvent(t, host, models.EventOnline, "2026-08-31 22:00:00", "newer")
+	seedLabeledActivityEvent(t, host, models.EventOffline, "2026-08-31 21:59:59", "older")
+
+	rec := getPath(router, "/api/activity?limit=1")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("first page status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	firstPage := decodeActivityEvents(t, rec)
+
+	rec = getPath(router, "/api/activity?limit=1&offset=0&"+activityCursorQuery(firstPage[0]))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("cursor page status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	assertActivityEventMarkers(t, decodeActivityEvents(t, rec), []string{"older"})
 }
 
 func TestActivityEndpointCombinesCategoryOffsetAndLimit(t *testing.T) {
@@ -648,5 +811,46 @@ func seedActivityEvent(t *testing.T, host models.Host, eventType models.HostEven
 	event.Date = date
 	if err := gdb.AddEvent(event); err != nil {
 		t.Fatalf("AddEvent %s: %v", eventType, err)
+	}
+}
+
+func seedLabeledActivityEvent(t *testing.T, host models.Host, eventType models.HostEventType, date string, marker string) {
+	t.Helper()
+
+	event := models.NewHostEvent(host, eventType, marker, "")
+	event.Date = date
+	if err := gdb.AddEvent(event); err != nil {
+		t.Fatalf("AddEvent %s %s: %v", eventType, marker, err)
+	}
+}
+
+func activityCursorQuery(event models.HostEvent) string {
+	return "beforeDate=" + url.QueryEscape(event.Date) + "&beforeId=" + strconv.Itoa(event.ID)
+}
+
+func assertActivityEventMarkers(t *testing.T, events []models.HostEvent, want []string) {
+	t.Helper()
+
+	if len(events) != len(want) {
+		t.Fatalf("events len = %d, want %d: %+v", len(events), len(want), events)
+	}
+	for i, marker := range want {
+		if events[i].OldValue != marker {
+			t.Fatalf("events[%d].OldValue = %q, want %q; events: %+v", i, events[i].OldValue, marker, events)
+		}
+	}
+}
+
+func assertNoActivityEventIDOverlap(t *testing.T, left []models.HostEvent, right []models.HostEvent) {
+	t.Helper()
+
+	seen := make(map[int]struct{}, len(left))
+	for _, event := range left {
+		seen[event.ID] = struct{}{}
+	}
+	for _, event := range right {
+		if _, ok := seen[event.ID]; ok {
+			t.Fatalf("event ID %d appeared in both pages; left=%+v right=%+v", event.ID, left, right)
+		}
 	}
 }

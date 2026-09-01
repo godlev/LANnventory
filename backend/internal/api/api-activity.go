@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -15,6 +16,7 @@ const (
 	defaultActivityLimit  = 20
 	maxActivityLimit      = 100
 	defaultActivityOffset = 0
+	activityCursorLayout  = "2006-01-02 15:04:05"
 
 	activityCategoryAll          = "all"
 	activityCategoryConnectivity = "connectivity"
@@ -26,6 +28,8 @@ var (
 	errInvalidActivityOffset   = errors.New("invalid offset")
 	errInvalidActivityCategory = errors.New("invalid category")
 	errInvalidActivityEvent    = errors.New("invalid eventType")
+	errInvalidActivityCursor   = errors.New("invalid cursor")
+	errMixedActivityPagination = errors.New("offset cannot be combined with cursor")
 )
 
 // getActivity godoc
@@ -35,6 +39,8 @@ var (
 // @Produce      json
 // @Param        limit     query     int     false  "Event limit from 1 to 100"
 // @Param        offset    query     int     false  "Event offset, 0 or greater"
+// @Param        beforeDate query    string  false  "Cursor event date in 2006-01-02 15:04:05 format"
+// @Param        beforeId   query    int     false  "Cursor event ID, greater than 0"
 // @Param        category  query     string  false  "Event category: all, connectivity, changes"
 // @Param        eventType query     string  false  "Repeatable event type filter"
 // @Param        mac       query     string  false  "Filter by MAC address"
@@ -48,6 +54,12 @@ func getActivity(c *gin.Context) {
 	}
 
 	offset, err := parseActivityOffset(c)
+	if err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	cursor, err := parseActivityCursor(c, offset)
 	if err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -74,6 +86,8 @@ func getActivity(c *gin.Context) {
 	events, ok := gdb.SelectEventsFiltered(gdb.EventQuery{
 		Limit:      limit,
 		Offset:     offset,
+		BeforeDate: cursor.BeforeDate,
+		BeforeID:   cursor.BeforeID,
 		Macs:       parseActivityMacs(c),
 		EventTypes: eventTypes,
 	})
@@ -170,6 +184,38 @@ func parseActivityOffset(c *gin.Context) (int, error) {
 	}
 
 	return offset, nil
+}
+
+type activityCursor struct {
+	BeforeDate string
+	BeforeID   int
+}
+
+func parseActivityCursor(c *gin.Context, offset int) (activityCursor, error) {
+	beforeDate, hasBeforeDate := c.GetQuery("beforeDate")
+	beforeIDRaw, hasBeforeID := c.GetQuery("beforeId")
+	if !hasBeforeDate && !hasBeforeID {
+		return activityCursor{}, nil
+	}
+	if !hasBeforeDate || !hasBeforeID {
+		return activityCursor{}, errInvalidActivityCursor
+	}
+	if offset > 0 {
+		return activityCursor{}, errMixedActivityPagination
+	}
+	if _, err := time.Parse(activityCursorLayout, beforeDate); err != nil {
+		return activityCursor{}, errInvalidActivityCursor
+	}
+
+	beforeID, err := strconv.Atoi(beforeIDRaw)
+	if err != nil || beforeID < 1 {
+		return activityCursor{}, errInvalidActivityCursor
+	}
+
+	return activityCursor{
+		BeforeDate: beforeDate,
+		BeforeID:   beforeID,
+	}, nil
 }
 
 func parseActivityCategory(c *gin.Context) ([]models.HostEventType, error) {

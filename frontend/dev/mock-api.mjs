@@ -450,6 +450,45 @@ function parseActivityOffset(url) {
   return Number.isInteger(offset) && offset >= 0 ? offset : -1;
 }
 
+function isActivityCursorDate(value) {
+  const match = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/.exec(value);
+  if (!match) {
+    return false;
+  }
+
+  const [, year, month, day, hour, minute, second] = match.map(Number);
+  const date = new Date(year, month - 1, day, hour, minute, second);
+
+  return date.getFullYear() === year
+    && date.getMonth() === month - 1
+    && date.getDate() === day
+    && date.getHours() === hour
+    && date.getMinutes() === minute
+    && date.getSeconds() === second;
+}
+
+function parseActivityCursor(url, offset) {
+  const hasBeforeDate = url.searchParams.has('beforeDate');
+  const hasBeforeId = url.searchParams.has('beforeId');
+  if (!hasBeforeDate && !hasBeforeId) {
+    return { cursor: null };
+  }
+  if (!hasBeforeDate || !hasBeforeId) {
+    return { error: 'invalid cursor' };
+  }
+  if (offset > 0) {
+    return { error: 'offset cannot be combined with cursor' };
+  }
+
+  const beforeDate = url.searchParams.get('beforeDate') ?? '';
+  const beforeId = Number(url.searchParams.get('beforeId'));
+  if (!isActivityCursorDate(beforeDate) || !Number.isInteger(beforeId) || beforeId < 1) {
+    return { error: 'invalid cursor' };
+  }
+
+  return { cursor: { beforeDate, beforeId } };
+}
+
 function parseActivityCategory(url) {
   const category = url.searchParams.get('category') ?? 'all';
   if (category === 'all') {
@@ -495,6 +534,10 @@ function activityFor(url, predicate = () => true) {
   if (offset < 0) {
     return { error: 'invalid offset' };
   }
+  const cursorResult = parseActivityCursor(url, offset);
+  if (cursorResult.error) {
+    return { error: cursorResult.error };
+  }
 
   const categoryPredicate = parseActivityCategory(url);
   if (categoryPredicate === null) {
@@ -506,11 +549,18 @@ function activityFor(url, predicate = () => true) {
     return { error: eventTypeFilter.error };
   }
 
-  return sortedActivityEvents()
+  let events = sortedActivityEvents()
     .filter(categoryPredicate)
     .filter((event) => eventTypeFilter.set === null || eventTypeFilter.set.has(event.EventType))
-    .filter(predicate)
-    .slice(offset, offset + limit);
+    .filter(predicate);
+
+  if (cursorResult.cursor) {
+    const { beforeDate, beforeId } = cursorResult.cursor;
+    events = events.filter((event) => event.Date < beforeDate || (event.Date === beforeDate && event.ID < beforeId));
+    return events.slice(0, limit);
+  }
+
+  return events.slice(offset, offset + limit);
 }
 
 function activityStatsFor(url) {

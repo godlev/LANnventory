@@ -9,6 +9,8 @@ type ActivityQuery = {
   category?: ActivityCategory;
   eventTypes?: ActivityEventType[];
   offset?: number;
+  beforeDate?: string;
+  beforeId?: number;
   mac?: string;
   macs?: string[];
 };
@@ -60,6 +62,10 @@ export const apiGetActivity = async (limit = 20, query: ActivityQuery = {}): Pro
   });
   if (query.offset !== undefined) {
     params.set("offset", String(query.offset));
+  }
+  if (query.beforeDate !== undefined && query.beforeId !== undefined) {
+    params.set("beforeDate", query.beforeDate);
+    params.set("beforeId", String(query.beforeId));
   }
   if (query.mac) {
     params.append("mac", query.mac);

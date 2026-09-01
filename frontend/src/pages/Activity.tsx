@@ -269,7 +269,8 @@ function Activity() {
     const eventTypes = selectedEventTypes();
     const deviceMode = deviceSelectionMode();
     const macs = deviceRequestMacs();
-    const offset = reset ? 0 : events().length;
+    const currentEvents = events();
+    const lastEvent = reset ? undefined : currentEvents[currentEvents.length - 1];
 
     setError("");
     if (reset) {
@@ -288,6 +289,11 @@ function Activity() {
       setHasMore(false);
       return;
     }
+    if (!reset && !lastEvent) {
+      setLoading(false);
+      setHasMore(false);
+      return;
+    }
 
     setLoading(true);
 
@@ -295,7 +301,8 @@ function Activity() {
       const nextEvents = await apiGetActivity(eventsPageSize, {
         eventTypes: eventTypes.length === eventTypeOrder.length ? undefined : eventTypes,
         macs,
-        offset,
+        beforeDate: lastEvent?.Date,
+        beforeId: lastEvent?.ID,
       });
       if (activeRequest !== eventsRequest) {
         return;

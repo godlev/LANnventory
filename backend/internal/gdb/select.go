@@ -9,6 +9,8 @@ import (
 type EventQuery struct {
 	Limit      int
 	Offset     int
+	BeforeDate string
+	BeforeID   int
 	Mac        string
 	Macs       []string
 	HostID     int
@@ -134,12 +136,17 @@ func SelectEventsFiltered(query EventQuery) (events []models.HostEvent, ok bool)
 		}
 		tab = tab.Where("\"EVENT_TYPE\" IN ?", eventTypes)
 	}
-	err = tab.
+	if query.BeforeDate != "" && query.BeforeID > 0 {
+		tab = tab.Where("(\"DATE\" < ? OR (\"DATE\" = ? AND \"ID\" < ?))", query.BeforeDate, query.BeforeDate, query.BeforeID)
+	}
+	tab = tab.
 		Order("\"DATE\" DESC").
 		Order("\"ID\" DESC").
-		Limit(query.Limit).
-		Offset(query.Offset).
-		Find(&events).Error
+		Limit(query.Limit)
+	if query.BeforeDate == "" && query.BeforeID == 0 && query.Offset > 0 {
+		tab = tab.Offset(query.Offset)
+	}
+	err = tab.Find(&events).Error
 
 	return events, !check.IfError(err)
 }
