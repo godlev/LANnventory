@@ -6,11 +6,11 @@
 LANnventory is an independent project originally based on [WatchYourLAN by aceberg](https://github.com/aceberg/WatchYourLAN), focused on modern LAN inventory, device presence history, event tracking, classification and a self-contained web interface.
 
 > [!IMPORTANT]
-> LANnventory is still under active development. Features, configuration, packaging and upgrade instructions may continue to change until the first beta is finalized.
+> LANnventory is still under active development. Features, configuration, packaging and upgrade instructions may continue to change during the beta period.
 
 Current repository: [godlev/LANnventory](https://github.com/godlev/LANnventory)
 
-Current beta candidate: `0.1.0-beta.1`
+Current beta candidate: `0.1.0-beta.2`
 
 The original WatchYourLAN scanning/backend foundation is preserved and credited. LANnventory adds a substantially expanded interface, persistent event model, device classification, configurable retention, migration hardening, safer configuration handling and other reliability improvements.
 
@@ -223,7 +223,7 @@ Real backend startup begins network scanning, so run it only where LAN scanning 
 
 ## Installation status
 
-LANnventory does not yet advertise a separately published stable Docker image or packaged release artifact.
+LANnventory publishes beta release artifacts for review and testing, but does not yet advertise a stable Docker image.
 
 Do **not** install `aceberg/watchyourlan` expecting LANnventory features; that image belongs to the upstream WatchYourLAN project.
 
@@ -234,6 +234,18 @@ docker build -t lannventory:dev .
 ```
 
 The image is built from LANnventory source in this repository. It does not fetch or substitute an upstream WatchYourLAN binary.
+
+### Proxmox VE LXC installer
+
+LANnventory includes an official Proxmox VE installer for a Debian 13 unprivileged LXC:
+
+```sh
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/godlev/LANnventory/main/proxmox/lannventory.sh)"
+```
+
+The installer downloads the pinned official `.deb` release package, detects Proxmox storage/template/bridge choices, prefers `vmbr0` when available, filters Proxmox per-guest firewall bridges, supports DHCP or static IPv4, seeds `IFACES: "eth0"`, and validates `/api/health`, `/api/version` and `arp-scan` availability. It does not build LANnventory from source and does not loosen LXC security by enabling privileged mode, nesting, AppArmor relaxation or broad capabilities.
+
+See [proxmox/README.md](proxmox/README.md) for details.
 
 ### Docker / Compose development install
 

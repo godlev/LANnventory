@@ -51,7 +51,7 @@ assert_equal "$(default_bridge)" "vmbr0" "vmbr0 default preference"
 BRIDGES=(br-lan vmbr1)
 assert_equal "$(default_bridge)" "br-lan" "first bridge fallback"
 
-expected_url="https://github.com/godlev/LANnventory/releases/download/v0.1.0-beta.1/lannventory_0.1.0-beta.1_linux_amd64.deb"
+expected_url="https://github.com/godlev/LANnventory/releases/download/v0.1.0-beta.2/lannventory_0.1.0-beta.2_linux_amd64.deb"
 assert_equal "$(package_url_for_arch amd64)" "$expected_url" "amd64 package URL"
 assert_equal "$(package_url_for_arch x86_64)" "$expected_url" "x86_64 package URL"
 assert_failure package_url_for_arch arm64

@@ -3,7 +3,7 @@
 ARG NODE_IMAGE=node:22-bookworm-slim
 ARG GO_IMAGE=golang:1.25-bookworm
 ARG RUNTIME_IMAGE=debian:bookworm-slim
-ARG LANNVENTORY_VERSION=0.1.0-beta.1
+ARG LANNVENTORY_VERSION=0.1.0-beta.2
 
 FROM ${NODE_IMAGE} AS frontend-build
 WORKDIR /src/frontend

@@ -3,8 +3,8 @@ set -Eeuo pipefail
 
 APP_NAME="LANnventory"
 REPO_URL="https://github.com/godlev/LANnventory"
-RELEASE_TAG="v0.1.0-beta.1"
-VERSION="0.1.0-beta.1"
+RELEASE_TAG="v0.1.0-beta.2"
+VERSION="0.1.0-beta.2"
 DEFAULT_HOSTNAME="lannventory"
 DEFAULT_CORES="1"
 DEFAULT_RAM="512"

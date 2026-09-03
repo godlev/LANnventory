@@ -1,6 +1,39 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## LANnventory Releases
+
+## [v0.1.0-beta.2] - 2026-09-04
+### Added
+- Event Type and Device multi-select filters for the Events explorer.
+- Ordered multi-level Events grouping by device, event, category, device type, IP, interface and day.
+- Stable cursor-based Events pagination using event date and ID.
+- Additive `DateUTC` event display timestamp for timezone-safe relative event times.
+- Official Proxmox VE Debian 13 LXC installer with storage, template, bridge and IPv4 configuration prompts.
+- Proxmox installer helper tests and Packaging Check syntax coverage.
+
+### Changed
+- Improved mobile and responsive layouts for Home, Events and Presence.
+- Refined Events device display options, active filter/grouping indicators and grouped table controls.
+- Refreshed Swagger/API documentation, including Events cursor parameters and configuration endpoints.
+- Hardened runtime startup so service bind/startup failures exit nonzero and can be retried by systemd.
+- Updated the Proxmox installer candidate to install `v0.1.0-beta.2`.
+
+### Fixed
+- Events cursor reset reactivity loop that could leave the Events table showing zero loaded rows.
+- Events filtering and grouping error handling for database/API failure cases.
+- Home inline name-edit focus handling.
+- Home responsive width and horizontal overflow issues.
+- Events multiselect dropdown clipping and Device checkbox semantics.
+- Timezone drift in fresh/current Events relative-time display when server and browser timezones differ.
+- Proxmox Debian 13 template discovery and static IPv4 validation.
+
+## [v0.1.0-beta.1] - 2026-08-28
+### Added
+- First public LANnventory beta release.
+
+## Historical Upstream WatchYourLAN Changelog
+
 ## [v2.1.4] - 2025-09-10
 ### Added
 - Swagger API docs (`/swagger/index.html`)
