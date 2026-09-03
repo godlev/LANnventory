@@ -138,6 +138,8 @@ definitions:
     type: object
   models.HostEvent:
     properties:
+      DateUTC:
+        type: string
       date:
         type: string
       deviceType:

@@ -1385,6 +1385,9 @@ const docTemplate = `{
         "models.HostEvent": {
             "type": "object",
             "properties": {
+                "DateUTC": {
+                    "type": "string"
+                },
                 "date": {
                     "type": "string"
                 },

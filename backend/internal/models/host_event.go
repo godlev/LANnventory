@@ -2,6 +2,8 @@ package models
 
 import "time"
 
+const hostEventDateLayout = "2006-01-02 15:04:05"
+
 // HostEventType is a validated machine-readable activity event type.
 type HostEventType string
 
@@ -46,6 +48,7 @@ type HostEvent struct {
 	Name       string `gorm:"column:NAME"`
 	EventType  string `gorm:"column:EVENT_TYPE"`
 	Date       string `gorm:"column:DATE"`
+	DateUTC    string `gorm:"-" json:"DateUTC,omitempty"`
 	IP         string `gorm:"column:IP"`
 	Iface      string `gorm:"column:IFACE"`
 	DeviceType string `gorm:"column:DEVICE_TYPE"`
@@ -81,11 +84,32 @@ func NewHostEvent(host Host, eventType HostEventType, oldValue, newValue string)
 		Mac:        host.Mac,
 		Name:       host.Name,
 		EventType:  string(eventType),
-		Date:       time.Now().Format("2006-01-02 15:04:05"),
+		Date:       time.Now().Format(hostEventDateLayout),
 		IP:         host.IP,
 		Iface:      host.Iface,
 		DeviceType: host.DeviceType,
 		OldValue:   oldValue,
 		NewValue:   newValue,
 	}
+}
+
+// AddHostEventDisplayTimes adds a non-persistent UTC timestamp for display.
+func AddHostEventDisplayTimes(events []HostEvent, location *time.Location) {
+	for i := range events {
+		events[i].DateUTC = HostEventDateUTC(events[i].Date, location)
+	}
+}
+
+// HostEventDateUTC interprets a stored event date in the server timezone and returns UTC RFC3339.
+func HostEventDateUTC(date string, location *time.Location) string {
+	if location == nil {
+		location = time.Local
+	}
+
+	parsed, err := time.ParseInLocation(hostEventDateLayout, date, location)
+	if err != nil {
+		return ""
+	}
+
+	return parsed.UTC().Format(time.RFC3339)
 }

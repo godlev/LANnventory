@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/godlev/LANnventory/internal/gdb"
 	"github.com/godlev/LANnventory/internal/models"
@@ -590,6 +591,83 @@ func TestActivityEndpointNewestFirstByDateAndID(t *testing.T) {
 	}
 }
 
+func TestActivityEndpointAddsUTCDisplayDateWithoutChangingCursorDate(t *testing.T) {
+	router := setupTestRouter(t)
+	withTestLocalTime(t, time.UTC)
+	host := seedHost(t, models.Host{Name: "UTC server", Mac: "AA:BB:CC:DD:EE:01"})
+
+	seedActivityEvent(t, host, models.EventOnline, "2026-09-03 18:18:43")
+
+	rec := getPath(router, "/api/activity")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	events := decodeActivityEvents(t, rec)
+	if len(events) != 1 {
+		t.Fatalf("events len = %d, want 1: %+v", len(events), events)
+	}
+	if events[0].Date != "2026-09-03 18:18:43" {
+		t.Fatalf("Date = %q, want unchanged cursor Date", events[0].Date)
+	}
+	if events[0].DateUTC != "2026-09-03T18:18:43Z" {
+		t.Fatalf("DateUTC = %q, want UTC display timestamp", events[0].DateUTC)
+	}
+
+	stored, ok := gdb.SelectEventsFiltered(gdb.EventQuery{Limit: 1})
+	if !ok {
+		t.Fatal("SelectEventsFiltered failed")
+	}
+	if len(stored) != 1 || stored[0].Date != "2026-09-03 18:18:43" || stored[0].DateUTC != "" {
+		t.Fatalf("stored event = %+v, want unmodified Date and no transient DateUTC", stored)
+	}
+}
+
+func TestActivityEndpointDateUTCUsesNonUTCServerTimezone(t *testing.T) {
+	router := setupTestRouter(t)
+	withTestLocalTime(t, time.FixedZone("Europe/Sofia", 3*60*60))
+	host := seedHost(t, models.Host{Name: "Sofia server", Mac: "AA:BB:CC:DD:EE:02"})
+
+	seedActivityEvent(t, host, models.EventOnline, "2026-09-03 21:18:43")
+
+	rec := getPath(router, "/api/activity")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	events := decodeActivityEvents(t, rec)
+	if len(events) != 1 {
+		t.Fatalf("events len = %d, want 1: %+v", len(events), events)
+	}
+	if events[0].Date != "2026-09-03 21:18:43" {
+		t.Fatalf("Date = %q, want unchanged server-local Date", events[0].Date)
+	}
+	if events[0].DateUTC != "2026-09-03T18:18:43Z" {
+		t.Fatalf("DateUTC = %q, want UTC display timestamp", events[0].DateUTC)
+	}
+}
+
+func TestHostActivityEndpointAddsUTCDisplayDate(t *testing.T) {
+	router := setupTestRouter(t)
+	withTestLocalTime(t, time.UTC)
+	host := seedHost(t, models.Host{Name: "Host detail", Mac: "AA:BB:CC:DD:EE:03"})
+
+	seedActivityEvent(t, host, models.EventOffline, "2026-09-03 18:18:43")
+
+	rec := getPath(router, "/api/host/"+itoa(host.ID)+"/activity")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	events := decodeActivityEvents(t, rec)
+	if len(events) != 1 {
+		t.Fatalf("events len = %d, want 1: %+v", len(events), events)
+	}
+	if events[0].DateUTC != "2026-09-03T18:18:43Z" {
+		t.Fatalf("DateUTC = %q, want UTC display timestamp", events[0].DateUTC)
+	}
+}
+
 func TestActivityEndpointFiltersByMacAndHostID(t *testing.T) {
 	router := setupTestRouter(t)
 	routerHost := seedHost(t, models.Host{Name: "router", Mac: "AA:BB:CC:DD:EE:01"})
@@ -853,4 +931,14 @@ func assertNoActivityEventIDOverlap(t *testing.T, left []models.HostEvent, right
 			t.Fatalf("event ID %d appeared in both pages; left=%+v right=%+v", event.ID, left, right)
 		}
 	}
+}
+
+func withTestLocalTime(t *testing.T, location *time.Location) {
+	t.Helper()
+
+	previous := time.Local
+	time.Local = location
+	t.Cleanup(func() {
+		time.Local = previous
+	})
 }

@@ -371,14 +371,21 @@ function formatDate(date) {
   return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
 }
 
+function formatDateUTC(date) {
+  return date.toISOString().replace(/\.\d{3}Z$/, 'Z');
+}
+
 function addActivity(hostEntry, eventType, options = {}) {
+  const eventDate = options.date ?? new Date();
+
   activityEvents.push({
     ID: nextActivityId,
     HostID: hostEntry.ID,
     Mac: hostEntry.Mac,
     Name: hostEntry.Name,
     EventType: eventType,
-    Date: formatDate(options.date ?? new Date()),
+    Date: formatDate(eventDate),
+    DateUTC: formatDateUTC(eventDate),
     IP: hostEntry.IP ?? '',
     Iface: hostEntry.Iface ?? '',
     DeviceType: hostEntry.DeviceType ?? '',

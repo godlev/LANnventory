@@ -55,7 +55,7 @@ function ActivityFeed(props: ActivityFeedProps) {
               <span class="activity-description">{activityDescription(event)}</span>
             </span>
             <time class="activity-time" dateTime={event.Date} title={event.Date}>
-              {relativeActivityTime(event.Date)}
+              {relativeActivityTime(event)}
             </time>
           </div>
         }</For>

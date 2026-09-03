@@ -129,13 +129,13 @@ export function activityDayLabel(value: string): string {
   });
 }
 
-export function relativeActivityTime(value: string): string {
-  const date = parseActivityDate(value);
+export function relativeActivityTime(value: HostEvent | string, nowMs = Date.now()): string {
+  const date = typeof value === "string" ? parseActivityDate(value) : parseActivityDisplayDate(value);
   if (date === null) {
     return "";
   }
 
-  const seconds = Math.max(0, Math.floor((Date.now() - date.getTime()) / 1000));
+  const seconds = Math.max(0, Math.floor((nowMs - date.getTime()) / 1000));
   if (seconds < 60) {
     return "now";
   }
@@ -180,4 +180,47 @@ function parseActivityDate(value: string): Date | null {
     Number(minute),
     Number(second),
   );
+}
+
+function parseActivityDisplayDate(event: HostEvent): Date | null {
+  const dateUTC = event.DateUTC?.trim();
+  if (dateUTC) {
+    const parsed = parseActivityDateUTC(dateUTC);
+    if (parsed !== null) {
+      return parsed;
+    }
+  }
+
+  return parseActivityDate(event.Date);
+}
+
+function parseActivityDateUTC(value: string): Date | null {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})Z$/);
+  if (!match) {
+    return null;
+  }
+
+  const [, year, month, day, hour, minute, second] = match;
+  const timestamp = Date.UTC(
+    Number(year),
+    Number(month) - 1,
+    Number(day),
+    Number(hour),
+    Number(minute),
+    Number(second),
+  );
+  const date = new Date(timestamp);
+
+  if (
+    date.getUTCFullYear() !== Number(year)
+    || date.getUTCMonth() !== Number(month) - 1
+    || date.getUTCDate() !== Number(day)
+    || date.getUTCHours() !== Number(hour)
+    || date.getUTCMinutes() !== Number(minute)
+    || date.getUTCSeconds() !== Number(second)
+  ) {
+    return null;
+  }
+
+  return date;
 }

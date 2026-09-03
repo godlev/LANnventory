@@ -22,6 +22,7 @@ export interface HostEvent {
 	Name:       string;
 	EventType:  string;
 	Date:       string;
+	DateUTC?:   string;
 	IP:         string;
 	Iface:      string;
 	DeviceType: string;

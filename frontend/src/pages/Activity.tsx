@@ -1205,7 +1205,7 @@ function eventRow(event: HostEvent, hostExists: (event: HostEvent) => boolean, d
           </span>
           <span class="activity-mobile-description">{activityDescription(event)}</span>
           <time class="activity-mobile-time activity-time" dateTime={event.Date} title={event.Date}>
-            {relativeActivityTime(event.Date)}
+            {relativeActivityTime(event)}
           </time>
           <button
             type="button"
@@ -1224,7 +1224,7 @@ function eventRow(event: HostEvent, hostExists: (event: HostEvent) => boolean, d
       </td>
       <td data-label="Time" class="activity-table-time-cell">
         <time class="activity-time" dateTime={event.Date} title={event.Date}>
-          {relativeActivityTime(event.Date)}
+          {relativeActivityTime(event)}
         </time>
       </td>
       <td data-label="Device" class="activity-table-device-cell">

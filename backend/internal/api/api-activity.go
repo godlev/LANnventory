@@ -101,6 +101,7 @@ func getActivity(c *gin.Context) {
 		return
 	}
 
+	models.AddHostEventDisplayTimes(events, time.Local)
 	c.IndentedJSON(http.StatusOK, events)
 }
 
@@ -172,6 +173,7 @@ func getHostActivity(c *gin.Context) {
 		return
 	}
 
+	models.AddHostEventDisplayTimes(events, time.Local)
 	c.IndentedJSON(http.StatusOK, events)
 }
 

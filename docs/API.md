@@ -40,6 +40,8 @@ Supported query parameters:
 - `eventType`: optional repeatable filter. Supported values are `discovered`, `online`, `offline`, `known`, `unknown`, and `device-type-changed`.
 - `mac`: optional repeatable MAC address filter.
 
+Each event keeps `Date` as the persisted server-local timestamp used for ordering and cursor pagination. Newer API responses also include `DateUTC`, a non-persistent UTC RFC3339 timestamp derived from `Date` using the server timezone for timezone-safe UI display.
+
 Cursor pagination requires both `beforeDate` and `beforeId`. A nonzero `offset` cannot be combined with a cursor; `offset=0` with a cursor is accepted. The response is always an array of events, not a cursor wrapper.
 
 ```http
