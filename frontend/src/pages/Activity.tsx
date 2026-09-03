@@ -269,8 +269,11 @@ function Activity() {
     const eventTypes = selectedEventTypes();
     const deviceMode = deviceSelectionMode();
     const macs = deviceRequestMacs();
-    const currentEvents = events();
-    const lastEvent = reset ? undefined : currentEvents[currentEvents.length - 1];
+    let lastEvent: HostEvent | undefined;
+    if (!reset) {
+      const currentEvents = events();
+      lastEvent = currentEvents[currentEvents.length - 1];
+    }
 
     setError("");
     if (reset) {
