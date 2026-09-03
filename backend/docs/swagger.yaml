@@ -1,5 +1,56 @@
 basePath: /api/
 definitions:
+  api.colorRequest:
+    properties:
+      color:
+        type: string
+    type: object
+  api.retentionRequest:
+    properties:
+      connectivityRetention:
+        type: integer
+      presenceRetention:
+        type: integer
+    type: object
+  models.ActivityDeviceOption:
+    properties:
+      deviceType:
+        type: string
+      exists:
+        type: boolean
+      hostID:
+        type: integer
+      ip:
+        type: string
+      mac:
+        type: string
+      name:
+        type: string
+    type: object
+  models.ActivityStats:
+    properties:
+      deviceTypeChanged:
+        format: int64
+        type: integer
+      discovered:
+        format: int64
+        type: integer
+      known:
+        format: int64
+        type: integer
+      offline:
+        format: int64
+        type: integer
+      online:
+        format: int64
+        type: integer
+      total:
+        format: int64
+        type: integer
+      unknown:
+        format: int64
+        type: integer
+    type: object
   models.Conf:
     properties:
       arpArgs:
@@ -12,6 +63,8 @@ definitions:
         type: string
       confPath:
         type: string
+      connectivityRetention:
+        type: integer
       dbpath:
         type: string
       dirPath:
@@ -62,6 +115,8 @@ definitions:
     properties:
       date:
         type: string
+      deviceType:
+        type: string
       dns:
         type: string
       hw:
@@ -80,6 +135,31 @@ definitions:
         type: string
       now:
         type: integer
+    type: object
+  models.HostEvent:
+    properties:
+      date:
+        type: string
+      deviceType:
+        type: string
+      eventType:
+        type: string
+      hostID:
+        type: integer
+      id:
+        type: integer
+      iface:
+        type: string
+      ip:
+        type: string
+      mac:
+        type: string
+      name:
+        type: string
+      newValue:
+        type: string
+      oldValue:
+        type: string
     type: object
   models.Stat:
     properties:
@@ -102,8 +182,130 @@ info:
     name: MIT
     url: https://opensource.org/licenses/MIT
   title: LANnventory API
-version: "0.1.0-beta.1"
+  version: 0.1.0-beta.1
 paths:
+  /activity:
+    get:
+      description: |-
+        Retrieve recent host activity events ordered by Date descending, then ID descending.
+        First page requests omit beforeDate and beforeId. To request the next page, send the Date and ID from the final event returned by the previous page as beforeDate and beforeId.
+        Cursor pagination requires both beforeDate and beforeId. beforeDate must use YYYY-MM-DD HH:mm:ss, beforeId must be greater than 0, and nonzero legacy offset cannot be combined with a cursor. offset=0 with a cursor is accepted.
+        Legacy offset pagination remains supported when beforeDate and beforeId are omitted.
+      parameters:
+      - description: Event limit from 1 to 100. Defaults to 20.
+        in: query
+        maximum: 100
+        minimum: 1
+        name: limit
+        type: integer
+      - description: Legacy event offset, 0 or greater. Used only when beforeDate
+          and beforeId are omitted.
+        in: query
+        minimum: 0
+        name: offset
+        type: integer
+      - description: Cursor event date in YYYY-MM-DD HH:mm:ss format. Requires beforeId.
+        in: query
+        name: beforeDate
+        type: string
+      - description: Cursor event ID, greater than 0. Requires beforeDate.
+        in: query
+        minimum: 1
+        name: beforeId
+        type: integer
+      - description: Event category
+        enum:
+        - all
+        - connectivity
+        - changes
+        in: query
+        name: category
+        type: string
+      - description: Repeatable event type filter
+        enum:
+        - discovered
+        - online
+        - offline
+        - known
+        - unknown
+        - device-type-changed
+        in: query
+        name: eventType
+        type: string
+      - description: Repeatable MAC address filter
+        in: query
+        name: mac
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.HostEvent'
+            type: array
+        "400":
+          description: Invalid query or cursor parameters
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Database query failure
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get recent activity
+      tags:
+      - activity
+  /activity/devices:
+    get:
+      description: Retrieve devices represented in current hosts and retained activity
+        events
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.ActivityDeviceOption'
+            type: array
+        "500":
+          description: Database query failure
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get activity device filter options
+      tags:
+      - activity
+  /activity/stats:
+    get:
+      description: Retrieve faceted retained activity event counts
+      parameters:
+      - description: Repeatable MAC address filter
+        in: query
+        name: mac
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ActivityStats'
+        "500":
+          description: Database query failure
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get activity event stats
+      tags:
+      - activity
   /all:
     get:
       description: Retrieve all hosts from the database
@@ -132,6 +334,291 @@ paths:
       summary: Get application configuration
       tags:
       - system
+  /config/:
+    post:
+      consumes:
+      - application/x-www-form-urlencoded
+      description: Update general UI and server configuration from a form submission.
+      parameters:
+      - description: Bind host
+        in: formData
+        name: host
+        type: string
+      - description: Bind port
+        in: formData
+        name: port
+        type: string
+      - description: Theme name
+        in: formData
+        name: theme
+        type: string
+      - description: Color mode
+        enum:
+        - dark
+        - light
+        in: formData
+        name: color
+        type: string
+      - description: Legacy local node-bootstrap URL
+        in: formData
+        name: node
+        type: string
+      - description: Notification URL. Leave blank to keep configured secret.
+        in: formData
+        name: shout
+        type: string
+      - description: Truthy value clears the stored notification URL
+        in: formData
+        name: clear_shout
+        type: string
+      produces:
+      - application/json
+      responses:
+        "302":
+          description: Redirect to referrer
+          schema:
+            type: string
+        "500":
+          description: Failed to write config
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Save general configuration
+      tags:
+      - configuration
+  /config/color:
+    post:
+      consumes:
+      - application/json
+      description: Update the UI color mode. JSON is the documented API request format;
+        form data is also accepted for UI compatibility.
+      parameters:
+      - description: Color payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.colorRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Conf'
+        "400":
+          description: Invalid color
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Failed to write config
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Save color mode
+      tags:
+      - configuration
+  /config/retention:
+    post:
+      consumes:
+      - application/json
+      description: Update presence and connectivity event retention windows. JSON
+        is the documented API request format; form data is also accepted for UI compatibility.
+      parameters:
+      - description: Retention payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.retentionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Conf'
+        "400":
+          description: Invalid retention value
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Failed to write config
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Save retention settings
+      tags:
+      - configuration
+  /config_influx/:
+    post:
+      consumes:
+      - application/x-www-form-urlencoded
+      description: Update InfluxDB integration settings from a form submission.
+      parameters:
+      - description: Truthy value enables InfluxDB
+        in: formData
+        name: enable
+        type: string
+      - description: InfluxDB address
+        in: formData
+        name: addr
+        type: string
+      - description: InfluxDB token. Leave blank to keep configured secret.
+        in: formData
+        name: token
+        type: string
+      - description: Truthy value clears the stored InfluxDB token
+        in: formData
+        name: clear_influx_token
+        type: string
+      - description: InfluxDB organization
+        in: formData
+        name: org
+        type: string
+      - description: InfluxDB bucket
+        in: formData
+        name: bucket
+        type: string
+      - description: Truthy value skips TLS verification
+        in: formData
+        name: skip
+        type: string
+      produces:
+      - application/json
+      responses:
+        "302":
+          description: Redirect to referrer
+          schema:
+            type: string
+        "500":
+          description: Failed to write config
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Save InfluxDB configuration
+      tags:
+      - configuration
+  /config_prometheus/:
+    post:
+      consumes:
+      - application/x-www-form-urlencoded
+      description: Update Prometheus integration settings from a form submission.
+      parameters:
+      - description: Truthy value enables Prometheus metrics
+        in: formData
+        name: enable
+        type: string
+      produces:
+      - application/json
+      responses:
+        "302":
+          description: Redirect to referrer
+          schema:
+            type: string
+        "500":
+          description: Failed to write config
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Save Prometheus configuration
+      tags:
+      - configuration
+  /config_settings/:
+    post:
+      consumes:
+      - application/x-www-form-urlencoded
+      description: Update scan and database settings from a form submission, then
+        restart scanning.
+      parameters:
+      - description: Log level
+        enum:
+        - debug
+        - info
+        - warn
+        - error
+        in: formData
+        name: log
+        required: true
+        type: string
+      - description: arp-scan arguments
+        in: formData
+        name: arpargs
+        type: string
+      - description: Interfaces to scan
+        in: formData
+        name: ifaces
+        type: string
+      - description: Database backend
+        enum:
+        - sqlite
+        - postgres
+        in: formData
+        name: usedb
+        required: true
+        type: string
+      - description: PostgreSQL connection URL. Leave blank to keep configured secret.
+        in: formData
+        name: pgconnect
+        type: string
+      - description: Truthy value clears the stored PostgreSQL connection URL
+        in: formData
+        name: clear_pgconnect
+        type: string
+      - description: Scan interval in seconds
+        in: formData
+        minimum: 1
+        name: timeout
+        required: true
+        type: integer
+      - description: Presence history retention in hours
+        in: formData
+        minimum: 1
+        name: trim
+        type: integer
+      - description: Connectivity event retention in hours
+        in: formData
+        minimum: 1
+        name: connectivity_retention
+        type: integer
+      - collectionFormat: multi
+        description: Repeatable static ARP result strings
+        in: formData
+        items:
+          type: string
+        name: arpstrs
+        type: array
+      produces:
+      - application/json
+      responses:
+        "302":
+          description: Redirect to referrer
+          schema:
+            type: string
+        "400":
+          description: Invalid settings
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Failed to reconnect database or write config
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Save scan and database settings
+      tags:
+      - configuration
   /edit/{id}/{name}/{known}:
     get:
       description: Update a host's name and optionally toggle its "known" status
@@ -160,6 +647,19 @@ paths:
       summary: Edit host
       tags:
       - hosts
+  /health:
+    get:
+      description: Returns OK without triggering scans or mutations
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Health check
+      tags:
+      - system
   /history:
     get:
       description: Retrieve the complete history of all hosts. Not recommended, the
@@ -252,6 +752,72 @@ paths:
           schema:
             $ref: '#/definitions/models.Host'
       summary: Get host by ID
+      tags:
+      - hosts
+  /host/{id}/activity:
+    get:
+      description: Retrieve recent host activity events for a host ID
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Event limit from 1 to 100. Defaults to 20.
+        in: query
+        maximum: 100
+        minimum: 1
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.HostEvent'
+            type: array
+        "400":
+          description: Invalid host ID or limit
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Database query failure
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get recent activity for one host
+      tags:
+      - activity
+  /host/{id}/type:
+    patch:
+      consumes:
+      - application/json
+      description: Update only a host's manually assigned device type
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Device type payload
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Host'
+      summary: Set host device type
       tags:
       - hosts
   /host/add/{mac}:

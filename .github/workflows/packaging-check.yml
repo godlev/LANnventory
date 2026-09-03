@@ -44,6 +44,12 @@ jobs:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
 
+      - name: Verify Swagger docs are current
+        working-directory: backend
+        run: |
+          go run github.com/swaggo/swag/cmd/swag@v1.16.6 init -g main.go --dir cmd/LANnventory,internal/api,internal/models
+          git diff --exit-code docs
+
       - name: Test backend
         working-directory: backend
         run: go test ./...

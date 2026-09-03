@@ -14,6 +14,177 @@
     },
     "basePath": "/api/",
     "paths": {
+        "/activity": {
+            "get": {
+                "description": "Retrieve recent host activity events ordered by Date descending, then ID descending.\nFirst page requests omit beforeDate and beforeId. To request the next page, send the Date and ID from the final event returned by the previous page as beforeDate and beforeId.\nCursor pagination requires both beforeDate and beforeId. beforeDate must use YYYY-MM-DD HH:mm:ss, beforeId must be greater than 0, and nonzero legacy offset cannot be combined with a cursor. offset=0 with a cursor is accepted.\nLegacy offset pagination remains supported when beforeDate and beforeId are omitted.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "activity"
+                ],
+                "summary": "Get recent activity",
+                "parameters": [
+                    {
+                        "maximum": 100,
+                        "minimum": 1,
+                        "type": "integer",
+                        "description": "Event limit from 1 to 100. Defaults to 20.",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "minimum": 0,
+                        "type": "integer",
+                        "description": "Legacy event offset, 0 or greater. Used only when beforeDate and beforeId are omitted.",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Cursor event date in YYYY-MM-DD HH:mm:ss format. Requires beforeId.",
+                        "name": "beforeDate",
+                        "in": "query"
+                    },
+                    {
+                        "minimum": 1,
+                        "type": "integer",
+                        "description": "Cursor event ID, greater than 0. Requires beforeDate.",
+                        "name": "beforeId",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "all",
+                            "connectivity",
+                            "changes"
+                        ],
+                        "type": "string",
+                        "description": "Event category",
+                        "name": "category",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "discovered",
+                            "online",
+                            "offline",
+                            "known",
+                            "unknown",
+                            "device-type-changed"
+                        ],
+                        "type": "string",
+                        "description": "Repeatable event type filter",
+                        "name": "eventType",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Repeatable MAC address filter",
+                        "name": "mac",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.HostEvent"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid query or cursor parameters",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Database query failure",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/activity/devices": {
+            "get": {
+                "description": "Retrieve devices represented in current hosts and retained activity events",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "activity"
+                ],
+                "summary": "Get activity device filter options",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.ActivityDeviceOption"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Database query failure",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/activity/stats": {
+            "get": {
+                "description": "Retrieve faceted retained activity event counts",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "activity"
+                ],
+                "summary": "Get activity event stats",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Repeatable MAC address filter",
+                        "name": "mac",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.ActivityStats"
+                        }
+                    },
+                    "500": {
+                        "description": "Database query failure",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/all": {
             "get": {
                 "description": "Retrieve all hosts from the database",
@@ -57,6 +228,429 @@
                 }
             }
         },
+        "/config/": {
+            "post": {
+                "description": "Update general UI and server configuration from a form submission.",
+                "consumes": [
+                    "application/x-www-form-urlencoded"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "configuration"
+                ],
+                "summary": "Save general configuration",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bind host",
+                        "name": "host",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Bind port",
+                        "name": "port",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Theme name",
+                        "name": "theme",
+                        "in": "formData"
+                    },
+                    {
+                        "enum": [
+                            "dark",
+                            "light"
+                        ],
+                        "type": "string",
+                        "description": "Color mode",
+                        "name": "color",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Legacy local node-bootstrap URL",
+                        "name": "node",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Notification URL. Leave blank to keep configured secret.",
+                        "name": "shout",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Truthy value clears the stored notification URL",
+                        "name": "clear_shout",
+                        "in": "formData"
+                    }
+                ],
+                "responses": {
+                    "302": {
+                        "description": "Redirect to referrer",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to write config",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/config/color": {
+            "post": {
+                "description": "Update the UI color mode. JSON is the documented API request format; form data is also accepted for UI compatibility.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "configuration"
+                ],
+                "summary": "Save color mode",
+                "parameters": [
+                    {
+                        "description": "Color payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.colorRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Conf"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid color",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to write config",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/config/retention": {
+            "post": {
+                "description": "Update presence and connectivity event retention windows. JSON is the documented API request format; form data is also accepted for UI compatibility.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "configuration"
+                ],
+                "summary": "Save retention settings",
+                "parameters": [
+                    {
+                        "description": "Retention payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.retentionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Conf"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid retention value",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to write config",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/config_influx/": {
+            "post": {
+                "description": "Update InfluxDB integration settings from a form submission.",
+                "consumes": [
+                    "application/x-www-form-urlencoded"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "configuration"
+                ],
+                "summary": "Save InfluxDB configuration",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Truthy value enables InfluxDB",
+                        "name": "enable",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "InfluxDB address",
+                        "name": "addr",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "InfluxDB token. Leave blank to keep configured secret.",
+                        "name": "token",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Truthy value clears the stored InfluxDB token",
+                        "name": "clear_influx_token",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "InfluxDB organization",
+                        "name": "org",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "InfluxDB bucket",
+                        "name": "bucket",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Truthy value skips TLS verification",
+                        "name": "skip",
+                        "in": "formData"
+                    }
+                ],
+                "responses": {
+                    "302": {
+                        "description": "Redirect to referrer",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to write config",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/config_prometheus/": {
+            "post": {
+                "description": "Update Prometheus integration settings from a form submission.",
+                "consumes": [
+                    "application/x-www-form-urlencoded"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "configuration"
+                ],
+                "summary": "Save Prometheus configuration",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Truthy value enables Prometheus metrics",
+                        "name": "enable",
+                        "in": "formData"
+                    }
+                ],
+                "responses": {
+                    "302": {
+                        "description": "Redirect to referrer",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to write config",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/config_settings/": {
+            "post": {
+                "description": "Update scan and database settings from a form submission, then restart scanning.",
+                "consumes": [
+                    "application/x-www-form-urlencoded"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "configuration"
+                ],
+                "summary": "Save scan and database settings",
+                "parameters": [
+                    {
+                        "enum": [
+                            "debug",
+                            "info",
+                            "warn",
+                            "error"
+                        ],
+                        "type": "string",
+                        "description": "Log level",
+                        "name": "log",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "arp-scan arguments",
+                        "name": "arpargs",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Interfaces to scan",
+                        "name": "ifaces",
+                        "in": "formData"
+                    },
+                    {
+                        "enum": [
+                            "sqlite",
+                            "postgres"
+                        ],
+                        "type": "string",
+                        "description": "Database backend",
+                        "name": "usedb",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "PostgreSQL connection URL. Leave blank to keep configured secret.",
+                        "name": "pgconnect",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Truthy value clears the stored PostgreSQL connection URL",
+                        "name": "clear_pgconnect",
+                        "in": "formData"
+                    },
+                    {
+                        "minimum": 1,
+                        "type": "integer",
+                        "description": "Scan interval in seconds",
+                        "name": "timeout",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "minimum": 1,
+                        "type": "integer",
+                        "description": "Presence history retention in hours",
+                        "name": "trim",
+                        "in": "formData"
+                    },
+                    {
+                        "minimum": 1,
+                        "type": "integer",
+                        "description": "Connectivity event retention in hours",
+                        "name": "connectivity_retention",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Repeatable static ARP result strings",
+                        "name": "arpstrs",
+                        "in": "formData"
+                    }
+                ],
+                "responses": {
+                    "302": {
+                        "description": "Redirect to referrer",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid settings",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to reconnect database or write config",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/edit/{id}/{name}/{known}": {
             "get": {
                 "description": "Update a host's name and optionally toggle its \"known\" status",
@@ -89,6 +683,26 @@
                         "in": "path"
                     }
                 ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "description": "Returns OK without triggering scans or mutations",
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "system"
+                ],
+                "summary": "Health check",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -305,6 +919,105 @@
                 }
             }
         },
+        "/host/{id}/activity": {
+            "get": {
+                "description": "Retrieve recent host activity events for a host ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "activity"
+                ],
+                "summary": "Get recent activity for one host",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "maximum": 100,
+                        "minimum": 1,
+                        "type": "integer",
+                        "description": "Event limit from 1 to 100. Defaults to 20.",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.HostEvent"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid host ID or limit",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Database query failure",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/host/{id}/type": {
+            "patch": {
+                "description": "Update only a host's manually assigned device type",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Set host device type",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Device type payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Host"
+                        }
+                    }
+                }
+            }
+        },
         "/notify_test": {
             "get": {
                 "description": "Trigger a test notification to verify notification settings",
@@ -460,6 +1173,81 @@
         }
     },
     "definitions": {
+        "api.colorRequest": {
+            "type": "object",
+            "properties": {
+                "color": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.retentionRequest": {
+            "type": "object",
+            "properties": {
+                "connectivityRetention": {
+                    "type": "integer"
+                },
+                "presenceRetention": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.ActivityDeviceOption": {
+            "type": "object",
+            "properties": {
+                "deviceType": {
+                    "type": "string"
+                },
+                "exists": {
+                    "type": "boolean"
+                },
+                "hostID": {
+                    "type": "integer"
+                },
+                "ip": {
+                    "type": "string"
+                },
+                "mac": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.ActivityStats": {
+            "type": "object",
+            "properties": {
+                "deviceTypeChanged": {
+                    "type": "integer",
+                    "format": "int64"
+                },
+                "discovered": {
+                    "type": "integer",
+                    "format": "int64"
+                },
+                "known": {
+                    "type": "integer",
+                    "format": "int64"
+                },
+                "offline": {
+                    "type": "integer",
+                    "format": "int64"
+                },
+                "online": {
+                    "type": "integer",
+                    "format": "int64"
+                },
+                "total": {
+                    "type": "integer",
+                    "format": "int64"
+                },
+                "unknown": {
+                    "type": "integer",
+                    "format": "int64"
+                }
+            }
+        },
         "models.Conf": {
             "type": "object",
             "properties": {
@@ -477,6 +1265,9 @@
                 },
                 "confPath": {
                     "type": "string"
+                },
+                "connectivityRetention": {
+                    "type": "integer"
                 },
                 "dbpath": {
                     "type": "string"
@@ -552,6 +1343,9 @@
                 "date": {
                     "type": "string"
                 },
+                "deviceType": {
+                    "type": "string"
+                },
                 "dns": {
                     "type": "string"
                 },
@@ -578,6 +1372,44 @@
                 },
                 "now": {
                     "type": "integer"
+                }
+            }
+        },
+        "models.HostEvent": {
+            "type": "object",
+            "properties": {
+                "date": {
+                    "type": "string"
+                },
+                "deviceType": {
+                    "type": "string"
+                },
+                "eventType": {
+                    "type": "string"
+                },
+                "hostID": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "iface": {
+                    "type": "string"
+                },
+                "ip": {
+                    "type": "string"
+                },
+                "mac": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "newValue": {
+                    "type": "string"
+                },
+                "oldValue": {
+                    "type": "string"
                 }
             }
         },

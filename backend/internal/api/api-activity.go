@@ -34,17 +34,22 @@ var (
 
 // getActivity godoc
 // @Summary      Get recent activity
-// @Description  Retrieve recent host activity events
+// @Description  Retrieve recent host activity events ordered by Date descending, then ID descending.
+// @Description  First page requests omit beforeDate and beforeId. To request the next page, send the Date and ID from the final event returned by the previous page as beforeDate and beforeId.
+// @Description  Cursor pagination requires both beforeDate and beforeId. beforeDate must use YYYY-MM-DD HH:mm:ss, beforeId must be greater than 0, and nonzero legacy offset cannot be combined with a cursor. offset=0 with a cursor is accepted.
+// @Description  Legacy offset pagination remains supported when beforeDate and beforeId are omitted.
 // @Tags         activity
 // @Produce      json
-// @Param        limit     query     int     false  "Event limit from 1 to 100"
-// @Param        offset    query     int     false  "Event offset, 0 or greater"
-// @Param        beforeDate query    string  false  "Cursor event date in 2006-01-02 15:04:05 format"
-// @Param        beforeId   query    int     false  "Cursor event ID, greater than 0"
-// @Param        category  query     string  false  "Event category: all, connectivity, changes"
-// @Param        eventType query     string  false  "Repeatable event type filter"
-// @Param        mac       query     string  false  "Filter by MAC address"
-// @Success      200       {array}   models.HostEvent
+// @Param        limit      query     int     false  "Event limit from 1 to 100. Defaults to 20." minimum(1) maximum(100)
+// @Param        offset     query     int     false  "Legacy event offset, 0 or greater. Used only when beforeDate and beforeId are omitted." minimum(0)
+// @Param        beforeDate query     string  false  "Cursor event date in YYYY-MM-DD HH:mm:ss format. Requires beforeId."
+// @Param        beforeId   query     int     false  "Cursor event ID, greater than 0. Requires beforeDate." minimum(1)
+// @Param        category   query     string  false  "Event category" Enums(all, connectivity, changes)
+// @Param        eventType  query     string  false  "Repeatable event type filter" Enums(discovered, online, offline, known, unknown, device-type-changed)
+// @Param        mac        query     string  false  "Repeatable MAC address filter"
+// @Success      200        {array}   models.HostEvent
+// @Failure      400        {object}  map[string]string  "Invalid query or cursor parameters"
+// @Failure      500        {object}  map[string]string  "Database query failure"
 // @Router       /activity [get]
 func getActivity(c *gin.Context) {
 	limit, err := parseActivityLimit(c)
@@ -106,6 +111,7 @@ func getActivity(c *gin.Context) {
 // @Produce      json
 // @Param        mac  query     string  false  "Repeatable MAC address filter"
 // @Success      200  {object}  models.ActivityStats
+// @Failure      500  {object}  map[string]string  "Database query failure"
 // @Router       /activity/stats [get]
 func getActivityStats(c *gin.Context) {
 	stats, ok := gdb.SelectEventStats(parseActivityMacs(c))
@@ -123,6 +129,7 @@ func getActivityStats(c *gin.Context) {
 // @Tags         activity
 // @Produce      json
 // @Success      200  {array}  models.ActivityDeviceOption
+// @Failure      500  {object} map[string]string  "Database query failure"
 // @Router       /activity/devices [get]
 func getActivityDevices(c *gin.Context) {
 	devices, ok := gdb.SelectActivityDeviceOptions()
@@ -140,8 +147,10 @@ func getActivityDevices(c *gin.Context) {
 // @Tags         activity
 // @Produce      json
 // @Param        id     path      string  true   "Host ID"
-// @Param        limit  query     int     false  "Event limit from 1 to 100"
+// @Param        limit  query     int     false  "Event limit from 1 to 100. Defaults to 20." minimum(1) maximum(100)
 // @Success      200    {array}   models.HostEvent
+// @Failure      400    {object}  map[string]string  "Invalid host ID or limit"
+// @Failure      500    {object}  map[string]string  "Database query failure"
 // @Router       /host/{id}/activity [get]
 func getHostActivity(c *gin.Context) {
 	idStr := c.Param("id")

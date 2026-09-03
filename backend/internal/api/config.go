@@ -27,6 +27,22 @@ type retentionRequest struct {
 	ConnectivityRetention int `form:"connectivityRetention" json:"connectivityRetention"`
 }
 
+// saveConfigHandler godoc
+// @Summary      Save general configuration
+// @Description  Update general UI and server configuration from a form submission.
+// @Tags         configuration
+// @Accept       x-www-form-urlencoded
+// @Produce      json
+// @Param        host         formData  string  false  "Bind host"
+// @Param        port         formData  string  false  "Bind port"
+// @Param        theme        formData  string  false  "Theme name"
+// @Param        color        formData  string  false  "Color mode" Enums(dark, light)
+// @Param        node         formData  string  false  "Legacy local node-bootstrap URL"
+// @Param        shout        formData  string  false  "Notification URL. Leave blank to keep configured secret."
+// @Param        clear_shout  formData  string  false  "Truthy value clears the stored notification URL"
+// @Success      302          {string}  string  "Redirect to referrer"
+// @Failure      500          {object}  map[string]string  "Failed to write config"
+// @Router       /config/ [post]
 func saveConfigHandler(c *gin.Context) {
 
 	_, err := conf.UpdateAppConfig(func(nextConfig *models.Conf) error {
@@ -46,6 +62,17 @@ func saveConfigHandler(c *gin.Context) {
 	c.Redirect(http.StatusFound, c.Request.Referer())
 }
 
+// saveColorHandler godoc
+// @Summary      Save color mode
+// @Description  Update the UI color mode. JSON is the documented API request format; form data is also accepted for UI compatibility.
+// @Tags         configuration
+// @Accept       json
+// @Produce      json
+// @Param        body  body      colorRequest  true  "Color payload"
+// @Success      200   {object}  models.Conf
+// @Failure      400   {object}  map[string]string  "Invalid color"
+// @Failure      500   {object}  map[string]string  "Failed to write config"
+// @Router       /config/color [post]
 func saveColorHandler(c *gin.Context) {
 	color := c.PostForm("color")
 
@@ -73,6 +100,17 @@ func saveColorHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, toPublicConfig(nextConfig))
 }
 
+// saveRetentionHandler godoc
+// @Summary      Save retention settings
+// @Description  Update presence and connectivity event retention windows. JSON is the documented API request format; form data is also accepted for UI compatibility.
+// @Tags         configuration
+// @Accept       json
+// @Produce      json
+// @Param        body  body      retentionRequest  true  "Retention payload"
+// @Success      200   {object}  models.Conf
+// @Failure      400   {object}  map[string]string  "Invalid retention value"
+// @Failure      500   {object}  map[string]string  "Failed to write config"
+// @Router       /config/retention [post]
 func saveRetentionHandler(c *gin.Context) {
 	var req retentionRequest
 	if err := c.ShouldBind(&req); err != nil {
@@ -102,6 +140,26 @@ func saveRetentionHandler(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, toPublicConfig(nextConfig))
 }
 
+// saveSettingsHandler godoc
+// @Summary      Save scan and database settings
+// @Description  Update scan and database settings from a form submission, then restart scanning.
+// @Tags         configuration
+// @Accept       x-www-form-urlencoded
+// @Produce      json
+// @Param        log                     formData  string    true   "Log level" Enums(debug, info, warn, error)
+// @Param        arpargs                 formData  string    false  "arp-scan arguments"
+// @Param        ifaces                  formData  string    false  "Interfaces to scan"
+// @Param        usedb                   formData  string    true   "Database backend" Enums(sqlite, postgres)
+// @Param        pgconnect               formData  string    false  "PostgreSQL connection URL. Leave blank to keep configured secret."
+// @Param        clear_pgconnect         formData  string    false  "Truthy value clears the stored PostgreSQL connection URL"
+// @Param        timeout                 formData  int       true   "Scan interval in seconds" minimum(1)
+// @Param        trim                    formData  int       false  "Presence history retention in hours" minimum(1)
+// @Param        connectivity_retention  formData  int       false  "Connectivity event retention in hours" minimum(1)
+// @Param        arpstrs                 formData  []string  false  "Repeatable static ARP result strings" collectionFormat(multi)
+// @Success      302                     {string}  string    "Redirect to referrer"
+// @Failure      400                     {object}  map[string]string  "Invalid settings"
+// @Failure      500                     {object}  map[string]string  "Failed to reconnect database or write config"
+// @Router       /config_settings/ [post]
 func saveSettingsHandler(c *gin.Context) {
 
 	currentConfig := conf.GetAppConfig()
@@ -210,6 +268,22 @@ func isValidLogLevel(value string) bool {
 	}
 }
 
+// saveInfluxHandler godoc
+// @Summary      Save InfluxDB configuration
+// @Description  Update InfluxDB integration settings from a form submission.
+// @Tags         configuration
+// @Accept       x-www-form-urlencoded
+// @Produce      json
+// @Param        enable              formData  string  false  "Truthy value enables InfluxDB"
+// @Param        addr                formData  string  false  "InfluxDB address"
+// @Param        token               formData  string  false  "InfluxDB token. Leave blank to keep configured secret."
+// @Param        clear_influx_token  formData  string  false  "Truthy value clears the stored InfluxDB token"
+// @Param        org                 formData  string  false  "InfluxDB organization"
+// @Param        bucket              formData  string  false  "InfluxDB bucket"
+// @Param        skip                formData  string  false  "Truthy value skips TLS verification"
+// @Success      302                 {string}  string  "Redirect to referrer"
+// @Failure      500                 {object}  map[string]string  "Failed to write config"
+// @Router       /config_influx/ [post]
 func saveInfluxHandler(c *gin.Context) {
 
 	enable := c.PostForm("enable")
@@ -231,6 +305,16 @@ func saveInfluxHandler(c *gin.Context) {
 	c.Redirect(http.StatusFound, c.Request.Referer())
 }
 
+// savePrometheusHandler godoc
+// @Summary      Save Prometheus configuration
+// @Description  Update Prometheus integration settings from a form submission.
+// @Tags         configuration
+// @Accept       x-www-form-urlencoded
+// @Produce      json
+// @Param        enable  formData  string  false  "Truthy value enables Prometheus metrics"
+// @Success      302     {string}  string  "Redirect to referrer"
+// @Failure      500     {object}  map[string]string  "Failed to write config"
+// @Router       /config_prometheus/ [post]
 func savePrometheusHandler(c *gin.Context) {
 	enable := c.PostForm("enable")
 

@@ -26,6 +26,37 @@ GET /api/host/:id
 ```
 Returns host with this `id` in `json`.
 
+```http
+GET /api/activity
+```
+Returns retained device events in `json`, ordered newest first by `Date` and then `ID`.
+
+Supported query parameters:
+
+- `limit`: optional page size from `1` to `100`; defaults to `20`.
+- `offset`: optional legacy offset pagination value, `0` or greater.
+- `beforeDate` and `beforeId`: optional cursor pagination pair. To request the next page, take `Date` and `ID` from the final event returned by the previous page and pass them as `beforeDate=YYYY-MM-DD HH:mm:ss&beforeId=:id`.
+- `category`: optional `all`, `connectivity`, or `changes`.
+- `eventType`: optional repeatable filter. Supported values are `discovered`, `online`, `offline`, `known`, `unknown`, and `device-type-changed`.
+- `mac`: optional repeatable MAC address filter.
+
+Cursor pagination requires both `beforeDate` and `beforeId`. A nonzero `offset` cannot be combined with a cursor; `offset=0` with a cursor is accepted. The response is always an array of events, not a cursor wrapper.
+
+```http
+GET /api/activity/stats
+```
+Returns retained activity event counts. Supports repeatable `mac` query filters.
+
+```http
+GET /api/activity/devices
+```
+Returns device options represented in current hosts and retained activity events.
+
+```http
+GET /api/host/:id/activity
+```
+Returns recent activity events for one host. Supports optional `limit` from `1` to `100`.
+
 
 ```http
 GET /api/port/:addr/:port
