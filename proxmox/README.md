@@ -42,16 +42,16 @@ The Debian package declares the LANnventory runtime dependencies, including `arp
 
 ## What The Installer Does Not Do
 
-- It does not perform a LAN scan during setup.
-- It does not execute `arp-scan`; it only verifies that `arp-scan` is available after package installation.
-- It does configure the fresh LANnventory service with `IFACES: "eth0"` before first start, so the installed service can begin its normal discovery after startup.
+- The installer script does not directly perform a LAN scan or execute `arp-scan`; it only verifies that `arp-scan` is available after package installation.
+- It writes or updates the fresh LANnventory service configuration with `IFACES: "eth0"` before the installer starts the service, then restarts `lannventory.service` so the running process has loaded that configuration.
+- After `lannventory.service` starts, LANnventory may begin its normal discovery using the configured interface.
 - It does not build LANnventory from source.
 - It does not publish or modify GitHub releases.
 - It does not delete a partially created container if installation fails.
 
 ## After Installation
 
-The installer enables and starts:
+The installer enables and restarts:
 
 ```text
 lannventory.service

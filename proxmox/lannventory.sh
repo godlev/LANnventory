@@ -58,8 +58,6 @@ show_failure_diagnostics() {
   exit "$exit_code"
 }
 
-trap show_failure_diagnostics ERR
-
 require_root() {
   [[ "${EUID}" -eq 0 ]] || die "Run this installer as root on the Proxmox VE host."
 }
@@ -138,6 +136,10 @@ read_list() {
   mapfile -t out_ref < <(eval "$command_text" | sed '/^[[:space:]]*$/d')
 }
 
+filter_valid_bridges() {
+  awk '!/^(fwbr|fwpr|fwln)/' | sort -u
+}
+
 choose_from_list() {
   local title="$1"
   local default="$2"
@@ -200,9 +202,9 @@ detect_template_storages() {
 }
 
 detect_bridges() {
-  read_list "ip -o link show type bridge | awk -F': ' '{print \$2}' | sed 's/@.*//' | awk '!/^(fwbr|fwpr|fwln)/' | sort -u" BRIDGES
+  read_list "ip -o link show type bridge | awk -F': ' '{print \$2}' | sed 's/@.*//' | filter_valid_bridges" BRIDGES
   if [[ "${#BRIDGES[@]}" -eq 0 && -f /etc/network/interfaces ]]; then
-    read_list "awk '/^iface[[:space:]]+vmbr[0-9]+/ {print \$2}' /etc/network/interfaces | awk '!/^(fwbr|fwpr|fwln)/' | sort -u" BRIDGES
+    read_list "awk '/^iface[[:space:]]+vmbr[0-9]+/ {print \$2}' /etc/network/interfaces | filter_valid_bridges" BRIDGES
   fi
   [[ "${#BRIDGES[@]}" -gt 0 ]] || die "No Linux bridge was detected. Create or select a Proxmox bridge before running this installer."
 }
@@ -224,15 +226,27 @@ validate_hostname() {
 }
 
 validate_ipv4_cidr() {
-  local value="$1"
-  [[ "$value" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}$ ]] || return 1
-  local prefix="${value##*/}"
-  (( prefix >= 0 && prefix <= 32 ))
+  local value="$1" ip prefix
+  [[ "$value" == */* ]] || return 1
+  ip="${value%/*}"
+  prefix="${value##*/}"
+  [[ "$prefix" =~ ^[0-9]{1,2}$ ]] || return 1
+  validate_ipv4 "$ip" || return 1
+  (( 10#$prefix >= 0 && 10#$prefix <= 32 ))
 }
 
 validate_ipv4() {
-  local value="$1"
-  [[ "$value" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]
+  local value="$1" part
+  local parts=()
+
+  [[ "$value" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || return 1
+  IFS='.' read -r -a parts <<< "$value"
+  [[ "${#parts[@]}" -eq 4 ]] || return 1
+
+  for part in "${parts[@]}"; do
+    [[ "$part" =~ ^[0-9]{1,3}$ ]] || return 1
+    (( 10#$part >= 0 && 10#$part <= 255 )) || return 1
+  done
 }
 
 select_debian_template() {
@@ -256,9 +270,8 @@ select_debian_template() {
   TEMPLATE_FILE="$template_path"
 }
 
-detect_arch_package_url() {
-  local arch
-  arch="$(dpkg --print-architecture 2>/dev/null || uname -m)"
+package_url_for_arch() {
+  local arch="$1"
   case "$arch" in
     amd64|x86_64)
       printf '%s/releases/download/%s/lannventory_%s_linux_amd64.deb' "$REPO_URL" "$RELEASE_TAG" "$VERSION"
@@ -267,6 +280,12 @@ detect_arch_package_url() {
       die "Unsupported host architecture '$arch'. This installer currently supports amd64 only."
       ;;
   esac
+}
+
+detect_arch_package_url() {
+  local arch
+  arch="$(dpkg --print-architecture 2>/dev/null || uname -m)"
+  package_url_for_arch "$arch"
 }
 
 configure_interactively() {
@@ -406,7 +425,32 @@ get_container_ip() {
 configure_lannventory_iface() {
   INSTALL_STAGE="LANnventory interface configuration"
   info "Configuring initial LANnventory scan interface as ${DEFAULT_NET_IFACE}"
-  run_in_ct "install -d -m 0755 /etc/watchyourlan; touch /etc/watchyourlan/config_v2.yaml; if grep -q '^IFACES:' /etc/watchyourlan/config_v2.yaml; then sed -i 's/^IFACES:.*/IFACES: \"${DEFAULT_NET_IFACE}\"/' /etc/watchyourlan/config_v2.yaml; else printf '%s\n' 'IFACES: \"${DEFAULT_NET_IFACE}\"' >> /etc/watchyourlan/config_v2.yaml; fi"
+  run_in_ct "$(cat <<CTCMD
+set -euo pipefail
+install -d -m 0755 /etc/watchyourlan
+config=/etc/watchyourlan/config_v2.yaml
+touch "\$config"
+tmp="\$(mktemp)"
+awk '
+  BEGIN { configured = 0 }
+  /^[[:space:]]*[Ii][Ff][Aa][Cc][Ee][Ss][[:space:]]*:/ {
+    if (!configured) {
+      print "IFACES: \"${DEFAULT_NET_IFACE}\""
+      configured = 1
+    }
+    next
+  }
+  { print }
+  END {
+    if (!configured) {
+      print "IFACES: \"${DEFAULT_NET_IFACE}\""
+    }
+  }
+' "\$config" > "\$tmp"
+cat "\$tmp" > "\$config"
+rm -f "\$tmp"
+CTCMD
+)"
 }
 
 install_lannventory() {
@@ -423,8 +467,8 @@ install_lannventory() {
   configure_lannventory_iface
 
   INSTALL_STAGE="service validation"
-  info "Enabling and starting lannventory.service"
-  run_in_ct "systemctl daemon-reload; systemctl enable --now lannventory"
+  info "Enabling and restarting lannventory.service"
+  run_in_ct "systemctl daemon-reload; systemctl enable lannventory; systemctl restart lannventory"
   run_in_ct "systemctl is-active --quiet lannventory"
 
   INSTALL_STAGE="health and version validation"
@@ -485,4 +529,7 @@ main() {
   print_success
 }
 
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  trap show_failure_diagnostics ERR
+  main "$@"
+fi

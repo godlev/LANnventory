@@ -38,6 +38,13 @@ jobs:
       - name: Check mock API syntax
         run: node --check frontend/dev/mock-api.mjs
 
+      - name: Check Proxmox installer syntax and helpers
+        run: |
+          if [ -f proxmox/lannventory.sh ]; then
+            bash -n proxmox/lannventory.sh
+            bash proxmox/lannventory_test.sh
+          fi
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
