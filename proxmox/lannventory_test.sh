@@ -27,6 +27,48 @@ assert_equal() {
   [[ "$got" == "$want" ]] || fail "${label}: got '${got}', want '${want}'"
 }
 
+assert_file_contains() {
+  local file="$1"
+  local pattern="$2"
+  local label="$3"
+
+  grep -Fq -- "$pattern" "$file" || fail "${label}: missing '${pattern}'"
+}
+
+assert_file_not_contains() {
+  local file="$1"
+  local pattern="$2"
+  local label="$3"
+
+  if grep -Fq -- "$pattern" "$file"; then
+    fail "${label}: unexpected '${pattern}'"
+  fi
+}
+
+assert_equal "$(printf '\n' | prompt_yes_no "Start container on boot?")" "1" "empty onboot default"
+assert_equal "$(printf 'y\n' | prompt_yes_no "Start container on boot?")" "1" "lowercase y onboot"
+assert_equal "$(printf 'Y\n' | prompt_yes_no "Start container on boot?")" "1" "uppercase Y onboot"
+assert_equal "$(printf 'yes\n' | prompt_yes_no "Start container on boot?")" "1" "lowercase yes onboot"
+assert_equal "$(printf 'YES\n' | prompt_yes_no "Start container on boot?")" "1" "uppercase YES onboot"
+assert_equal "$(printf 'n\n' | prompt_yes_no "Start container on boot?")" "0" "lowercase n onboot"
+assert_equal "$(printf 'N\n' | prompt_yes_no "Start container on boot?")" "0" "uppercase N onboot"
+assert_equal "$(printf 'no\n' | prompt_yes_no "Start container on boot?")" "0" "lowercase no onboot"
+assert_equal "$(printf 'NO\n' | prompt_yes_no "Start container on boot?")" "0" "uppercase NO onboot"
+
+invalid_output="$(mktemp)"
+assert_equal "$(printf 'maybe\nno\n' | prompt_yes_no "Start container on boot?" 2>"$invalid_output")" "0" "invalid onboot retry result"
+assert_file_contains "$invalid_output" "Please enter yes or no." "invalid onboot retry message"
+rm -f "$invalid_output"
+
+assert_equal "$ONBOOT" "1" "onboot default state"
+ONBOOT="1"
+assert_equal "$(onboot_label)" "yes" "onboot yes summary label"
+ONBOOT="0"
+assert_equal "$(onboot_label)" "no" "onboot no summary label"
+ONBOOT="1"
+assert_file_contains "${script_dir}/lannventory.sh" '--onboot "$ONBOOT"' "pct create onboot variable"
+assert_file_not_contains "${script_dir}/lannventory.sh" "--onboot 1" "pct create no hardcoded onboot"
+
 assert_success validate_ipv4 "0.0.0.0"
 assert_success validate_ipv4 "192.168.1.1"
 assert_success validate_ipv4 "255.255.255.255"

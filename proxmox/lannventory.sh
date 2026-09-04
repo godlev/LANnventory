@@ -24,6 +24,7 @@ SWAP="$DEFAULT_SWAP"
 DISK_GB="$DEFAULT_DISK_GB"
 IP_CONFIG="dhcp"
 GW_CONFIG=""
+ONBOOT="1"
 TEMPLATE_FILE=""
 CREATED_CT="no"
 INSTALL_STAGE="preflight"
@@ -128,6 +129,36 @@ confirm() {
   local answer
   read -r -p "$prompt [Y/n]: " answer
   [[ -z "$answer" || "$answer" =~ ^[Yy]$ ]]
+}
+
+prompt_yes_no() {
+  local prompt="$1"
+  local answer
+
+  while true; do
+    read -r -p "$prompt [Y/n]: " answer
+    case "$answer" in
+      ""|[Yy]|[Yy][Ee][Ss])
+        printf '1'
+        return
+        ;;
+      [Nn]|[Nn][Oo])
+        printf '0'
+        return
+        ;;
+      *)
+        printf 'Please enter yes or no.\n' >&2
+        ;;
+    esac
+  done
+}
+
+onboot_label() {
+  if [[ "$ONBOOT" == "1" ]]; then
+    printf 'yes'
+  else
+    printf 'no'
+  fi
 }
 
 read_list() {
@@ -341,6 +372,7 @@ configure_interactively() {
         ;;
     esac
   done
+  ONBOOT="$(prompt_yes_no "Start container on boot?")"
 
   printf '\nConfiguration summary:\n'
   printf '  CT ID: %s\n' "$CTID"
@@ -355,7 +387,7 @@ configure_interactively() {
   printf '  IPv4: %s\n' "$IP_CONFIG"
   printf '  Gateway: %s\n' "${GW_CONFIG:-DHCP}"
   printf '  Container type: unprivileged LXC\n'
-  printf '  Start on boot: yes\n'
+  printf '  Start on boot: %s\n' "$(onboot_label)"
   confirm "Create this container?" || die "Installation cancelled before creating a container."
 }
 
@@ -379,7 +411,7 @@ create_container() {
     --swap "$SWAP" \
     --rootfs "${ROOTFS_STORAGE}:${DISK_GB}" \
     --net0 "$net_config" \
-    --onboot 1 \
+    --onboot "$ONBOOT" \
     --ostype debian
   CREATED_CT="yes"
 }

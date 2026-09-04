@@ -28,6 +28,8 @@ Defaults:
 
 The installer detects available CT IDs, rootfs storages, template storages and Linux bridges, then asks you to confirm or change the important values before creating the container. Proxmox per-guest firewall bridges such as `fwbr*`, `fwpr*` and `fwln*` are filtered out of the normal bridge choices. If `vmbr0` exists, it is used as the default; otherwise the first valid non-firewall bridge is used. The installer never overwrites an existing CT or QEMU VMID.
 
+The installer asks whether the new container should start automatically with Proxmox. The default is Yes.
+
 ## Installation Source
 
 The current installer installs LANnventory `v0.1.0-beta.2` from the official GitHub release package:
