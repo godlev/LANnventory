@@ -167,6 +167,15 @@ function sendText(res, value, statusCode = 200) {
   res.end(value);
 }
 
+function sendDownload(res, value, contentType, filename) {
+  res.writeHead(200, {
+    'content-type': contentType,
+    'content-disposition': `attachment; filename="${filename}"`,
+    'cache-control': 'no-store',
+  });
+  res.end(value);
+}
+
 function getLocalPublicAsset(pathname) {
   const match = /^\/fs\/public\/([^/]+)$/.exec(pathname);
   if (!match || !localPublicAssets.has(match[1])) {
@@ -373,6 +382,86 @@ function formatDate(date) {
 
 function formatDateUTC(date) {
   return date.toISOString().replace(/\.\d{3}Z$/, 'Z');
+}
+
+function downloadTimestamp(date = new Date()) {
+  return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+}
+
+function backupHostFromMock(hostEntry) {
+  return {
+    id: hostEntry.ID,
+    name: hostEntry.Name,
+    dns: hostEntry.DNS,
+    iface: hostEntry.Iface,
+    ip: hostEntry.IP,
+    mac: hostEntry.Mac,
+    hw: hostEntry.Hw,
+    date: hostEntry.Date,
+    known: hostEntry.Known,
+    now: hostEntry.Now,
+    deviceType: hostEntry.DeviceType,
+  };
+}
+
+function backupEventFromMock(event) {
+  return {
+    id: event.ID,
+    hostId: event.HostID,
+    mac: event.Mac,
+    name: event.Name,
+    eventType: event.EventType,
+    date: event.Date,
+    ip: event.IP,
+    iface: event.Iface,
+    deviceType: event.DeviceType,
+    oldValue: event.OldValue,
+    newValue: event.NewValue,
+  };
+}
+
+function backupDocument(createdAt = new Date()) {
+  const historyRows = fakeHosts
+    .flatMap((hostEntry) => historyFor(hostEntry.Mac).slice(0, 4))
+    .map((hostEntry, index) => ({ ...hostEntry, ID: index + 1 }));
+
+  return {
+    format: 'lannventory-backup',
+    formatVersion: 1,
+    createdAt: formatDateUTC(createdAt),
+    appVersion: config.Version,
+    data: {
+      currentHosts: [...fakeHosts].sort((left, right) => left.ID - right.ID).map(backupHostFromMock),
+      history: historyRows.sort((left, right) => left.ID - right.ID).map(backupHostFromMock),
+      events: [...activityEvents].sort((left, right) => left.ID - right.ID).map(backupEventFromMock),
+    },
+  };
+}
+
+function csvCell(value) {
+  const text = String(value ?? '');
+  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+function inventoryCSV() {
+  const header = ['ID', 'Name', 'DNS', 'Iface', 'IP', 'Mac', 'Hw', 'Date', 'Known', 'Now', 'DeviceType'];
+  const rows = [...fakeHosts]
+    .sort((left, right) => left.ID - right.ID)
+    .map((hostEntry) => [
+      hostEntry.ID,
+      hostEntry.Name,
+      hostEntry.DNS,
+      hostEntry.Iface,
+      hostEntry.IP,
+      hostEntry.Mac,
+      hostEntry.Hw,
+      hostEntry.Date,
+      hostEntry.Known,
+      hostEntry.Now,
+      hostEntry.DeviceType,
+    ]);
+
+  return [header, ...rows].map((row) => row.map(csvCell).join(',')).join('\r\n') + '\r\n';
 }
 
 function addActivity(hostEntry, eventType, options = {}) {
@@ -658,6 +747,28 @@ function routeReadOnly(req, res, url) {
 
   if (req.method === 'GET' && pathname === '/api/all') {
     sendJSON(res, fakeHosts);
+    return true;
+  }
+
+  if (req.method === 'GET' && pathname === '/api/export/backup') {
+    const createdAt = new Date();
+    sendDownload(
+      res,
+      JSON.stringify(backupDocument(createdAt), null, 2) + '\n',
+      'application/json; charset=utf-8',
+      `lannventory-backup-${downloadTimestamp(createdAt)}.json`,
+    );
+    return true;
+  }
+
+  if (req.method === 'GET' && pathname === '/api/export/inventory.csv') {
+    const createdAt = new Date();
+    sendDownload(
+      res,
+      inventoryCSV(),
+      'text/csv; charset=utf-8',
+      `lannventory-inventory-${downloadTimestamp(createdAt)}.csv`,
+    );
     return true;
   }
 

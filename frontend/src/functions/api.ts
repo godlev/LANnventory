@@ -29,6 +29,34 @@ const apiJSON = async <T>(url: string, init?: RequestInit): Promise<T> => {
   return await (await apiFetch(url, init)).json();
 };
 
+const getAttachmentFilename = (response: Response, fallback: string): string => {
+  const disposition = response.headers.get("content-disposition") ?? "";
+  const match = /filename="([^"]+)"/.exec(disposition) ?? /filename=([^;]+)/.exec(disposition);
+
+  return match?.[1]?.trim() || fallback;
+};
+
+const downloadResponse = async (url: string, expectedContentType: string, fallbackFilename: string): Promise<void> => {
+  const response = await apiFetch(url);
+  const contentType = response.headers.get("content-type") ?? "";
+
+  if (!contentType.toLowerCase().includes(expectedContentType)) {
+    const detail = await response.text();
+    throw new Error(detail || "Unexpected export response");
+  }
+
+  const blob = await response.blob();
+  const href = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = href;
+  anchor.download = getAttachmentFilename(response, fallbackFilename);
+  anchor.rel = "noreferrer";
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(href);
+};
+
 export const apiGetAllHosts = async () => {
   const url = apiPath+'/api/all';
   const hosts = await apiJSON<Host[]>(url);
@@ -130,6 +158,14 @@ export const apiSetRetention = async (presenceRetention: number, connectivityRet
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ presenceRetention, connectivityRetention }),
   });
+};
+
+export const apiDownloadBackup = async (): Promise<void> => {
+  await downloadResponse(apiPath+'/api/export/backup', "application/json", "lannventory-backup.json");
+};
+
+export const apiDownloadInventoryCSV = async (): Promise<void> => {
+  await downloadResponse(apiPath+'/api/export/inventory.csv', "text/csv", "lannventory-inventory.csv");
 };
 
 export const apiTestNotify = async () => {

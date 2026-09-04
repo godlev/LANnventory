@@ -1,6 +1,7 @@
 import { createSignal, onMount, Show } from "solid-js"
 import About from "../components/Config/About"
 import Basic from "../components/Config/Basic"
+import DataExport from "../components/Config/DataExport"
 import Influx from "../components/Config/Influx"
 import Prometheus from "../components/Config/Prometheus"
 import Retention from "../components/Config/Retention"
@@ -58,6 +59,10 @@ function Config() {
 
               <section id="data-retention" class="settings-section" aria-label="Data retention">
                 <Retention></Retention>
+              </section>
+
+              <section id="data-export" class="settings-section" aria-label="Data backup and export">
+                <DataExport></DataExport>
               </section>
             </div>
 

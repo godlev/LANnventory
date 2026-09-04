@@ -55,6 +55,33 @@ GET /api/activity/devices
 Returns device options represented in current hosts and retained activity events.
 
 ```http
+GET /api/export/backup
+```
+Downloads a portable JSON backup document with current hosts, host history and Events.
+
+The response uses `Content-Disposition: attachment` with a filename like `lannventory-backup-YYYYMMDDTHHMMSSZ.json`.
+
+Backup metadata includes:
+
+- `format`: always `lannventory-backup`
+- `formatVersion`: currently `1`
+- `createdAt`: UTC RFC3339 timestamp
+- `appVersion`: running LANnventory version
+
+The exported data is a logical backup, not a raw database dump. It excludes runtime configuration, notification URLs, database connection strings, InfluxDB tokens and other secrets. Events preserve the stored `Date` value exactly and do not include derived `DateUTC` display data.
+
+```http
+GET /api/export/inventory.csv
+```
+Downloads the current device inventory as CSV. The response uses `Content-Disposition: attachment` with a filename like `lannventory-inventory-YYYYMMDDTHHMMSSZ.csv`.
+
+CSV columns are:
+
+`ID, Name, DNS, Iface, IP, Mac, Hw, Date, Known, Now, DeviceType`
+
+This export includes current inventory only. It does not include host history, Events, configuration or secrets.
+
+```http
 GET /api/host/:id/activity
 ```
 Returns recent activity events for one host. Supports optional `limit` from `1` to `100`.
