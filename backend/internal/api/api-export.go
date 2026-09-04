@@ -53,7 +53,7 @@ func getBackupExport(c *gin.Context) {
 // @Router       /export/inventory.csv [get]
 func getInventoryCSVExport(c *gin.Context) {
 	now := time.Now().UTC()
-	data, err := gdb.ExportData()
+	currentHosts, err := gdb.ExportCurrentHosts()
 	if err != nil {
 		slog.Error("Failed to create inventory CSV export snapshot", "err", err)
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to create inventory export"})
@@ -61,7 +61,7 @@ func getInventoryCSVExport(c *gin.Context) {
 	}
 
 	var payload bytes.Buffer
-	if err := backup.WriteInventoryCSV(&payload, data.CurrentHosts); err != nil {
+	if err := backup.WriteInventoryCSV(&payload, currentHosts); err != nil {
 		slog.Error("Failed to encode inventory CSV export", "err", err)
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to encode inventory export"})
 		return
