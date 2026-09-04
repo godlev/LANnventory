@@ -10,7 +10,7 @@ LANnventory is an independent project originally based on [WatchYourLAN by acebe
 
 Current repository: [godlev/LANnventory](https://github.com/godlev/LANnventory)
 
-Current beta candidate: `0.1.0-beta.2`
+Current beta release: `0.1.0-beta.2`
 
 The original WatchYourLAN scanning/backend foundation is preserved and credited. LANnventory adds a substantially expanded interface, persistent event model, device classification, configurable retention, migration hardening, safer configuration handling and other reliability improvements.
 
