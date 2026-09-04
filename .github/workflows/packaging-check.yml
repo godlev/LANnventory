@@ -28,8 +28,48 @@ jobs:
       - name: Audit frontend dependencies
         working-directory: frontend
         run: |
-          npm audit
-          npm audit --omit=dev
+          run_audit_with_retries() {
+            local attempt=1
+            local max_attempts=3
+            local delay=10
+            local output
+            local status
+
+            while true; do
+              output="$(mktemp)"
+              set +e
+              "$@" >"$output" 2>&1
+              status=$?
+              set -e
+              cat "$output"
+
+              if [ "$status" -eq 0 ]; then
+                rm -f "$output"
+                return 0
+              fi
+
+              if ! grep -Eiq "audit endpoint returned an error|500 Internal Server Error|502 Bad Gateway|503 Service Unavailable|504 Gateway Timeout|ECONNRESET|ETIMEDOUT|EAI_AGAIN" "$output"; then
+                echo "::error::npm audit failed with a non-transient result; failing without retry."
+                rm -f "$output"
+                return "$status"
+              fi
+
+              if [ "$attempt" -ge "$max_attempts" ]; then
+                echo "::error::npm audit failed after $max_attempts transient attempts."
+                rm -f "$output"
+                return "$status"
+              fi
+
+              echo "::warning::npm audit hit a transient registry/service failure; retrying in ${delay}s."
+              rm -f "$output"
+              sleep "$delay"
+              attempt=$((attempt + 1))
+              delay=$((delay * 2))
+            done
+          }
+
+          run_audit_with_retries npm audit
+          run_audit_with_retries npm audit --omit=dev
 
       - name: Build frontend
         working-directory: frontend
