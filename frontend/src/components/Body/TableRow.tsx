@@ -1,6 +1,6 @@
 import { createSignal, onCleanup, Show } from "solid-js";
 import { editNames, hasMultipleIfaces, selectedIDs, setSelectedIDs } from "../../functions/exports";
-import { apiEditHost, apiSetDeviceType } from "../../functions/api";
+import { apiEditHost, apiSetDeviceType, apiSetHostMetadata } from "../../functions/api";
 import { formatLastSeen } from "../../functions/dateFormat";
 import { deviceDisplayName } from "../../functions/deviceIdentity";
 import { isUnknownHardware } from "../../functions/hardware";
@@ -13,9 +13,12 @@ import { debounce } from "@solid-primitives/scheduled";
 function TableRow(_props: any) {
 
   const [name, setName] = createSignal(_props.host.Name);
+  const [pinSaving, setPinSaving] = createSignal(false);
+  const [pinError, setPinError] = createSignal("");
 
   const isOnline = () => _props.host.Now === 1;
   const known = () => _props.host.Known === 1;
+  const isPinned = () => _props.host.Pinned === true;
   const lastSeen = () => formatLastSeen(_props.host.Date);
   const rowClass = () => [
     _props.host.Known === 0 ? "device-row-unknown" : "",
@@ -26,6 +29,7 @@ function TableRow(_props: any) {
     ? "Known device - click to mark unknown"
     : "Unknown device - click to mark known";
   const statusText = () => isOnline() ? "Online" : "Offline";
+  const pinTitle = () => isPinned() ? "Unpin device" : "Pin device";
   const displayName = () => deviceDisplayName({ ..._props.host, Name: name() });
   const mobileIdentity = () => {
     const currentName = displayName();
@@ -92,6 +96,31 @@ function TableRow(_props: any) {
     updateHostInView(updatedHost);
   };
 
+  const handlePinToggle = async (event: MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (pinSaving()) {
+      return;
+    }
+
+    const previousPinned = isPinned();
+    const nextPinned = !previousPinned;
+
+    setPinSaving(true);
+    setPinError("");
+    updateHostInView({ ID: _props.host.ID, Pinned: nextPinned });
+
+    try {
+      const updatedHost = await apiSetHostMetadata(_props.host.ID, { pinned: nextPinned });
+      updateHostInView(updatedHost);
+    } catch {
+      updateHostInView({ ID: _props.host.ID, Pinned: previousPinned });
+      setPinError("Pinned state could not be saved");
+    } finally {
+      setPinSaving(false);
+    }
+  };
+
   const handleCheck = (checked: boolean) => {
     const id = _props.host.ID;
     setSelectedIDs(prev => {
@@ -117,6 +146,19 @@ function TableRow(_props: any) {
               onClick={handleToggle}
             >
               <i class={known() ? "bi bi-bookmark-check-fill" : "bi bi-question-circle-fill"} aria-hidden="true"></i>
+            </button>
+          </span>
+          <span class="device-mobile-pin">
+            <button
+              type="button"
+              class={isPinned() ? "device-pin-toggle device-pin-toggle-active" : "device-pin-toggle"}
+              title={pinTitle()}
+              aria-label={pinTitle()}
+              aria-pressed={isPinned()}
+              disabled={pinSaving()}
+              onClick={handlePinToggle}
+            >
+              <i class={isPinned() ? "bi bi-pin-angle-fill" : "bi bi-pin-angle"} aria-hidden="true"></i>
             </button>
           </span>
           <span class="device-mobile-type">
@@ -182,6 +224,8 @@ function TableRow(_props: any) {
             <span class="device-mobile-detail-value">{lastSeen()}</span>
             <span class="device-mobile-detail-label">Known</span>
             <span class="device-mobile-detail-value">{known() ? "Yes" : "No"}</span>
+            <span class="device-mobile-detail-label">Pinned</span>
+            <span class="device-mobile-detail-value">{isPinned() ? "Yes" : "No"}</span>
           </div>
         </Show>
       </td>
@@ -215,15 +259,31 @@ function TableRow(_props: any) {
         </Show>
       </td>
       <td class="device-table-name">
-        <Show
-          when={editNames()}
-          fallback={<a href={"/host/" + _props.host.ID} class={"device-name-link " + nameClass()}>{displayName()}</a>}
-        >
-          <input type="text" class="form-control" value={name()}
-            onInput={e => handleInput(e.target.value)}
-            onBlur={syncNameToView}
-            onKeyDown={handleNameKeyDown}></input>
-        </Show>
+        <span class="device-name-content">
+          <button
+            type="button"
+            class={isPinned() ? "device-pin-toggle device-pin-toggle-active" : "device-pin-toggle"}
+            title={pinTitle()}
+            aria-label={pinTitle()}
+            aria-pressed={isPinned()}
+            disabled={pinSaving()}
+            onClick={handlePinToggle}
+          >
+            <i class={isPinned() ? "bi bi-pin-angle-fill" : "bi bi-pin-angle"} aria-hidden="true"></i>
+          </button>
+          <Show
+            when={editNames()}
+            fallback={<a href={"/host/" + _props.host.ID} class={"device-name-link " + nameClass()}>{displayName()}</a>}
+          >
+            <input type="text" class="form-control" value={name()}
+              onInput={e => handleInput(e.target.value)}
+              onBlur={syncNameToView}
+              onKeyDown={handleNameKeyDown}></input>
+          </Show>
+          <Show when={pinError()}>
+            <span class="visually-hidden" role="status">{pinError()}</span>
+          </Show>
+        </span>
       </td>
       <td class="device-table-type">
         <DeviceTypePicker

@@ -100,6 +100,30 @@ const fakeHosts = [
   },
 ];
 
+const hostMetadata = new Map([
+  ['AA:BB:CC:00:00:01', {
+    Owner: 'Network Team',
+    Location: 'Utility closet',
+    Notes: 'Default gateway and DHCP edge.',
+    Tags: ['gateway', 'critical'],
+    Pinned: true,
+  }],
+  ['AA:BB:CC:00:00:20', {
+    Owner: 'Storage Team',
+    Location: 'Rack 1',
+    Notes: 'Primary media and backup NAS.',
+    Tags: ['storage', 'backup'],
+    Pinned: true,
+  }],
+  ['AA:BB:CC:00:00:42', {
+    Owner: 'Miroslav',
+    Location: 'Office',
+    Notes: '',
+    Tags: ['workstation'],
+    Pinned: false,
+  }],
+]);
+
 const config = {
   Host: host,
   Port: String(port),
@@ -213,6 +237,98 @@ function isColorMode(color) {
 
 function isDeviceType(deviceType) {
   return typeof deviceType === 'string' && deviceTypes.has(deviceType);
+}
+
+function metadataDefaults() {
+  return {
+    Owner: '',
+    Location: '',
+    Notes: '',
+    Tags: [],
+    Pinned: false,
+  };
+}
+
+function metadataFor(hostEntry) {
+  return hostMetadata.get(hostEntry.Mac) ?? metadataDefaults();
+}
+
+function enrichHost(hostEntry) {
+  const metadata = metadataFor(hostEntry);
+  return {
+    ...hostEntry,
+    Owner: metadata.Owner,
+    Location: metadata.Location,
+    Notes: metadata.Notes,
+    Tags: [...metadata.Tags],
+    Pinned: metadata.Pinned,
+  };
+}
+
+function metadataEntries() {
+  return [...hostMetadata.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([mac, metadata]) => ({
+      mac,
+      owner: metadata.Owner,
+      location: metadata.Location,
+      notes: metadata.Notes,
+      tags: [...metadata.Tags],
+      pinned: metadata.Pinned,
+    }));
+}
+
+function normalizeMetadataTags(tags) {
+  if (!Array.isArray(tags)) {
+    return [];
+  }
+
+  const seen = new Set();
+  const normalized = [];
+  for (const rawTag of tags) {
+    const tag = String(rawTag ?? '').trim();
+    if (!tag) {
+      continue;
+    }
+    const key = tag.toLowerCase();
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    normalized.push(tag);
+  }
+
+  return normalized.slice(0, 20);
+}
+
+function applyMetadataPatch(hostEntry, patch) {
+  const current = metadataFor(hostEntry);
+  const next = {
+    Owner: current.Owner,
+    Location: current.Location,
+    Notes: current.Notes,
+    Tags: [...current.Tags],
+    Pinned: current.Pinned,
+  };
+
+  if (typeof patch.owner === 'string') {
+    next.Owner = patch.owner.trim();
+  }
+  if (typeof patch.location === 'string') {
+    next.Location = patch.location.trim();
+  }
+  if (typeof patch.notes === 'string') {
+    next.Notes = patch.notes;
+  }
+  if (Array.isArray(patch.tags)) {
+    next.Tags = normalizeMetadataTags(patch.tags);
+  }
+  if (typeof patch.pinned === 'boolean') {
+    next.Pinned = patch.pinned;
+  }
+
+  hostMetadata.set(hostEntry.Mac, next);
+  return enrichHost(hostEntry);
 }
 
 function isPositiveIntegerValue(value) {
@@ -427,13 +543,14 @@ function backupDocument(createdAt = new Date()) {
 
   return {
     format: 'lannventory-backup',
-    formatVersion: 1,
+    formatVersion: 2,
     createdAt: formatDateUTC(createdAt),
     appVersion: config.Version,
     data: {
       currentHosts: [...fakeHosts].sort((left, right) => left.ID - right.ID).map(backupHostFromMock),
       history: historyRows.sort((left, right) => left.ID - right.ID).map(backupHostFromMock),
       events: [...activityEvents].sort((left, right) => left.ID - right.ID).map(backupEventFromMock),
+      hostMetadata: metadataEntries(),
     },
   };
 }
@@ -444,22 +561,30 @@ function csvCell(value) {
 }
 
 function inventoryCSV() {
-  const header = ['ID', 'Name', 'DNS', 'Iface', 'IP', 'Mac', 'Hw', 'Date', 'Known', 'Now', 'DeviceType'];
+  const header = ['ID', 'Name', 'DNS', 'Iface', 'IP', 'Mac', 'Hw', 'Date', 'Known', 'Now', 'DeviceType', 'Owner', 'Location', 'Notes', 'Tags', 'Pinned'];
   const rows = [...fakeHosts]
     .sort((left, right) => left.ID - right.ID)
-    .map((hostEntry) => [
-      hostEntry.ID,
-      hostEntry.Name,
-      hostEntry.DNS,
-      hostEntry.Iface,
-      hostEntry.IP,
-      hostEntry.Mac,
-      hostEntry.Hw,
-      hostEntry.Date,
-      hostEntry.Known,
-      hostEntry.Now,
-      hostEntry.DeviceType,
-    ]);
+    .map((hostEntry) => {
+      const enriched = enrichHost(hostEntry);
+      return [
+        enriched.ID,
+        enriched.Name,
+        enriched.DNS,
+        enriched.Iface,
+        enriched.IP,
+        enriched.Mac,
+        enriched.Hw,
+        enriched.Date,
+        enriched.Known,
+        enriched.Now,
+        enriched.DeviceType,
+        enriched.Owner,
+        enriched.Location,
+        enriched.Notes,
+        enriched.Tags.join('; '),
+        enriched.Pinned,
+      ];
+    });
 
   return [header, ...rows].map((row) => row.map(csvCell).join(',')).join('\r\n') + '\r\n';
 }
@@ -746,7 +871,7 @@ function routeReadOnly(req, res, url) {
   }
 
   if (req.method === 'GET' && pathname === '/api/all') {
-    sendJSON(res, fakeHosts);
+    sendJSON(res, fakeHosts.map(enrichHost));
     return true;
   }
 
@@ -827,7 +952,7 @@ function routeReadOnly(req, res, url) {
       return true;
     }
 
-    sendJSON(res, hostEntry);
+    sendJSON(res, enrichHost(hostEntry));
     return true;
   }
 
@@ -919,7 +1044,22 @@ async function routeSafeAction(req, res, url) {
         newValue: hostEntry.DeviceType,
       });
     }
-    sendJSON(res, hostEntry);
+    sendJSON(res, enrichHost(hostEntry));
+    return true;
+  }
+
+  const metadataMatch = pathname.match(/^\/api\/host\/(\d+)\/metadata$/);
+  if (req.method === 'PATCH' && metadataMatch) {
+    const id = Number(metadataMatch[1]);
+    const hostEntry = findHostByID(id);
+    if (!hostEntry) {
+      sendJSON(res, { error: 'invalid host id' }, 400);
+      return true;
+    }
+
+    const body = await readBody(req);
+    const params = parseRequestBody(body);
+    sendJSON(res, applyMetadataPatch(hostEntry, params));
     return true;
   }
 

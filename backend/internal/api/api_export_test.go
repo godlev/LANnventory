@@ -108,6 +108,37 @@ func TestBackupExportEndpointIncludesStableDataAndMetadata(t *testing.T) {
 	if strings.Contains(body, "DateUTC") || strings.Contains(body, "2030-01-01T00:00:00Z") {
 		t.Fatalf("backup included DateUTC display data: %s", body)
 	}
+	if strings.Contains(body, "TagsJSON") || strings.Contains(body, "TAGS_JSON") {
+		t.Fatalf("backup exposed internal tag storage: %s", body)
+	}
+
+	routerTags := []string{"gateway", "critical"}
+	nasTags := []string{"storage", "important"}
+	routerPinned := true
+	if _, err := gdb.UpsertHostMetadata("AA:BB:CC:DD:EE:20", models.HostMetadataUpdate{
+		Tags: &nasTags,
+	}); err != nil {
+		t.Fatalf("UpsertHostMetadata nas: %v", err)
+	}
+	if _, err := gdb.UpsertHostMetadata("AA:BB:CC:DD:EE:01", models.HostMetadataUpdate{
+		Tags:   &routerTags,
+		Pinned: &routerPinned,
+	}); err != nil {
+		t.Fatalf("UpsertHostMetadata router: %v", err)
+	}
+
+	rec = getPath(router, "/api/export/backup")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("metadata backup status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	body = rec.Body.String()
+	if strings.Contains(body, "DateUTC") || strings.Contains(body, "2030-01-01T00:00:00Z") {
+		t.Fatalf("metadata backup included DateUTC display data: %s", body)
+	}
+	if strings.Contains(body, "TagsJSON") || strings.Contains(body, "TAGS_JSON") {
+		t.Fatalf("metadata backup exposed internal tag storage: %s", body)
+	}
 
 	var document backup.Document
 	if err := json.Unmarshal(rec.Body.Bytes(), &document); err != nil {
@@ -133,6 +164,12 @@ func TestBackupExportEndpointIncludesStableDataAndMetadata(t *testing.T) {
 	assertExportHostIDs(t, document.Data.CurrentHosts, []int{1, 2}, "current hosts")
 	assertExportHostIDs(t, document.Data.History, []int{10, 20}, "history")
 	assertExportEventIDs(t, document.Data.Events, []int{1, 2}, "events")
+	assertExportMetadataMACs(t, document.Data.HostMetadata, []string{"AA:BB:CC:DD:EE:01", "AA:BB:CC:DD:EE:20"})
+	assertStringSlice(t, document.Data.HostMetadata[0].Tags, routerTags, "router metadata tags")
+	assertStringSlice(t, document.Data.HostMetadata[1].Tags, nasTags, "nas metadata tags")
+	if !document.Data.HostMetadata[0].Pinned {
+		t.Fatalf("router metadata pinned = false, want true")
+	}
 	if document.Data.Events[1].Date != "2026-09-05 10:00:00" {
 		t.Fatalf("event Date = %q, want preserved stored Date", document.Data.Events[1].Date)
 	}
@@ -147,7 +184,8 @@ func TestBackupExportEndpointEmptyTablesUsesArrays(t *testing.T) {
 	}
 	if !strings.Contains(rec.Body.String(), `"currentHosts": []`) ||
 		!strings.Contains(rec.Body.String(), `"history": []`) ||
-		!strings.Contains(rec.Body.String(), `"events": []`) {
+		!strings.Contains(rec.Body.String(), `"events": []`) ||
+		!strings.Contains(rec.Body.String(), `"hostMetadata": []`) {
 		t.Fatalf("empty backup did not encode empty arrays: %s", rec.Body.String())
 	}
 }
@@ -167,6 +205,20 @@ func TestInventoryCSVExportEndpointEscapesCurrentInventory(t *testing.T) {
 		Now:        1,
 		DeviceType: "nas",
 	})
+	owner := "Storage Team"
+	location := "Rack 1"
+	notes := "Primary backup target"
+	tags := []string{"storage", "important"}
+	pinned := true
+	if _, err := gdb.UpsertHostMetadata("AA:BB:CC:DD:EE:20", models.HostMetadataUpdate{
+		Owner:    &owner,
+		Location: &location,
+		Notes:    &notes,
+		Tags:     &tags,
+		Pinned:   &pinned,
+	}); err != nil {
+		t.Fatalf("UpsertHostMetadata: %v", err)
+	}
 
 	rec := getPath(router, "/api/export/inventory.csv")
 	if rec.Code != http.StatusOK {
@@ -195,7 +247,37 @@ func TestInventoryCSVExportEndpointEscapesCurrentInventory(t *testing.T) {
 		"1",
 		"1",
 		"nas",
+		"Storage Team",
+		"Rack 1",
+		"Primary backup target",
+		"storage; important",
+		"true",
 	}, "CSV row")
+}
+
+func TestInventoryCSVExportWithoutMetadataReturnsEmptyMetadataColumns(t *testing.T) {
+	router := setupTestRouter(t)
+	seedExportHost(t, "now", models.Host{
+		ID:    1,
+		Name:  "router",
+		Mac:   "AA:BB:CC:DD:EE:01",
+		Known: 1,
+		Now:   1,
+	})
+
+	rec := getPath(router, "/api/export/inventory.csv")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	rows, err := csv.NewReader(strings.NewReader(rec.Body.String())).ReadAll()
+	if err != nil {
+		t.Fatalf("csv.ReadAll: %v", err)
+	}
+	if len(rows) != 2 {
+		t.Fatalf("CSV rows len = %d, want 2: %#v", len(rows), rows)
+	}
+	assertStringSlice(t, rows[1][11:], []string{"", "", "", "", "false"}, "empty metadata CSV columns")
 }
 
 func TestInventoryCSVExportEndpointEmptyInventoryReturnsHeader(t *testing.T) {
@@ -289,6 +371,19 @@ func assertExportEventIDs(t *testing.T, events []backup.Event, want []int, label
 	for i, id := range want {
 		if events[i].ID != id {
 			t.Fatalf("%s[%d].ID = %d, want %d: %+v", label, i, events[i].ID, id, events)
+		}
+	}
+}
+
+func assertExportMetadataMACs(t *testing.T, metadata []backup.HostMetadata, want []string) {
+	t.Helper()
+
+	if len(metadata) != len(want) {
+		t.Fatalf("metadata len = %d, want %d: %+v", len(metadata), len(want), metadata)
+	}
+	for i, mac := range want {
+		if metadata[i].Mac != mac {
+			t.Fatalf("metadata[%d].Mac = %q, want %q: %+v", i, metadata[i].Mac, mac, metadata)
 		}
 	}
 }

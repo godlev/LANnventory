@@ -246,6 +246,14 @@ func assertPackagingSchema(t *testing.T) {
 			t.Fatalf("events table missing %s column", column)
 		}
 	}
+	if !db.Migrator().HasTable(hostMetadataTable) {
+		t.Fatal("host_metadata table missing")
+	}
+	for _, column := range []string{"OWNER", "LOCATION", "NOTES", "TAGS_JSON", "PINNED"} {
+		if !db.Table(hostMetadataTable).Migrator().HasColumn(&models.HostMetadata{}, column) {
+			t.Fatalf("host_metadata table missing %s column", column)
+		}
+	}
 }
 
 func openMigrationFixtureDB(t *testing.T, dbPath string) *gorm.DB {
@@ -317,6 +325,9 @@ func assertMigratedLegacyRows(t *testing.T) {
 	}
 	if !db.Migrator().HasTable("events") {
 		t.Fatal("events table missing after startup migration")
+	}
+	if !db.Migrator().HasTable(hostMetadataTable) {
+		t.Fatal("host_metadata table missing after startup migration")
 	}
 
 	var hosts []models.Host

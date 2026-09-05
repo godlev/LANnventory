@@ -702,7 +702,7 @@ const docTemplate = `{
         },
         "/export/backup": {
             "get": {
-                "description": "Export a versioned logical backup containing current hosts, host history and activity events. Configuration secrets are not included.",
+                "description": "Export a versioned logical backup containing current hosts, host history, activity events and host metadata. Configuration secrets are not included.",
                 "produces": [
                     "application/json"
                 ],
@@ -732,7 +732,7 @@ const docTemplate = `{
         },
         "/export/inventory.csv": {
             "get": {
-                "description": "Export the current device inventory as CSV. This is not a full backup and does not include history or events.",
+                "description": "Export the current device inventory and metadata as CSV. This is not a full backup and does not include history or events.",
                 "produces": [
                     "text/csv"
                 ],
@@ -781,7 +781,7 @@ const docTemplate = `{
         },
         "/history": {
             "get": {
-                "description": "Retrieve the complete history of all hosts. Not recommended, the output can be a lot",
+                "description": "Retrieve the complete history of all hosts. Not recommended, the output can be a lot\nInventory metadata fields are not included on history rows.",
                 "produces": [
                     "application/json"
                 ],
@@ -804,7 +804,7 @@ const docTemplate = `{
         },
         "/history/{mac}": {
             "get": {
-                "description": "Retrieve the latest history entries for a specific host by MAC address",
+                "description": "Retrieve the latest history entries for a specific host by MAC address\nInventory metadata fields are not included on history rows.",
                 "produces": [
                     "application/json"
                 ],
@@ -843,7 +843,7 @@ const docTemplate = `{
         },
         "/history/{mac}/{date}": {
             "get": {
-                "description": "Retrieve history for a specific host on a given date\nThe date format is flexible and can be:\n- Year only: ` + "`" + `2025` + "`" + `\n- Year + month: ` + "`" + `2025-09` + "`" + `\n- Full date: ` + "`" + `2025-09-06` + "`" + `\n- Full timestamp: ` + "`" + `2025-09-06 00:58:26` + "`" + `",
+                "description": "Retrieve history for a specific host on a given date\nInventory metadata fields are not included on history rows.\nThe date format is flexible and can be:\n- Year only: ` + "`" + `2025` + "`" + `\n- Year + month: ` + "`" + `2025-09` + "`" + `\n- Full date: ` + "`" + `2025-09-06` + "`" + `\n- Full timestamp: ` + "`" + `2025-09-06 00:58:26` + "`" + `",
                 "produces": [
                     "application/json"
                 ],
@@ -1033,6 +1033,65 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Database query failure",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/host/{id}/metadata": {
+            "patch": {
+                "description": "Partially update manually managed inventory metadata. Tags are trimmed, empty tags are removed, duplicates are removed case-insensitively, and user order is preserved.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Update host metadata",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Metadata payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.HostMetadataPatchRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Host"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1239,6 +1298,29 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "api.HostMetadataPatchRequest": {
+            "type": "object",
+            "properties": {
+                "location": {
+                    "type": "string"
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "owner": {
+                    "type": "string"
+                },
+                "pinned": {
+                    "type": "boolean"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "api.colorRequest": {
             "type": "object",
             "properties": {
@@ -1430,14 +1512,32 @@ const docTemplate = `{
                 "known": {
                     "type": "integer"
                 },
+                "location": {
+                    "type": "string"
+                },
                 "mac": {
                     "type": "string"
                 },
                 "name": {
                     "type": "string"
                 },
+                "notes": {
+                    "type": "string"
+                },
                 "now": {
                     "type": "integer"
+                },
+                "owner": {
+                    "type": "string"
+                },
+                "pinned": {
+                    "type": "boolean"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },

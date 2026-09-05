@@ -16,7 +16,7 @@ import (
 
 // getBackupExport godoc
 // @Summary      Download portable data backup
-// @Description  Export a versioned logical backup containing current hosts, host history and activity events. Configuration secrets are not included.
+// @Description  Export a versioned logical backup containing current hosts, host history, activity events and host metadata. Configuration secrets are not included.
 // @Tags         export
 // @Produce      json
 // @Success      200  {object}  map[string]interface{}
@@ -45,7 +45,7 @@ func getBackupExport(c *gin.Context) {
 
 // getInventoryCSVExport godoc
 // @Summary      Download current inventory CSV
-// @Description  Export the current device inventory as CSV. This is not a full backup and does not include history or events.
+// @Description  Export the current device inventory and metadata as CSV. This is not a full backup and does not include history or events.
 // @Tags         export
 // @Produce      text/csv
 // @Success      200  {string}  string

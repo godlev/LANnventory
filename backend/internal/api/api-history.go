@@ -11,6 +11,7 @@ import (
 // getHistory godoc
 // @Summary      Get full history
 // @Description  Retrieve the complete history of all hosts. Not recommended, the output can be a lot
+// @Description  Inventory metadata fields are not included on history rows.
 // @Tags         history
 // @Produce      json
 // @Success      200  {array}   models.Host
@@ -23,6 +24,7 @@ func getHistory(c *gin.Context) {
 // getHistoryByMAC godoc
 // @Summary      Get history by MAC
 // @Description  Retrieve the latest history entries for a specific host by MAC address
+// @Description  Inventory metadata fields are not included on history rows.
 // @Tags         history
 // @Produce      json
 // @Param        mac   path      string  true "MAC address of the host"
@@ -45,6 +47,7 @@ func getHistoryByMAC(c *gin.Context) {
 // getHistoryByDate godoc
 // @Summary      Get history by date
 // @Description  Retrieve history for a specific host on a given date
+// @Description  Inventory metadata fields are not included on history rows.
 // @Description  The date format is flexible and can be:
 // @Description  - Year only: `2025`
 // @Description  - Year + month: `2025-09`

@@ -122,7 +122,10 @@ func migrate(candidate *gorm.DB) error {
 	if err := candidate.Table("history").AutoMigrate(&models.Host{}); err != nil {
 		return err
 	}
-	return candidate.Table("events").AutoMigrate(&models.HostEvent{})
+	if err := candidate.Table("events").AutoMigrate(&models.HostEvent{}); err != nil {
+		return err
+	}
+	return candidate.Table("host_metadata").AutoMigrate(&models.HostMetadata{})
 }
 
 func closeDB(target *gorm.DB) error {

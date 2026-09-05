@@ -55,7 +55,7 @@ function sortHosts(hosts: Host[]) {
   const currentSort = sortState();
 
   if (!currentSort.field || !currentSort.direction) {
-    return hosts;
+    return groupPinnedFirst(hosts);
   }
 
   const ascending = currentSort.direction === "ascending";
@@ -69,7 +69,7 @@ function sortHosts(hosts: Host[]) {
     sortedHosts.sort((a, b) => byField(a, b, currentSort.field as keyof Host, ascending));
   }
 
-  return sortedHosts;
+  return groupPinnedFirst(sortedHosts);
 }
 
 function searchItem(host: Host, search: string) {
@@ -80,6 +80,10 @@ function searchItem(host: Host, search: string) {
   const deviceType = getDeviceTypeOption(host.DeviceType);
   const deviceTypeValue = deviceType.value.toLowerCase();
   const deviceTypeLabel = deviceType.label.toLowerCase();
+  const owner = (host.Owner ?? "").toLowerCase();
+  const location = (host.Location ?? "").toLowerCase();
+  const notes = (host.Notes ?? "").toLowerCase();
+  const tags = (host.Tags ?? []).join(" ").toLowerCase();
 
   return name.includes(search)
     || iface.includes(search)
@@ -88,7 +92,18 @@ function searchItem(host: Host, search: string) {
     || hardware.includes(search)
     || deviceTypeValue.includes(search)
     || deviceTypeLabel.includes(search)
+    || owner.includes(search)
+    || location.includes(search)
+    || notes.includes(search)
+    || tags.includes(search)
     || host.Date.includes(search);
+}
+
+function groupPinnedFirst(hosts: Host[]) {
+  const pinned = hosts.filter((host) => host.Pinned);
+  const unpinned = hosts.filter((host) => !host.Pinned);
+
+  return [...pinned, ...unpinned];
 }
 
 function byString(a: string, b: string, ascending: boolean) {

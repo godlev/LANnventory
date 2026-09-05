@@ -1,5 +1,20 @@
 basePath: /api/
 definitions:
+  api.HostMetadataPatchRequest:
+    properties:
+      location:
+        type: string
+      notes:
+        type: string
+      owner:
+        type: string
+      pinned:
+        type: boolean
+      tags:
+        items:
+          type: string
+        type: array
+    type: object
   api.colorRequest:
     properties:
       color:
@@ -129,12 +144,24 @@ definitions:
         type: string
       known:
         type: integer
+      location:
+        type: string
       mac:
         type: string
       name:
         type: string
+      notes:
+        type: string
       now:
         type: integer
+      owner:
+        type: string
+      pinned:
+        type: boolean
+      tags:
+        items:
+          type: string
+        type: array
     type: object
   models.HostEvent:
     properties:
@@ -652,7 +679,8 @@ paths:
   /export/backup:
     get:
       description: Export a versioned logical backup containing current hosts, host
-        history and activity events. Configuration secrets are not included.
+        history, activity events and host metadata. Configuration secrets are not
+        included.
       produces:
       - application/json
       responses:
@@ -672,8 +700,8 @@ paths:
       - export
   /export/inventory.csv:
     get:
-      description: Export the current device inventory as CSV. This is not a full
-        backup and does not include history or events.
+      description: Export the current device inventory and metadata as CSV. This is
+        not a full backup and does not include history or events.
       produces:
       - text/csv
       responses:
@@ -705,8 +733,9 @@ paths:
       - system
   /history:
     get:
-      description: Retrieve the complete history of all hosts. Not recommended, the
-        output can be a lot
+      description: |-
+        Retrieve the complete history of all hosts. Not recommended, the output can be a lot
+        Inventory metadata fields are not included on history rows.
       produces:
       - application/json
       responses:
@@ -721,8 +750,9 @@ paths:
       - history
   /history/{mac}:
     get:
-      description: Retrieve the latest history entries for a specific host by MAC
-        address
+      description: |-
+        Retrieve the latest history entries for a specific host by MAC address
+        Inventory metadata fields are not included on history rows.
       parameters:
       - description: MAC address of the host
         in: path
@@ -750,6 +780,7 @@ paths:
     get:
       description: |-
         Retrieve history for a specific host on a given date
+        Inventory metadata fields are not included on history rows.
         The date format is flexible and can be:
         - Year only: `2025`
         - Year + month: `2025-09`
@@ -836,6 +867,47 @@ paths:
       summary: Get recent activity for one host
       tags:
       - activity
+  /host/{id}/metadata:
+    patch:
+      consumes:
+      - application/json
+      description: Partially update manually managed inventory metadata. Tags are
+        trimmed, empty tags are removed, duplicates are removed case-insensitively,
+        and user order is preserved.
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Metadata payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.HostMetadataPatchRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Host'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update host metadata
+      tags:
+      - hosts
   /host/{id}/type:
     patch:
       consumes:

@@ -4,6 +4,7 @@ import (
 	"encoding/csv"
 	"io"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/godlev/LANnventory/internal/models"
@@ -11,7 +12,7 @@ import (
 
 const (
 	Format        = "lannventory-backup"
-	FormatVersion = 1
+	FormatVersion = 2
 )
 
 // Document is the stable, versioned logical backup format.
@@ -26,9 +27,10 @@ type Document struct {
 // Data contains persisted application data only. It intentionally excludes
 // configuration and secrets so exports are portable across database backends.
 type Data struct {
-	CurrentHosts []Host  `json:"currentHosts"`
-	History      []Host  `json:"history"`
-	Events       []Event `json:"events"`
+	CurrentHosts []Host         `json:"currentHosts"`
+	History      []Host         `json:"history"`
+	Events       []Event        `json:"events"`
+	HostMetadata []HostMetadata `json:"hostMetadata"`
 }
 
 // Host mirrors the currently persisted host columns in the now/history tables.
@@ -62,6 +64,26 @@ type Event struct {
 	NewValue   string `json:"newValue"`
 }
 
+// HostMetadata is the portable metadata backup representation.
+type HostMetadata struct {
+	Mac      string   `json:"mac"`
+	Owner    string   `json:"owner"`
+	Location string   `json:"location"`
+	Notes    string   `json:"notes"`
+	Tags     []string `json:"tags"`
+	Pinned   bool     `json:"pinned"`
+}
+
+// InventoryHost is the current-inventory CSV representation.
+type InventoryHost struct {
+	Host
+	Owner    string
+	Location string
+	Notes    string
+	Tags     []string
+	Pinned   bool
+}
+
 var InventoryCSVHeader = []string{
 	"ID",
 	"Name",
@@ -74,6 +96,11 @@ var InventoryCSVHeader = []string{
 	"Known",
 	"Now",
 	"DeviceType",
+	"Owner",
+	"Location",
+	"Notes",
+	"Tags",
+	"Pinned",
 }
 
 func NewDocument(data Data, appVersion string, createdAt time.Time) Document {
@@ -86,11 +113,12 @@ func NewDocument(data Data, appVersion string, createdAt time.Time) Document {
 	}
 }
 
-func DataFromModels(currentHosts, history []models.Host, events []models.HostEvent) Data {
+func DataFromModels(currentHosts, history []models.Host, events []models.HostEvent, hostMetadata []models.HostMetadata) Data {
 	data := Data{
 		CurrentHosts: make([]Host, 0, len(currentHosts)),
 		History:      make([]Host, 0, len(history)),
 		Events:       make([]Event, 0, len(events)),
+		HostMetadata: make([]HostMetadata, 0, len(hostMetadata)),
 	}
 
 	for _, host := range currentHosts {
@@ -101,6 +129,9 @@ func DataFromModels(currentHosts, history []models.Host, events []models.HostEve
 	}
 	for _, event := range events {
 		data.Events = append(data.Events, EventFromModel(event))
+	}
+	for _, metadata := range hostMetadata {
+		data.HostMetadata = append(data.HostMetadata, HostMetadataFromModel(metadata))
 	}
 
 	return data
@@ -138,7 +169,29 @@ func EventFromModel(event models.HostEvent) Event {
 	}
 }
 
-func WriteInventoryCSV(writer io.Writer, hosts []Host) error {
+func HostMetadataFromModel(metadata models.HostMetadata) HostMetadata {
+	return HostMetadata{
+		Mac:      metadata.Mac,
+		Owner:    metadata.Owner,
+		Location: metadata.Location,
+		Notes:    metadata.Notes,
+		Tags:     models.DecodeMetadataTags(metadata.TagsJSON),
+		Pinned:   metadata.Pinned,
+	}
+}
+
+func InventoryHostFromModel(host models.Host) InventoryHost {
+	return InventoryHost{
+		Host:     HostFromModel(host),
+		Owner:    host.Owner,
+		Location: host.Location,
+		Notes:    host.Notes,
+		Tags:     host.Tags,
+		Pinned:   host.Pinned,
+	}
+}
+
+func WriteInventoryCSV(writer io.Writer, hosts []InventoryHost) error {
 	csvWriter := csv.NewWriter(writer)
 
 	if err := csvWriter.Write(InventoryCSVHeader); err != nil {
@@ -157,6 +210,11 @@ func WriteInventoryCSV(writer io.Writer, hosts []Host) error {
 			strconv.Itoa(host.Known),
 			strconv.Itoa(host.Now),
 			host.DeviceType,
+			host.Owner,
+			host.Location,
+			host.Notes,
+			strings.Join(host.Tags, "; "),
+			strconv.FormatBool(host.Pinned),
 		}); err != nil {
 			return err
 		}
@@ -175,6 +233,9 @@ func normalizeData(data Data) Data {
 	}
 	if data.Events == nil {
 		data.Events = []Event{}
+	}
+	if data.HostMetadata == nil {
+		data.HostMetadata = []HostMetadata{}
 	}
 
 	return data

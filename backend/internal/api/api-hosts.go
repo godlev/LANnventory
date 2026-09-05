@@ -21,7 +21,12 @@ import (
 // @Success      200  {array}   models.Host
 // @Router       /all [get]
 func getAllHosts(c *gin.Context) {
-	allHosts, _ := gdb.Select("now")
+	allHosts, ok := gdb.SelectCurrentHostsWithMetadata()
+	if !ok {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to load hosts"})
+		return
+	}
+
 	c.IndentedJSON(http.StatusOK, allHosts)
 }
 
@@ -35,7 +40,7 @@ func getAllHosts(c *gin.Context) {
 // @Router       /host/{id} [get]
 func getHost(c *gin.Context) {
 	idStr := c.Param("id")
-	host, err := getHostByID(idStr) // functions.go
+	host, err := getHostWithMetadataByID(idStr) // functions.go
 	if err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -97,6 +102,13 @@ func setHostDeviceType(c *gin.Context) {
 		gdb.RecordHostEvent(updatedHost, models.EventDeviceTypeChanged, oldDeviceType, updatedHost.DeviceType)
 	}
 
+	updatedHost, err = gdb.SelectHostWithMetadataByID(updatedHost.ID)
+	if err != nil {
+		slog.Error("Failed to reload host metadata after device type update", "id", host.ID, "err", err)
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to load updated host"})
+		return
+	}
+
 	c.IndentedJSON(http.StatusOK, updatedHost)
 }
 
@@ -118,6 +130,11 @@ func delHost(c *gin.Context) {
 
 	gdb.DeleteHostDeviceChangeEvents(host.ID)
 	gdb.Delete("now", host.ID)
+	if err := gdb.DeleteHostMetadataByMAC(host.Mac); err != nil {
+		slog.Error("Failed to delete host metadata", "id", host.ID, "mac", host.Mac, "err", err)
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to delete host metadata"})
+		return
+	}
 	slog.Info("Deleting from DB", "host", host)
 	c.IndentedJSON(http.StatusOK, "OK")
 }
@@ -158,7 +175,13 @@ func addHost(c *gin.Context) {
 		slog.Info("Added host to DB", "host", hosts[0])
 	}
 
-	c.IndentedJSON(http.StatusOK, hosts[0])
+	enrichedHost, err := gdb.SelectHostWithMetadataByID(hosts[0].ID)
+	if err != nil {
+		c.IndentedJSON(http.StatusOK, hosts[0])
+		return
+	}
+
+	c.IndentedJSON(http.StatusOK, enrichedHost)
 }
 
 // editHost godoc

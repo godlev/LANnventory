@@ -35,17 +35,24 @@ type Conf struct {
 
 // Host - one host
 type Host struct {
-	ID         int    `gorm:"column:ID;primaryKey"`
-	Name       string `gorm:"column:NAME"`
-	DNS        string `gorm:"column:DNS"`
-	Iface      string `gorm:"column:IFACE"`
-	IP         string `gorm:"column:IP"`
-	Mac        string `gorm:"column:MAC"`
-	Hw         string `gorm:"column:HW"`
-	Date       string `gorm:"column:DATE"`
-	Known      int    `gorm:"column:KNOWN"`
-	Now        int    `gorm:"column:NOW"`
-	DeviceType string `gorm:"column:DEVICE_TYPE"`
+	ID         int      `gorm:"column:ID;primaryKey"`
+	Name       string   `gorm:"column:NAME"`
+	DNS        string   `gorm:"column:DNS"`
+	Iface      string   `gorm:"column:IFACE"`
+	IP         string   `gorm:"column:IP"`
+	Mac        string   `gorm:"column:MAC"`
+	Hw         string   `gorm:"column:HW"`
+	Date       string   `gorm:"column:DATE"`
+	Known      int      `gorm:"column:KNOWN"`
+	Now        int      `gorm:"column:NOW"`
+	DeviceType string   `gorm:"column:DEVICE_TYPE"`
+	Owner      string   `gorm:"-"`
+	Location   string   `gorm:"-"`
+	Notes      string   `gorm:"-"`
+	Tags       []string `gorm:"-"`
+	Pinned     bool     `gorm:"-"`
+	// MetadataLoaded marks current-host API responses that were explicitly enriched.
+	MetadataLoaded bool `gorm:"-" json:"-"`
 }
 
 // Stat - status

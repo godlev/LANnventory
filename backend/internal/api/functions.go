@@ -24,3 +24,17 @@ func getHostByID(idStr string) (models.Host, error) {
 
 	return host, nil
 }
+
+func getHostWithMetadataByID(idStr string) (models.Host, error) {
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id < 1 {
+		return models.Host{}, errInvalidHostID
+	}
+
+	host, err := gdb.SelectHostWithMetadataByID(id)
+	if err != nil || host.ID < 1 {
+		return models.Host{}, errInvalidHostID
+	}
+
+	return host, nil
+}

@@ -2,7 +2,9 @@
 ```http
 GET /api/all
 ```
-Returns all hosts in `json`.
+Returns all current hosts in `json`, enriched with inventory metadata fields:
+
+`Owner`, `Location`, `Notes`, `Tags`, and `Pinned`.
 
 
 ```http
@@ -24,7 +26,9 @@ Returns only last 20 lines of history of a device with this `mac`.
 ```http
 GET /api/host/:id
 ```
-Returns host with this `id` in `json`.
+Returns current host with this `id` in `json`, enriched with inventory metadata fields:
+
+`Owner`, `Location`, `Notes`, `Tags`, and `Pinned`.
 
 ```http
 GET /api/activity
@@ -57,18 +61,20 @@ Returns device options represented in current hosts and retained activity events
 ```http
 GET /api/export/backup
 ```
-Downloads a portable JSON backup document with current hosts, host history and Events.
+Downloads a portable JSON backup document with current hosts, host history, Events and host metadata.
 
 The response uses `Content-Disposition: attachment` with a filename like `lannventory-backup-YYYYMMDDTHHMMSSZ.json`.
 
 Backup metadata includes:
 
 - `format`: always `lannventory-backup`
-- `formatVersion`: currently `1`
+- `formatVersion`: currently `2`
 - `createdAt`: UTC RFC3339 timestamp
 - `appVersion`: running LANnventory version
 
-The exported data is a logical backup, not a raw database dump. It excludes runtime configuration, notification URLs, database connection strings, InfluxDB tokens and other secrets. Events preserve the stored `Date` value exactly and do not include derived `DateUTC` display data.
+Backup format v1 contained `currentHosts`, `history` and `events`. Backup format v2 adds `hostMetadata`, ordered by MAC address ascending. Each metadata entry contains `mac`, `owner`, `location`, `notes`, `tags` and `pinned`. Tags are JSON arrays in the portable backup; internal tag storage strings are not exported.
+
+The exported data is a logical backup, not a raw database dump. It excludes runtime configuration, notification URLs, database connection strings, InfluxDB tokens and other secrets. Events preserve the stored `Date` value exactly and do not include derived `DateUTC` display data. Restore/import is not implemented yet.
 
 ```http
 GET /api/export/inventory.csv
@@ -77,9 +83,26 @@ Downloads the current device inventory as CSV. The response uses `Content-Dispos
 
 CSV columns are:
 
-`ID, Name, DNS, Iface, IP, Mac, Hw, Date, Known, Now, DeviceType`
+`ID, Name, DNS, Iface, IP, Mac, Hw, Date, Known, Now, DeviceType, Owner, Location, Notes, Tags, Pinned`
 
-This export includes current inventory only. It does not include host history, Events, configuration or secrets.
+Tags are represented in one human-readable cell separated by `; `. This export includes current inventory and metadata only. It does not include host history, Events, configuration or secrets.
+
+```http
+PATCH /api/host/:id/metadata
+```
+Partially updates manually managed inventory metadata for a current host. Supported JSON fields are:
+
+`owner`, `location`, `notes`, `tags`, and `pinned`.
+
+Validation:
+
+- `owner`: maximum 120 Unicode characters; surrounding whitespace is trimmed.
+- `location`: maximum 120 Unicode characters; surrounding whitespace is trimmed.
+- `notes`: maximum 4000 Unicode characters; line breaks are preserved.
+- `tags`: maximum 20 tags.
+- each tag: maximum 48 Unicode characters.
+
+Tags are trimmed, empty tags are removed, and duplicates are removed case-insensitively while preserving the first entered spelling and order. The endpoint returns the complete enriched current host. Metadata changes do not create activity events in this release phase.
 
 ```http
 GET /api/host/:id/activity

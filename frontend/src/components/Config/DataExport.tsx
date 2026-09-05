@@ -40,7 +40,7 @@ function DataExport() {
                 >
                   {busy() === "backup" ? "Preparing backup" : "Download backup"}
                 </button>
-                <div class="config-field-helper">Exports current devices, presence history and Events as a portable JSON file.</div>
+                <div class="config-field-helper">Exports current devices, presence history, Events and metadata as a portable JSON file.</div>
               </td>
             </tr>
             <tr>
@@ -54,7 +54,7 @@ function DataExport() {
                 >
                   {busy() === "csv" ? "Preparing CSV" : "Export CSV"}
                 </button>
-                <div class="config-field-helper">Exports the current device inventory only. Restore and import are not available yet.</div>
+                <div class="config-field-helper">Exports the current device inventory and metadata only. Restore and import are not available yet.</div>
               </td>
             </tr>
             <tr>

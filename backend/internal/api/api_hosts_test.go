@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -257,6 +258,210 @@ func TestHostJSONIncludesDeviceType(t *testing.T) {
 	}
 }
 
+func TestHostEndpointsIncludeMetadata(t *testing.T) {
+	router := setupTestRouter(t)
+	routerHost := seedHost(t, models.Host{
+		Name:       "router",
+		IP:         "192.168.1.1",
+		Mac:        "AA:BB:CC:DD:EE:01",
+		DeviceType: "router",
+	})
+	nasHost := seedHost(t, models.Host{
+		Name:       "NAS",
+		IP:         "192.168.1.20",
+		Mac:        "AA:BB:CC:DD:EE:20",
+		DeviceType: "nas",
+	})
+	owner := "Network Team"
+	location := "Closet"
+	notes := "Main gateway"
+	tags := []string{"critical", "edge"}
+	pinned := true
+	if _, err := gdb.UpsertHostMetadata(routerHost.Mac, models.HostMetadataUpdate{
+		Owner:    &owner,
+		Location: &location,
+		Notes:    &notes,
+		Tags:     &tags,
+		Pinned:   &pinned,
+	}); err != nil {
+		t.Fatalf("UpsertHostMetadata: %v", err)
+	}
+
+	rec := getPath(router, "/api/all")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("/api/all status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	var hosts []models.Host
+	if err := json.Unmarshal(rec.Body.Bytes(), &hosts); err != nil {
+		t.Fatalf("json.Unmarshal /api/all: %v", err)
+	}
+	if len(hosts) != 2 {
+		t.Fatalf("/api/all hosts len = %d, want 2: %+v", len(hosts), hosts)
+	}
+	for _, host := range hosts {
+		switch host.ID {
+		case routerHost.ID:
+			if host.Owner != owner || host.Location != location || host.Notes != notes || !host.Pinned {
+				t.Fatalf("router metadata = %+v, want saved metadata", host)
+			}
+			assertStringSlice(t, host.Tags, tags, "router tags")
+		case nasHost.ID:
+			if host.Owner != "" || host.Location != "" || host.Notes != "" || host.Pinned {
+				t.Fatalf("default host metadata = %+v, want empty and unpinned", host)
+			}
+			if host.Tags == nil || len(host.Tags) != 0 {
+				t.Fatalf("default host Tags = %#v, want empty array", host.Tags)
+			}
+		}
+	}
+
+	rec = getPath(router, "/api/host/"+itoa(routerHost.ID))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("/api/host status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	var host models.Host
+	if err := json.Unmarshal(rec.Body.Bytes(), &host); err != nil {
+		t.Fatalf("json.Unmarshal /api/host: %v", err)
+	}
+	if host.Owner != owner || !host.Pinned {
+		t.Fatalf("/api/host metadata = %+v, want saved metadata", host)
+	}
+}
+
+func TestSetHostMetadataCanonicalizesAndPartiallyUpdates(t *testing.T) {
+	router := setupTestRouter(t)
+	host := seedHost(t, models.Host{
+		Name: "proxmox",
+		IP:   "192.168.1.30",
+		Mac:  "AA:BB:CC:DD:EE:30",
+	})
+
+	rec := patchHostMetadata(router, host.ID, `{
+		"owner": "  Miroslav  ",
+		"location": "  Office  ",
+		"notes": "Main Proxmox host\nUPS attached",
+		"tags": [" server ", "Critical", "SERVER", "", "critical"],
+		"pinned": true
+	}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("metadata patch status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var updated models.Host
+	if err := json.Unmarshal(rec.Body.Bytes(), &updated); err != nil {
+		t.Fatalf("json.Unmarshal metadata response: %v", err)
+	}
+	if updated.Owner != "Miroslav" || updated.Location != "Office" || updated.Notes != "Main Proxmox host\nUPS attached" || !updated.Pinned {
+		t.Fatalf("metadata response = %+v, want trimmed text and pinned", updated)
+	}
+	assertStringSlice(t, updated.Tags, []string{"server", "Critical"}, "canonical tags")
+
+	rec = patchHostMetadata(router, host.ID, `{"pinned": false}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("partial metadata patch status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &updated); err != nil {
+		t.Fatalf("json.Unmarshal partial metadata response: %v", err)
+	}
+	if updated.Owner != "Miroslav" || updated.Location != "Office" || updated.Notes != "Main Proxmox host\nUPS attached" || updated.Pinned {
+		t.Fatalf("partial patch metadata = %+v, want original text and unpinned", updated)
+	}
+	assertStringSlice(t, updated.Tags, []string{"server", "Critical"}, "partial patch tags")
+
+	events, ok := gdb.SelectEvents(10, "")
+	if !ok {
+		t.Fatal("SelectEvents failed")
+	}
+	if len(events) != 0 {
+		t.Fatalf("metadata patch created activity events: %+v", events)
+	}
+}
+
+func TestSetHostMetadataRejectsInvalidInput(t *testing.T) {
+	router := setupTestRouter(t)
+	host := seedHost(t, models.Host{
+		Name: "desktop",
+		IP:   "192.168.1.42",
+		Mac:  "AA:BB:CC:DD:EE:42",
+	})
+
+	tests := []struct {
+		name string
+		body string
+	}{
+		{name: "owner too long", body: metadataJSON(t, map[string]any{"owner": strings.Repeat("a", 121)})},
+		{name: "location too long", body: metadataJSON(t, map[string]any{"location": strings.Repeat("b", 121)})},
+		{name: "notes too long", body: metadataJSON(t, map[string]any{"notes": strings.Repeat("c", 4001)})},
+		{name: "too many tags", body: metadataJSON(t, map[string]any{"tags": numberedTags(21, 3)})},
+		{name: "tag too long", body: metadataJSON(t, map[string]any{"tags": []string{strings.Repeat("d", 49)}})},
+		{name: "control character", body: metadataJSON(t, map[string]any{"owner": "bad\u0001value"})},
+		{name: "malformed json", body: `not-json`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rec := patchHostMetadata(router, host.ID, tt.body)
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+			}
+		})
+	}
+
+	req := httptest.NewRequest(http.MethodPatch, "/api/host/not-a-number/metadata", bytes.NewBufferString(`{"pinned":true}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("invalid id status = %d, want %d; body: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+}
+
+func TestHostDeleteRemovesMetadataButOrdinaryHostUpdatesPreserveIt(t *testing.T) {
+	router := setupTestRouter(t)
+	host := seedHost(t, models.Host{
+		Name:       "camera",
+		IP:         "192.168.1.60",
+		Mac:        "AA:BB:CC:DD:EE:60",
+		Known:      1,
+		Now:        1,
+		DeviceType: "camera",
+	})
+	owner := "Facilities"
+	tags := []string{"security"}
+	pinned := true
+	if _, err := gdb.UpsertHostMetadata(host.Mac, models.HostMetadataUpdate{
+		Owner:  &owner,
+		Tags:   &tags,
+		Pinned: &pinned,
+	}); err != nil {
+		t.Fatalf("UpsertHostMetadata: %v", err)
+	}
+
+	rec := getPath(router, "/api/edit/"+itoa(host.ID)+"/camera-renamed/toggle")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("edit status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	assertMetadataStillExists(t, host.Mac, owner)
+
+	rec = patchHostDeviceType(router, host.ID, `{"deviceType":"iot"}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("device type status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	assertMetadataStillExists(t, host.Mac, owner)
+
+	rec = getPath(router, "/api/host/del/"+itoa(host.ID))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("delete status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	_, ok, err := gdb.SelectHostMetadataByMAC(host.Mac)
+	if err != nil {
+		t.Fatalf("SelectHostMetadataByMAC after delete: %v", err)
+	}
+	if ok {
+		t.Fatal("host metadata still exists after explicit host delete")
+	}
+}
+
 func TestEditHostKnownToggleCreatesEventsOnlyOnKnownChange(t *testing.T) {
 	router := setupTestRouter(t)
 	host := seedHost(t, models.Host{
@@ -408,6 +613,14 @@ func patchHostDeviceType(router *gin.Engine, id int, body string) *httptest.Resp
 	return rec
 }
 
+func patchHostMetadata(router *gin.Engine, id int, body string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(http.MethodPatch, "/api/host/"+itoa(id)+"/metadata", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	return rec
+}
+
 func getPath(router *gin.Engine, path string) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(http.MethodGet, path, nil)
 	rec := httptest.NewRecorder()
@@ -434,4 +647,36 @@ func assertActivityEvents(t *testing.T, want []models.HostEventType) {
 
 func itoa(id int) string {
 	return strconv.Itoa(id)
+}
+
+func metadataJSON(t *testing.T, value map[string]any) string {
+	t.Helper()
+
+	payload, err := json.Marshal(value)
+	if err != nil {
+		t.Fatalf("json.Marshal metadata payload: %v", err)
+	}
+
+	return string(payload)
+}
+
+func numberedTags(count int, length int) []string {
+	tags := make([]string, 0, count)
+	for i := 0; i < count; i++ {
+		tags = append(tags, strings.Repeat(string(rune('a'+i%26)), length)+itoa(i))
+	}
+
+	return tags
+}
+
+func assertMetadataStillExists(t *testing.T, mac string, owner string) {
+	t.Helper()
+
+	metadata, ok, err := gdb.SelectHostMetadataByMAC(mac)
+	if err != nil {
+		t.Fatalf("SelectHostMetadataByMAC: %v", err)
+	}
+	if !ok || metadata.Owner != owner {
+		t.Fatalf("metadata for %s = %+v, ok=%v, want owner %q", mac, metadata, ok, owner)
+	}
 }

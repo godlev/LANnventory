@@ -13,6 +13,11 @@ export interface Host {
 	Known: number;
 	Now:   number;
 	DeviceType: string;
+	Owner: string;
+	Location: string;
+	Notes: string;
+	Tags: string[];
+	Pinned: boolean;
 };
 
 export interface HostEvent {
@@ -112,6 +117,11 @@ export const emptyHost:Host = {
 	Known: 0,
 	Now:   0,
 	DeviceType: "",
+	Owner: "",
+	Location: "",
+	Notes: "",
+	Tags: [],
+	Pinned: false,
 };
 
 export const emptyConf:Conf = {

@@ -15,6 +15,14 @@ type ActivityQuery = {
   macs?: string[];
 };
 
+export type HostMetadataPayload = {
+  owner?: string;
+  location?: string;
+  notes?: string;
+  tags?: string[];
+  pinned?: boolean;
+};
+
 const apiFetch = async (url: string, init?: RequestInit): Promise<Response> => {
   const response = await fetch(url, init);
   if (!response.ok) {
@@ -192,6 +200,15 @@ export const apiSetDeviceType = async (id: number, deviceType: DeviceTypeValue):
     method: 'PATCH',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ deviceType }),
+  });
+};
+
+export const apiSetHostMetadata = async (id: number, metadata: HostMetadataPayload): Promise<Host> => {
+  const url = apiPath+'/api/host/'+id+'/metadata';
+  return await apiJSON<Host>(url, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(metadata),
   });
 };
 
