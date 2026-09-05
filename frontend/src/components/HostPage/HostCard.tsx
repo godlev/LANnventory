@@ -28,17 +28,27 @@ function HostCard(_props: HostCardProps) {
 
   const [name, setName] = createSignal(_props.host.Name);
   const [metadataDraft, setMetadataDraft] = createSignal<MetadataDraft>(metadataFromHost(_props.host));
+  const [metadataBaseline, setMetadataBaseline] = createSignal<MetadataDraft>(metadataFromHost(_props.host));
   const [tagInput, setTagInput] = createSignal("");
   const [metadataSaving, setMetadataSaving] = createSignal(false);
   const [metadataStatus, setMetadataStatus] = createSignal("");
   const [metadataError, setMetadataError] = createSignal("");
+  let syncedMetadataHostID = _props.host.ID;
 
   createEffect(() => {
     setName(_props.host.Name);
   });
 
   createEffect(() => {
-    setMetadataDraft(metadataFromHost(_props.host));
+    const hostID = _props.host.ID;
+    if (hostID === syncedMetadataHostID) {
+      return;
+    }
+
+    syncedMetadataHostID = hostID;
+    const nextMetadata = metadataFromHost(_props.host);
+    setMetadataBaseline(nextMetadata);
+    setMetadataDraft(nextMetadata);
     setTagInput("");
     setMetadataStatus("");
     setMetadataError("");
@@ -56,7 +66,7 @@ function HostCard(_props: HostCardProps) {
   const hostDeviceTypeTitle = () => deviceTypeTitle(_props.host.DeviceType);
   const displayName = () => deviceDisplayName({ ..._props.host, Name: name() });
   const modeTitle = () => _props.editMode ? "Done editing host" : "Edit host";
-  const metadataDirty = () => !metadataDraftEquals(metadataDraft(), metadataFromHost(_props.host));
+  const metadataDirty = () => !metadataDraftEquals(metadataDraft(), metadataBaseline());
 
   const debouncedApi = debounce(async (val: string) => {
       await apiEditHost(_props.host.ID, val, "");
@@ -173,10 +183,14 @@ function HostCard(_props: HostCardProps) {
         tags: draft.Tags,
         pinned: draft.Pinned,
       });
+      const nextMetadata = metadataFromHost(updatedHost);
+      setMetadataBaseline(nextMetadata);
+      setMetadataDraft(nextMetadata);
+      setTagInput("");
+      setMetadataError("");
+      setMetadataStatus("Metadata saved");
       updateHostInView(updatedHost);
       _props.onHostChange?.(updatedHost);
-      setMetadataDraft(metadataFromHost(updatedHost));
-      setMetadataStatus("Metadata saved");
     } catch {
       setMetadataError("Metadata could not be saved");
     } finally {

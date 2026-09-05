@@ -71,6 +71,30 @@ func Delete(table string, id int) {
 	check.IfError(result.Error)
 }
 
+// DeleteCurrentHostWithMetadata removes a current host, its persistent device-change
+// events, and its inventory metadata atomically.
+func DeleteCurrentHostWithMetadata(host models.Host) error {
+	if host.ID < 1 {
+		return gorm.ErrRecordNotFound
+	}
+
+	activeDB, release, err := acquireDB()
+	if err != nil {
+		return err
+	}
+	defer release()
+
+	return activeDB.Transaction(func(txDB *gorm.DB) error {
+		if result := deleteHostDeviceChangeEvents(txDB, host.ID); result.Error != nil {
+			return result.Error
+		}
+		if err := txDB.Table("now").Delete(&models.Host{}, host.ID).Error; err != nil {
+			return err
+		}
+		return deleteHostMetadataByMAC(txDB, host.Mac)
+	})
+}
+
 // DeleteOldHistory - delete a list of hosts from History
 func DeleteOldHistory(date string) int64 {
 
@@ -149,8 +173,14 @@ func DeleteHostDeviceChangeEvents(hostID int) int64 {
 	}
 	defer release()
 
-	tab := activeDB.Table("events")
-	result := tab.
+	result := deleteHostDeviceChangeEvents(activeDB, hostID)
+	check.IfError(result.Error)
+
+	return result.RowsAffected
+}
+
+func deleteHostDeviceChangeEvents(activeDB *gorm.DB, hostID int) *gorm.DB {
+	return activeDB.Table("events").
 		Where("\"HOST_ID\" = ?", hostID).
 		Where("\"EVENT_TYPE\" IN ?", []string{
 			string(models.EventDiscovered),
@@ -159,9 +189,6 @@ func DeleteHostDeviceChangeEvents(hostID int) int64 {
 			string(models.EventDeviceTypeChanged),
 		}).
 		Delete(&models.HostEvent{})
-	check.IfError(result.Error)
-
-	return result.RowsAffected
 }
 
 // Clear - delete all hosts from table

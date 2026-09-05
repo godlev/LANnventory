@@ -10,10 +10,12 @@ import (
 	"strings"
 	"testing"
 
+	sqlite "github.com/aceberg/gorm-sqlite"
 	"github.com/gin-gonic/gin"
 	"github.com/godlev/LANnventory/internal/conf"
 	"github.com/godlev/LANnventory/internal/gdb"
 	"github.com/godlev/LANnventory/internal/models"
+	"gorm.io/gorm"
 )
 
 func setupTestRouter(t *testing.T) *gin.Engine {
@@ -325,6 +327,25 @@ func TestHostEndpointsIncludeMetadata(t *testing.T) {
 	}
 	if host.Owner != owner || !host.Pinned {
 		t.Fatalf("/api/host metadata = %+v, want saved metadata", host)
+	}
+}
+
+func TestGetHostReportsMetadataReadFailureAsServerError(t *testing.T) {
+	router := setupTestRouter(t)
+	host := seedHost(t, models.Host{
+		Name: "router",
+		IP:   "192.168.1.1",
+		Mac:  "AA:BB:CC:DD:EE:01",
+	})
+
+	dropHostMetadataTable(t)
+
+	rec := getPath(router, "/api/host/"+itoa(host.ID))
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusInternalServerError, rec.Body.String())
+	}
+	if strings.Contains(rec.Body.String(), errInvalidHostID.Error()) {
+		t.Fatalf("metadata read failure was reported as invalid host id: %s", rec.Body.String())
 	}
 }
 
@@ -678,5 +699,27 @@ func assertMetadataStillExists(t *testing.T, mac string, owner string) {
 	}
 	if !ok || metadata.Owner != owner {
 		t.Fatalf("metadata for %s = %+v, ok=%v, want owner %q", mac, metadata, ok, owner)
+	}
+}
+
+func dropHostMetadataTable(t *testing.T) {
+	t.Helper()
+
+	testDB, err := gorm.Open(sqlite.Open(conf.GetAppConfig().DBPath), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open test DB for metadata failure setup: %v", err)
+	}
+	sqlDB, err := testDB.DB()
+	if err != nil {
+		t.Fatalf("test DB handle: %v", err)
+	}
+	defer func() {
+		if err := sqlDB.Close(); err != nil {
+			t.Errorf("close test DB handle: %v", err)
+		}
+	}()
+
+	if err := testDB.Exec("DROP TABLE host_metadata").Error; err != nil {
+		t.Fatalf("drop host_metadata: %v", err)
 	}
 }

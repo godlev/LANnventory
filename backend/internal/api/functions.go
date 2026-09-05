@@ -6,6 +6,7 @@ import (
 
 	"github.com/godlev/LANnventory/internal/gdb"
 	"github.com/godlev/LANnventory/internal/models"
+	"gorm.io/gorm"
 )
 
 var errInvalidHostID = errors.New("invalid host id")
@@ -32,7 +33,13 @@ func getHostWithMetadataByID(idStr string) (models.Host, error) {
 	}
 
 	host, err := gdb.SelectHostWithMetadataByID(id)
-	if err != nil || host.ID < 1 {
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return models.Host{}, errInvalidHostID
+	}
+	if err != nil {
+		return models.Host{}, err
+	}
+	if host.ID < 1 {
 		return models.Host{}, errInvalidHostID
 	}
 

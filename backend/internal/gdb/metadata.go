@@ -136,6 +136,14 @@ func DeleteHostMetadataByMAC(mac string) error {
 	}
 	defer release()
 
+	return deleteHostMetadataByMAC(activeDB, mac)
+}
+
+func deleteHostMetadataByMAC(activeDB *gorm.DB, mac string) error {
+	if mac == "" {
+		return nil
+	}
+
 	return activeDB.Table(hostMetadataTable).
 		Where("\"MAC\" = ?", mac).
 		Delete(&models.HostMetadata{}).Error

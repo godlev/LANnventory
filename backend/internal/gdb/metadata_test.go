@@ -119,6 +119,93 @@ func TestCurrentHostUpdatePreservesHostMetadata(t *testing.T) {
 	assertStringSlice(t, models.DecodeMetadataTags(metadata.TagsJSON), tags, "preserved tags")
 }
 
+func TestDeleteCurrentHostWithMetadataRollsBackOnMetadataFailure(t *testing.T) {
+	startSelectTestDB(t)
+	host := models.Host{
+		ID:         1,
+		Name:       "camera",
+		IP:         "192.168.1.60",
+		Mac:        "AA:BB:CC:DD:EE:60",
+		Known:      1,
+		Now:        1,
+		DeviceType: "camera",
+	}
+	seedExportCurrentHost(t, host)
+
+	owner := "Facilities"
+	if _, err := UpsertHostMetadata(host.Mac, models.HostMetadataUpdate{Owner: &owner}); err != nil {
+		t.Fatalf("UpsertHostMetadata: %v", err)
+	}
+
+	seededEvents := []models.HostEventType{
+		models.EventDiscovered,
+		models.EventKnown,
+		models.EventUnknown,
+		models.EventDeviceTypeChanged,
+		models.EventOnline,
+		models.EventOffline,
+	}
+	eventDates := []string{
+		"2026-08-24 10:00:00",
+		"2026-08-24 10:01:00",
+		"2026-08-24 10:02:00",
+		"2026-08-24 10:03:00",
+		"2026-08-24 10:04:00",
+		"2026-08-24 10:05:00",
+	}
+	for i, eventType := range seededEvents {
+		event := models.NewHostEvent(host, eventType, "", "")
+		event.Date = eventDates[i]
+		if err := AddEvent(event); err != nil {
+			t.Fatalf("AddEvent %s: %v", eventType, err)
+		}
+	}
+
+	if err := db.Exec(`
+		CREATE TRIGGER fail_host_metadata_delete
+		BEFORE DELETE ON host_metadata
+		BEGIN
+			SELECT RAISE(ABORT, 'forced metadata delete failure');
+		END;
+	`).Error; err != nil {
+		t.Fatalf("create metadata delete failure trigger: %v", err)
+	}
+
+	if err := DeleteCurrentHostWithMetadata(host); err == nil {
+		t.Fatal("DeleteCurrentHostWithMetadata error = nil, want forced metadata delete failure")
+	}
+
+	if got := SelectByID(host.ID); got.ID != host.ID {
+		t.Fatalf("host was deleted despite metadata failure: %+v", got)
+	}
+	metadata, ok, err := SelectHostMetadataByMAC(host.Mac)
+	if err != nil {
+		t.Fatalf("SelectHostMetadataByMAC: %v", err)
+	}
+	if !ok || metadata.Owner != owner {
+		t.Fatalf("metadata = %+v, ok=%v, want rollback-preserved owner %q", metadata, ok, owner)
+	}
+	events, ok := SelectEvents(10, "")
+	if !ok {
+		t.Fatal("SelectEvents failed")
+	}
+	if len(events) != len(seededEvents) {
+		t.Fatalf("events len = %d, want rollback-preserved %d events: %+v", len(events), len(seededEvents), events)
+	}
+	gotEventTypes := make(map[string]int, len(seededEvents))
+	for _, event := range events {
+		if event.HostID != host.ID || event.Mac != host.Mac {
+			t.Fatalf("event lost host snapshot after rollback: %+v, want host %+v", event, host)
+		}
+		gotEventTypes[event.EventType]++
+	}
+	for _, eventType := range seededEvents {
+		if gotEventTypes[string(eventType)] != 1 {
+			t.Fatalf("event type %s count = %d, want 1; events: %+v", eventType, gotEventTypes[string(eventType)], events)
+		}
+	}
+}
+
 func TestMalformedMetadataTagsJSONDoesNotCrashHostRetrieval(t *testing.T) {
 	startSelectTestDB(t)
 	seedExportCurrentHost(t, models.Host{

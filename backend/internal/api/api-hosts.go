@@ -42,7 +42,13 @@ func getHost(c *gin.Context) {
 	idStr := c.Param("id")
 	host, err := getHostWithMetadataByID(idStr) // functions.go
 	if err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		if errors.Is(err, errInvalidHostID) {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		slog.Error("Failed to load host", "id", idStr, "err", err)
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to load host"})
 		return
 	}
 
@@ -128,11 +134,9 @@ func delHost(c *gin.Context) {
 		return
 	}
 
-	gdb.DeleteHostDeviceChangeEvents(host.ID)
-	gdb.Delete("now", host.ID)
-	if err := gdb.DeleteHostMetadataByMAC(host.Mac); err != nil {
-		slog.Error("Failed to delete host metadata", "id", host.ID, "mac", host.Mac, "err", err)
-		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to delete host metadata"})
+	if err := gdb.DeleteCurrentHostWithMetadata(host); err != nil {
+		slog.Error("Failed to delete host", "id", host.ID, "mac", host.Mac, "err", err)
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to delete host"})
 		return
 	}
 	slog.Info("Deleting from DB", "host", host)
