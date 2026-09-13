@@ -274,6 +274,9 @@ func TestHostEndpointsIncludeMetadata(t *testing.T) {
 		Mac:        "AA:BB:CC:DD:EE:20",
 		DeviceType: "nas",
 	})
+	if err := gdb.RecordHostObservation(routerHost.Mac, "2026-09-05 08:00:00"); err != nil {
+		t.Fatalf("RecordHostObservation router: %v", err)
+	}
 	owner := "Network Team"
 	location := "Closet"
 	notes := "Main gateway"
@@ -306,10 +309,16 @@ func TestHostEndpointsIncludeMetadata(t *testing.T) {
 			if host.Owner != owner || host.Location != location || host.Notes != notes || !host.Pinned {
 				t.Fatalf("router metadata = %+v, want saved metadata", host)
 			}
+			if host.FirstSeen != "2026-09-05 08:00:00" || host.LastSeen != "2026-09-05 08:00:00" || host.FirstSeenEstimated {
+				t.Fatalf("router lifecycle = %+v, want exact observation", host)
+			}
 			assertStringSlice(t, host.Tags, tags, "router tags")
 		case nasHost.ID:
 			if host.Owner != "" || host.Location != "" || host.Notes != "" || host.Pinned {
 				t.Fatalf("default host metadata = %+v, want empty and unpinned", host)
+			}
+			if host.FirstSeen != "" || host.LastSeen != "" || host.FirstSeenEstimated {
+				t.Fatalf("default host lifecycle = %+v, want empty lifecycle", host)
 			}
 			if host.Tags == nil || len(host.Tags) != 0 {
 				t.Fatalf("default host Tags = %#v, want empty array", host.Tags)
@@ -327,6 +336,9 @@ func TestHostEndpointsIncludeMetadata(t *testing.T) {
 	}
 	if host.Owner != owner || !host.Pinned {
 		t.Fatalf("/api/host metadata = %+v, want saved metadata", host)
+	}
+	if host.FirstSeen != "2026-09-05 08:00:00" || host.LastSeen != "2026-09-05 08:00:00" || host.FirstSeenEstimated {
+		t.Fatalf("/api/host lifecycle = %+v, want exact observation", host)
 	}
 }
 
@@ -393,8 +405,88 @@ func TestSetHostMetadataCanonicalizesAndPartiallyUpdates(t *testing.T) {
 	if !ok {
 		t.Fatal("SelectEvents failed")
 	}
+	eventCounts := make(map[string]int, len(events))
+	for _, event := range events {
+		eventCounts[event.EventType]++
+	}
+	wantCounts := map[models.HostEventType]int{
+		models.EventOwnerChanged:    1,
+		models.EventLocationChanged: 1,
+		models.EventNotesChanged:    1,
+		models.EventTagsChanged:     1,
+		models.EventPinnedChanged:   2,
+	}
+	if len(events) != 6 {
+		t.Fatalf("metadata events len = %d, want 6: %+v", len(events), events)
+	}
+	for eventType, want := range wantCounts {
+		if got := eventCounts[string(eventType)]; got != want {
+			t.Fatalf("metadata event count %s = %d, want %d; events: %+v", eventType, got, want, events)
+		}
+	}
+}
+
+func TestSetHostMetadataNoOpDoesNotCreateEvents(t *testing.T) {
+	router := setupTestRouter(t)
+	host := seedHost(t, models.Host{
+		Name: "desktop",
+		IP:   "192.168.1.42",
+		Mac:  "AA:BB:CC:DD:EE:42",
+	})
+	owner := "Miroslav"
+	tags := []string{"server"}
+	pinned := true
+	if _, err := gdb.UpsertHostMetadata(host.Mac, models.HostMetadataUpdate{
+		Owner:  &owner,
+		Tags:   &tags,
+		Pinned: &pinned,
+	}); err != nil {
+		t.Fatalf("UpsertHostMetadata: %v", err)
+	}
+
+	rec := patchHostMetadata(router, host.ID, `{
+		"owner": "  Miroslav  ",
+		"tags": ["server", "SERVER"],
+		"pinned": true
+	}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("metadata no-op status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	events, ok := gdb.SelectEvents(10, "")
+	if !ok {
+		t.Fatal("SelectEvents failed")
+	}
 	if len(events) != 0 {
-		t.Fatalf("metadata patch created activity events: %+v", events)
+		t.Fatalf("canonical no-op metadata patch created events: %+v", events)
+	}
+}
+
+func TestAddHostDoesNotFabricateLifecycleSeenTimestamps(t *testing.T) {
+	router := setupTestRouter(t)
+
+	rec := getPath(router, "/api/host/add/AA:BB:CC:DD:EE:90?name=manual")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("add host status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var host models.Host
+	if err := json.Unmarshal(rec.Body.Bytes(), &host); err != nil {
+		t.Fatalf("json.Unmarshal manual host: %v", err)
+	}
+	if host.FirstSeen != "" || host.LastSeen != "" || host.FirstSeenEstimated {
+		t.Fatalf("manual host lifecycle response = %+v, want empty seen timestamps", host)
+	}
+
+	lifecycle, ok, err := gdb.SelectHostLifecycleByMAC(host.Mac)
+	if err != nil {
+		t.Fatalf("SelectHostLifecycleByMAC: %v", err)
+	}
+	if !ok {
+		t.Fatal("manual host lifecycle placeholder was not created")
+	}
+	if lifecycle.FirstSeen != "" || lifecycle.LastSeen != "" || lifecycle.FirstSeenEstimated {
+		t.Fatalf("manual host lifecycle = %+v, want empty placeholder", lifecycle)
 	}
 }
 
@@ -582,12 +674,17 @@ func TestDeleteHostRemovesDeviceChangeEventsButKeepsConnectivityEvents(t *testin
 		models.EventKnown,
 		models.EventUnknown,
 		models.EventDeviceTypeChanged,
+		models.EventOwnerChanged,
+		models.EventLocationChanged,
+		models.EventNotesChanged,
+		models.EventTagsChanged,
+		models.EventPinnedChanged,
 		models.EventOnline,
 		models.EventOffline,
 	}
 	for i, eventType := range seededEvents {
 		event := models.NewHostEvent(host, eventType, "", "")
-		event.Date = "2026-08-24 10:0" + strconv.Itoa(i) + ":00"
+		event.Date = "2026-08-24 10:" + twoDigit(i) + ":00"
 		if err := gdb.AddEvent(event); err != nil {
 			t.Fatalf("AddEvent %s: %v", eventType, err)
 		}
@@ -668,6 +765,13 @@ func assertActivityEvents(t *testing.T, want []models.HostEventType) {
 
 func itoa(id int) string {
 	return strconv.Itoa(id)
+}
+
+func twoDigit(value int) string {
+	if value < 10 {
+		return "0" + strconv.Itoa(value)
+	}
+	return strconv.Itoa(value)
 }
 
 func metadataJSON(t *testing.T, value map[string]any) string {

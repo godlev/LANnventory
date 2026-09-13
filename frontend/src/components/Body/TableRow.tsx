@@ -19,7 +19,10 @@ function TableRow(_props: any) {
   const isOnline = () => _props.host.Now === 1;
   const known = () => _props.host.Known === 1;
   const isPinned = () => _props.host.Pinned === true;
-  const lastSeen = () => formatLastSeen(_props.host.Date);
+  const firstSeenRaw = () => _props.host.FirstSeen ?? "";
+  const lastSeenRaw = () => _props.host.LastSeen || _props.host.Date;
+  const firstSeen = () => formatLastSeen(firstSeenRaw());
+  const lastSeen = () => formatLastSeen(lastSeenRaw());
   const rowClass = () => [
     _props.host.Known === 0 ? "device-row-unknown" : "",
     !isOnline() ? "device-row-offline" : "",
@@ -222,6 +225,15 @@ function TableRow(_props: any) {
             </Show>
             <span class="device-mobile-detail-label">Last Seen</span>
             <span class="device-mobile-detail-value">{lastSeen()}</span>
+            <Show when={firstSeenRaw()}>
+              <span class="device-mobile-detail-label">First Seen</span>
+              <span class="device-mobile-detail-value">
+                {firstSeen()}
+                <Show when={_props.host.FirstSeenEstimated}>
+                  <span class="host-lifecycle-estimate" title="Estimated from retained history">Estimated</span>
+                </Show>
+              </span>
+            </Show>
             <span class="device-mobile-detail-label">Known</span>
             <span class="device-mobile-detail-value">{known() ? "Yes" : "No"}</span>
             <span class="device-mobile-detail-label">Pinned</span>
@@ -314,7 +326,7 @@ function TableRow(_props: any) {
       <td class="device-table-hardware" title={_props.host.Hw}>
         <span class={hardwareClass()}>{hardwareText()}</span>
       </td>
-      <td class="device-table-last-seen" title={_props.host.Date}>
+      <td class="device-table-last-seen" title={lastSeenRaw()}>
         <span class="device-cell-muted">{lastSeen()}</span>
       </td>
     </tr>

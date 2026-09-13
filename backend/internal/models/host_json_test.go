@@ -8,14 +8,17 @@ import (
 
 func TestHostJSONIncludesMetadataOnlyWhenLoaded(t *testing.T) {
 	host := Host{
-		ID:         1,
-		Name:       "NAS",
-		IP:         "192.168.1.20",
-		Mac:        "AA:BB:CC:DD:EE:20",
-		DeviceType: "nas",
-		Owner:      "Storage Team",
-		Tags:       []string{"backup"},
-		Pinned:     true,
+		ID:                 1,
+		Name:               "NAS",
+		IP:                 "192.168.1.20",
+		Mac:                "AA:BB:CC:DD:EE:20",
+		DeviceType:         "nas",
+		Owner:              "Storage Team",
+		Tags:               []string{"backup"},
+		Pinned:             true,
+		FirstSeen:          "2026-09-01 08:00:00",
+		LastSeen:           "2026-09-05 09:00:00",
+		FirstSeenEstimated: true,
 	}
 
 	plainPayload, err := json.Marshal(host)
@@ -27,9 +30,9 @@ func TestHostJSONIncludesMetadataOnlyWhenLoaded(t *testing.T) {
 			t.Fatalf("plain host JSON missing legacy field %s: %s", field, plainPayload)
 		}
 	}
-	for _, field := range []string{`"Owner"`, `"Location"`, `"Notes"`, `"Tags"`, `"Pinned"`} {
+	for _, field := range []string{`"Owner"`, `"Location"`, `"Notes"`, `"Tags"`, `"Pinned"`, `"FirstSeen"`, `"LastSeen"`, `"FirstSeenEstimated"`} {
 		if strings.Contains(string(plainPayload), field) {
-			t.Fatalf("plain host JSON contains metadata field %s: %s", field, plainPayload)
+			t.Fatalf("plain host JSON contains enriched field %s: %s", field, plainPayload)
 		}
 	}
 
@@ -43,9 +46,9 @@ func TestHostJSONIncludesMetadataOnlyWhenLoaded(t *testing.T) {
 			t.Fatalf("enriched host JSON missing legacy field %s: %s", field, enrichedPayload)
 		}
 	}
-	for _, field := range []string{`"Owner"`, `"Location"`, `"Notes"`, `"Tags"`, `"Pinned"`} {
+	for _, field := range []string{`"Owner"`, `"Location"`, `"Notes"`, `"Tags"`, `"Pinned"`, `"FirstSeen"`, `"LastSeen"`, `"FirstSeenEstimated"`} {
 		if !strings.Contains(string(enrichedPayload), field) {
-			t.Fatalf("enriched host JSON missing metadata field %s: %s", field, enrichedPayload)
+			t.Fatalf("enriched host JSON missing enriched field %s: %s", field, enrichedPayload)
 		}
 	}
 }

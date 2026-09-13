@@ -78,7 +78,12 @@ const docTemplate = `{
                             "offline",
                             "known",
                             "unknown",
-                            "device-type-changed"
+                            "device-type-changed",
+                            "owner-changed",
+                            "location-changed",
+                            "notes-changed",
+                            "tags-changed",
+                            "pinned-changed"
                         ],
                         "type": "string",
                         "description": "Repeatable event type filter",
@@ -194,7 +199,7 @@ const docTemplate = `{
         },
         "/all": {
             "get": {
-                "description": "Retrieve all hosts from the database",
+                "description": "Retrieve all current hosts from the database, enriched with inventory metadata and lifecycle fields.",
                 "produces": [
                     "application/json"
                 ],
@@ -702,7 +707,7 @@ const docTemplate = `{
         },
         "/export/backup": {
             "get": {
-                "description": "Export a versioned logical backup containing current hosts, host history, activity events and host metadata. Configuration secrets are not included.",
+                "description": "Export a versioned logical backup containing current hosts, host history, activity events, host metadata and host lifecycle. Configuration secrets are not included.",
                 "produces": [
                     "application/json"
                 ],
@@ -732,7 +737,7 @@ const docTemplate = `{
         },
         "/export/inventory.csv": {
             "get": {
-                "description": "Export the current device inventory and metadata as CSV. This is not a full backup and does not include history or events.",
+                "description": "Export the current device inventory, metadata and lifecycle as CSV. This is not a full backup and does not include history or events.",
                 "produces": [
                     "text/csv"
                 ],
@@ -958,7 +963,7 @@ const docTemplate = `{
         },
         "/host/{id}": {
             "get": {
-                "description": "Retrieve detailed information about a host by its unique ID",
+                "description": "Retrieve detailed information about a current host by its unique ID, enriched with inventory metadata and lifecycle fields.",
                 "produces": [
                     "application/json"
                 ],
@@ -1045,7 +1050,7 @@ const docTemplate = `{
         },
         "/host/{id}/metadata": {
             "patch": {
-                "description": "Partially update manually managed inventory metadata. Tags are trimmed, empty tags are removed, duplicates are removed case-insensitively, and user order is preserved.",
+                "description": "Partially update manually managed inventory metadata. Tags are trimmed, empty tags are removed, duplicates are removed case-insensitively, and user order is preserved. Actual changes are recorded as Device change events.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1378,6 +1383,10 @@ const docTemplate = `{
                     "type": "integer",
                     "format": "int64"
                 },
+                "metadataChanged": {
+                    "type": "integer",
+                    "format": "int64"
+                },
                 "offline": {
                     "type": "integer",
                     "format": "int64"
@@ -1497,6 +1506,12 @@ const docTemplate = `{
                 "dns": {
                     "type": "string"
                 },
+                "firstSeen": {
+                    "type": "string"
+                },
+                "firstSeenEstimated": {
+                    "type": "boolean"
+                },
                 "hw": {
                     "type": "string"
                 },
@@ -1511,6 +1526,9 @@ const docTemplate = `{
                 },
                 "known": {
                     "type": "integer"
+                },
+                "lastSeen": {
+                    "type": "string"
                 },
                 "location": {
                     "type": "string"

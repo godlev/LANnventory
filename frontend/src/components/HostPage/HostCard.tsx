@@ -61,7 +61,10 @@ function HostCard(_props: HostCardProps) {
     : "Unknown device - click to mark known";
   const knownText = () => isKnown() ? "Known device" : "Unknown device";
   const statusText = () => isOnline() ? "Online" : "Offline";
-  const formattedLastSeen = () => formatLastSeen(_props.host.Date);
+  const firstSeenRaw = () => _props.host.FirstSeen ?? "";
+  const lastSeenRaw = () => _props.host.LastSeen || _props.host.Date;
+  const formattedFirstSeen = () => formatLastSeen(firstSeenRaw());
+  const formattedLastSeen = () => formatLastSeen(lastSeenRaw());
   const deviceType = () => getDeviceTypeOption(_props.host.DeviceType);
   const hostDeviceTypeTitle = () => deviceTypeTitle(_props.host.DeviceType);
   const displayName = () => deviceDisplayName({ ..._props.host, Name: name() });
@@ -386,8 +389,24 @@ function HostCard(_props: HostCardProps) {
           <div class="host-field-label">Hardware</div>
           <div class="host-field-value">{_props.host.Hw || <span class="device-cell-muted">Unknown</span>}</div>
 
+          <div class="host-field-label">First seen</div>
+          <div class="host-field-value" title={firstSeenRaw()}>
+            <Show when={firstSeenRaw()} fallback={<span class="device-cell-muted">Not seen yet</span>}>
+              <span class="host-lifecycle-value">
+                <span>{formattedFirstSeen()}</span>
+                <Show when={_props.host.FirstSeenEstimated}>
+                  <span class="host-lifecycle-estimate" title="Estimated from retained history">Estimated</span>
+                </Show>
+              </span>
+            </Show>
+          </div>
+
           <div class="host-field-label">Last seen</div>
-          <div class="host-field-value" title={_props.host.Date}>{formattedLastSeen()}</div>
+          <div class="host-field-value" title={lastSeenRaw()}>
+            <Show when={lastSeenRaw()} fallback={<span class="device-cell-muted">Not seen yet</span>}>
+              {formattedLastSeen()}
+            </Show>
+          </div>
 
           <div class="host-field-label">Known</div>
           <div class="host-field-value">

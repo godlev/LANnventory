@@ -77,6 +77,11 @@ Current event types:
 - `known`
 - `unknown`
 - `device-type-changed`
+- `owner-changed`
+- `location-changed`
+- `notes-changed`
+- `tags-changed`
+- `pinned-changed`
 
 Events features include:
 
@@ -95,6 +100,15 @@ Events features include:
 - Deleted-host connectivity events remain readable snapshots without stale links.
 - Deterministic pagination ordering by event date and ID.
 
+### Device lifecycle
+
+LANnventory tracks scanner-observed device lifecycle separately from sampled Presence history.
+
+- `FirstSeen` is the first scanner observation after lifecycle tracking is available.
+- Upgraded installations may estimate `FirstSeen` from retained Events, retained Presence history or the current Host timestamp.
+- `LastSeen` is updated only by successful scanner observations.
+- Manual Host creation does not fabricate first/last seen timestamps.
+
 ### Home recent events
 
 Home contains two independent recent-event streams:
@@ -112,7 +126,7 @@ LANnventory deliberately separates sampled Presence history from Events.
 | --- | --- |
 | Presence samples | Controlled by `TRIM_HIST` |
 | `online` / `offline` Events | Controlled by `CONNECTIVITY_RETENTION` |
-| Device-change Events | Retained while the device record exists |
+| Device-change Events, including metadata-change Events | Retained while the device record exists |
 
 If `CONNECTIVITY_RETENTION` is absent from an older configuration, LANnventory falls back to the existing `TRIM_HIST` value for backward compatibility.
 
@@ -123,7 +137,7 @@ Retention can be configured from **Settings → Data retention** without restart
 Recent release-readiness work includes:
 
 - Non-destructive migration tests against a legacy WatchYourLAN SQLite schema.
-- Additive migration for Device Type and Events storage.
+- Additive migration for Device Type, Events, inventory metadata and lifecycle storage.
 - Idempotent database reopen/migration validation.
 - Failed scans do not create false offline state changes or false offline Events.
 - Repeated scans do not create duplicate transition Events.
@@ -294,11 +308,11 @@ scan.db-wal
 scan.db-shm
 ```
 
-SQLite stores Hosts, Known / Unknown state, Presence history, Events and Device Type classifications in `scan.db` and its WAL side files. Mount or back up the entire data directory, not just `scan.db`.
+SQLite stores Hosts, Known / Unknown state, Presence history, Events, inventory metadata, lifecycle observations and Device Type classifications in `scan.db` and its WAL side files. Mount or back up the entire data directory, not just `scan.db`.
 
 ### Clean first run
 
-On an empty data directory, startup creates `config_v2.yaml`, opens SQLite at `scan.db`, migrates `now`, `history` and `events`, and serves the UI.
+On an empty data directory, startup creates `config_v2.yaml`, opens SQLite at `scan.db`, migrates `now`, `history`, `events`, `host_metadata` and `host_lifecycle`, and serves the UI.
 
 Automated tests validate this first-run and reopen path without starting scanner routines. The packaging CI also runs a safe container smoke test with empty scan sources, verifies `/api/health`, verifies the web UI response, and starts a second container with the same temporary SQLite volume to prove the data directory is reused.
 
@@ -314,7 +328,7 @@ For an existing SQLite WatchYourLAN installation:
 6. Let LANnventory run its additive startup migration.
 7. Confirm Hosts, Known state and Presence history are visible before discarding the backup.
 
-The current migration tests cover legacy SQLite tables and verify existing rows are preserved while `DEVICE_TYPE` and the `events` table are added.
+The current migration tests cover legacy SQLite tables and verify existing rows are preserved while `DEVICE_TYPE`, `events`, `host_metadata` and `host_lifecycle` are added.
 
 For upstream Docker users, the compatible volume target remains:
 

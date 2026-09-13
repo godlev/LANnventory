@@ -86,7 +86,7 @@ function RecentActivityPanel() {
       ></DashboardActivityPanel>
       <DashboardActivityPanel
         title="Device changes"
-        subtitle="Recent discovery and classification changes"
+        subtitle="Recent discovery, classification and metadata changes"
         events={changeEvents()}
         emptyText="No device changes recorded yet"
         hostExists={hostExists}

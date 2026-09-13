@@ -53,6 +53,9 @@ definitions:
       known:
         format: int64
         type: integer
+      metadataChanged:
+        format: int64
+        type: integer
       offline:
         format: int64
         type: integer
@@ -134,6 +137,10 @@ definitions:
         type: string
       dns:
         type: string
+      firstSeen:
+        type: string
+      firstSeenEstimated:
+        type: boolean
       hw:
         type: string
       id:
@@ -144,6 +151,8 @@ definitions:
         type: string
       known:
         type: integer
+      lastSeen:
+        type: string
       location:
         type: string
       mac:
@@ -258,6 +267,11 @@ paths:
         - known
         - unknown
         - device-type-changed
+        - owner-changed
+        - location-changed
+        - notes-changed
+        - tags-changed
+        - pinned-changed
         in: query
         name: eventType
         type: string
@@ -337,7 +351,8 @@ paths:
       - activity
   /all:
     get:
-      description: Retrieve all hosts from the database
+      description: Retrieve all current hosts from the database, enriched with inventory
+        metadata and lifecycle fields.
       produces:
       - application/json
       responses:
@@ -679,8 +694,8 @@ paths:
   /export/backup:
     get:
       description: Export a versioned logical backup containing current hosts, host
-        history, activity events and host metadata. Configuration secrets are not
-        included.
+        history, activity events, host metadata and host lifecycle. Configuration
+        secrets are not included.
       produces:
       - application/json
       responses:
@@ -700,8 +715,8 @@ paths:
       - export
   /export/inventory.csv:
     get:
-      description: Export the current device inventory and metadata as CSV. This is
-        not a full backup and does not include history or events.
+      description: Export the current device inventory, metadata and lifecycle as
+        CSV. This is not a full backup and does not include history or events.
       produces:
       - text/csv
       responses:
@@ -811,7 +826,8 @@ paths:
       - history
   /host/{id}:
     get:
-      description: Retrieve detailed information about a host by its unique ID
+      description: Retrieve detailed information about a current host by its unique
+        ID, enriched with inventory metadata and lifecycle fields.
       parameters:
       - description: Host ID
         in: path
@@ -873,7 +889,8 @@ paths:
       - application/json
       description: Partially update manually managed inventory metadata. Tags are
         trimmed, empty tags are removed, duplicates are removed case-insensitively,
-        and user order is preserved.
+        and user order is preserved. Actual changes are recorded as Device change
+        events.
       parameters:
       - description: Host ID
         in: path

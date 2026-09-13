@@ -12,7 +12,7 @@ import (
 
 const (
 	Format        = "lannventory-backup"
-	FormatVersion = 2
+	FormatVersion = 3
 )
 
 // Document is the stable, versioned logical backup format.
@@ -27,10 +27,11 @@ type Document struct {
 // Data contains persisted application data only. It intentionally excludes
 // configuration and secrets so exports are portable across database backends.
 type Data struct {
-	CurrentHosts []Host         `json:"currentHosts"`
-	History      []Host         `json:"history"`
-	Events       []Event        `json:"events"`
-	HostMetadata []HostMetadata `json:"hostMetadata"`
+	CurrentHosts  []Host          `json:"currentHosts"`
+	History       []Host          `json:"history"`
+	Events        []Event         `json:"events"`
+	HostMetadata  []HostMetadata  `json:"hostMetadata"`
+	HostLifecycle []HostLifecycle `json:"hostLifecycle"`
 }
 
 // Host mirrors the currently persisted host columns in the now/history tables.
@@ -74,14 +75,25 @@ type HostMetadata struct {
 	Pinned   bool     `json:"pinned"`
 }
 
+// HostLifecycle is the portable lifecycle backup representation.
+type HostLifecycle struct {
+	Mac                string `json:"mac"`
+	FirstSeen          string `json:"firstSeen"`
+	LastSeen           string `json:"lastSeen"`
+	FirstSeenEstimated bool   `json:"firstSeenEstimated"`
+}
+
 // InventoryHost is the current-inventory CSV representation.
 type InventoryHost struct {
 	Host
-	Owner    string
-	Location string
-	Notes    string
-	Tags     []string
-	Pinned   bool
+	Owner              string
+	Location           string
+	Notes              string
+	Tags               []string
+	Pinned             bool
+	FirstSeen          string
+	FirstSeenEstimated bool
+	LastSeen           string
 }
 
 var InventoryCSVHeader = []string{
@@ -101,6 +113,9 @@ var InventoryCSVHeader = []string{
 	"Notes",
 	"Tags",
 	"Pinned",
+	"FirstSeen",
+	"FirstSeenEstimated",
+	"LastSeen",
 }
 
 func NewDocument(data Data, appVersion string, createdAt time.Time) Document {
@@ -113,12 +128,13 @@ func NewDocument(data Data, appVersion string, createdAt time.Time) Document {
 	}
 }
 
-func DataFromModels(currentHosts, history []models.Host, events []models.HostEvent, hostMetadata []models.HostMetadata) Data {
+func DataFromModels(currentHosts, history []models.Host, events []models.HostEvent, hostMetadata []models.HostMetadata, hostLifecycle []models.HostLifecycle) Data {
 	data := Data{
-		CurrentHosts: make([]Host, 0, len(currentHosts)),
-		History:      make([]Host, 0, len(history)),
-		Events:       make([]Event, 0, len(events)),
-		HostMetadata: make([]HostMetadata, 0, len(hostMetadata)),
+		CurrentHosts:  make([]Host, 0, len(currentHosts)),
+		History:       make([]Host, 0, len(history)),
+		Events:        make([]Event, 0, len(events)),
+		HostMetadata:  make([]HostMetadata, 0, len(hostMetadata)),
+		HostLifecycle: make([]HostLifecycle, 0, len(hostLifecycle)),
 	}
 
 	for _, host := range currentHosts {
@@ -132,6 +148,9 @@ func DataFromModels(currentHosts, history []models.Host, events []models.HostEve
 	}
 	for _, metadata := range hostMetadata {
 		data.HostMetadata = append(data.HostMetadata, HostMetadataFromModel(metadata))
+	}
+	for _, lifecycle := range hostLifecycle {
+		data.HostLifecycle = append(data.HostLifecycle, HostLifecycleFromModel(lifecycle))
 	}
 
 	return data
@@ -180,14 +199,26 @@ func HostMetadataFromModel(metadata models.HostMetadata) HostMetadata {
 	}
 }
 
+func HostLifecycleFromModel(lifecycle models.HostLifecycle) HostLifecycle {
+	return HostLifecycle{
+		Mac:                lifecycle.Mac,
+		FirstSeen:          lifecycle.FirstSeen,
+		LastSeen:           lifecycle.LastSeen,
+		FirstSeenEstimated: lifecycle.FirstSeenEstimated,
+	}
+}
+
 func InventoryHostFromModel(host models.Host) InventoryHost {
 	return InventoryHost{
-		Host:     HostFromModel(host),
-		Owner:    host.Owner,
-		Location: host.Location,
-		Notes:    host.Notes,
-		Tags:     host.Tags,
-		Pinned:   host.Pinned,
+		Host:               HostFromModel(host),
+		Owner:              host.Owner,
+		Location:           host.Location,
+		Notes:              host.Notes,
+		Tags:               host.Tags,
+		Pinned:             host.Pinned,
+		FirstSeen:          host.FirstSeen,
+		FirstSeenEstimated: host.FirstSeenEstimated,
+		LastSeen:           host.LastSeen,
 	}
 }
 
@@ -215,6 +246,9 @@ func WriteInventoryCSV(writer io.Writer, hosts []InventoryHost) error {
 			host.Notes,
 			strings.Join(host.Tags, "; "),
 			strconv.FormatBool(host.Pinned),
+			host.FirstSeen,
+			strconv.FormatBool(host.FirstSeenEstimated),
+			host.LastSeen,
 		}); err != nil {
 			return err
 		}
@@ -236,6 +270,9 @@ func normalizeData(data Data) Data {
 	}
 	if data.HostMetadata == nil {
 		data.HostMetadata = []HostMetadata{}
+	}
+	if data.HostLifecycle == nil {
+		data.HostLifecycle = []HostLifecycle{}
 	}
 
 	return data

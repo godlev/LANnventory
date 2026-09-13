@@ -195,6 +195,12 @@ func SelectEventStats(macs []string) (stats models.ActivityStats, ok bool) {
 			stats.Unknown = row.Count
 		case models.EventDeviceTypeChanged:
 			stats.DeviceTypeChanged = row.Count
+		case models.EventOwnerChanged,
+			models.EventLocationChanged,
+			models.EventNotesChanged,
+			models.EventTagsChanged,
+			models.EventPinnedChanged:
+			stats.MetadataChanged += row.Count
 		}
 	}
 

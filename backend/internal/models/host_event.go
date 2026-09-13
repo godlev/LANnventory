@@ -2,7 +2,7 @@ package models
 
 import "time"
 
-const hostEventDateLayout = "2006-01-02 15:04:05"
+const HostEventDateLayout = "2006-01-02 15:04:05"
 
 // HostEventType is a validated machine-readable activity event type.
 type HostEventType string
@@ -14,6 +14,11 @@ const (
 	EventKnown             HostEventType = "known"
 	EventUnknown           HostEventType = "unknown"
 	EventDeviceTypeChanged HostEventType = "device-type-changed"
+	EventOwnerChanged      HostEventType = "owner-changed"
+	EventLocationChanged   HostEventType = "location-changed"
+	EventNotesChanged      HostEventType = "notes-changed"
+	EventTagsChanged       HostEventType = "tags-changed"
+	EventPinnedChanged     HostEventType = "pinned-changed"
 )
 
 // HostEventTypeValues lists every activity event type accepted for persistence.
@@ -24,6 +29,36 @@ var HostEventTypeValues = []HostEventType{
 	EventKnown,
 	EventUnknown,
 	EventDeviceTypeChanged,
+	EventOwnerChanged,
+	EventLocationChanged,
+	EventNotesChanged,
+	EventTagsChanged,
+	EventPinnedChanged,
+}
+
+var ConnectivityEventTypes = []HostEventType{
+	EventOnline,
+	EventOffline,
+}
+
+var MetadataChangeEventTypes = []HostEventType{
+	EventOwnerChanged,
+	EventLocationChanged,
+	EventNotesChanged,
+	EventTagsChanged,
+	EventPinnedChanged,
+}
+
+var DeviceChangeEventTypes = []HostEventType{
+	EventDiscovered,
+	EventKnown,
+	EventUnknown,
+	EventDeviceTypeChanged,
+	EventOwnerChanged,
+	EventLocationChanged,
+	EventNotesChanged,
+	EventTagsChanged,
+	EventPinnedChanged,
 }
 
 var validHostEventTypes = func() map[string]struct{} {
@@ -65,6 +100,7 @@ type ActivityStats struct {
 	Known             int64
 	Unknown           int64
 	DeviceTypeChanged int64
+	MetadataChanged   int64
 }
 
 // ActivityDeviceOption identifies a device represented in retained activity events.
@@ -84,7 +120,7 @@ func NewHostEvent(host Host, eventType HostEventType, oldValue, newValue string)
 		Mac:        host.Mac,
 		Name:       host.Name,
 		EventType:  string(eventType),
-		Date:       time.Now().Format(hostEventDateLayout),
+		Date:       time.Now().Format(HostEventDateLayout),
 		IP:         host.IP,
 		Iface:      host.Iface,
 		DeviceType: host.DeviceType,
@@ -106,7 +142,7 @@ func HostEventDateUTC(date string, location *time.Location) string {
 		location = time.Local
 	}
 
-	parsed, err := time.ParseInLocation(hostEventDateLayout, date, location)
+	parsed, err := time.ParseInLocation(HostEventDateLayout, date, location)
 	if err != nil {
 		return ""
 	}

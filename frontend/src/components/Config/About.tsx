@@ -14,6 +14,8 @@ function About() {
     "Unified Events explorer with filtering and grouping",
     "Configurable Presence and Connectivity-event retention",
     "Manual persistent Device Type classification",
+    "Inventory metadata change history",
+    "Device lifecycle tracking",
     "Host read/edit modes",
     "Responsive Settings experience",
   ];

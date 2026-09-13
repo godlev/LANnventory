@@ -18,11 +18,14 @@ type hostJSONBase struct {
 
 type hostJSONWithMetadata struct {
 	hostJSONBase
-	Owner    string
-	Location string
-	Notes    string
-	Tags     []string
-	Pinned   bool
+	Owner              string
+	Location           string
+	Notes              string
+	Tags               []string
+	Pinned             bool
+	FirstSeen          string
+	LastSeen           string
+	FirstSeenEstimated bool
 }
 
 func (host Host) MarshalJSON() ([]byte, error) {
@@ -50,11 +53,14 @@ func (host Host) MarshalJSON() ([]byte, error) {
 	}
 
 	return json.Marshal(hostJSONWithMetadata{
-		hostJSONBase: base,
-		Owner:        host.Owner,
-		Location:     host.Location,
-		Notes:        host.Notes,
-		Tags:         tags,
-		Pinned:       host.Pinned,
+		hostJSONBase:       base,
+		Owner:              host.Owner,
+		Location:           host.Location,
+		Notes:              host.Notes,
+		Tags:               tags,
+		Pinned:             host.Pinned,
+		FirstSeen:          host.FirstSeen,
+		LastSeen:           host.LastSeen,
+		FirstSeenEstimated: host.FirstSeenEstimated,
 	})
 }

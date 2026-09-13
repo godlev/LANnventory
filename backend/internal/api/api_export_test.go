@@ -91,6 +91,12 @@ func TestBackupExportEndpointIncludesStableDataAndMetadata(t *testing.T) {
 		EventType: string(models.EventDiscovered),
 		Date:      "2026-09-05 09:30:00",
 	})
+	if err := gdb.RecordHostObservation("AA:BB:CC:DD:EE:20", "2026-09-05 09:00:00"); err != nil {
+		t.Fatalf("RecordHostObservation NAS: %v", err)
+	}
+	if err := gdb.RecordHostObservation("AA:BB:CC:DD:EE:01", "2026-09-05 08:00:00"); err != nil {
+		t.Fatalf("RecordHostObservation router: %v", err)
+	}
 
 	rec := getPath(router, "/api/export/backup")
 	if rec.Code != http.StatusOK {
@@ -165,6 +171,7 @@ func TestBackupExportEndpointIncludesStableDataAndMetadata(t *testing.T) {
 	assertExportHostIDs(t, document.Data.History, []int{10, 20}, "history")
 	assertExportEventIDs(t, document.Data.Events, []int{1, 2}, "events")
 	assertExportMetadataMACs(t, document.Data.HostMetadata, []string{"AA:BB:CC:DD:EE:01", "AA:BB:CC:DD:EE:20"})
+	assertExportLifecycleMACs(t, document.Data.HostLifecycle, []string{"AA:BB:CC:DD:EE:01", "AA:BB:CC:DD:EE:20"})
 	assertStringSlice(t, document.Data.HostMetadata[0].Tags, routerTags, "router metadata tags")
 	assertStringSlice(t, document.Data.HostMetadata[1].Tags, nasTags, "nas metadata tags")
 	if !document.Data.HostMetadata[0].Pinned {
@@ -172,6 +179,9 @@ func TestBackupExportEndpointIncludesStableDataAndMetadata(t *testing.T) {
 	}
 	if document.Data.Events[1].Date != "2026-09-05 10:00:00" {
 		t.Fatalf("event Date = %q, want preserved stored Date", document.Data.Events[1].Date)
+	}
+	if document.Data.HostLifecycle[0].FirstSeen != "2026-09-05 08:00:00" || document.Data.HostLifecycle[0].LastSeen != "2026-09-05 08:00:00" || document.Data.HostLifecycle[0].FirstSeenEstimated {
+		t.Fatalf("router lifecycle backup = %+v, want exact portable lifecycle", document.Data.HostLifecycle[0])
 	}
 }
 
@@ -185,7 +195,8 @@ func TestBackupExportEndpointEmptyTablesUsesArrays(t *testing.T) {
 	if !strings.Contains(rec.Body.String(), `"currentHosts": []`) ||
 		!strings.Contains(rec.Body.String(), `"history": []`) ||
 		!strings.Contains(rec.Body.String(), `"events": []`) ||
-		!strings.Contains(rec.Body.String(), `"hostMetadata": []`) {
+		!strings.Contains(rec.Body.String(), `"hostMetadata": []`) ||
+		!strings.Contains(rec.Body.String(), `"hostLifecycle": []`) {
 		t.Fatalf("empty backup did not encode empty arrays: %s", rec.Body.String())
 	}
 }
@@ -218,6 +229,12 @@ func TestInventoryCSVExportEndpointEscapesCurrentInventory(t *testing.T) {
 		Pinned:   &pinned,
 	}); err != nil {
 		t.Fatalf("UpsertHostMetadata: %v", err)
+	}
+	if err := gdb.RecordHostObservation("AA:BB:CC:DD:EE:20", "2026-09-04 08:00:00"); err != nil {
+		t.Fatalf("RecordHostObservation create: %v", err)
+	}
+	if err := gdb.RecordHostObservation("AA:BB:CC:DD:EE:20", "2026-09-05 11:00:00"); err != nil {
+		t.Fatalf("RecordHostObservation update: %v", err)
 	}
 
 	rec := getPath(router, "/api/export/inventory.csv")
@@ -252,6 +269,9 @@ func TestInventoryCSVExportEndpointEscapesCurrentInventory(t *testing.T) {
 		"Primary backup target",
 		"storage; important",
 		"true",
+		"2026-09-04 08:00:00",
+		"false",
+		"2026-09-05 11:00:00",
 	}, "CSV row")
 }
 
@@ -277,7 +297,7 @@ func TestInventoryCSVExportWithoutMetadataReturnsEmptyMetadataColumns(t *testing
 	if len(rows) != 2 {
 		t.Fatalf("CSV rows len = %d, want 2: %#v", len(rows), rows)
 	}
-	assertStringSlice(t, rows[1][11:], []string{"", "", "", "", "false"}, "empty metadata CSV columns")
+	assertStringSlice(t, rows[1][11:], []string{"", "", "", "", "false", "", "false", ""}, "empty metadata and lifecycle CSV columns")
 }
 
 func TestInventoryCSVExportEndpointEmptyInventoryReturnsHeader(t *testing.T) {
@@ -384,6 +404,19 @@ func assertExportMetadataMACs(t *testing.T, metadata []backup.HostMetadata, want
 	for i, mac := range want {
 		if metadata[i].Mac != mac {
 			t.Fatalf("metadata[%d].Mac = %q, want %q: %+v", i, metadata[i].Mac, mac, metadata)
+		}
+	}
+}
+
+func assertExportLifecycleMACs(t *testing.T, lifecycles []backup.HostLifecycle, want []string) {
+	t.Helper()
+
+	if len(lifecycles) != len(want) {
+		t.Fatalf("lifecycle len = %d, want %d: %+v", len(lifecycles), len(want), lifecycles)
+	}
+	for i, mac := range want {
+		if lifecycles[i].Mac != mac {
+			t.Fatalf("lifecycle[%d].Mac = %q, want %q: %+v", i, lifecycles[i].Mac, mac, lifecycles)
 		}
 	}
 }

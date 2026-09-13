@@ -16,6 +16,16 @@ export function activityIcon(eventType: string): string {
       return "bi-question-circle-fill";
     case "device-type-changed":
       return "bi-tag-fill";
+    case "owner-changed":
+      return "bi-person-fill";
+    case "location-changed":
+      return "bi-geo-alt-fill";
+    case "notes-changed":
+      return "bi-card-text";
+    case "tags-changed":
+      return "bi-tags-fill";
+    case "pinned-changed":
+      return "bi-pin-angle-fill";
     case "discovered":
     default:
       return "bi-plus-circle-fill";
@@ -33,6 +43,11 @@ export function activityTone(eventType: string): ActivityTone {
     case "unknown":
       return "unknown";
     case "device-type-changed":
+    case "owner-changed":
+    case "location-changed":
+    case "notes-changed":
+    case "tags-changed":
+    case "pinned-changed":
       return "type";
     case "discovered":
     default:
@@ -53,6 +68,16 @@ export function activityDescription(event: HostEvent): string {
     case "device-type-changed": {
       return "Type changed to " + activityDeviceTypeLabel(event.NewValue);
     }
+    case "owner-changed":
+      return "Owner changed";
+    case "location-changed":
+      return "Location changed";
+    case "notes-changed":
+      return "Notes updated";
+    case "tags-changed":
+      return "Tags changed";
+    case "pinned-changed":
+      return event.NewValue === "true" ? "Device pinned" : "Device unpinned";
     case "discovered":
     default:
       return "New device detected";
@@ -63,6 +88,16 @@ export function activityDetails(event: HostEvent): string {
   switch (event.EventType) {
     case "device-type-changed":
       return "Type changed: " + activityDeviceTypeLabel(event.OldValue) + " \u2192 " + activityDeviceTypeLabel(event.NewValue);
+    case "owner-changed":
+      return "Owner: " + textEventValue(event.OldValue) + " \u2192 " + textEventValue(event.NewValue);
+    case "location-changed":
+      return "Location: " + textEventValue(event.OldValue) + " \u2192 " + textEventValue(event.NewValue);
+    case "notes-changed":
+      return "Notes: " + notesEventValue(event.OldValue) + " \u2192 " + notesEventValue(event.NewValue);
+    case "tags-changed":
+      return "Tags: " + tagsEventValue(event.OldValue) + " \u2192 " + tagsEventValue(event.NewValue);
+    case "pinned-changed":
+      return "Pinned: " + booleanEventValue(event.OldValue) + " \u2192 " + booleanEventValue(event.NewValue);
     case "discovered":
     case "known":
     case "unknown":
@@ -108,6 +143,16 @@ export function activityEventLabel(eventType: string): string {
       return "Marked unknown";
     case "device-type-changed":
       return "Device type changed";
+    case "owner-changed":
+      return "Owner changed";
+    case "location-changed":
+      return "Location changed";
+    case "notes-changed":
+      return "Notes updated";
+    case "tags-changed":
+      return "Tags changed";
+    case "pinned-changed":
+      return "Pinned changed";
     case "discovered":
     default:
       return "New device detected";
@@ -163,6 +208,55 @@ function compactNetworkDetail(event: HostEvent): string {
   }
 
   return event.IP || event.Iface || "";
+}
+
+function textEventValue(value: string | null | undefined): string {
+  const text = (value ?? "").trim();
+  return text === "" ? "Not set" : text;
+}
+
+function notesEventValue(value: string | null | undefined): string {
+  const text = (value ?? "").replace(/\s+/g, " ").trim();
+  if (text === "") {
+    return "Not set";
+  }
+
+  return text.length > 90 ? text.slice(0, 87).trimEnd() + "..." : text;
+}
+
+function tagsEventValue(value: string | null | undefined): string {
+  const tags = parseTagsValue(value);
+  if (tags.length === 0) {
+    return "Not set";
+  }
+
+  const label = tags.join(", ");
+  return label.length > 90 ? label.slice(0, 87).trimEnd() + "..." : label;
+}
+
+function parseTagsValue(value: string | null | undefined): string[] {
+  const raw = (value ?? "").trim();
+  if (raw === "") {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  } catch {
+    return raw === "" ? [] : [raw];
+  }
+}
+
+function booleanEventValue(value: string | null | undefined): string {
+  return value === "true" ? "Yes" : "No";
 }
 
 function parseActivityDate(value: string): Date | null {

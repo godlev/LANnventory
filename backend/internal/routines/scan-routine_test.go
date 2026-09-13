@@ -124,6 +124,117 @@ func TestRepeatedSuccessfulScanDoesNotDuplicateDiscoveredEvent(t *testing.T) {
 	}
 }
 
+func TestSuccessfulScanCreatesAndUpdatesLifecycle(t *testing.T) {
+	setupScanRoutineTest(t)
+
+	host := models.Host{
+		Iface: "eth0",
+		IP:    "192.168.1.10",
+		Mac:   "AA:BB:CC:DD:EE:10",
+		Hw:    "New Device Vendor",
+		Date:  "2026-08-24 10:00:00",
+		Now:   1,
+	}
+
+	processScanResult([]models.Host{host}, true)
+	assertScanLifecycle(t, host.Mac, "2026-08-24 10:00:00", "2026-08-24 10:00:00", false)
+
+	host.Date = "2026-08-24 10:05:00"
+	processScanResult([]models.Host{host}, true)
+	assertScanLifecycle(t, host.Mac, "2026-08-24 10:00:00", "2026-08-24 10:05:00", false)
+}
+
+func TestOfflineScanDoesNotUpdateLifecycleLastSeen(t *testing.T) {
+	setupScanRoutineTest(t)
+
+	host := models.Host{
+		ID:    1,
+		Name:  "router",
+		Iface: "eth0",
+		IP:    "192.168.1.1",
+		Mac:   "AA:BB:CC:DD:EE:01",
+		Date:  "2026-08-24 08:00:00",
+		Known: 1,
+		Now:   1,
+	}
+	gdb.Update("now", host)
+	if err := gdb.RecordHostObservation(host.Mac, host.Date); err != nil {
+		t.Fatalf("RecordHostObservation: %v", err)
+	}
+
+	processScanResult([]models.Host{}, true)
+
+	updated := gdb.SelectByID(host.ID)
+	if updated.Now != 0 {
+		t.Fatalf("Now after offline scan = %d, want 0", updated.Now)
+	}
+	assertScanLifecycle(t, host.Mac, "2026-08-24 08:00:00", "2026-08-24 08:00:00", false)
+}
+
+func TestFailedScanDoesNotUpdateLifecycle(t *testing.T) {
+	setupScanRoutineTest(t)
+
+	host := models.Host{
+		ID:    1,
+		Name:  "router",
+		Iface: "eth0",
+		IP:    "192.168.1.1",
+		Mac:   "AA:BB:CC:DD:EE:01",
+		Date:  "2026-08-24 08:00:00",
+		Known: 1,
+		Now:   1,
+	}
+	gdb.Update("now", host)
+	if err := gdb.RecordHostObservation(host.Mac, host.Date); err != nil {
+		t.Fatalf("RecordHostObservation: %v", err)
+	}
+
+	if processScanResult([]models.Host{
+		{
+			Iface: "eth0",
+			IP:    "192.168.1.1",
+			Mac:   "AA:BB:CC:DD:EE:01",
+			Hw:    "Gateway Vendor",
+			Date:  "2026-08-24 09:00:00",
+			Now:   1,
+		},
+	}, false) {
+		t.Fatal("processScanResult returned true for failed scan")
+	}
+
+	assertScanLifecycle(t, host.Mac, "2026-08-24 08:00:00", "2026-08-24 08:00:00", false)
+}
+
+func TestManualHostLifecycleStartsOnLaterRealObservation(t *testing.T) {
+	setupScanRoutineTest(t)
+
+	host := models.Host{
+		ID:    1,
+		Name:  "manual-host",
+		Mac:   "AA:BB:CC:DD:EE:30",
+		Known: 1,
+		Now:   0,
+	}
+	gdb.Update("now", host)
+	if err := gdb.EnsureHostLifecyclePlaceholder(host.Mac); err != nil {
+		t.Fatalf("EnsureHostLifecyclePlaceholder: %v", err)
+	}
+	assertScanLifecycle(t, host.Mac, "", "", false)
+
+	processScanResult([]models.Host{
+		{
+			Iface: "eth0",
+			IP:    "192.168.1.30",
+			Mac:   "AA:BB:CC:DD:EE:30",
+			Hw:    "Manual Device Vendor",
+			Date:  "2026-08-24 12:00:00",
+			Now:   1,
+		},
+	}, true)
+
+	assertScanLifecycle(t, host.Mac, "2026-08-24 12:00:00", "2026-08-24 12:00:00", false)
+}
+
 func TestOnlineOfflineTransitionsCreateSingleEvents(t *testing.T) {
 	setupScanRoutineTest(t)
 
@@ -167,6 +278,21 @@ func TestOnlineOfflineTransitionsCreateSingleEvents(t *testing.T) {
 
 	processScanResult([]models.Host{}, true)
 	assertEventTypes(t, []models.HostEventType{models.EventOffline, models.EventOnline})
+}
+
+func assertScanLifecycle(t *testing.T, mac, firstSeen, lastSeen string, estimated bool) {
+	t.Helper()
+
+	lifecycle, ok, err := gdb.SelectHostLifecycleByMAC(mac)
+	if err != nil {
+		t.Fatalf("SelectHostLifecycleByMAC: %v", err)
+	}
+	if !ok {
+		t.Fatalf("lifecycle for %s not found", mac)
+	}
+	if lifecycle.FirstSeen != firstSeen || lifecycle.LastSeen != lastSeen || lifecycle.FirstSeenEstimated != estimated {
+		t.Fatalf("lifecycle for %s = %+v, want first=%q last=%q estimated=%v", mac, lifecycle, firstSeen, lastSeen, estimated)
+	}
 }
 
 func TestFailedScanDoesNotCreateOfflineEvent(t *testing.T) {

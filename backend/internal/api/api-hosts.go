@@ -15,7 +15,7 @@ import (
 
 // getAllHosts godoc
 // @Summary      Get all hosts
-// @Description  Retrieve all hosts from the database
+// @Description  Retrieve all current hosts from the database, enriched with inventory metadata and lifecycle fields.
 // @Tags         hosts
 // @Produce      json
 // @Success      200  {array}   models.Host
@@ -32,7 +32,7 @@ func getAllHosts(c *gin.Context) {
 
 // getHost godoc
 // @Summary      Get host by ID
-// @Description  Retrieve detailed information about a host by its unique ID
+// @Description  Retrieve detailed information about a current host by its unique ID, enriched with inventory metadata and lifecycle fields.
 // @Tags         hosts
 // @Produce      json
 // @Param        id   path      string  true  "Host ID"
@@ -170,9 +170,18 @@ func addHost(c *gin.Context) {
 		host.IP = c.Query("ip")
 		host.Hw = c.Query("hw")
 
-		gdb.Update("now", host)
+		if err := gdb.UpdateWithError("now", host); err != nil {
+			slog.Error("Failed to add host", "mac", mac, "err", err)
+			c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to add host"})
+			return
+		}
 		hosts = gdb.SelectByMAC("now", mac)
 		if len(hosts) > 0 {
+			if err := gdb.EnsureHostLifecyclePlaceholder(hosts[0].Mac); err != nil {
+				slog.Error("Failed to initialize host lifecycle placeholder", "mac", hosts[0].Mac, "err", err)
+				c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to initialize host lifecycle"})
+				return
+			}
 			gdb.RecordHostEvent(hosts[0], models.EventDiscovered, "", "")
 		}
 

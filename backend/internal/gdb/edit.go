@@ -91,7 +91,10 @@ func DeleteCurrentHostWithMetadata(host models.Host) error {
 		if err := txDB.Table("now").Delete(&models.Host{}, host.ID).Error; err != nil {
 			return err
 		}
-		return deleteHostMetadataByMAC(txDB, host.Mac)
+		if err := deleteHostMetadataByMAC(txDB, host.Mac); err != nil {
+			return err
+		}
+		return deleteHostLifecycleByMAC(txDB, host.Mac)
 	})
 }
 
@@ -125,10 +128,7 @@ func AddEvent(event models.HostEvent) error {
 	}
 	defer release()
 
-	tab := activeDB.Table("events")
-	result := tab.Create(&event)
-
-	return result.Error
+	return addEventTx(activeDB, event)
 }
 
 // RecordHostEvent stores an activity event and logs failures without failing callers.
@@ -182,13 +182,24 @@ func DeleteHostDeviceChangeEvents(hostID int) int64 {
 func deleteHostDeviceChangeEvents(activeDB *gorm.DB, hostID int) *gorm.DB {
 	return activeDB.Table("events").
 		Where("\"HOST_ID\" = ?", hostID).
-		Where("\"EVENT_TYPE\" IN ?", []string{
-			string(models.EventDiscovered),
-			string(models.EventKnown),
-			string(models.EventUnknown),
-			string(models.EventDeviceTypeChanged),
-		}).
+		Where("\"EVENT_TYPE\" IN ?", hostEventTypeStrings(models.DeviceChangeEventTypes)).
 		Delete(&models.HostEvent{})
+}
+
+func addEventTx(activeDB *gorm.DB, event models.HostEvent) error {
+	if !models.IsValidHostEventType(event.EventType) {
+		return errors.New("invalid host event type")
+	}
+
+	return activeDB.Table("events").Create(&event).Error
+}
+
+func hostEventTypeStrings(eventTypes []models.HostEventType) []string {
+	values := make([]string, 0, len(eventTypes))
+	for _, eventType := range eventTypes {
+		values = append(values, string(eventType))
+	}
+	return values
 }
 
 // Clear - delete all hosts from table

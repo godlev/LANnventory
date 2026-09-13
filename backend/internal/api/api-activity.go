@@ -45,7 +45,7 @@ var (
 // @Param        beforeDate query     string  false  "Cursor event date in YYYY-MM-DD HH:mm:ss format. Requires beforeId."
 // @Param        beforeId   query     int     false  "Cursor event ID, greater than 0. Requires beforeDate." minimum(1)
 // @Param        category   query     string  false  "Event category" Enums(all, connectivity, changes)
-// @Param        eventType  query     string  false  "Repeatable event type filter" Enums(discovered, online, offline, known, unknown, device-type-changed)
+// @Param        eventType  query     string  false  "Repeatable event type filter" Enums(discovered, online, offline, known, unknown, device-type-changed, owner-changed, location-changed, notes-changed, tags-changed, pinned-changed)
 // @Param        mac        query     string  false  "Repeatable MAC address filter"
 // @Success      200        {array}   models.HostEvent
 // @Failure      400        {object}  map[string]string  "Invalid query or cursor parameters"
@@ -235,17 +235,9 @@ func parseActivityCategory(c *gin.Context) ([]models.HostEventType, error) {
 	case activityCategoryAll:
 		return nil, nil
 	case activityCategoryConnectivity:
-		return []models.HostEventType{
-			models.EventOnline,
-			models.EventOffline,
-		}, nil
+		return models.ConnectivityEventTypes, nil
 	case activityCategoryChanges:
-		return []models.HostEventType{
-			models.EventDiscovered,
-			models.EventKnown,
-			models.EventUnknown,
-			models.EventDeviceTypeChanged,
-		}, nil
+		return models.DeviceChangeEventTypes, nil
 	default:
 		return nil, errInvalidActivityCategory
 	}

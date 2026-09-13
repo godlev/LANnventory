@@ -18,6 +18,9 @@ export interface Host {
 	Notes: string;
 	Tags: string[];
 	Pinned: boolean;
+	FirstSeen: string;
+	LastSeen: string;
+	FirstSeenEstimated: boolean;
 };
 
 export interface HostEvent {
@@ -43,6 +46,7 @@ export interface ActivityStats {
 	Known:             number;
 	Unknown:           number;
 	DeviceTypeChanged: number;
+	MetadataChanged:   number;
 };
 
 export interface ActivityDeviceOption {
@@ -122,6 +126,9 @@ export const emptyHost:Host = {
 	Notes: "",
 	Tags: [],
 	Pinned: false,
+	FirstSeen: "",
+	LastSeen: "",
+	FirstSeenEstimated: false,
 };
 
 export const emptyConf:Conf = {

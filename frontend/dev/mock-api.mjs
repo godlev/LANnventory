@@ -29,7 +29,8 @@ const deviceTypes = new Set([
   'other',
 ]);
 const connectivityEvents = new Set(['online', 'offline']);
-const changeEvents = new Set(['discovered', 'known', 'unknown', 'device-type-changed']);
+const metadataEvents = new Set(['owner-changed', 'location-changed', 'notes-changed', 'tags-changed', 'pinned-changed']);
+const changeEvents = new Set(['discovered', 'known', 'unknown', 'device-type-changed', ...metadataEvents]);
 const validActivityEvents = new Set([...connectivityEvents, ...changeEvents]);
 
 const fakeHosts = [
@@ -45,6 +46,9 @@ const fakeHosts = [
     Known: 1,
     Now: 1,
     DeviceType: 'router',
+    FirstSeen: '2026-07-18 08:10:00',
+    LastSeen: now,
+    FirstSeenEstimated: false,
   },
   {
     ID: 2,
@@ -58,6 +62,9 @@ const fakeHosts = [
     Known: 1,
     Now: 1,
     DeviceType: 'nas',
+    FirstSeen: '2026-08-01 12:00:00',
+    LastSeen: now,
+    FirstSeenEstimated: true,
   },
   {
     ID: 3,
@@ -71,6 +78,9 @@ const fakeHosts = [
     Known: 1,
     Now: 1,
     DeviceType: 'desktop',
+    FirstSeen: '2026-08-10 09:30:00',
+    LastSeen: now,
+    FirstSeenEstimated: false,
   },
   {
     ID: 4,
@@ -84,6 +94,9 @@ const fakeHosts = [
     Known: 0,
     Now: 1,
     DeviceType: 'phone',
+    FirstSeen: '2026-08-20 18:12:00',
+    LastSeen: now,
+    FirstSeenEstimated: false,
   },
   {
     ID: 5,
@@ -97,6 +110,9 @@ const fakeHosts = [
     Known: 1,
     Now: 0,
     DeviceType: '',
+    FirstSeen: '2025-12-30 18:42:09',
+    LastSeen: '2025-12-30 18:42:09',
+    FirstSeenEstimated: true,
   },
 ];
 
@@ -262,6 +278,9 @@ function enrichHost(hostEntry) {
     Notes: metadata.Notes,
     Tags: [...metadata.Tags],
     Pinned: metadata.Pinned,
+    FirstSeen: hostEntry.FirstSeen ?? '',
+    LastSeen: hostEntry.LastSeen ?? hostEntry.Date ?? '',
+    FirstSeenEstimated: hostEntry.FirstSeenEstimated === true,
   };
 }
 
@@ -275,6 +294,18 @@ function metadataEntries() {
       notes: metadata.Notes,
       tags: [...metadata.Tags],
       pinned: metadata.Pinned,
+    }));
+}
+
+function lifecycleEntries() {
+  return [...fakeHosts]
+    .filter((hostEntry) => hostEntry.Mac)
+    .sort((left, right) => left.Mac.localeCompare(right.Mac))
+    .map((hostEntry) => ({
+      mac: hostEntry.Mac,
+      firstSeen: hostEntry.FirstSeen ?? '',
+      lastSeen: hostEntry.LastSeen ?? '',
+      firstSeenEstimated: hostEntry.FirstSeenEstimated === true,
     }));
 }
 
@@ -325,6 +356,25 @@ function applyMetadataPatch(hostEntry, patch) {
   }
   if (typeof patch.pinned === 'boolean') {
     next.Pinned = patch.pinned;
+  }
+
+  const eventDate = new Date();
+  if (current.Owner !== next.Owner) {
+    addActivity(hostEntry, 'owner-changed', { oldValue: current.Owner, newValue: next.Owner, date: eventDate });
+  }
+  if (current.Location !== next.Location) {
+    addActivity(hostEntry, 'location-changed', { oldValue: current.Location, newValue: next.Location, date: eventDate });
+  }
+  if (current.Notes !== next.Notes) {
+    addActivity(hostEntry, 'notes-changed', { oldValue: current.Notes, newValue: next.Notes, date: eventDate });
+  }
+  const oldTags = JSON.stringify(current.Tags);
+  const newTags = JSON.stringify(next.Tags);
+  if (oldTags !== newTags) {
+    addActivity(hostEntry, 'tags-changed', { oldValue: oldTags, newValue: newTags, date: eventDate });
+  }
+  if (current.Pinned !== next.Pinned) {
+    addActivity(hostEntry, 'pinned-changed', { oldValue: String(current.Pinned), newValue: String(next.Pinned), date: eventDate });
   }
 
   hostMetadata.set(hostEntry.Mac, next);
@@ -543,7 +593,7 @@ function backupDocument(createdAt = new Date()) {
 
   return {
     format: 'lannventory-backup',
-    formatVersion: 2,
+    formatVersion: 3,
     createdAt: formatDateUTC(createdAt),
     appVersion: config.Version,
     data: {
@@ -551,6 +601,7 @@ function backupDocument(createdAt = new Date()) {
       history: historyRows.sort((left, right) => left.ID - right.ID).map(backupHostFromMock),
       events: [...activityEvents].sort((left, right) => left.ID - right.ID).map(backupEventFromMock),
       hostMetadata: metadataEntries(),
+      hostLifecycle: lifecycleEntries(),
     },
   };
 }
@@ -561,7 +612,7 @@ function csvCell(value) {
 }
 
 function inventoryCSV() {
-  const header = ['ID', 'Name', 'DNS', 'Iface', 'IP', 'Mac', 'Hw', 'Date', 'Known', 'Now', 'DeviceType', 'Owner', 'Location', 'Notes', 'Tags', 'Pinned'];
+  const header = ['ID', 'Name', 'DNS', 'Iface', 'IP', 'Mac', 'Hw', 'Date', 'Known', 'Now', 'DeviceType', 'Owner', 'Location', 'Notes', 'Tags', 'Pinned', 'FirstSeen', 'FirstSeenEstimated', 'LastSeen'];
   const rows = [...fakeHosts]
     .sort((left, right) => left.ID - right.ID)
     .map((hostEntry) => {
@@ -583,6 +634,9 @@ function inventoryCSV() {
         enriched.Notes,
         enriched.Tags.join('; '),
         enriched.Pinned,
+        enriched.FirstSeen,
+        enriched.FirstSeenEstimated,
+        enriched.LastSeen,
       ];
     });
 
@@ -629,6 +683,12 @@ function seedActivity() {
   addActivityMinutesAgo(fakeHosts[0], 'discovered', 1560);
   addActivityMinutesAgo(fakeHosts[1], 'discovered', 1515);
   addActivityMinutesAgo(fakeHosts[1], 'device-type-changed', 65, { oldValue: '', newValue: 'nas' });
+  const metadataBatchDate = new Date(Date.now() - 75 * 60000);
+  addActivity(fakeHosts[1], 'owner-changed', { oldValue: '', newValue: 'Storage Team', date: metadataBatchDate });
+  addActivity(fakeHosts[1], 'location-changed', { oldValue: '', newValue: 'Rack 1', date: metadataBatchDate });
+  addActivity(fakeHosts[1], 'notes-changed', { oldValue: '', newValue: 'Primary media and backup NAS.', date: metadataBatchDate });
+  addActivity(fakeHosts[1], 'tags-changed', { oldValue: '[]', newValue: '["storage","backup"]', date: metadataBatchDate });
+  addActivity(fakeHosts[1], 'pinned-changed', { oldValue: 'false', newValue: 'true', date: metadataBatchDate });
   addActivityMinutesAgo(fakeHosts[0], 'known', 28);
   addActivityMinutesAgo(fakeHosts[4], 'discovered', 12);
   addActivityMinutesAgo(fakeHosts[4], 'offline', 10);
@@ -641,13 +701,21 @@ function seedActivity() {
     addActivityMinutesAgo(hostEntry, i % 2 === 0 ? 'online' : 'offline', 20 + i);
   }
 
-  const changeTypes = ['discovered', 'known', 'unknown', 'device-type-changed'];
+  const changeTypes = ['discovered', 'known', 'unknown', 'device-type-changed', 'owner-changed', 'location-changed', 'notes-changed', 'tags-changed', 'pinned-changed'];
   for (let i = 0; i < 28; i += 1) {
     const hostEntry = fakeHosts[i % fakeHosts.length];
     const eventType = changeTypes[i % changeTypes.length];
     addActivityMinutesAgo(hostEntry, eventType, 90 + i * 3, {
       oldValue: eventType === 'device-type-changed' ? '' : undefined,
-      newValue: eventType === 'device-type-changed' ? hostEntry.DeviceType : undefined,
+      newValue: eventType === 'device-type-changed'
+        ? hostEntry.DeviceType
+        : eventType === 'pinned-changed'
+          ? String(i % 2 === 0)
+          : eventType === 'tags-changed'
+            ? '["mock","event"]'
+            : eventType.endsWith('-changed')
+              ? 'Mock value'
+              : undefined,
     });
   }
 }
@@ -794,6 +862,7 @@ function activityStatsFor(url) {
     Known: 0,
     Unknown: 0,
     DeviceTypeChanged: 0,
+    MetadataChanged: 0,
   };
 
   for (const event of activityEvents) {
@@ -808,6 +877,7 @@ function activityStatsFor(url) {
     if (event.EventType === 'known') stats.Known += 1;
     if (event.EventType === 'unknown') stats.Unknown += 1;
     if (event.EventType === 'device-type-changed') stats.DeviceTypeChanged += 1;
+    if (metadataEvents.has(event.EventType)) stats.MetadataChanged += 1;
   }
 
   return stats;
@@ -1069,7 +1139,7 @@ async function routeSafeAction(req, res, url) {
   }
 
   if (req.method === 'GET' && pathname.startsWith('/api/host/add/')) {
-    sendJSON(res, fakeHosts[0]);
+    sendJSON(res, enrichHost(fakeHosts[0]));
     return true;
   }
 

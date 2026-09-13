@@ -254,6 +254,14 @@ func assertPackagingSchema(t *testing.T) {
 			t.Fatalf("host_metadata table missing %s column", column)
 		}
 	}
+	if !db.Migrator().HasTable(hostLifecycleTable) {
+		t.Fatal("host_lifecycle table missing")
+	}
+	for _, column := range []string{"MAC", "FIRST_SEEN", "LAST_SEEN", "FIRST_SEEN_ESTIMATED"} {
+		if !db.Table(hostLifecycleTable).Migrator().HasColumn(&models.HostLifecycle{}, column) {
+			t.Fatalf("host_lifecycle table missing %s column", column)
+		}
+	}
 }
 
 func openMigrationFixtureDB(t *testing.T, dbPath string) *gorm.DB {
@@ -329,6 +337,9 @@ func assertMigratedLegacyRows(t *testing.T) {
 	if !db.Migrator().HasTable(hostMetadataTable) {
 		t.Fatal("host_metadata table missing after startup migration")
 	}
+	if !db.Migrator().HasTable(hostLifecycleTable) {
+		t.Fatal("host_lifecycle table missing after startup migration")
+	}
 
 	var hosts []models.Host
 	if err := db.Table("now").Order("\"ID\" ASC").Find(&hosts).Error; err != nil {
@@ -349,6 +360,20 @@ func assertMigratedLegacyRows(t *testing.T) {
 	}
 	assertHostRow(t, history[0], 10, "router", "router.lan", "eth0", "192.168.1.1", "AA:BB:CC:DD:EE:01", "Gateway Vendor", "2026-08-24 07:00:00", 1, 1)
 	assertHostRow(t, history[1], 11, "unknown", "", "wifi0", "192.168.1.50", "AA:BB:CC:DD:EE:50", "Mobile Vendor", "2026-08-24 07:05:00", 0, 0)
+
+	var lifecycles []models.HostLifecycle
+	if err := db.Table(hostLifecycleTable).Order("\"MAC\" ASC").Find(&lifecycles).Error; err != nil {
+		t.Fatalf("read migrated lifecycle rows: %v", err)
+	}
+	if len(lifecycles) != 2 {
+		t.Fatalf("lifecycle rows len = %d, want 2: %+v", len(lifecycles), lifecycles)
+	}
+	if lifecycles[0].Mac != "AA:BB:CC:DD:EE:01" || lifecycles[0].FirstSeen != "2026-08-24 07:00:00" || lifecycles[0].LastSeen != "2026-08-24 08:00:00" || !lifecycles[0].FirstSeenEstimated {
+		t.Fatalf("router lifecycle = %+v, want estimated history first and current last", lifecycles[0])
+	}
+	if lifecycles[1].Mac != "AA:BB:CC:DD:EE:50" || lifecycles[1].FirstSeen != "2026-08-24 07:05:00" || lifecycles[1].LastSeen != "2026-08-24 07:55:00" || !lifecycles[1].FirstSeenEstimated {
+		t.Fatalf("unknown lifecycle = %+v, want estimated history first and current last", lifecycles[1])
+	}
 }
 
 func assertHostRow(t *testing.T, host models.Host, id int, name, dns, iface, ip, mac, hw, date string, known, now int) {

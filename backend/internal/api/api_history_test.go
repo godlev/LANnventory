@@ -75,9 +75,9 @@ func TestHistoryRowsDoNotIncludeInventoryMetadata(t *testing.T) {
 				t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
 			}
 			body := rec.Body.String()
-			for _, field := range []string{`"Owner"`, `"Location"`, `"Notes"`, `"Tags"`, `"Pinned"`} {
+			for _, field := range []string{`"Owner"`, `"Location"`, `"Notes"`, `"Tags"`, `"Pinned"`, `"FirstSeen"`, `"LastSeen"`, `"FirstSeenEstimated"`} {
 				if strings.Contains(body, field) {
-					t.Fatalf("history response contains metadata field %s: %s", field, body)
+					t.Fatalf("history response contains current-host enriched field %s: %s", field, body)
 				}
 			}
 		})

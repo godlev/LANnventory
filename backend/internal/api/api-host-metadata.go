@@ -33,7 +33,7 @@ type HostMetadataPatchRequest struct {
 
 // setHostMetadata godoc
 // @Summary      Update host metadata
-// @Description  Partially update manually managed inventory metadata. Tags are trimmed, empty tags are removed, duplicates are removed case-insensitively, and user order is preserved.
+// @Description  Partially update manually managed inventory metadata. Tags are trimmed, empty tags are removed, duplicates are removed case-insensitively, and user order is preserved. Actual changes are recorded as Device change events.
 // @Tags         hosts
 // @Accept       json
 // @Produce      json
@@ -67,7 +67,7 @@ func setHostMetadata(c *gin.Context) {
 		return
 	}
 	if hasChanges {
-		if _, err := gdb.UpsertHostMetadata(host.Mac, update); err != nil {
+		if _, err := gdb.UpdateHostMetadataWithEvents(host, update); err != nil {
 			slog.Error("Failed to update host metadata", "id", host.ID, "mac", host.Mac, "err", err)
 			c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to update host metadata"})
 			return

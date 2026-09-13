@@ -84,6 +84,9 @@ func compareHosts(foundHostsMap map[string]models.Host) {
 			aHost.Now = 0
 		}
 		gdb.Update("now", aHost)
+		if exists {
+			recordHostObservation(aHost)
+		}
 
 		if exists && previousNow == 0 {
 			gdb.RecordHostEvent(aHost, models.EventOnline, "", "")
@@ -110,9 +113,16 @@ func compareHosts(foundHostsMap map[string]models.Host) {
 		notify.Unknown(fHost) // Log and Shoutrrr
 
 		gdb.Update("now", fHost)
+		recordHostObservation(fHost)
 		hosts := gdb.SelectByMAC("now", fHost.Mac)
 		if len(hosts) > 0 {
 			gdb.RecordHostEvent(hosts[0], models.EventDiscovered, "", "")
 		}
+	}
+}
+
+func recordHostObservation(host models.Host) {
+	if err := gdb.RecordHostObservation(host.Mac, host.Date); err != nil {
+		slog.Error("Failed to record host lifecycle observation", "mac", host.Mac, "date", host.Date, "err", err)
 	}
 }

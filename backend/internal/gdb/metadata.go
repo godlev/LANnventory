@@ -2,6 +2,8 @@ package gdb
 
 import (
 	"errors"
+	"strconv"
+	"time"
 
 	"github.com/godlev/LANnventory/internal/check"
 	"github.com/godlev/LANnventory/internal/models"
@@ -12,7 +14,7 @@ const hostMetadataTable = "host_metadata"
 
 var errEmptyMetadataMAC = errors.New("metadata mac is empty")
 
-// SelectCurrentHostsWithMetadata returns current hosts enriched through one metadata query.
+// SelectCurrentHostsWithMetadata returns current hosts enriched through batched inventory queries.
 func SelectCurrentHostsWithMetadata() (hosts []models.Host, ok bool) {
 	activeDB, release, err := acquireDB()
 	if err != nil {
@@ -23,14 +25,14 @@ func SelectCurrentHostsWithMetadata() (hosts []models.Host, ok bool) {
 	if err := activeDB.Table("now").Find(&hosts).Error; err != nil {
 		return hosts, !check.IfError(err)
 	}
-	if err := enrichHostsWithMetadata(activeDB, hosts); err != nil {
+	if err := enrichHostsWithInventory(activeDB, hosts); err != nil {
 		return hosts, !check.IfError(err)
 	}
 
 	return hosts, true
 }
 
-// SelectHostWithMetadataByID returns one current host enriched with inventory metadata.
+// SelectHostWithMetadataByID returns one current host enriched with inventory data.
 func SelectHostWithMetadataByID(id int) (host models.Host, err error) {
 	activeDB, release, err := acquireDB()
 	if err != nil {
@@ -43,7 +45,7 @@ func SelectHostWithMetadataByID(id int) (host models.Host, err error) {
 	}
 
 	hosts := []models.Host{host}
-	if err := enrichHostsWithMetadata(activeDB, hosts); err != nil {
+	if err := enrichHostsWithInventory(activeDB, hosts); err != nil {
 		return host, err
 	}
 
@@ -124,6 +126,86 @@ func UpsertHostMetadata(mac string, update models.HostMetadataUpdate) (models.Ho
 	return saved, err
 }
 
+// UpdateHostMetadataWithEvents applies metadata changes and records one event per actual changed field.
+func UpdateHostMetadataWithEvents(host models.Host, update models.HostMetadataUpdate) (models.HostMetadata, error) {
+	if host.Mac == "" {
+		return models.HostMetadata{}, errEmptyMetadataMAC
+	}
+
+	activeDB, release, err := acquireDB()
+	if err != nil {
+		return models.HostMetadata{}, err
+	}
+	defer release()
+
+	var saved models.HostMetadata
+	err = activeDB.Transaction(func(txDB *gorm.DB) error {
+		metadata, ok, err := selectHostMetadataByMAC(txDB, host.Mac)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			metadata = models.HostMetadata{
+				Mac:      host.Mac,
+				TagsJSON: "[]",
+			}
+		}
+
+		eventDate := time.Now().Format(models.HostEventDateLayout)
+		events := make([]models.HostEvent, 0, 5)
+
+		if update.Owner != nil && metadata.Owner != *update.Owner {
+			events = append(events, metadataEvent(host, models.EventOwnerChanged, metadata.Owner, *update.Owner, eventDate))
+			metadata.Owner = *update.Owner
+		}
+		if update.Location != nil && metadata.Location != *update.Location {
+			events = append(events, metadataEvent(host, models.EventLocationChanged, metadata.Location, *update.Location, eventDate))
+			metadata.Location = *update.Location
+		}
+		if update.Notes != nil && metadata.Notes != *update.Notes {
+			events = append(events, metadataEvent(host, models.EventNotesChanged, metadata.Notes, *update.Notes, eventDate))
+			metadata.Notes = *update.Notes
+		}
+		if update.Tags != nil {
+			oldTagsJSON := models.EncodeMetadataTags(models.DecodeMetadataTags(metadata.TagsJSON))
+			newTagsJSON := models.EncodeMetadataTags(*update.Tags)
+			if oldTagsJSON != newTagsJSON {
+				events = append(events, metadataEvent(host, models.EventTagsChanged, oldTagsJSON, newTagsJSON, eventDate))
+				metadata.TagsJSON = newTagsJSON
+			}
+		}
+		if update.Pinned != nil && metadata.Pinned != *update.Pinned {
+			events = append(events, metadataEvent(
+				host,
+				models.EventPinnedChanged,
+				strconv.FormatBool(metadata.Pinned),
+				strconv.FormatBool(*update.Pinned),
+				eventDate,
+			))
+			metadata.Pinned = *update.Pinned
+		}
+
+		if len(events) == 0 {
+			saved = metadata
+			return nil
+		}
+
+		if err := txDB.Table(hostMetadataTable).Save(&metadata).Error; err != nil {
+			return err
+		}
+		for _, event := range events {
+			if err := addEventTx(txDB, event); err != nil {
+				return err
+			}
+		}
+
+		saved = metadata
+		return nil
+	})
+
+	return saved, err
+}
+
 // DeleteHostMetadataByMAC removes metadata for a deleted current host.
 func DeleteHostMetadataByMAC(mac string) error {
 	if mac == "" {
@@ -161,6 +243,19 @@ func enrichHostsWithMetadata(activeDB *gorm.DB, hosts []models.Host) error {
 	}
 
 	return nil
+}
+
+func metadataEvent(host models.Host, eventType models.HostEventType, oldValue, newValue, date string) models.HostEvent {
+	event := models.NewHostEvent(host, eventType, oldValue, newValue)
+	event.Date = date
+	return event
+}
+
+func enrichHostsWithInventory(activeDB *gorm.DB, hosts []models.Host) error {
+	if err := enrichHostsWithMetadata(activeDB, hosts); err != nil {
+		return err
+	}
+	return enrichHostsWithLifecycle(activeDB, hosts)
 }
 
 func selectHostMetadataForHosts(activeDB *gorm.DB, hosts []models.Host) (map[string]models.HostMetadata, error) {

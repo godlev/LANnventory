@@ -2796,6 +2796,26 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     color: var(--wyl-link);
     font-weight: 700;
 }
+.host-lifecycle-value {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+}
+.host-lifecycle-estimate {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.2rem;
+    padding: 0.08rem 0.34rem;
+    color: var(--wyl-filter-active);
+    background-color: var(--wyl-control-hover-bg);
+    border: 1px solid var(--wyl-control-border);
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 800;
+    line-height: 1;
+    text-transform: uppercase;
+}
 .host-metadata-check {
     display: inline-flex;
     align-items: center;

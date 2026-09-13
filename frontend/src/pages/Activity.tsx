@@ -32,7 +32,13 @@ type EventFilterKey =
   | "recognition"
   | "known"
   | "unknown"
-  | "device-type-changed";
+  | "device-type-changed"
+  | "metadata-changes"
+  | "owner-changed"
+  | "location-changed"
+  | "notes-changed"
+  | "tags-changed"
+  | "pinned-changed";
 
 type GroupByKey = "device" | "event" | "category" | "device-type" | "ip" | "iface" | "day";
 type DeviceDisplayMode = "name-icon" | "name" | "icon";
@@ -72,7 +78,11 @@ type GroupValue = {
 const eventsPageSize = 100;
 const eventsDeviceDisplayStorageKey = "eventsDeviceDisplay";
 const defaultDeviceDisplayMode: DeviceDisplayMode = "icon";
-const eventTypeOrder: ActivityEventType[] = ["online", "offline", "discovered", "known", "unknown", "device-type-changed"];
+const connectivityEventTypes: ActivityEventType[] = ["online", "offline"];
+const recognitionEventTypes: ActivityEventType[] = ["known", "unknown"];
+const metadataEventTypes: ActivityEventType[] = ["owner-changed", "location-changed", "notes-changed", "tags-changed", "pinned-changed"];
+const deviceChangeEventTypes: ActivityEventType[] = ["discovered", ...recognitionEventTypes, "device-type-changed", ...metadataEventTypes];
+const eventTypeOrder: ActivityEventType[] = [...connectivityEventTypes, ...deviceChangeEventTypes];
 const deviceDropdownId = "activity-device-filter";
 const eventTypeDropdownId = "activity-event-type-filter";
 const groupByDropdownId = "activity-group-by-filter";
@@ -87,19 +97,26 @@ const emptyStats: ActivityStats = {
   Known: 0,
   Unknown: 0,
   DeviceTypeChanged: 0,
+  MetadataChanged: 0,
 };
 
 const eventFilterOptions: EventFilterOption[] = [
   { key: "all", label: "All events", eventTypes: eventTypeOrder },
-  { key: "connectivity", label: "Connectivity", eventTypes: ["online", "offline"] },
+  { key: "connectivity", label: "Connectivity", eventTypes: connectivityEventTypes },
   { key: "online", label: "Online", eventTypes: ["online"] },
   { key: "offline", label: "Offline", eventTypes: ["offline"] },
-  { key: "changes", label: "Device changes", eventTypes: ["discovered", "known", "unknown", "device-type-changed"] },
+  { key: "changes", label: "Device changes", eventTypes: deviceChangeEventTypes },
   { key: "discovered", label: "New device detected", eventTypes: ["discovered"] },
-  { key: "recognition", label: "Recognition changes", eventTypes: ["known", "unknown"] },
+  { key: "recognition", label: "Recognition changes", eventTypes: recognitionEventTypes },
   { key: "known", label: "Marked known", eventTypes: ["known"] },
   { key: "unknown", label: "Marked unknown", eventTypes: ["unknown"] },
   { key: "device-type-changed", label: "Device type changed", eventTypes: ["device-type-changed"] },
+  { key: "metadata-changes", label: "Metadata changes", eventTypes: metadataEventTypes },
+  { key: "owner-changed", label: "Owner changed", eventTypes: ["owner-changed"] },
+  { key: "location-changed", label: "Location changed", eventTypes: ["location-changed"] },
+  { key: "notes-changed", label: "Notes updated", eventTypes: ["notes-changed"] },
+  { key: "tags-changed", label: "Tags changed", eventTypes: ["tags-changed"] },
+  { key: "pinned-changed", label: "Pinned changed", eventTypes: ["pinned-changed"] },
 ];
 
 const groupByOptions: { key: GroupByKey; label: string }[] = [
@@ -261,7 +278,7 @@ function Activity() {
       ? hours + " " + (hours === 1 ? "hour" : "hours")
       : "the configured retention window";
 
-    return "Connectivity events retained for " + retention + ". Device changes retained while the device exists.";
+    return "Connectivity events retained for " + retention + ". Device changes, including metadata changes, retained while the device exists.";
   };
 
   const loadEvents = async (reset: boolean) => {
@@ -477,6 +494,15 @@ function Activity() {
         icon: "bi-tag-fill",
         tone: "type",
         eventTypes: ["device-type-changed"],
+      },
+      {
+        key: "metadata-changes",
+        label: "Metadata",
+        value: currentStats.MetadataChanged,
+        detail: "Inventory metadata",
+        icon: "bi-card-checklist",
+        tone: "type",
+        eventTypes: metadataEventTypes,
       },
     ];
   });
@@ -838,9 +864,9 @@ function Activity() {
                   <EventTypeCheckbox
                     label="Connectivity"
                     className="activity-multiselect-parent"
-                    checked={eventTypeGroupState(["online", "offline"]).checked}
-                    indeterminate={eventTypeGroupState(["online", "offline"]).indeterminate}
-                    onChange={() => handleEventTypeGroupToggle(["online", "offline"])}
+                    checked={eventTypeGroupState(connectivityEventTypes).checked}
+                    indeterminate={eventTypeGroupState(connectivityEventTypes).indeterminate}
+                    onChange={() => handleEventTypeGroupToggle(connectivityEventTypes)}
                   />
                   <EventTypeCheckbox
                     label="Online"
@@ -857,9 +883,9 @@ function Activity() {
                   <EventTypeCheckbox
                     label="Device changes"
                     className="activity-multiselect-parent"
-                    checked={eventTypeGroupState(["discovered", "known", "unknown", "device-type-changed"]).checked}
-                    indeterminate={eventTypeGroupState(["discovered", "known", "unknown", "device-type-changed"]).indeterminate}
-                    onChange={() => handleEventTypeGroupToggle(["discovered", "known", "unknown", "device-type-changed"])}
+                    checked={eventTypeGroupState(deviceChangeEventTypes).checked}
+                    indeterminate={eventTypeGroupState(deviceChangeEventTypes).indeterminate}
+                    onChange={() => handleEventTypeGroupToggle(deviceChangeEventTypes)}
                   />
                   <EventTypeCheckbox
                     label="New device detected"
@@ -870,9 +896,9 @@ function Activity() {
                   <EventTypeCheckbox
                     label="Recognition changes"
                     className="activity-multiselect-child activity-multiselect-parent"
-                    checked={eventTypeGroupState(["known", "unknown"]).checked}
-                    indeterminate={eventTypeGroupState(["known", "unknown"]).indeterminate}
-                    onChange={() => handleEventTypeGroupToggle(["known", "unknown"])}
+                    checked={eventTypeGroupState(recognitionEventTypes).checked}
+                    indeterminate={eventTypeGroupState(recognitionEventTypes).indeterminate}
+                    onChange={() => handleEventTypeGroupToggle(recognitionEventTypes)}
                   />
                   <EventTypeCheckbox
                     label="Marked known"
@@ -891,6 +917,43 @@ function Activity() {
                     className="activity-multiselect-child"
                     checked={selectedEventTypeSet().has("device-type-changed")}
                     onChange={() => handleEventTypeToggle("device-type-changed")}
+                  />
+                  <EventTypeCheckbox
+                    label="Metadata changes"
+                    className="activity-multiselect-child activity-multiselect-parent"
+                    checked={eventTypeGroupState(metadataEventTypes).checked}
+                    indeterminate={eventTypeGroupState(metadataEventTypes).indeterminate}
+                    onChange={() => handleEventTypeGroupToggle(metadataEventTypes)}
+                  />
+                  <EventTypeCheckbox
+                    label="Owner changed"
+                    className="activity-multiselect-grandchild"
+                    checked={selectedEventTypeSet().has("owner-changed")}
+                    onChange={() => handleEventTypeToggle("owner-changed")}
+                  />
+                  <EventTypeCheckbox
+                    label="Location changed"
+                    className="activity-multiselect-grandchild"
+                    checked={selectedEventTypeSet().has("location-changed")}
+                    onChange={() => handleEventTypeToggle("location-changed")}
+                  />
+                  <EventTypeCheckbox
+                    label="Notes updated"
+                    className="activity-multiselect-grandchild"
+                    checked={selectedEventTypeSet().has("notes-changed")}
+                    onChange={() => handleEventTypeToggle("notes-changed")}
+                  />
+                  <EventTypeCheckbox
+                    label="Tags changed"
+                    className="activity-multiselect-grandchild"
+                    checked={selectedEventTypeSet().has("tags-changed")}
+                    onChange={() => handleEventTypeToggle("tags-changed")}
+                  />
+                  <EventTypeCheckbox
+                    label="Pinned changed"
+                    className="activity-multiselect-grandchild"
+                    checked={selectedEventTypeSet().has("pinned-changed")}
+                    onChange={() => handleEventTypeToggle("pinned-changed")}
                   />
                 </div>
                 <div class="activity-multiselect-footer">

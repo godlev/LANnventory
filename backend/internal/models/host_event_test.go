@@ -33,7 +33,7 @@ func TestHostEventTypeValidation(t *testing.T) {
 	}
 
 	if IsValidHostEventType("renamed") {
-		t.Fatal("renamed should not be a valid Phase 10 event type")
+		t.Fatal("renamed should not be a valid event type")
 	}
 }
 

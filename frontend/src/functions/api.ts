@@ -3,7 +3,18 @@ import type { ActivityDeviceOption, ActivityStats, Conf, Host, HostEvent } from 
 
 export const apiPath = '';
 export type ActivityCategory = "all" | "connectivity" | "changes";
-export type ActivityEventType = "discovered" | "online" | "offline" | "known" | "unknown" | "device-type-changed";
+export type ActivityEventType =
+  | "discovered"
+  | "online"
+  | "offline"
+  | "known"
+  | "unknown"
+  | "device-type-changed"
+  | "owner-changed"
+  | "location-changed"
+  | "notes-changed"
+  | "tags-changed"
+  | "pinned-changed";
 
 type ActivityQuery = {
   category?: ActivityCategory;

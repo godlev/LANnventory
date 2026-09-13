@@ -109,7 +109,7 @@ func TestActivityEndpointCategoryOmittedAndAllReturnEveryEventType(t *testing.T)
 	host := seedHost(t, models.Host{Name: "router", Mac: "AA:BB:CC:DD:EE:01"})
 	seedActivityEventTypes(t, host)
 
-	for _, path := range []string{"/api/activity?limit=10", "/api/activity?category=all&limit=10"} {
+	for _, path := range []string{"/api/activity?limit=20", "/api/activity?category=all&limit=20"} {
 		t.Run(path, func(t *testing.T) {
 			rec := getPath(router, path)
 			if rec.Code != http.StatusOK {
@@ -140,12 +140,17 @@ func TestActivityEndpointFiltersByCategory(t *testing.T) {
 			},
 		},
 		{
-			path: "/api/activity?category=changes&limit=10",
+			path: "/api/activity?category=changes&limit=20",
 			want: map[models.HostEventType]bool{
 				models.EventDiscovered:        true,
 				models.EventKnown:             true,
 				models.EventUnknown:           true,
 				models.EventDeviceTypeChanged: true,
+				models.EventOwnerChanged:      true,
+				models.EventLocationChanged:   true,
+				models.EventNotesChanged:      true,
+				models.EventTagsChanged:       true,
+				models.EventPinnedChanged:     true,
 			},
 		},
 	}
@@ -189,6 +194,13 @@ func TestActivityEndpointFiltersByEventType(t *testing.T) {
 			want: map[models.HostEventType]bool{
 				models.EventKnown:   true,
 				models.EventUnknown: true,
+			},
+		},
+		{
+			path: "/api/activity?eventType=owner-changed&eventType=tags-changed&limit=10",
+			want: map[models.HostEventType]bool{
+				models.EventOwnerChanged: true,
+				models.EventTagsChanged:  true,
 			},
 		},
 	}
@@ -773,7 +785,7 @@ func TestActivityStatsEndpointReturnsTotals(t *testing.T) {
 		t.Fatalf("stats status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
 	}
 	stats := decodeActivityStats(t, rec)
-	if stats.Total != 8 || stats.Online != 2 || stats.Offline != 2 || stats.Discovered != 1 || stats.Known != 1 || stats.Unknown != 1 || stats.DeviceTypeChanged != 1 {
+	if stats.Total != 13 || stats.Online != 2 || stats.Offline != 2 || stats.Discovered != 1 || stats.Known != 1 || stats.Unknown != 1 || stats.DeviceTypeChanged != 1 || stats.MetadataChanged != 5 {
 		t.Fatalf("stats = %+v, want totals for all seeded events", stats)
 	}
 }
@@ -792,7 +804,7 @@ func TestActivityStatsEndpointAppliesDeviceFilterOnly(t *testing.T) {
 		t.Fatalf("filtered stats status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
 	}
 	stats := decodeActivityStats(t, rec)
-	if stats.Total != 2 || stats.Online != 1 || stats.Offline != 1 || stats.Discovered != 0 || stats.Known != 0 || stats.Unknown != 0 || stats.DeviceTypeChanged != 0 {
+	if stats.Total != 2 || stats.Online != 1 || stats.Offline != 1 || stats.Discovered != 0 || stats.Known != 0 || stats.Unknown != 0 || stats.DeviceTypeChanged != 0 || stats.MetadataChanged != 0 {
 		t.Fatalf("filtered stats = %+v, want only NAS counts", stats)
 	}
 }

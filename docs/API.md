@@ -2,9 +2,9 @@
 ```http
 GET /api/all
 ```
-Returns all current hosts in `json`, enriched with inventory metadata fields:
+Returns all current hosts in `json`, enriched with inventory metadata and lifecycle fields:
 
-`Owner`, `Location`, `Notes`, `Tags`, and `Pinned`.
+`Owner`, `Location`, `Notes`, `Tags`, `Pinned`, `FirstSeen`, `LastSeen`, and `FirstSeenEstimated`.
 
 
 ```http
@@ -26,9 +26,11 @@ Returns only last 20 lines of history of a device with this `mac`.
 ```http
 GET /api/host/:id
 ```
-Returns current host with this `id` in `json`, enriched with inventory metadata fields:
+Returns current host with this `id` in `json`, enriched with inventory metadata and lifecycle fields:
 
-`Owner`, `Location`, `Notes`, `Tags`, and `Pinned`.
+`Owner`, `Location`, `Notes`, `Tags`, `Pinned`, `FirstSeen`, `LastSeen`, and `FirstSeenEstimated`.
+
+`FirstSeen` is the first actual scanner observation after lifecycle tracking is available. On upgraded installations it may be reconstructed from retained historical evidence; `FirstSeenEstimated` is `true` when the value is estimated. `LastSeen` is the latest successful ARP observation. Presence history `Date` values are snapshot timestamps and are not equivalent to `LastSeen`.
 
 ```http
 GET /api/activity
@@ -41,7 +43,7 @@ Supported query parameters:
 - `offset`: optional legacy offset pagination value, `0` or greater.
 - `beforeDate` and `beforeId`: optional cursor pagination pair. To request the next page, take `Date` and `ID` from the final event returned by the previous page and pass them as `beforeDate=YYYY-MM-DD HH:mm:ss&beforeId=:id`.
 - `category`: optional `all`, `connectivity`, or `changes`.
-- `eventType`: optional repeatable filter. Supported values are `discovered`, `online`, `offline`, `known`, `unknown`, and `device-type-changed`.
+- `eventType`: optional repeatable filter. Supported values are `discovered`, `online`, `offline`, `known`, `unknown`, `device-type-changed`, `owner-changed`, `location-changed`, `notes-changed`, `tags-changed`, and `pinned-changed`.
 - `mac`: optional repeatable MAC address filter.
 
 Each event keeps `Date` as the persisted server-local timestamp used for ordering and cursor pagination. Newer API responses also include `DateUTC`, a non-persistent UTC RFC3339 timestamp derived from `Date` using the server timezone for timezone-safe UI display.
@@ -61,18 +63,18 @@ Returns device options represented in current hosts and retained activity events
 ```http
 GET /api/export/backup
 ```
-Downloads a portable JSON backup document with current hosts, host history, Events and host metadata.
+Downloads a portable JSON backup document with current hosts, host history, Events, host metadata and host lifecycle.
 
 The response uses `Content-Disposition: attachment` with a filename like `lannventory-backup-YYYYMMDDTHHMMSSZ.json`.
 
 Backup metadata includes:
 
 - `format`: always `lannventory-backup`
-- `formatVersion`: currently `2`
+- `formatVersion`: currently `3`
 - `createdAt`: UTC RFC3339 timestamp
 - `appVersion`: running LANnventory version
 
-Backup format v1 contained `currentHosts`, `history` and `events`. Backup format v2 adds `hostMetadata`, ordered by MAC address ascending. Each metadata entry contains `mac`, `owner`, `location`, `notes`, `tags` and `pinned`. Tags are JSON arrays in the portable backup; internal tag storage strings are not exported.
+Backup format v1 contained `currentHosts`, `history` and `events`. Backup format v2 adds `hostMetadata`, ordered by MAC address ascending. Backup format v3 adds `hostLifecycle`, ordered by MAC address ascending. Each metadata entry contains `mac`, `owner`, `location`, `notes`, `tags` and `pinned`. Each lifecycle entry contains `mac`, `firstSeen`, `lastSeen` and `firstSeenEstimated`. Tags are JSON arrays in the portable backup; internal tag storage strings are not exported.
 
 The exported data is a logical backup, not a raw database dump. It excludes runtime configuration, notification URLs, database connection strings, InfluxDB tokens and other secrets. Events preserve the stored `Date` value exactly and do not include derived `DateUTC` display data. Restore/import is not implemented yet.
 
@@ -83,9 +85,9 @@ Downloads the current device inventory as CSV. The response uses `Content-Dispos
 
 CSV columns are:
 
-`ID, Name, DNS, Iface, IP, Mac, Hw, Date, Known, Now, DeviceType, Owner, Location, Notes, Tags, Pinned`
+`ID, Name, DNS, Iface, IP, Mac, Hw, Date, Known, Now, DeviceType, Owner, Location, Notes, Tags, Pinned, FirstSeen, FirstSeenEstimated, LastSeen`
 
-Tags are represented in one human-readable cell separated by `; `. This export includes current inventory and metadata only. It does not include host history, Events, configuration or secrets.
+Tags are represented in one human-readable cell separated by `; `. This export includes current inventory, metadata and lifecycle only. It does not include host history, Events, configuration or secrets.
 
 ```http
 PATCH /api/host/:id/metadata
@@ -102,7 +104,7 @@ Validation:
 - `tags`: maximum 20 tags.
 - each tag: maximum 48 Unicode characters.
 
-Tags are trimmed, empty tags are removed, and duplicates are removed case-insensitively while preserving the first entered spelling and order. The endpoint returns the complete enriched current host. Metadata changes do not create activity events in this release phase.
+Tags are trimmed, empty tags are removed, and duplicates are removed case-insensitively while preserving the first entered spelling and order. The endpoint returns the complete enriched current host. Actual metadata changes create Device change activity events with `OldValue` and `NewValue`; no-op updates after canonicalization do not create events.
 
 ```http
 GET /api/host/:id/activity
