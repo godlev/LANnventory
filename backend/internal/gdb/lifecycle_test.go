@@ -92,13 +92,9 @@ func TestBackfillHostLifecycleUsesRetainedEvidenceAndIsIdempotent(t *testing.T) 
 		Date: "2026-09-05 12:00:00",
 	})
 
-	seedLifecycleTestEvent(t, models.Host{ID: 1, Mac: "AA:BB:CC:DD:EE:01"}, "2026-09-01 08:00:00")
-	if err := UpdateWithError("history", models.Host{Mac: "AA:BB:CC:DD:EE:01", Date: "2026-08-31 08:00:00"}); err != nil {
-		t.Fatalf("seed history 1: %v", err)
-	}
-	if err := UpdateWithError("history", models.Host{Mac: "AA:BB:CC:DD:EE:02", Date: "2026-09-02 08:00:00"}); err != nil {
-		t.Fatalf("seed history 2: %v", err)
-	}
+	seedLifecycleTestEvent(t, models.Host{ID: 1, Mac: "AA:BB:CC:DD:EE:01", Iface: "eth0"}, "2026-09-01 08:00:00")
+	seedLifecycleHistoryRow(t, "AA:BB:CC:DD:EE:01", "2026-08-31 08:00:00", 1)
+	seedLifecycleHistoryRow(t, "AA:BB:CC:DD:EE:02", "2026-09-02 08:00:00", 1)
 	if err := db.Table(hostLifecycleTable).Create(&models.HostLifecycle{
 		Mac:                "AA:BB:CC:DD:EE:04",
 		FirstSeen:          "2026-08-01 00:00:00",
@@ -127,6 +123,206 @@ func TestBackfillHostLifecycleUsesRetainedEvidenceAndIsIdempotent(t *testing.T) 
 	if count != 4 {
 		t.Fatalf("lifecycle rows = %d, want 4", count)
 	}
+}
+
+func TestBackfillHostLifecycleUsesOnlyOnlineHistoryEvidence(t *testing.T) {
+	startSelectTestDB(t)
+
+	seedExportCurrentHost(t, models.Host{
+		ID:   1,
+		Name: "nas",
+		Mac:  "AA:BB:CC:DD:EE:21",
+		Date: "2026-09-05 12:00:00",
+	})
+	seedLifecycleHistoryRow(t, "AA:BB:CC:DD:EE:21", "2026-09-05 08:00:00", 0)
+	seedLifecycleHistoryRow(t, "AA:BB:CC:DD:EE:21", "2026-09-05 10:00:00", 1)
+
+	if err := backfillHostLifecycle(db); err != nil {
+		t.Fatalf("backfillHostLifecycle: %v", err)
+	}
+
+	assertLifecycleValues(t, "AA:BB:CC:DD:EE:21", "2026-09-05 10:00:00", "2026-09-05 12:00:00", true)
+}
+
+func TestBackfillHostLifecycleIgnoresOnlyOfflineHistoryWithoutCurrentDate(t *testing.T) {
+	startSelectTestDB(t)
+
+	seedExportCurrentHost(t, models.Host{
+		ID:   1,
+		Name: "manual-offline",
+		Mac:  "AA:BB:CC:DD:EE:22",
+		Date: "",
+	})
+	seedLifecycleHistoryRow(t, "AA:BB:CC:DD:EE:22", "2026-09-05 08:00:00", 0)
+
+	if err := backfillHostLifecycle(db); err != nil {
+		t.Fatalf("backfillHostLifecycle: %v", err)
+	}
+
+	assertLifecycleValues(t, "AA:BB:CC:DD:EE:22", "", "", false)
+}
+
+func TestBackfillHostLifecycleIgnoresManualDiscoveredEvents(t *testing.T) {
+	startSelectTestDB(t)
+
+	host := models.Host{
+		ID:   1,
+		Name: "manual",
+		Mac:  "AA:BB:CC:DD:EE:23",
+		Date: "",
+	}
+	seedExportCurrentHost(t, host)
+	seedLifecycleTestEvent(t, host, "2026-09-05 08:00:00")
+
+	if err := backfillHostLifecycle(db); err != nil {
+		t.Fatalf("backfillHostLifecycle: %v", err)
+	}
+
+	assertLifecycleValues(t, "AA:BB:CC:DD:EE:23", "", "", false)
+}
+
+func TestBackfillHostLifecyclePrioritizesScannerDiscoveredEvent(t *testing.T) {
+	startSelectTestDB(t)
+
+	host := models.Host{
+		ID:    1,
+		Name:  "router",
+		Mac:   "AA:BB:CC:DD:EE:24",
+		Iface: "eth0",
+		Date:  "2026-09-05 10:00:00",
+	}
+	seedExportCurrentHost(t, host)
+	seedLifecycleTestEvent(t, host, "2026-09-05 09:00:00")
+	seedLifecycleHistoryRow(t, host.Mac, "2026-09-05 09:05:00", 1)
+
+	if err := backfillHostLifecycle(db); err != nil {
+		t.Fatalf("backfillHostLifecycle: %v", err)
+	}
+
+	assertLifecycleValues(t, host.Mac, "2026-09-05 09:00:00", "2026-09-05 10:00:00", true)
+}
+
+func TestBackfillHostLifecycleUsesOnlineHistoryAfterManualDiscoveredEvent(t *testing.T) {
+	startSelectTestDB(t)
+
+	host := models.Host{
+		ID:   1,
+		Name: "pre-phase-manual",
+		Mac:  "AA:BB:CC:DD:EE:25",
+		Date: "2026-09-05 12:00:00",
+	}
+	seedExportCurrentHost(t, host)
+	seedLifecycleTestEvent(t, host, "2026-09-05 08:00:00")
+	seedLifecycleHistoryRow(t, host.Mac, "2026-09-05 08:30:00", 0)
+	seedLifecycleHistoryRow(t, host.Mac, "2026-09-05 11:00:00", 1)
+
+	if err := backfillHostLifecycle(db); err != nil {
+		t.Fatalf("backfillHostLifecycle: %v", err)
+	}
+
+	assertLifecycleValues(t, host.Mac, "2026-09-05 11:00:00", "2026-09-05 12:00:00", true)
+}
+
+func TestBackfillHostLifecycleNoEvidenceIsIdempotent(t *testing.T) {
+	startSelectTestDB(t)
+
+	seedExportCurrentHost(t, models.Host{
+		ID:   1,
+		Name: "empty",
+		Mac:  "AA:BB:CC:DD:EE:26",
+		Date: "",
+	})
+
+	if err := backfillHostLifecycle(db); err != nil {
+		t.Fatalf("backfillHostLifecycle first: %v", err)
+	}
+	if err := backfillHostLifecycle(db); err != nil {
+		t.Fatalf("backfillHostLifecycle second: %v", err)
+	}
+
+	assertLifecycleValues(t, "AA:BB:CC:DD:EE:26", "", "", false)
+	var count int64
+	if err := db.Table(hostLifecycleTable).Where("\"MAC\" = ?", "AA:BB:CC:DD:EE:26").Count(&count).Error; err != nil {
+		t.Fatalf("count lifecycle rows: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("lifecycle rows = %d, want 1", count)
+	}
+}
+
+func TestBackfillHostLifecycleLeavesExistingEstimatedLifecycleUntouched(t *testing.T) {
+	startSelectTestDB(t)
+
+	seedExportCurrentHost(t, models.Host{
+		ID:   1,
+		Name: "existing-estimated",
+		Mac:  "AA:BB:CC:DD:EE:27",
+		Date: "2026-09-05 12:00:00",
+	})
+	if err := db.Table(hostLifecycleTable).Create(&models.HostLifecycle{
+		Mac:                "AA:BB:CC:DD:EE:27",
+		FirstSeen:          "2026-09-01 00:00:00",
+		LastSeen:           "2026-09-02 00:00:00",
+		FirstSeenEstimated: true,
+	}).Error; err != nil {
+		t.Fatalf("seed estimated lifecycle: %v", err)
+	}
+	seedLifecycleTestEvent(t, models.Host{ID: 1, Mac: "AA:BB:CC:DD:EE:27", Iface: "eth0"}, "2026-09-05 09:00:00")
+
+	if err := backfillHostLifecycle(db); err != nil {
+		t.Fatalf("backfillHostLifecycle: %v", err)
+	}
+
+	assertLifecycleValues(t, "AA:BB:CC:DD:EE:27", "2026-09-01 00:00:00", "2026-09-02 00:00:00", true)
+}
+
+func TestBackfillHostLifecycleReturnsBeforeEvidenceQueriesWhenNoRowsMissing(t *testing.T) {
+	startSelectTestDB(t)
+
+	mac := "AA:BB:CC:DD:EE:29"
+	seedExportCurrentHost(t, models.Host{
+		ID:   1,
+		Name: "existing",
+		Mac:  mac,
+		Date: "2026-09-05 12:00:00",
+	})
+	if err := db.Table(hostLifecycleTable).Create(&models.HostLifecycle{
+		Mac:                mac,
+		FirstSeen:          "2026-09-05 10:00:00",
+		LastSeen:           "2026-09-05 12:00:00",
+		FirstSeenEstimated: true,
+	}).Error; err != nil {
+		t.Fatalf("seed lifecycle: %v", err)
+	}
+	if err := db.Migrator().DropTable("history", "events"); err != nil {
+		t.Fatalf("DropTable(history, events): %v", err)
+	}
+
+	if err := backfillHostLifecycle(db); err != nil {
+		t.Fatalf("backfillHostLifecycle: %v", err)
+	}
+}
+
+func TestRecordHostObservationConvertsBackfilledEmptyLifecycleToExact(t *testing.T) {
+	startSelectTestDB(t)
+
+	mac := "AA:BB:CC:DD:EE:28"
+	seedExportCurrentHost(t, models.Host{
+		ID:   1,
+		Name: "later-observed",
+		Mac:  mac,
+		Date: "",
+	})
+	if err := backfillHostLifecycle(db); err != nil {
+		t.Fatalf("backfillHostLifecycle: %v", err)
+	}
+	assertLifecycleValues(t, mac, "", "", false)
+
+	if err := RecordHostObservation(mac, "2026-09-05 13:00:00"); err != nil {
+		t.Fatalf("RecordHostObservation: %v", err)
+	}
+
+	assertLifecycleValues(t, mac, "2026-09-05 13:00:00", "2026-09-05 13:00:00", false)
 }
 
 func TestDeleteCurrentHostWithMetadataRemovesLifecycle(t *testing.T) {
@@ -205,6 +401,14 @@ func seedLifecycleTestEvent(t *testing.T, host models.Host, date string) {
 	event.Date = date
 	if err := AddEvent(event); err != nil {
 		t.Fatalf("AddEvent discovered: %v", err)
+	}
+}
+
+func seedLifecycleHistoryRow(t *testing.T, mac, date string, now int) {
+	t.Helper()
+
+	if err := UpdateWithError("history", models.Host{Mac: mac, Date: date, Now: now}); err != nil {
+		t.Fatalf("seed history %s %s: %v", mac, date, err)
 	}
 }
 

@@ -135,21 +135,27 @@ func backfillHostLifecycle(activeDB *gorm.DB) error {
 	if err != nil {
 		return err
 	}
-	earliestDiscovered, err := selectEarliestEventDatesByMAC(activeDB, models.EventDiscovered)
-	if err != nil {
-		return err
-	}
-	earliestHistory, err := selectEarliestHistoryDatesByMAC(activeDB)
-	if err != nil {
-		return err
-	}
-
-	lifecycles := make([]models.HostLifecycle, 0, len(macs))
+	missingMACs := make([]string, 0, len(macs))
 	for _, mac := range macs {
-		if _, exists := existing[mac]; exists {
-			continue
+		if _, exists := existing[mac]; !exists {
+			missingMACs = append(missingMACs, mac)
 		}
+	}
+	if len(missingMACs) == 0 {
+		return nil
+	}
 
+	earliestDiscovered, err := selectEarliestScannerDiscoveredEventDatesByMAC(activeDB, missingMACs)
+	if err != nil {
+		return err
+	}
+	earliestHistory, err := selectEarliestObservedHistoryDatesByMAC(activeDB, missingMACs)
+	if err != nil {
+		return err
+	}
+
+	lifecycles := make([]models.HostLifecycle, 0, len(missingMACs))
+	for _, mac := range missingMACs {
 		host := currentByMAC[mac]
 		firstSeen := earliestDiscovered[mac]
 		if firstSeen == "" {
@@ -163,7 +169,7 @@ func backfillHostLifecycle(activeDB *gorm.DB) error {
 			Mac:                mac,
 			FirstSeen:          firstSeen,
 			LastSeen:           host.Date,
-			FirstSeenEstimated: true,
+			FirstSeenEstimated: firstSeen != "",
 		})
 	}
 	if len(lifecycles) == 0 {
@@ -237,45 +243,57 @@ func selectHostLifecycleByMAC(activeDB *gorm.DB, mac string) (lifecycle models.H
 	return lifecycle, true, nil
 }
 
-func selectEarliestEventDatesByMAC(activeDB *gorm.DB, eventType models.HostEventType) (map[string]string, error) {
+func selectEarliestScannerDiscoveredEventDatesByMAC(activeDB *gorm.DB, macs []string) (map[string]string, error) {
 	type dateRow struct {
 		Mac  string `gorm:"column:MAC"`
 		Date string `gorm:"column:DATE"`
 	}
 
+	macs = normalizeMacs(macs)
+	dates := make(map[string]string, len(macs))
+	if len(macs) == 0 {
+		return dates, nil
+	}
+
 	var rows []dateRow
 	if err := activeDB.Table("events").
 		Select("\"MAC\", MIN(\"DATE\") as \"DATE\"").
-		Where("\"EVENT_TYPE\" = ?", string(eventType)).
-		Where("\"MAC\" <> ?", "").
+		Where("\"EVENT_TYPE\" = ?", string(models.EventDiscovered)).
+		Where("\"MAC\" IN ?", macs).
+		Where("\"IFACE\" <> ?", "").
 		Group("MAC").
 		Scan(&rows).Error; err != nil {
 		return nil, err
 	}
 
-	dates := make(map[string]string, len(rows))
 	for _, row := range rows {
 		dates[row.Mac] = row.Date
 	}
 	return dates, nil
 }
 
-func selectEarliestHistoryDatesByMAC(activeDB *gorm.DB) (map[string]string, error) {
+func selectEarliestObservedHistoryDatesByMAC(activeDB *gorm.DB, macs []string) (map[string]string, error) {
 	type dateRow struct {
 		Mac  string `gorm:"column:MAC"`
 		Date string `gorm:"column:DATE"`
 	}
 
+	macs = normalizeMacs(macs)
+	dates := make(map[string]string, len(macs))
+	if len(macs) == 0 {
+		return dates, nil
+	}
+
 	var rows []dateRow
 	if err := activeDB.Table("history").
 		Select("\"MAC\", MIN(\"DATE\") as \"DATE\"").
-		Where("\"MAC\" <> ?", "").
+		Where("\"MAC\" IN ?", macs).
+		Where("\"NOW\" = ?", 1).
 		Group("MAC").
 		Scan(&rows).Error; err != nil {
 		return nil, err
 	}
 
-	dates := make(map[string]string, len(rows))
 	for _, row := range rows {
 		dates[row.Mac] = row.Date
 	}

@@ -371,8 +371,8 @@ func assertMigratedLegacyRows(t *testing.T) {
 	if lifecycles[0].Mac != "AA:BB:CC:DD:EE:01" || lifecycles[0].FirstSeen != "2026-08-24 07:00:00" || lifecycles[0].LastSeen != "2026-08-24 08:00:00" || !lifecycles[0].FirstSeenEstimated {
 		t.Fatalf("router lifecycle = %+v, want estimated history first and current last", lifecycles[0])
 	}
-	if lifecycles[1].Mac != "AA:BB:CC:DD:EE:50" || lifecycles[1].FirstSeen != "2026-08-24 07:05:00" || lifecycles[1].LastSeen != "2026-08-24 07:55:00" || !lifecycles[1].FirstSeenEstimated {
-		t.Fatalf("unknown lifecycle = %+v, want estimated history first and current last", lifecycles[1])
+	if lifecycles[1].Mac != "AA:BB:CC:DD:EE:50" || lifecycles[1].FirstSeen != "2026-08-24 07:55:00" || lifecycles[1].LastSeen != "2026-08-24 07:55:00" || !lifecycles[1].FirstSeenEstimated {
+		t.Fatalf("unknown lifecycle = %+v, want estimated current date because offline history is not observed evidence", lifecycles[1])
 	}
 }
 
