@@ -59,10 +59,10 @@ function Body() {
       [key]: current[key] !== true,
     }));
   };
-  const hasPinnedAndUnpinnedHosts = () => allHosts.some((host) => host.Pinned) && allHosts.some((host) => !host.Pinned);
-  const shouldShowPinnedSeparator = (index: number, host: { Pinned: boolean }) =>
-    hasPinnedAndUnpinnedHosts()
-    && index > 0
+  const shouldShowPinnedHeading = (index: number, host: { Pinned: boolean }) =>
+    index === 0 && host.Pinned === true;
+  const shouldShowOtherSeparator = (index: number, host: { Pinned: boolean }) =>
+    index > 0
     && !host.Pinned
     && allHosts[index - 1]?.Pinned === true;
   const deviceTableColumnCount = () => hasMultipleIfaces() ? 11 : 10;
@@ -91,8 +91,15 @@ function Body() {
           <tbody>
             <For each={allHosts}>{(host, index) =>
             <>
-              <Show when={shouldShowPinnedSeparator(index(), host)}>
-                <tr class="device-pinned-separator-row" aria-hidden="true">
+              <Show when={shouldShowPinnedHeading(index(), host)}>
+                <tr class="device-pinned-separator-row">
+                  <td colSpan={deviceTableColumnCount()}>
+                    <span class="device-pinned-separator">Pinned devices</span>
+                  </td>
+                </tr>
+              </Show>
+              <Show when={shouldShowOtherSeparator(index(), host)}>
+                <tr class="device-pinned-separator-row">
                   <td colSpan={deviceTableColumnCount()}>
                     <span class="device-pinned-separator">Other devices</span>
                   </td>
