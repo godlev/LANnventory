@@ -18,7 +18,6 @@ type HostCardProps = {
 
 type HostEditDraft = {
   Name: string;
-  Known: boolean;
   DeviceType: DeviceTypeValue;
   Owner: string;
   Location: string;
@@ -46,6 +45,8 @@ function HostCard(_props: HostCardProps) {
   const [saveError, setSaveError] = createSignal("");
   const [pinSaving, setPinSaving] = createSignal(false);
   const [pinError, setPinError] = createSignal("");
+  const [knownSaving, setKnownSaving] = createSignal(false);
+  const [knownError, setKnownError] = createSignal("");
   const [inventoryOptions, setInventoryOptions] = createSignal<InventoryOptionsState>(emptyInventoryOptions);
   let syncedHostID = _props.host.ID;
   let optionsRequestID = 0;
@@ -100,11 +101,8 @@ function HostCard(_props: HostCardProps) {
   });
 
   const isOnline = () => _props.host.Now === 1;
-  const isKnown = () => _props.editMode ? draft().Known : _props.host.Known === 1;
+  const isKnown = () => _props.host.Known === 1;
   const knownTitle = () => isKnown()
-    ? "Known device"
-    : "Unknown device";
-  const knownEditTitle = () => isKnown()
     ? "Mark as unknown"
     : "Mark as known";
   const knownText = () => isKnown() ? "Known device" : "Unknown device";
@@ -128,9 +126,31 @@ function HostCard(_props: HostCardProps) {
     setDraft((current) => ({ ...current, Name: name }));
   };
 
-  const handleKnownToggle = () => {
-    clearSaveMessages();
-    setDraft((current) => ({ ...current, Known: !current.Known }));
+  const handleKnownToggle = async () => {
+    if (_props.host.ID === 0 || knownSaving()) {
+      return;
+    }
+
+    const previousHost = { ..._props.host };
+    const nextKnown = previousHost.Known === 1 ? 0 : 1;
+    const optimisticHost = { ...previousHost, Known: nextKnown };
+
+    setKnownSaving(true);
+    setKnownError("");
+    updateHostInView(optimisticHost);
+    _props.onHostChange?.(optimisticHost);
+
+    try {
+      const updatedHost = await apiPatchHost(previousHost.ID, { known: nextKnown === 1 });
+      updateHostInView(updatedHost);
+      _props.onHostChange?.(updatedHost);
+    } catch {
+      updateHostInView(previousHost);
+      _props.onHostChange?.(previousHost);
+      setKnownError("Known state could not be saved");
+    } finally {
+      setKnownSaving(false);
+    }
   };
 
   const handleDeviceTypeChange = async (deviceType: DeviceTypeValue) => {
@@ -215,7 +235,6 @@ function HostCard(_props: HostCardProps) {
       const currentDraft = draft();
       const updatedHost = await apiPatchHost(_props.host.ID, {
         name: currentDraft.Name,
-        known: currentDraft.Known,
         deviceType: currentDraft.DeviceType,
         owner: currentDraft.Owner,
         location: currentDraft.Location,
@@ -286,9 +305,31 @@ function HostCard(_props: HostCardProps) {
       <div class="card-header host-panel-header">
         <div>
           <div class="host-panel-title">Host details</div>
-          <div class="host-panel-subtitle">{statusText()}</div>
+          <div class="host-panel-subtitle host-panel-status">
+            <span
+              class={isOnline() ? "device-status-icon device-status-icon-online" : "device-status-icon device-status-icon-offline"}
+              title={statusText()}
+              aria-label={statusText()}
+              role="img"
+            >
+              <i class={isOnline() ? "bi bi-check-circle-fill" : "bi bi-x-circle-fill"} aria-hidden="true"></i>
+            </span>
+            <span>{statusText()}</span>
+          </div>
         </div>
         <div class="host-panel-actions">
+          <button
+            type="button"
+            class={"btn btn-sm wyl-button host-known-button" + (isKnown() ? " is-known" : " is-unknown")}
+            title={knownTitle()}
+            aria-label={knownTitle()}
+            aria-pressed={isKnown()}
+            disabled={_props.host.ID === 0 || knownSaving()}
+            onClick={handleKnownToggle}
+          >
+            <i class={knownSaving() ? "bi bi-hourglass-split" : isKnown() ? "bi bi-bookmark-check-fill" : "bi bi-question-circle-fill"} aria-hidden="true"></i>
+            <span>{knownSaving() ? "Saving" : knownText()}</span>
+          </button>
           <button
             type="button"
             class={"btn btn-sm wyl-button host-pin-button" + (_props.host.Pinned ? " is-active" : "")}
@@ -301,17 +342,39 @@ function HostCard(_props: HostCardProps) {
             <i class={pinSaving() ? "bi bi-hourglass-split" : _props.host.Pinned ? "bi bi-pin-angle-fill" : "bi bi-pin-angle"} aria-hidden="true"></i>
             <span>{pinSaving() ? "Saving" : pinText()}</span>
           </button>
-          <Show when={!_props.editMode}>
+          <Show
+            when={_props.editMode}
+            fallback={
+              <button
+                type="button"
+                class="btn btn-sm wyl-button host-mode-button"
+                title="Edit host"
+                aria-label="Edit host"
+                disabled={_props.host.ID === 0}
+                onClick={handleModeToggle}
+              >
+                <i class="bi bi-pencil-fill" aria-hidden="true"></i>
+                <span>Edit</span>
+              </button>
+            }
+          >
             <button
               type="button"
-              class="btn btn-sm wyl-button host-mode-button"
-              title="Edit host"
-              aria-label="Edit host"
-              disabled={_props.host.ID === 0}
-              onClick={handleModeToggle}
+              class="btn btn-sm wyl-button host-save-button"
+              disabled={!canSave()}
+              onClick={handleSaveChanges}
             >
-              <i class="bi bi-pencil-fill" aria-hidden="true"></i>
-              <span>Edit</span>
+              <i class={saving() ? "bi bi-hourglass-split" : "bi bi-save"} aria-hidden="true"></i>
+              <span>{saving() ? "Saving" : "Save"}</span>
+            </button>
+            <button
+              type="button"
+              class="btn btn-sm wyl-button"
+              disabled={saving()}
+              onClick={handleCancelChanges}
+            >
+              <i class="bi bi-x-lg" aria-hidden="true"></i>
+              <span>Cancel</span>
             </button>
           </Show>
         </div>
@@ -362,14 +425,6 @@ function HostCard(_props: HostCardProps) {
                 onChange={handleDeviceTypeChange}
               ></DeviceTypePicker>
             </Show>
-          </div>
-
-          <div class="host-field-label">Pinned</div>
-          <div class="host-field-value">
-            <span class={_props.host.Pinned ? "host-static-value host-pinned-value" : "device-cell-muted"}>
-              <i class={_props.host.Pinned ? "bi bi-pin-angle-fill" : "bi bi-pin-angle"} aria-hidden="true"></i>
-              <span>{_props.host.Pinned ? "Pinned on Home" : "Not pinned"}</span>
-            </span>
           </div>
 
           <div class="host-field-label">Owner</div>
@@ -489,71 +544,10 @@ function HostCard(_props: HostCardProps) {
             </Show>
           </div>
 
-          <div class="host-field-label">Known</div>
-          <div class="host-field-value">
-            <Show
-              when={_props.editMode}
-              fallback={
-                <span
-                  class={isKnown() ? "host-static-value host-known-static" : "device-cell-muted"}
-                  title={knownTitle()}
-                  aria-label={knownTitle()}
-                  role="img"
-                >
-                  <i class={isKnown() ? "bi bi-bookmark-check-fill" : "bi bi-question-circle-fill"} aria-hidden="true"></i>
-                  <span>{knownText()}</span>
-                </span>
-              }
-            >
-              <button
-                type="button"
-                class={isKnown() ? "device-known-toggle device-known-toggle-known host-known-toggle" : "device-known-toggle device-known-toggle-unknown host-known-toggle"}
-                title={knownEditTitle()}
-                aria-label={knownEditTitle()}
-                aria-pressed={isKnown()}
-                disabled={_props.host.ID === 0}
-                onClick={handleKnownToggle}
-              >
-                <i class={isKnown() ? "bi bi-bookmark-check-fill" : "bi bi-question-circle-fill"} aria-hidden="true"></i>
-                <span class="host-known-toggle-label">{knownText()}</span>
-              </button>
-            </Show>
-          </div>
-
-          <div class="host-field-label">Status</div>
-          <div class="host-field-value host-status-value">
-            <span
-              class={isOnline() ? "device-status-icon device-status-icon-online" : "device-status-icon device-status-icon-offline"}
-              title={statusText()}
-              aria-label={statusText()}
-              role="img"
-            >
-              <i class={isOnline() ? "bi bi-check-circle-fill" : "bi bi-x-circle-fill"} aria-hidden="true"></i>
-            </span>
-            <span>{statusText()}</span>
-          </div>
         </div>
-        <Show when={_props.editMode}>
-          <div class="host-edit-actions">
-            <button
-              type="button"
-              class="btn btn-sm wyl-button host-save-button"
-              disabled={!canSave()}
-              onClick={handleSaveChanges}
-            >
-              <i class={saving() ? "bi bi-hourglass-split" : "bi bi-save"} aria-hidden="true"></i>
-              <span>{saving() ? "Saving" : "Save changes"}</span>
-            </button>
-            <button
-              type="button"
-              class="btn btn-sm wyl-button"
-              disabled={saving()}
-              onClick={handleCancelChanges}
-            >
-              <i class="bi bi-x-lg" aria-hidden="true"></i>
-              <span>Cancel</span>
-            </button>
-            <Show when={editDirty() && !saving() && !saveError()}>
+        <Show when={(_props.editMode && editDirty() && !saving() && !saveError()) || saveStatus() || saveError()}>
+          <div class="host-edit-feedback">
+            <Show when={_props.editMode && editDirty() && !saving() && !saveError()}>
               <span class="config-save-status">Unsaved changes</span>
             </Show>
             <Show when={saveStatus()}>
@@ -564,8 +558,8 @@ function HostCard(_props: HostCardProps) {
             </Show>
           </div>
         </Show>
-        <Show when={pinError()}>
-          <div class="host-inline-error" role="alert">{pinError()}</div>
+        <Show when={pinError() || knownError()}>
+          <div class="host-inline-error" role="alert">{pinError() || knownError()}</div>
         </Show>
         <div class="host-actions">
           <button type="button" onClick={handleWOL} class="btn btn-sm wyl-button host-wol-button">
@@ -622,7 +616,6 @@ function TagList(props: { tags: string[]; editable?: boolean; onRemove?: (index:
 function draftFromHost(host: Host): HostEditDraft {
   return {
     Name: host.Name ?? "",
-    Known: host.Known === 1,
     DeviceType: normalizeDeviceType(host.DeviceType),
     Owner: host.Owner ?? "",
     Location: host.Location ?? "",
@@ -633,7 +626,6 @@ function draftFromHost(host: Host): HostEditDraft {
 
 function hostDraftEquals(left: HostEditDraft, right: HostEditDraft) {
   return left.Name === right.Name
-    && left.Known === right.Known
     && left.DeviceType === right.DeviceType
     && left.Owner === right.Owner
     && left.Location === right.Location
