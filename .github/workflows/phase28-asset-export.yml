@@ -1,0 +1,62 @@
+name: Phase 28 Frontend Asset Finalize
+
+on:
+  push:
+    branches:
+      - inventory-ux-phase-28
+
+permissions:
+  contents: write
+
+jobs:
+  finalize-assets:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: inventory-ux-phase-28
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Refresh embedded frontend assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp frontend/dist/assets/HostPage.js backend/internal/web/public/assets/HostPage.js
+          cp frontend/dist/assets/index.css backend/internal/web/public/assets/index.css
+          cp frontend/dist/assets/index.js backend/internal/web/public/assets/index.js
+          python3 - <<'PY'
+          from pathlib import Path
+          js = Path("backend/internal/web/public/assets/index.js")
+          css = Path("backend/internal/web/public/assets/index.css")
+          js.write_text(js.read_text().replace("assets/", "fs/public/assets/"))
+          css.write_text(css.read_text().replace("url(/assets/", "url(/fs/public/assets/"))
+          PY
+
+      - name: Commit generated assets and remove temporary workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/phase28-asset-export.yml
+          git add backend/internal/web/public/assets/HostPage.js \
+                  backend/internal/web/public/assets/index.css \
+                  backend/internal/web/public/assets/index.js
+          git diff --cached --check
+          git commit -m "Refresh Phase 28 embedded frontend assets"
+          git push origin HEAD:inventory-ux-phase-28
