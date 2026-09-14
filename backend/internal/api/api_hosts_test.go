@@ -531,6 +531,95 @@ func TestSetHostInventoryUpdatesHostMetadataAndExcludesPinned(t *testing.T) {
 	}
 }
 
+
+func TestSetHostInventoryWithoutKnownPreservesKnown(t *testing.T) {
+	router := setupTestRouter(t)
+	host := seedHost(t, models.Host{
+		Name:       "desktop",
+		IP:         "192.168.1.42",
+		Mac:        "AA:BB:CC:DD:EE:43",
+		Known:      1,
+		Now:        1,
+		DeviceType: "router",
+	})
+
+	rec := patchHostInventory(router, host.ID, `{
+		"name": "workstation",
+		"deviceType": "desktop",
+		"owner": "Miroslav",
+		"location": "Office",
+		"notes": "Primary workstation",
+		"tags": ["daily", "Trusted"]
+	}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("inventory patch status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var updated models.Host
+	if err := json.Unmarshal(rec.Body.Bytes(), &updated); err != nil {
+		t.Fatalf("json.Unmarshal inventory response: %v", err)
+	}
+	if updated.Known != 1 {
+		t.Fatalf("Known = %d, want 1 when unified save omits known", updated.Known)
+	}
+	if updated.Name != "workstation" || updated.DeviceType != "desktop" || updated.Owner != "Miroslav" || updated.Location != "Office" || updated.Notes != "Primary workstation" {
+		t.Fatalf("inventory fields = %+v, want staged editor fields saved", updated)
+	}
+	assertStringSlice(t, updated.Tags, []string{"daily", "Trusted"}, "inventory tags")
+
+	events, ok := gdb.SelectEvents(20, "")
+	if !ok {
+		t.Fatal("SelectEvents failed")
+	}
+	for _, event := range events {
+		if event.EventType == string(models.EventKnown) || event.EventType == string(models.EventUnknown) {
+			t.Fatalf("unified save without known changed recognition state: %+v", events)
+		}
+	}
+}
+
+func TestSetHostInventoryKnownOnlyPersistsAndEmitsEvents(t *testing.T) {
+	router := setupTestRouter(t)
+	host := seedHost(t, models.Host{
+		Name:  "camera",
+		IP:    "192.168.1.60",
+		Mac:   "AA:BB:CC:DD:EE:61",
+		Known: 0,
+		Now:   1,
+	})
+
+	rec := patchHostInventory(router, host.ID, `{"known":true}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("known patch status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	var updated models.Host
+	if err := json.Unmarshal(rec.Body.Bytes(), &updated); err != nil {
+		t.Fatalf("json.Unmarshal known response: %v", err)
+	}
+	if updated.Known != 1 {
+		t.Fatalf("Known = %d, want 1 after known quick action", updated.Known)
+	}
+	assertActivityEvents(t, []models.HostEventType{models.EventKnown})
+
+	rec = patchHostInventory(router, host.ID, `{"known":true}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("known no-op patch status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	assertActivityEvents(t, []models.HostEventType{models.EventKnown})
+
+	rec = patchHostInventory(router, host.ID, `{"known":false}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("unknown patch status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &updated); err != nil {
+		t.Fatalf("json.Unmarshal unknown response: %v", err)
+	}
+	if updated.Known != 0 {
+		t.Fatalf("Known = %d, want 0 after unknown quick action", updated.Known)
+	}
+	assertActivityEvents(t, []models.HostEventType{models.EventUnknown, models.EventKnown})
+}
+
 func TestSetHostInventoryRejectsInvalidInput(t *testing.T) {
 	router := setupTestRouter(t)
 	host := seedHost(t, models.Host{

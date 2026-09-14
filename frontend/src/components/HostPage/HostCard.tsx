@@ -116,7 +116,7 @@ function HostCard(_props: HostCardProps) {
   const displayName = () => deviceDisplayName({ ..._props.host, Name: _props.editMode ? draft().Name : _props.host.Name });
   const editDirty = () => !hostDraftEquals(draft(), baseline());
   const canSave = () => _props.editMode && !saving() && editDirty() && _props.host.ID > 0;
-  const pinTitle = () => _props.host.Pinned ? "Remove from Home pins" : "Pin on Home";
+  const pinTitle = () => (_props.host.Pinned ? "Remove from Home pins. " : "Pin on Home. ") + "Pinned devices appear at the top of the Home device list.";
   const pinText = () => _props.host.Pinned ? "Pinned on Home" : "Pin on Home";
   const ownerOptions = createMemo(() => inventoryOptions().owners);
   const locationOptions = createMemo(() => inventoryOptions().locations);
@@ -176,7 +176,7 @@ function HostCard(_props: HostCardProps) {
     _props.onEditModeChange?.(true);
   };
 
-  const handleMetadataField = (field: keyof Omit<HostEditDraft, "Name" | "Known" | "DeviceType" | "Tags">, value: string) => {
+  const handleMetadataField = (field: keyof Omit<HostEditDraft, "Name" | "DeviceType" | "Tags">, value: string) => {
     clearSaveMessages();
     setDraft((current) => ({ ...current, [field]: value }));
   };
@@ -365,7 +365,7 @@ function HostCard(_props: HostCardProps) {
               onClick={handleSaveChanges}
             >
               <i class={saving() ? "bi bi-hourglass-split" : "bi bi-save"} aria-hidden="true"></i>
-              <span>{saving() ? "Saving" : "Save"}</span>
+              <span>{saving() ? "Saving" : "Save changes"}</span>
             </button>
             <button
               type="button"
