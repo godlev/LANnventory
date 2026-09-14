@@ -1,6 +1,6 @@
 import { createSignal, For, onMount, Show } from "solid-js";
 
-import { allHosts, filterState, hostsLoadError } from "../functions/exports";
+import { allHosts, filterState, hasMultipleIfaces, hostsLoadError } from "../functions/exports";
 
 import TableRow from "../components/Body/TableRow";
 import TableHead from "../components/Body/TableHead";
@@ -59,6 +59,18 @@ function Body() {
       [key]: current[key] !== true,
     }));
   };
+  const hasPinnedAndOtherDevices = () =>
+    allHosts.some((host) => host.Pinned) && allHosts.some((host) => !host.Pinned);
+  const shouldShowPinnedHeading = (index: number, host: { Pinned: boolean }) =>
+    hasPinnedAndOtherDevices()
+    && index === 0
+    && host.Pinned === true;
+  const shouldShowOtherSeparator = (index: number, host: { Pinned: boolean }) =>
+    hasPinnedAndOtherDevices()
+    && index > 0
+    && !host.Pinned
+    && allHosts[index - 1]?.Pinned === true;
+  const deviceTableColumnCount = () => hasMultipleIfaces() ? 10 : 9;
 
   return (
     <>
@@ -83,12 +95,28 @@ function Body() {
           <TableHead></TableHead>
           <tbody>
             <For each={allHosts}>{(host, index) =>
-            <TableRow
-              host={host}
-              index={index() + 1}
-              mobileExpanded={isDeviceExpanded(host)}
-              onToggleMobileExpanded={() => toggleDeviceExpanded(host)}
-            ></TableRow>
+            <>
+              <Show when={shouldShowPinnedHeading(index(), host)}>
+                <tr class="device-pinned-separator-row">
+                  <td colSpan={deviceTableColumnCount()}>
+                    <span class="device-pinned-separator">Pinned devices</span>
+                  </td>
+                </tr>
+              </Show>
+              <Show when={shouldShowOtherSeparator(index(), host)}>
+                <tr class="device-pinned-separator-row">
+                  <td colSpan={deviceTableColumnCount()}>
+                    <span class="device-pinned-separator">Other devices</span>
+                  </td>
+                </tr>
+              </Show>
+              <TableRow
+                host={host}
+                index={index() + 1}
+                mobileExpanded={isDeviceExpanded(host)}
+                onToggleMobileExpanded={() => toggleDeviceExpanded(host)}
+              ></TableRow>
+            </>
             }</For>
           </tbody> 
         </table>

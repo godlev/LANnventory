@@ -17,6 +17,8 @@ import {
   activityEventLabel,
   activityHostName,
   activityIcon,
+  activityTimeDateTime,
+  activityTimeTitle,
   activityTone,
   relativeActivityTime,
 } from "../functions/activity";
@@ -1267,7 +1269,7 @@ function eventRow(event: HostEvent, hostExists: (event: HostEvent) => boolean, d
             {mobileDeviceContent()}
           </span>
           <span class="activity-mobile-description">{activityDescription(event)}</span>
-          <time class="activity-mobile-time activity-time" dateTime={event.Date} title={event.Date}>
+          <time class="activity-mobile-time activity-time" dateTime={activityTimeDateTime(event)} title={activityTimeTitle(event)}>
             {relativeActivityTime(event)}
           </time>
           <button
@@ -1286,7 +1288,7 @@ function eventRow(event: HostEvent, hostExists: (event: HostEvent) => boolean, d
         </Show>
       </td>
       <td data-label="Time" class="activity-table-time-cell">
-        <time class="activity-time" dateTime={event.Date} title={event.Date}>
+        <time class="activity-time" dateTime={activityTimeDateTime(event)} title={activityTimeTitle(event)}>
           {relativeActivityTime(event)}
         </time>
       </td>

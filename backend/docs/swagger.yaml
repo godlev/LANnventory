@@ -1,5 +1,24 @@
 basePath: /api/
 definitions:
+  api.HostInventoryPatchRequest:
+    properties:
+      deviceType:
+        type: string
+      known:
+        type: boolean
+      location:
+        type: string
+      name:
+        type: string
+      notes:
+        type: string
+      owner:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+    type: object
   api.HostMetadataPatchRequest:
     properties:
       location:
@@ -198,6 +217,17 @@ definitions:
         type: string
       oldValue:
         type: string
+    type: object
+  models.InventoryOptions:
+    properties:
+      locations:
+        items:
+          type: string
+        type: array
+      owners:
+        items:
+          type: string
+        type: array
     type: object
   models.Stat:
     properties:
@@ -844,6 +874,46 @@ paths:
       summary: Get host by ID
       tags:
       - hosts
+    patch:
+      consumes:
+      - application/json
+      description: Atomically update editable host fields and manually managed inventory
+        metadata. Actual known, device type, and metadata changes are recorded as
+        Device change events. Name changes do not create events.
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Host inventory payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.HostInventoryPatchRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Host'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update host inventory
+      tags:
+      - hosts
   /host/{id}/activity:
     get:
       description: Retrieve recent host activity events for a host ID
@@ -1002,6 +1072,26 @@ paths:
           schema:
             type: string
       summary: Delete host
+      tags:
+      - hosts
+  /inventory/options:
+    get:
+      description: Retrieve distinct owner and location values from current host metadata
+        for lightweight autocomplete.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.InventoryOptions'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get inventory field options
       tags:
       - hosts
   /notify_test:

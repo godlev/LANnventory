@@ -34,6 +34,21 @@ export type HostMetadataPayload = {
   pinned?: boolean;
 };
 
+export type HostInventoryPayload = {
+  name?: string;
+  known?: boolean;
+  deviceType?: DeviceTypeValue;
+  owner?: string;
+  location?: string;
+  notes?: string;
+  tags?: string[];
+};
+
+export type InventoryOptions = {
+  owners: string[];
+  locations: string[];
+};
+
 const apiFetch = async (url: string, init?: RequestInit): Promise<Response> => {
   const response = await fetch(url, init);
   if (!response.ok) {
@@ -221,6 +236,24 @@ export const apiSetHostMetadata = async (id: number, metadata: HostMetadataPaylo
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(metadata),
   });
+};
+
+export const apiPatchHost = async (id: number, payload: HostInventoryPayload): Promise<Host> => {
+  if (payload.deviceType !== undefined && !isDeviceTypeValue(payload.deviceType)) {
+    throw new Error("invalid device type");
+  }
+
+  const url = apiPath+'/api/host/'+id;
+  return await apiJSON<Host>(url, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+};
+
+export const apiGetInventoryOptions = async (): Promise<InventoryOptions> => {
+  const url = apiPath+'/api/inventory/options';
+  return await apiJSON<InventoryOptions>(url);
 };
 
 export const apiGetHost = async (id:string) => {

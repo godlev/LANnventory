@@ -1,128 +1,184 @@
-import { createEffect, createSignal, For, Show } from "solid-js";
-import { apiDelHost, apiEditHost, apiSetDeviceType, apiSetHostMetadata, apiWOL } from "../../functions/api";
+import { createEffect, createMemo, createSignal, For, onCleanup, Show } from "solid-js";
+import { apiDelHost, apiGetInventoryOptions, apiPatchHost, apiSetHostMetadata, apiWOL } from "../../functions/api";
 import { Host } from "../../functions/exports";
 import { formatLastSeen } from "../../functions/dateFormat";
 import { deviceDisplayName } from "../../functions/deviceIdentity";
-import { deviceTypeTitle, getDeviceTypeOption, type DeviceTypeValue } from "../../functions/deviceTypes";
+import { deviceTypeTitle, getDeviceTypeOption, normalizeDeviceType, type DeviceTypeValue } from "../../functions/deviceTypes";
 import { updateHostInView } from "../../functions/hostView";
 import DeviceTypePicker from "../DeviceTypePicker";
-
-import { debounce } from "@solid-primitives/scheduled";
+import InventoryAutocomplete from "./InventoryAutocomplete";
 
 type HostCardProps = {
   host: Host;
   editMode: boolean;
   onEditModeChange?: (editMode: boolean) => void;
   onHostChange?: (host: Host) => void;
+  onDirtyChange?: (dirty: boolean) => void;
 };
 
-type MetadataDraft = {
+type HostEditDraft = {
+  Name: string;
+  DeviceType: DeviceTypeValue;
   Owner: string;
   Location: string;
   Notes: string;
   Tags: string[];
-  Pinned: boolean;
+};
+
+type InventoryOptionsState = {
+  owners: string[];
+  locations: string[];
+};
+
+const emptyInventoryOptions: InventoryOptionsState = {
+  owners: [],
+  locations: [],
 };
 
 function HostCard(_props: HostCardProps) {
 
-  const [name, setName] = createSignal(_props.host.Name);
-  const [metadataDraft, setMetadataDraft] = createSignal<MetadataDraft>(metadataFromHost(_props.host));
-  const [metadataBaseline, setMetadataBaseline] = createSignal<MetadataDraft>(metadataFromHost(_props.host));
+  const [draft, setDraft] = createSignal<HostEditDraft>(draftFromHost(_props.host));
+  const [baseline, setBaseline] = createSignal<HostEditDraft>(draftFromHost(_props.host));
   const [tagInput, setTagInput] = createSignal("");
-  const [metadataSaving, setMetadataSaving] = createSignal(false);
-  const [metadataStatus, setMetadataStatus] = createSignal("");
-  const [metadataError, setMetadataError] = createSignal("");
-  let syncedMetadataHostID = _props.host.ID;
+  const [saving, setSaving] = createSignal(false);
+  const [saveStatus, setSaveStatus] = createSignal("");
+  const [saveError, setSaveError] = createSignal("");
+  const [pinSaving, setPinSaving] = createSignal(false);
+  const [pinError, setPinError] = createSignal("");
+  const [knownSaving, setKnownSaving] = createSignal(false);
+  const [knownError, setKnownError] = createSignal("");
+  const [inventoryOptions, setInventoryOptions] = createSignal<InventoryOptionsState>(emptyInventoryOptions);
+  let syncedHostID = _props.host.ID;
+  let optionsRequestID = 0;
+
+  const syncDraftFromHost = (host: Host) => {
+    const nextDraft = draftFromHost(host);
+    setBaseline(nextDraft);
+    setDraft(nextDraft);
+    setTagInput("");
+    setSaveStatus("");
+    setSaveError("");
+  };
 
   createEffect(() => {
-    setName(_props.host.Name);
+    const host = _props.host;
+    if (host.ID !== syncedHostID || !_props.editMode) {
+      syncedHostID = host.ID;
+      syncDraftFromHost(host);
+    }
   });
 
   createEffect(() => {
-    const hostID = _props.host.ID;
-    if (hostID === syncedMetadataHostID) {
+    const dirty = _props.editMode && editDirty();
+    _props.onDirtyChange?.(dirty);
+  });
+
+  createEffect(() => {
+    if (!_props.editMode) {
       return;
     }
 
-    syncedMetadataHostID = hostID;
-    const nextMetadata = metadataFromHost(_props.host);
-    setMetadataBaseline(nextMetadata);
-    setMetadataDraft(nextMetadata);
-    setTagInput("");
-    setMetadataStatus("");
-    setMetadataError("");
+    const activeRequest = ++optionsRequestID;
+    apiGetInventoryOptions()
+      .then((options) => {
+        if (activeRequest === optionsRequestID) {
+          setInventoryOptions({
+            owners: options.owners ?? [],
+            locations: options.locations ?? [],
+          });
+        }
+      })
+      .catch(() => {
+        if (activeRequest === optionsRequestID) {
+          setInventoryOptions(emptyInventoryOptions);
+        }
+      });
+  });
+
+  onCleanup(() => {
+    optionsRequestID++;
+    _props.onDirtyChange?.(false);
   });
 
   const isOnline = () => _props.host.Now === 1;
   const isKnown = () => _props.host.Known === 1;
   const knownTitle = () => isKnown()
-    ? "Known device - click to mark unknown"
-    : "Unknown device - click to mark known";
+    ? "Mark as unknown"
+    : "Mark as known";
   const knownText = () => isKnown() ? "Known device" : "Unknown device";
   const statusText = () => isOnline() ? "Online" : "Offline";
   const firstSeenRaw = () => _props.host.FirstSeen ?? "";
   const lastSeenRaw = () => _props.host.LastSeen || _props.host.Date;
   const formattedFirstSeen = () => formatLastSeen(firstSeenRaw());
   const formattedLastSeen = () => formatLastSeen(lastSeenRaw());
-  const deviceType = () => getDeviceTypeOption(_props.host.DeviceType);
-  const hostDeviceTypeTitle = () => deviceTypeTitle(_props.host.DeviceType);
-  const displayName = () => deviceDisplayName({ ..._props.host, Name: name() });
-  const modeTitle = () => _props.editMode ? "Done editing host" : "Edit host";
-  const metadataDirty = () => !metadataDraftEquals(metadataDraft(), metadataBaseline());
+  const currentDeviceType = () => getDeviceTypeOption(_props.editMode ? draft().DeviceType : _props.host.DeviceType);
+  const hostDeviceTypeTitle = () => deviceTypeTitle(_props.editMode ? draft().DeviceType : _props.host.DeviceType);
+  const displayName = () => deviceDisplayName({ ..._props.host, Name: _props.editMode ? draft().Name : _props.host.Name });
+  const editDirty = () => !hostDraftEquals(draft(), baseline());
+  const canSave = () => _props.editMode && !saving() && editDirty() && _props.host.ID > 0;
+  const pinTitle = () => (_props.host.Pinned ? "Remove from Home pins. " : "Pin on Home. ") + "Pinned devices appear at the top of the Home device list.";
+  const pinText = () => _props.host.Pinned ? "Pinned on Home" : "Pin on Home";
+  const ownerOptions = createMemo(() => inventoryOptions().owners);
+  const locationOptions = createMemo(() => inventoryOptions().locations);
 
-  const debouncedApi = debounce(async (val: string) => {
-      await apiEditHost(_props.host.ID, val, "");
-    }, 300);
-
-  const handleInput = async (n: string) => {
-    const updatedHost = { ..._props.host, Name: n };
-    setName(n);
-    updateHostInView(updatedHost);
-    _props.onHostChange?.(updatedHost);
-    debouncedApi(n);
+  const handleNameInput = (name: string) => {
+    clearSaveMessages();
+    setDraft((current) => ({ ...current, Name: name }));
   };
 
-  const handleToggle = async () => {
-    const nextName = name();
-    const updatedHost = { ..._props.host, Name: nextName, Known: isKnown() ? 0 : 1 };
+  const handleKnownToggle = async () => {
+    if (_props.host.ID === 0 || knownSaving()) {
+      return;
+    }
 
-    await apiEditHost(_props.host.ID, nextName, 'toggle');
-    updateHostInView(updatedHost);
-    _props.onHostChange?.(updatedHost);
+    const previousHost = { ..._props.host };
+    const nextKnown = previousHost.Known === 1 ? 0 : 1;
+    const optimisticHost = { ...previousHost, Known: nextKnown };
+
+    setKnownSaving(true);
+    setKnownError("");
+    updateHostInView(optimisticHost);
+    _props.onHostChange?.(optimisticHost);
+
+    try {
+      const updatedHost = await apiPatchHost(previousHost.ID, { known: nextKnown === 1 });
+      updateHostInView(updatedHost);
+      _props.onHostChange?.(updatedHost);
+    } catch {
+      updateHostInView(previousHost);
+      _props.onHostChange?.(previousHost);
+      setKnownError("Known state could not be saved");
+    } finally {
+      setKnownSaving(false);
+    }
   };
 
   const handleDeviceTypeChange = async (deviceType: DeviceTypeValue) => {
-    const updatedHost = await apiSetDeviceType(_props.host.ID, deviceType);
-    updateHostInView(updatedHost);
-    _props.onHostChange?.(updatedHost);
+    clearSaveMessages();
+    setDraft((current) => ({ ...current, DeviceType: deviceType }));
   };
 
   const handleDel = async () => {
-    
     await apiDelHost(_props.host.ID);
     window.location.href = '/';
   };
 
   const handleWOL = async () => {
-    
     await apiWOL(_props.host.Mac);
   };
 
   const handleModeToggle = () => {
-    _props.onEditModeChange?.(!_props.editMode);
+    if (_props.host.ID === 0) {
+      return;
+    }
+    setSaveStatus("");
+    setSaveError("");
+    _props.onEditModeChange?.(true);
   };
 
-  const handleMetadataField = (field: keyof Omit<MetadataDraft, "Tags" | "Pinned">, value: string) => {
-    setMetadataStatus("");
-    setMetadataError("");
-    setMetadataDraft((current) => ({ ...current, [field]: value }));
-  };
-
-  const handlePinnedDraft = (checked: boolean) => {
-    setMetadataStatus("");
-    setMetadataError("");
-    setMetadataDraft((current) => ({ ...current, Pinned: checked }));
+  const handleMetadataField = (field: keyof Omit<HostEditDraft, "Name" | "DeviceType" | "Tags">, value: string) => {
+    clearSaveMessages();
+    setDraft((current) => ({ ...current, [field]: value }));
   };
 
   const handleAddTag = () => {
@@ -132,9 +188,8 @@ function HostCard(_props: HostCardProps) {
       return;
     }
 
-    setMetadataStatus("");
-    setMetadataError("");
-    setMetadataDraft((current) => {
+    clearSaveMessages();
+    setDraft((current) => {
       const seen = new Set(current.Tags.map((tag) => tag.toLowerCase()));
       const nextTags = [...current.Tags];
 
@@ -160,45 +215,89 @@ function HostCard(_props: HostCardProps) {
   };
 
   const handleRemoveTag = (index: number) => {
-    setMetadataStatus("");
-    setMetadataError("");
-    setMetadataDraft((current) => ({
+    clearSaveMessages();
+    setDraft((current) => ({
       ...current,
       Tags: current.Tags.filter((_, currentIndex) => currentIndex !== index),
     }));
   };
 
-  const handleSaveMetadata = async () => {
-    if (metadataSaving() || !metadataDirty()) {
+  const handleSaveChanges = async () => {
+    if (!canSave()) {
       return;
     }
 
-    setMetadataSaving(true);
-    setMetadataStatus("");
-    setMetadataError("");
+    setSaving(true);
+    setSaveStatus("");
+    setSaveError("");
 
     try {
-      const draft = metadataDraft();
-      const updatedHost = await apiSetHostMetadata(_props.host.ID, {
-        owner: draft.Owner,
-        location: draft.Location,
-        notes: draft.Notes,
-        tags: draft.Tags,
-        pinned: draft.Pinned,
+      const currentDraft = draft();
+      const updatedHost = await apiPatchHost(_props.host.ID, {
+        name: currentDraft.Name,
+        deviceType: currentDraft.DeviceType,
+        owner: currentDraft.Owner,
+        location: currentDraft.Location,
+        notes: currentDraft.Notes,
+        tags: currentDraft.Tags,
       });
-      const nextMetadata = metadataFromHost(updatedHost);
-      setMetadataBaseline(nextMetadata);
-      setMetadataDraft(nextMetadata);
-      setTagInput("");
-      setMetadataError("");
-      setMetadataStatus("Metadata saved");
       updateHostInView(updatedHost);
       _props.onHostChange?.(updatedHost);
+      setOptionsFromHost(updatedHost);
+      syncDraftFromHost(updatedHost);
+      _props.onDirtyChange?.(false);
+      _props.onEditModeChange?.(false);
+      setSaveStatus("Changes saved");
     } catch {
-      setMetadataError("Metadata could not be saved");
+      setSaveError("Changes could not be saved");
     } finally {
-      setMetadataSaving(false);
+      setSaving(false);
     }
+  };
+
+  const handleCancelChanges = () => {
+    syncDraftFromHost(_props.host);
+    _props.onDirtyChange?.(false);
+    _props.onEditModeChange?.(false);
+  };
+
+  const handlePinToggle = async () => {
+    if (_props.host.ID === 0 || pinSaving()) {
+      return;
+    }
+
+    const previousHost = { ..._props.host };
+    const nextPinned = !previousHost.Pinned;
+    const optimisticHost = { ...previousHost, Pinned: nextPinned };
+    setPinSaving(true);
+    setPinError("");
+    updateHostInView(optimisticHost);
+    _props.onHostChange?.(optimisticHost);
+
+    try {
+      const updatedHost = await apiSetHostMetadata(previousHost.ID, { pinned: nextPinned });
+      updateHostInView(updatedHost);
+      _props.onHostChange?.(updatedHost);
+      window.dispatchEvent(new CustomEvent("pinned-changed"));
+    } catch {
+      updateHostInView(previousHost);
+      _props.onHostChange?.(previousHost);
+      setPinError("Pin state could not be saved");
+    } finally {
+      setPinSaving(false);
+    }
+  };
+
+  const clearSaveMessages = () => {
+    setSaveStatus("");
+    setSaveError("");
+  };
+
+  const setOptionsFromHost = (host: Host) => {
+    setInventoryOptions((current) => ({
+      owners: mergeOption(current.owners, host.Owner),
+      locations: mergeOption(current.locations, host.Location),
+    }));
   };
 
   return (
@@ -206,19 +305,79 @@ function HostCard(_props: HostCardProps) {
       <div class="card-header host-panel-header">
         <div>
           <div class="host-panel-title">Host details</div>
-          <div class="host-panel-subtitle">{statusText()}</div>
+          <div class="host-panel-subtitle host-panel-status">
+            <span
+              class={isOnline() ? "device-status-icon device-status-icon-online" : "device-status-icon device-status-icon-offline"}
+              title={statusText()}
+              aria-label={statusText()}
+              role="img"
+            >
+              <i class={isOnline() ? "bi bi-check-circle-fill" : "bi bi-x-circle-fill"} aria-hidden="true"></i>
+            </span>
+            <span>{statusText()}</span>
+          </div>
         </div>
-        <button
-          type="button"
-          class="btn btn-sm wyl-button host-mode-button"
-          title={modeTitle()}
-          aria-label={modeTitle()}
-          disabled={_props.host.ID === 0}
-          onClick={handleModeToggle}
-        >
-          <i class={_props.editMode ? "bi bi-check-lg" : "bi bi-pencil-fill"} aria-hidden="true"></i>
-          <span>{_props.editMode ? "Done" : "Edit"}</span>
-        </button>
+        <div class="host-panel-actions">
+          <button
+            type="button"
+            class={"btn btn-sm wyl-button host-known-button" + (isKnown() ? " is-known" : " is-unknown")}
+            title={knownTitle()}
+            aria-label={knownTitle()}
+            aria-pressed={isKnown()}
+            disabled={_props.host.ID === 0 || knownSaving()}
+            onClick={handleKnownToggle}
+          >
+            <i class={knownSaving() ? "bi bi-hourglass-split" : isKnown() ? "bi bi-bookmark-check-fill" : "bi bi-question-circle-fill"} aria-hidden="true"></i>
+            <span>{knownSaving() ? "Saving" : knownText()}</span>
+          </button>
+          <button
+            type="button"
+            class={"btn btn-sm wyl-button host-pin-button" + (_props.host.Pinned ? " is-active" : "")}
+            title={pinTitle()}
+            aria-label={pinTitle()}
+            aria-pressed={_props.host.Pinned}
+            disabled={_props.host.ID === 0 || pinSaving()}
+            onClick={handlePinToggle}
+          >
+            <i class={pinSaving() ? "bi bi-hourglass-split" : _props.host.Pinned ? "bi bi-pin-angle-fill" : "bi bi-pin-angle"} aria-hidden="true"></i>
+            <span>{pinSaving() ? "Saving" : pinText()}</span>
+          </button>
+          <Show
+            when={_props.editMode}
+            fallback={
+              <button
+                type="button"
+                class="btn btn-sm wyl-button host-mode-button"
+                title="Edit host"
+                aria-label="Edit host"
+                disabled={_props.host.ID === 0}
+                onClick={handleModeToggle}
+              >
+                <i class="bi bi-pencil-fill" aria-hidden="true"></i>
+                <span>Edit</span>
+              </button>
+            }
+          >
+            <button
+              type="button"
+              class="btn btn-sm wyl-button host-save-button"
+              disabled={!canSave()}
+              onClick={handleSaveChanges}
+            >
+              <i class={saving() ? "bi bi-hourglass-split" : "bi bi-save"} aria-hidden="true"></i>
+              <span>{saving() ? "Saving" : "Save changes"}</span>
+            </button>
+            <button
+              type="button"
+              class="btn btn-sm wyl-button"
+              disabled={saving()}
+              onClick={handleCancelChanges}
+            >
+              <i class="bi bi-x-lg" aria-hidden="true"></i>
+              <span>Cancel</span>
+            </button>
+          </Show>
+        </div>
       </div>
       <div class="card-body host-details-body">
         <div class="host-property-grid">
@@ -235,9 +394,9 @@ function HostCard(_props: HostCardProps) {
                 id="host-name-input"
                 type="text"
                 class="form-control form-control-sm wyl-control host-name-input"
-                value={name()}
+                value={draft().Name}
                 aria-label="Host name"
-                onInput={e => handleInput(e.target.value)}
+                onInput={e => handleNameInput(e.target.value)}
               ></input>
             </Show>
           </div>
@@ -253,41 +412,18 @@ function HostCard(_props: HostCardProps) {
                   aria-label={hostDeviceTypeTitle()}
                   role="img"
                 >
-                  <i class={"bi " + deviceType().icon} aria-hidden="true"></i>
-                  <span>{deviceType().label}</span>
+                  <i class={"bi " + currentDeviceType().icon} aria-hidden="true"></i>
+                  <span>{currentDeviceType().label}</span>
                 </span>
               }
             >
               <DeviceTypePicker
-                value={_props.host.DeviceType}
+                value={draft().DeviceType}
                 mode="full"
                 class="host-device-type-picker"
                 disabled={_props.host.ID === 0}
                 onChange={handleDeviceTypeChange}
               ></DeviceTypePicker>
-            </Show>
-          </div>
-
-          <div class="host-field-label">Pinned</div>
-          <div class="host-field-value">
-            <Show
-              when={_props.editMode}
-              fallback={
-                <span class={_props.host.Pinned ? "host-static-value host-pinned-value" : "device-cell-muted"}>
-                  <i class={_props.host.Pinned ? "bi bi-pin-angle-fill" : "bi bi-pin-angle"} aria-hidden="true"></i>
-                  <span>{_props.host.Pinned ? "Pinned" : "Not pinned"}</span>
-                </span>
-              }
-            >
-              <label class="host-metadata-check">
-                <input
-                  type="checkbox"
-                  class="form-check-input"
-                  checked={metadataDraft().Pinned}
-                  onChange={(event) => handlePinnedDraft(event.currentTarget.checked)}
-                ></input>
-                <span>Pinned</span>
-              </label>
             </Show>
           </div>
 
@@ -297,13 +433,13 @@ function HostCard(_props: HostCardProps) {
               when={_props.editMode}
               fallback={<MetadataValue value={_props.host.Owner}></MetadataValue>}
             >
-              <input
-                type="text"
-                class="form-control form-control-sm wyl-control"
-                value={metadataDraft().Owner}
-                aria-label="Owner"
-                onInput={(event) => handleMetadataField("Owner", event.currentTarget.value)}
-              ></input>
+              <InventoryAutocomplete
+                id="host-owner-input"
+                label="Owner"
+                value={draft().Owner}
+                options={ownerOptions()}
+                onInput={(value) => handleMetadataField("Owner", value)}
+              ></InventoryAutocomplete>
             </Show>
           </div>
 
@@ -313,13 +449,13 @@ function HostCard(_props: HostCardProps) {
               when={_props.editMode}
               fallback={<MetadataValue value={_props.host.Location}></MetadataValue>}
             >
-              <input
-                type="text"
-                class="form-control form-control-sm wyl-control"
-                value={metadataDraft().Location}
-                aria-label="Location"
-                onInput={(event) => handleMetadataField("Location", event.currentTarget.value)}
-              ></input>
+              <InventoryAutocomplete
+                id="host-location-input"
+                label="Location"
+                value={draft().Location}
+                options={locationOptions()}
+                onInput={(value) => handleMetadataField("Location", value)}
+              ></InventoryAutocomplete>
             </Show>
           </div>
 
@@ -330,7 +466,7 @@ function HostCard(_props: HostCardProps) {
               fallback={<TagList tags={_props.host.Tags ?? []}></TagList>}
             >
               <div class="host-tag-editor">
-                <TagList tags={metadataDraft().Tags} editable onRemove={handleRemoveTag}></TagList>
+                <TagList tags={draft().Tags} editable onRemove={handleRemoveTag}></TagList>
                 <div class="host-tag-input-row">
                   <input
                     type="text"
@@ -362,7 +498,7 @@ function HostCard(_props: HostCardProps) {
             >
               <textarea
                 class="form-control form-control-sm wyl-control host-notes-input"
-                value={metadataDraft().Notes}
+                value={draft().Notes}
                 aria-label="Notes"
                 rows={4}
                 onInput={(event) => handleMetadataField("Notes", event.currentTarget.value)}
@@ -408,56 +544,22 @@ function HostCard(_props: HostCardProps) {
             </Show>
           </div>
 
-          <div class="host-field-label">Known</div>
-          <div class="host-field-value">
-            <button
-              type="button"
-              class={isKnown() ? "device-known-toggle device-known-toggle-known host-known-toggle" : "device-known-toggle device-known-toggle-unknown host-known-toggle"}
-              title={knownTitle()}
-              aria-label={knownTitle()}
-              aria-pressed={isKnown()}
-              disabled={_props.host.ID === 0}
-              onClick={handleToggle}
-            >
-              <i class={isKnown() ? "bi bi-bookmark-check-fill" : "bi bi-question-circle-fill"} aria-hidden="true"></i>
-              <span class="host-known-toggle-label">{knownText()}</span>
-            </button>
-          </div>
-
-          <div class="host-field-label">Status</div>
-          <div class="host-field-value host-status-value">
-            <span
-              class={isOnline() ? "device-status-icon device-status-icon-online" : "device-status-icon device-status-icon-offline"}
-              title={statusText()}
-              aria-label={statusText()}
-              role="img"
-            >
-              <i class={isOnline() ? "bi bi-check-circle-fill" : "bi bi-x-circle-fill"} aria-hidden="true"></i>
-            </span>
-            <span>{statusText()}</span>
-          </div>
         </div>
-        <Show when={_props.editMode}>
-          <div class="host-metadata-actions">
-            <button
-              type="button"
-              class="btn btn-sm wyl-button"
-              disabled={metadataSaving() || !metadataDirty() || _props.host.ID === 0}
-              onClick={handleSaveMetadata}
-            >
-              <i class={metadataSaving() ? "bi bi-hourglass-split" : "bi bi-save"} aria-hidden="true"></i>
-              <span>{metadataSaving() ? "Saving" : "Save metadata"}</span>
-            </button>
-            <Show when={metadataDirty() && !metadataSaving() && !metadataError()}>
-              <span class="config-save-status">Unsaved metadata changes</span>
+        <Show when={(_props.editMode && editDirty() && !saving() && !saveError()) || saveStatus() || saveError()}>
+          <div class="host-edit-feedback">
+            <Show when={_props.editMode && editDirty() && !saving() && !saveError()}>
+              <span class="config-save-status">Unsaved changes</span>
             </Show>
-            <Show when={metadataStatus()}>
-              <span class="config-save-status">{metadataStatus()}</span>
+            <Show when={saveStatus()}>
+              <span class="config-save-status">{saveStatus()}</span>
             </Show>
-            <Show when={metadataError()}>
-              <span class="config-save-error" role="alert">{metadataError()}</span>
+            <Show when={saveError()}>
+              <span class="config-save-error" role="alert">{saveError()}</span>
             </Show>
           </div>
+        </Show>
+        <Show when={pinError() || knownError()}>
+          <div class="host-inline-error" role="alert">{pinError() || knownError()}</div>
         </Show>
         <div class="host-actions">
           <button type="button" onClick={handleWOL} class="btn btn-sm wyl-button host-wol-button">
@@ -511,23 +613,43 @@ function TagList(props: { tags: string[]; editable?: boolean; onRemove?: (index:
   );
 }
 
-function metadataFromHost(host: Host): MetadataDraft {
+function draftFromHost(host: Host): HostEditDraft {
   return {
+    Name: host.Name ?? "",
+    DeviceType: normalizeDeviceType(host.DeviceType),
     Owner: host.Owner ?? "",
     Location: host.Location ?? "",
     Notes: host.Notes ?? "",
     Tags: [...(host.Tags ?? [])],
-    Pinned: host.Pinned === true,
   };
 }
 
-function metadataDraftEquals(left: MetadataDraft, right: MetadataDraft) {
-  return left.Owner === right.Owner
+function hostDraftEquals(left: HostEditDraft, right: HostEditDraft) {
+  return left.Name === right.Name
+    && left.DeviceType === right.DeviceType
+    && left.Owner === right.Owner
     && left.Location === right.Location
     && left.Notes === right.Notes
-    && left.Pinned === right.Pinned
     && left.Tags.length === right.Tags.length
     && left.Tags.every((tag, index) => tag === right.Tags[index]);
+}
+
+function mergeOption(options: string[], value: string | undefined) {
+  const trimmed = (value ?? "").trim();
+  if (trimmed === "") {
+    return options;
+  }
+  if (options.some((option) => option.toLowerCase() === trimmed.toLowerCase())) {
+    return options;
+  }
+
+  return [...options, trimmed].sort((left, right) => {
+    const normalizedLeft = left.toLowerCase();
+    const normalizedRight = right.toLowerCase();
+    return normalizedLeft === normalizedRight
+      ? left.localeCompare(right)
+      : normalizedLeft.localeCompare(normalizedRight);
+  });
 }
 
 export default HostCard

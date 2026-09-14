@@ -21,6 +21,23 @@ type HostMetadataUpdate struct {
 	Pinned   *bool
 }
 
+// HostInventoryUpdate describes a partial host and inventory metadata update.
+type HostInventoryUpdate struct {
+	Name       *string
+	Known      *int
+	DeviceType *string
+	Owner      *string
+	Location   *string
+	Notes      *string
+	Tags       *[]string
+}
+
+// InventoryOptions lists distinct current inventory values used for lightweight autocomplete.
+type InventoryOptions struct {
+	Owners    []string `json:"owners"`
+	Locations []string `json:"locations"`
+}
+
 func EncodeMetadataTags(tags []string) string {
 	payload, err := json.Marshal(tags)
 	if err != nil {

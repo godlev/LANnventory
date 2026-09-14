@@ -2,7 +2,9 @@ package gdb
 
 import (
 	"errors"
+	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/godlev/LANnventory/internal/check"
@@ -13,6 +15,11 @@ import (
 const hostMetadataTable = "host_metadata"
 
 var errEmptyMetadataMAC = errors.New("metadata mac is empty")
+
+// IsEmptyMetadataMACError reports whether err means metadata cannot be saved for an empty MAC.
+func IsEmptyMetadataMACError(err error) bool {
+	return errors.Is(err, errEmptyMetadataMAC)
+}
 
 // SelectCurrentHostsWithMetadata returns current hosts enriched through batched inventory queries.
 func SelectCurrentHostsWithMetadata() (hosts []models.Host, ok bool) {
@@ -206,6 +213,161 @@ func UpdateHostMetadataWithEvents(host models.Host, update models.HostMetadataUp
 	return saved, err
 }
 
+// UpdateHostInventoryWithEvents applies host and metadata edits atomically and records ordered change events.
+func UpdateHostInventoryWithEvents(id int, update models.HostInventoryUpdate) (models.Host, error) {
+	var saved models.Host
+
+	activeDB, release, err := acquireDB()
+	if err != nil {
+		return saved, err
+	}
+	defer release()
+
+	err = activeDB.Transaction(func(txDB *gorm.DB) error {
+		var host models.Host
+		if err := txDB.Table("now").First(&host, id).Error; err != nil {
+			return err
+		}
+
+		metadataUpdateRequested := update.Owner != nil || update.Location != nil || update.Notes != nil || update.Tags != nil
+		var metadata models.HostMetadata
+		if metadataUpdateRequested {
+			if host.Mac == "" {
+				return errEmptyMetadataMAC
+			}
+
+			var ok bool
+			var err error
+			metadata, ok, err = selectHostMetadataByMAC(txDB, host.Mac)
+			if err != nil {
+				return err
+			}
+			if !ok {
+				metadata = models.HostMetadata{
+					Mac:      host.Mac,
+					TagsJSON: "[]",
+				}
+			}
+		}
+
+		oldKnown := host.Known
+		oldDeviceType := host.DeviceType
+		hostChanged := false
+		if update.Name != nil && host.Name != *update.Name {
+			host.Name = *update.Name
+			hostChanged = true
+		}
+		if update.Known != nil && host.Known != *update.Known {
+			host.Known = *update.Known
+			hostChanged = true
+		}
+		if update.DeviceType != nil && host.DeviceType != *update.DeviceType {
+			host.DeviceType = *update.DeviceType
+			hostChanged = true
+		}
+
+		eventDate := time.Now().Format(models.HostEventDateLayout)
+		events := make([]models.HostEvent, 0, 6)
+		if update.Known != nil && oldKnown != host.Known {
+			eventType := models.EventUnknown
+			if host.Known == 1 {
+				eventType = models.EventKnown
+			}
+			events = append(events, metadataEvent(host, eventType, "", "", eventDate))
+		}
+		if update.DeviceType != nil && oldDeviceType != host.DeviceType {
+			events = append(events, metadataEvent(host, models.EventDeviceTypeChanged, oldDeviceType, host.DeviceType, eventDate))
+		}
+
+		metadataChanged := false
+		if update.Owner != nil && metadata.Owner != *update.Owner {
+			events = append(events, metadataEvent(host, models.EventOwnerChanged, metadata.Owner, *update.Owner, eventDate))
+			metadata.Owner = *update.Owner
+			metadataChanged = true
+		}
+		if update.Location != nil && metadata.Location != *update.Location {
+			events = append(events, metadataEvent(host, models.EventLocationChanged, metadata.Location, *update.Location, eventDate))
+			metadata.Location = *update.Location
+			metadataChanged = true
+		}
+		if update.Notes != nil && metadata.Notes != *update.Notes {
+			events = append(events, metadataEvent(host, models.EventNotesChanged, metadata.Notes, *update.Notes, eventDate))
+			metadata.Notes = *update.Notes
+			metadataChanged = true
+		}
+		if update.Tags != nil {
+			oldTagsJSON := models.EncodeMetadataTags(models.DecodeMetadataTags(metadata.TagsJSON))
+			newTagsJSON := models.EncodeMetadataTags(*update.Tags)
+			if oldTagsJSON != newTagsJSON {
+				events = append(events, metadataEvent(host, models.EventTagsChanged, oldTagsJSON, newTagsJSON, eventDate))
+				metadata.TagsJSON = newTagsJSON
+				metadataChanged = true
+			}
+		}
+
+		if hostChanged {
+			if err := txDB.Table("now").Save(&host).Error; err != nil {
+				return err
+			}
+		}
+		if metadataChanged {
+			if err := txDB.Table(hostMetadataTable).Save(&metadata).Error; err != nil {
+				return err
+			}
+		}
+		for _, event := range events {
+			if err := addEventTx(txDB, event); err != nil {
+				return err
+			}
+		}
+
+		hosts := []models.Host{host}
+		if err := enrichHostsWithInventory(txDB, hosts); err != nil {
+			return err
+		}
+		saved = hosts[0]
+
+		return nil
+	})
+
+	return saved, err
+}
+
+// SelectInventoryOptions returns distinct owner and location values from current inventory metadata.
+func SelectInventoryOptions() (models.InventoryOptions, error) {
+	activeDB, release, err := acquireDB()
+	if err != nil {
+		return models.InventoryOptions{}, err
+	}
+	defer release()
+
+	type inventoryOptionRow struct {
+		Owner    string `gorm:"column:OWNER"`
+		Location string `gorm:"column:LOCATION"`
+	}
+	var rows []inventoryOptionRow
+	if err := activeDB.Table(hostMetadataTable + " AS m").
+		Select("m.\"OWNER\", m.\"LOCATION\"").
+		Joins("INNER JOIN \"now\" AS n ON n.\"MAC\" = m.\"MAC\"").
+		Order("n.\"ID\" ASC").
+		Order("m.\"MAC\" ASC").
+		Scan(&rows).Error; err != nil {
+		return models.InventoryOptions{}, err
+	}
+
+	owners := make([]string, 0, len(rows))
+	locations := make([]string, 0, len(rows))
+	for _, row := range rows {
+		owners = append(owners, row.Owner)
+		locations = append(locations, row.Location)
+	}
+
+	return models.InventoryOptions{
+		Owners:    normalizeInventoryOptions(owners),
+		Locations: normalizeInventoryOptions(locations),
+	}, nil
+}
+
 // DeleteHostMetadataByMAC removes metadata for a deleted current host.
 func DeleteHostMetadataByMAC(mac string) error {
 	if mac == "" {
@@ -249,6 +411,35 @@ func metadataEvent(host models.Host, eventType models.HostEventType, oldValue, n
 	event := models.NewHostEvent(host, eventType, oldValue, newValue)
 	event.Date = date
 	return event
+}
+
+func normalizeInventoryOptions(values []string) []string {
+	seen := make(map[string]struct{}, len(values))
+	normalized := make([]string, 0, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			continue
+		}
+		key := strings.ToLower(value)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+
+		seen[key] = struct{}{}
+		normalized = append(normalized, value)
+	}
+
+	sort.SliceStable(normalized, func(i, j int) bool {
+		left := strings.ToLower(normalized[i])
+		right := strings.ToLower(normalized[j])
+		if left == right {
+			return normalized[i] < normalized[j]
+		}
+		return left < right
+	})
+
+	return normalized
 }
 
 func enrichHostsWithInventory(activeDB *gorm.DB, hosts []models.Host) error {

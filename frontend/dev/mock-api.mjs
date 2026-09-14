@@ -132,7 +132,7 @@ const hostMetadata = new Map([
     Pinned: true,
   }],
   ['AA:BB:CC:00:00:42', {
-    Owner: 'Miroslav',
+    Owner: 'John Smith',
     Location: 'Office',
     Notes: '',
     Tags: ['workstation'],
@@ -332,6 +332,38 @@ function normalizeMetadataTags(tags) {
   return normalized.slice(0, 20);
 }
 
+function normalizeInventoryOptions(values) {
+  const seen = new Set();
+  const normalized = [];
+  for (const value of values) {
+    const trimmed = String(value ?? '').trim();
+    if (!trimmed) {
+      continue;
+    }
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    normalized.push(trimmed);
+  }
+
+  return normalized.sort((left, right) => {
+    const normalizedLeft = left.toLowerCase();
+    const normalizedRight = right.toLowerCase();
+    return normalizedLeft === normalizedRight
+      ? left.localeCompare(right)
+      : normalizedLeft.localeCompare(normalizedRight);
+  });
+}
+
+function inventoryOptions() {
+  return {
+    owners: normalizeInventoryOptions(fakeHosts.map((hostEntry) => metadataFor(hostEntry).Owner)),
+    locations: normalizeInventoryOptions(fakeHosts.map((hostEntry) => metadataFor(hostEntry).Location)),
+  };
+}
+
 function applyMetadataPatch(hostEntry, patch) {
   const current = metadataFor(hostEntry);
   const next = {
@@ -379,6 +411,50 @@ function applyMetadataPatch(hostEntry, patch) {
 
   hostMetadata.set(hostEntry.Mac, next);
   return enrichHost(hostEntry);
+}
+
+function applyInventoryPatch(hostEntry, patch) {
+  const allowedFields = new Set(['name', 'known', 'deviceType', 'owner', 'location', 'notes', 'tags']);
+  for (const field of Object.keys(patch)) {
+    if (!allowedFields.has(field)) {
+      return { error: 'invalid request body' };
+    }
+  }
+  if (patch.deviceType !== undefined && !isDeviceType(patch.deviceType)) {
+    return { error: 'invalid deviceType' };
+  }
+
+  const eventDate = new Date();
+  const oldKnown = hostEntry.Known;
+  const oldDeviceType = hostEntry.DeviceType;
+  if (typeof patch.name === 'string') {
+    hostEntry.Name = patch.name;
+  }
+  if (typeof patch.known === 'boolean') {
+    hostEntry.Known = patch.known ? 1 : 0;
+  }
+  if (patch.deviceType !== undefined) {
+    hostEntry.DeviceType = patch.deviceType;
+  }
+  if (oldKnown !== hostEntry.Known) {
+    addActivity(hostEntry, hostEntry.Known === 1 ? 'known' : 'unknown', { date: eventDate });
+  }
+  if (oldDeviceType !== hostEntry.DeviceType) {
+    addActivity(hostEntry, 'device-type-changed', {
+      oldValue: oldDeviceType,
+      newValue: hostEntry.DeviceType,
+      date: eventDate,
+    });
+  }
+
+  return {
+    host: applyMetadataPatch(hostEntry, {
+      owner: patch.owner,
+      location: patch.location,
+      notes: patch.notes,
+      tags: patch.tags,
+    }),
+  };
 }
 
 function isPositiveIntegerValue(value) {
@@ -945,6 +1021,11 @@ function routeReadOnly(req, res, url) {
     return true;
   }
 
+  if (req.method === 'GET' && pathname === '/api/inventory/options') {
+    sendJSON(res, inventoryOptions());
+    return true;
+  }
+
   if (req.method === 'GET' && pathname === '/api/export/backup') {
     const createdAt = new Date();
     sendDownload(
@@ -1130,6 +1211,27 @@ async function routeSafeAction(req, res, url) {
     const body = await readBody(req);
     const params = parseRequestBody(body);
     sendJSON(res, applyMetadataPatch(hostEntry, params));
+    return true;
+  }
+
+  const inventoryMatch = pathname.match(/^\/api\/host\/(\d+)$/);
+  if (req.method === 'PATCH' && inventoryMatch) {
+    const id = Number(inventoryMatch[1]);
+    const hostEntry = findHostByID(id);
+    if (!hostEntry) {
+      sendJSON(res, { error: 'invalid host id' }, 400);
+      return true;
+    }
+
+    const body = await readBody(req);
+    const params = parseRequestBody(body);
+    const result = applyInventoryPatch(hostEntry, params);
+    if (result.error) {
+      sendJSON(res, { error: result.error }, 400);
+      return true;
+    }
+
+    sendJSON(res, result.host);
     return true;
   }
 
