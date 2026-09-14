@@ -507,12 +507,12 @@ html[data-bs-theme] body {
 .overview-grid {
     display: grid;
     gap: 0.75rem;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     margin-bottom: 1rem;
 }
 .overview-grid.home-overview-grid {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: minmax(10rem, 0.8fr) repeat(2, minmax(13rem, 1.1fr));
     width: 100%;
     max-width: 100%;
 }
@@ -543,6 +543,12 @@ html[data-bs-theme] body {
 }
 .overview-card-unknown {
     border-left-color: var(--wyl-accent-unknown);
+}
+.overview-card-connectivity {
+    border-left-color: var(--bs-success);
+}
+.overview-card-recognition {
+    border-left-color: var(--wyl-accent-known);
 }
 .overview-card-type {
     border-left-color: var(--wyl-link);
@@ -599,6 +605,12 @@ html[data-bs-theme] body {
 .overview-card-unknown .overview-card-icon {
     color: var(--wyl-accent-unknown);
 }
+.overview-card-connectivity .overview-card-icon {
+    color: var(--bs-success);
+}
+.overview-card-recognition .overview-card-icon {
+    color: var(--wyl-accent-known);
+}
 .overview-card-type .overview-card-icon {
     color: var(--wyl-link);
 }
@@ -620,6 +632,115 @@ html[data-bs-theme] body {
     font-size: 0.8rem;
     font-variant-caps: all-small-caps;
     letter-spacing: 0.035em;
+}
+.overview-card-split {
+    align-items: stretch;
+}
+.overview-card-split .overview-card-icon {
+    margin-top: 0.12rem;
+}
+.overview-split-content {
+    display: grid;
+    flex: 1 1 auto;
+    gap: 0.32rem;
+    min-width: 0;
+}
+.overview-split-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.36rem;
+}
+.overview-split-action {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.08rem 0.35rem;
+    align-items: center;
+    min-width: 0;
+    padding: 0.34rem 0.4rem;
+    color: inherit;
+    background-color: transparent;
+    border: 1px solid var(--wyl-control-border);
+    border-radius: 6px;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.overview-split-action:hover,
+.overview-split-action:focus-visible {
+    background-color: var(--wyl-control-hover-bg);
+}
+.overview-split-action:focus-visible {
+    outline: 2px solid var(--bs-primary);
+    outline-offset: 2px;
+}
+.overview-split-action.is-active {
+    background-color: var(--wyl-card-active-bg);
+    border-color: var(--wyl-link);
+}
+.overview-split-action-main {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.32rem;
+    min-width: 0;
+    color: var(--wyl-muted);
+    font-size: 0.78rem;
+    font-weight: 800;
+    line-height: 1.05;
+    font-variant-caps: all-small-caps;
+    letter-spacing: 0.035em;
+}
+.overview-split-action-main span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.overview-split-action-value {
+    font-size: 1.12rem;
+    font-weight: 800;
+    line-height: 1;
+}
+.overview-split-action-percent {
+    grid-column: 1 / -1;
+    color: var(--wyl-muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1;
+}
+.overview-split-online .overview-split-action-main i {
+    color: var(--bs-success);
+}
+.overview-split-bar-online {
+    background-color: var(--bs-success);
+}
+.overview-split-offline .overview-split-action-main i {
+    color: var(--bs-danger);
+}
+.overview-split-bar-offline {
+    background-color: var(--bs-danger);
+}
+.overview-split-known .overview-split-action-main i {
+    color: var(--wyl-accent-known);
+}
+.overview-split-bar-known {
+    background-color: var(--wyl-accent-known);
+}
+.overview-split-unknown .overview-split-action-main i {
+    color: var(--wyl-accent-unknown);
+}
+.overview-split-bar-unknown {
+    background-color: var(--wyl-accent-unknown);
+}
+.overview-split-bar {
+    display: flex;
+    height: 0.32rem;
+    overflow: hidden;
+    background-color: var(--wyl-panel-header-bg);
+    border-radius: 999px;
+}
+.overview-split-bar-segment {
+    display: block;
+    min-width: 0;
+    opacity: 0.72;
 }
 
 .card.device-panel {
@@ -815,6 +936,30 @@ html[data-bs-theme] body {
     overflow-x: auto !important;
     overflow-y: visible;
     scrollbar-gutter: stable;
+}
+.device-pinned-separator-row td {
+    padding: 0.34rem 0.72rem;
+    background-color: var(--wyl-panel-header-bg);
+    border-top: 1px solid var(--wyl-panel-border);
+    border-bottom: 1px solid var(--wyl-panel-border);
+}
+.device-pinned-separator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.32rem;
+    color: var(--wyl-muted);
+    font-size: 0.72rem;
+    font-weight: 800;
+    line-height: 1;
+    font-variant-caps: all-small-caps;
+    letter-spacing: 0.04em;
+}
+.device-pinned-separator::before {
+    content: "";
+    width: 1.1rem;
+    height: 1px;
+    background-color: var(--wyl-muted);
+    opacity: 0.55;
 }
 .device-table-mobile-cell {
     display: none;
@@ -2282,6 +2427,10 @@ html[data-bs-theme] .activity-table > tbody > tr.activity-group-row:hover > td {
     .device-table td {
         display: none;
     }
+    .device-table .device-pinned-separator-row td {
+        display: block;
+        width: 100%;
+    }
     .device-table .device-table-mobile-cell {
         display: block;
         width: 100%;
@@ -2779,8 +2928,20 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     justify-content: flex-start;
     max-width: 18rem;
 }
+.host-panel-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
 .host-mode-button {
     min-width: 4.5rem;
+}
+.host-pin-button.is-active {
+    color: var(--wyl-link);
+    border-color: var(--wyl-link);
+    background-color: var(--wyl-card-active-bg);
 }
 .host-static-value {
     display: inline-flex;
@@ -2875,7 +3036,12 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     gap: 0.42rem;
 }
 .host-tag-input-row .form-control {
+    flex: 1 1 8rem;
     min-width: 0;
+}
+.host-tag-input-row .btn {
+    flex: 0 0 auto;
+    white-space: nowrap;
 }
 .host-notes-input {
     max-width: 34rem;
@@ -2886,7 +3052,7 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     max-width: 36rem;
     white-space: pre-wrap;
 }
-.host-metadata-actions {
+.host-edit-actions {
     display: flex;
     align-items: center;
     justify-content: flex-end;
@@ -2894,8 +3060,56 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     flex-wrap: wrap;
     margin-top: 0.75rem;
 }
+.host-save-button {
+    min-width: 7.5rem;
+}
+.host-inline-error {
+    margin-top: 0.55rem;
+    color: var(--bs-danger);
+    font-size: 0.82rem;
+    font-weight: 700;
+}
 .host-known-static {
     font-weight: 700;
+}
+.inventory-autocomplete {
+    position: relative;
+    width: min(24rem, 100%);
+}
+.inventory-autocomplete-list {
+    position: absolute;
+    z-index: 1060;
+    top: calc(100% + 0.25rem);
+    left: 0;
+    right: 0;
+    display: grid;
+    max-height: 13rem;
+    overflow-y: auto;
+    padding: 0.25rem;
+    background-color: var(--wyl-card-bg);
+    border: 1px solid var(--wyl-control-border);
+    border-radius: 6px;
+    box-shadow: var(--wyl-shadow);
+}
+.inventory-autocomplete-option {
+    min-width: 0;
+    padding: 0.34rem 0.48rem;
+    color: var(--wyl-control-text);
+    background-color: transparent;
+    border: 0;
+    border-radius: 4px;
+    font: inherit;
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.inventory-autocomplete-option:hover,
+.inventory-autocomplete-option:focus-visible,
+.inventory-autocomplete-option.is-active {
+    color: var(--wyl-control-text-strong);
+    background-color: var(--wyl-control-hover-bg);
+    outline: 0;
 }
 .host-known-toggle {
     gap: 0.42rem;
@@ -3081,28 +3295,26 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
     .overview-grid.home-overview-grid {
-        grid-template-columns: repeat(5, minmax(0, 1fr));
-        gap: 0.32rem;
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
     }
     .home-overview-grid .overview-card {
-        flex-direction: column;
-        align-items: stretch;
+        flex-direction: row;
+        align-items: center;
         justify-content: center;
-        gap: 0;
+        gap: 0.65rem;
         min-width: 0;
-        min-height: 4.1rem;
-        padding: 0.32rem 0.18rem;
-        text-align: center;
+        min-height: 4.2rem;
+        padding: 0.58rem 0.64rem;
+        text-align: left;
     }
     .home-overview-grid .overview-card-icon {
-        display: none;
+        display: inline-flex;
     }
     .home-overview-grid .overview-card > div:not(.overview-card-icon) {
-        display: grid;
-        grid-template-rows: auto minmax(0, 1fr);
-        align-items: center;
+        display: block;
         width: 100%;
-        height: 100%;
+        height: auto;
         min-width: 0;
     }
     .home-overview-grid .overview-card-label {
@@ -3114,15 +3326,21 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     }
     .home-overview-grid .overview-card-label-full,
     .home-overview-grid .overview-card-detail {
-        display: none;
+        display: block;
     }
     .home-overview-grid .overview-card-label-short {
-        display: inline;
+        display: none;
     }
     .home-overview-grid .overview-card-value {
-        font-size: 1.9rem;
+        font-size: 1.55rem;
         font-weight: 800;
         line-height: 0.95;
+    }
+    .home-overview-grid .overview-split-content {
+        display: grid;
+    }
+    .home-overview-grid .overview-split-action-main {
+        letter-spacing: 0;
     }
     .card.device-panel .device-panel-header {
         align-items: stretch;
@@ -3232,7 +3450,7 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
         grid-template-columns: 1fr;
     }
     .overview-grid.home-overview-grid {
-        grid-template-columns: repeat(5, minmax(0, 1fr));
+        grid-template-columns: 1fr;
     }
     .device-table .device-known-toggle,
     .device-table .device-pin-toggle,
@@ -3287,15 +3505,15 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
         text-align: left;
     }
     .host-actions,
-    .host-metadata-actions,
+    .host-edit-actions,
     .host-scan-state,
     .host-history-header {
         align-items: stretch;
         flex-direction: column;
     }
     .host-tag-input-row {
-        align-items: stretch;
-        flex-direction: column;
+        align-items: center;
+        flex-direction: row;
     }
     .host-history-date-control {
         align-items: flex-start;

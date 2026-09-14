@@ -18,9 +18,11 @@ func Routes(router *gin.Engine) {
 		r0.GET("/activity", getActivity) // api-activity.go
 		r0.GET("/export/backup", getBackupExport)
 		r0.GET("/export/inventory.csv", getInventoryCSVExport)
+		r0.GET("/inventory/options", getInventoryOptions)
 		r0.GET("/edit/:id/:name/*known", editHost) // api-hosts.go
 		r0.GET("/host/:id/activity", getHostActivity)
 		r0.GET("/host/:id", getHost) // api-hosts.go
+		r0.PATCH("/host/:id", setHostInventory)
 		r0.PATCH("/host/:id/type", setHostDeviceType)
 		r0.PATCH("/host/:id/metadata", setHostMetadata)
 		r0.GET("/host/del/:id", delHost)  // api-hosts.go

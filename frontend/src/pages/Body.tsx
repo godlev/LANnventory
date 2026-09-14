@@ -1,6 +1,6 @@
 import { createSignal, For, onMount, Show } from "solid-js";
 
-import { allHosts, filterState, hostsLoadError } from "../functions/exports";
+import { allHosts, filterState, hasMultipleIfaces, hostsLoadError } from "../functions/exports";
 
 import TableRow from "../components/Body/TableRow";
 import TableHead from "../components/Body/TableHead";
@@ -59,6 +59,13 @@ function Body() {
       [key]: current[key] !== true,
     }));
   };
+  const hasPinnedAndUnpinnedHosts = () => allHosts.some((host) => host.Pinned) && allHosts.some((host) => !host.Pinned);
+  const shouldShowPinnedSeparator = (index: number, host: { Pinned: boolean }) =>
+    hasPinnedAndUnpinnedHosts()
+    && index > 0
+    && !host.Pinned
+    && allHosts[index - 1]?.Pinned === true;
+  const deviceTableColumnCount = () => hasMultipleIfaces() ? 11 : 10;
 
   return (
     <>
@@ -83,12 +90,21 @@ function Body() {
           <TableHead></TableHead>
           <tbody>
             <For each={allHosts}>{(host, index) =>
-            <TableRow
-              host={host}
-              index={index() + 1}
-              mobileExpanded={isDeviceExpanded(host)}
-              onToggleMobileExpanded={() => toggleDeviceExpanded(host)}
-            ></TableRow>
+            <>
+              <Show when={shouldShowPinnedSeparator(index(), host)}>
+                <tr class="device-pinned-separator-row" aria-hidden="true">
+                  <td colSpan={deviceTableColumnCount()}>
+                    <span class="device-pinned-separator">Other devices</span>
+                  </td>
+                </tr>
+              </Show>
+              <TableRow
+                host={host}
+                index={index() + 1}
+                mobileExpanded={isDeviceExpanded(host)}
+                onToggleMobileExpanded={() => toggleDeviceExpanded(host)}
+              ></TableRow>
+            </>
             }</For>
           </tbody> 
         </table>

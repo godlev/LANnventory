@@ -1,4 +1,4 @@
-import { useLocation, useNavigate, useParams } from "@solidjs/router";
+import { useBeforeLeave, useLocation, useNavigate, useParams } from "@solidjs/router";
 import { createEffect, createSignal, onCleanup, Show } from "solid-js";
 
 import { apiGetHost } from "../functions/api";
@@ -14,6 +14,7 @@ function HostPage() {
 
   const [currentHost, setCurrentHost] = createSignal<Host>(emptyHost);
   const [loadError, setLoadError] = createSignal("");
+  const [hasUnsavedHostChanges, setHasUnsavedHostChanges] = createSignal(false);
   const params = useParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -28,6 +29,30 @@ function HostPage() {
 
     navigate("/host/" + params.id + (editing ? "?edit=1" : ""));
   };
+
+  useBeforeLeave((event) => {
+    if (!hasUnsavedHostChanges() || event.defaultPrevented) {
+      return;
+    }
+
+    event.preventDefault();
+    setTimeout(() => {
+      if (window.confirm("Discard unsaved host changes?")) {
+        setHasUnsavedHostChanges(false);
+        event.retry(true);
+      }
+    }, 0);
+  });
+
+  const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+    if (!hasUnsavedHostChanges()) {
+      return;
+    }
+
+    event.preventDefault();
+    event.returnValue = "";
+  };
+  window.addEventListener("beforeunload", handleBeforeUnload);
 
   createEffect(() => {
     const id = params.id;
@@ -63,6 +88,8 @@ function HostPage() {
 
   onCleanup(() => {
     requestId++;
+    window.removeEventListener("beforeunload", handleBeforeUnload);
+    setHasUnsavedHostChanges(false);
     setPageContext(emptyPageContext);
     document.title = previousTitle;
   });
@@ -92,7 +119,13 @@ function HostPage() {
     >
       <div class="row g-3 mx-0 host-page-row">
         <div class="col-md">
-          <HostCard host={currentHost()} editMode={isEditMode()} onEditModeChange={setEditMode} onHostChange={setCurrentHost}></HostCard>
+          <HostCard
+            host={currentHost()}
+            editMode={isEditMode()}
+            onEditModeChange={setEditMode}
+            onHostChange={setCurrentHost}
+            onDirtyChange={setHasUnsavedHostChanges}
+          ></HostCard>
         </div>
         <div class="col-md">
           <Ping IP={currentHost().IP}></Ping>

@@ -462,6 +462,166 @@ func TestSetHostMetadataNoOpDoesNotCreateEvents(t *testing.T) {
 	}
 }
 
+func TestSetHostInventoryUpdatesHostMetadataAndExcludesPinned(t *testing.T) {
+	router := setupTestRouter(t)
+	host := seedHost(t, models.Host{
+		Name:       "desktop",
+		IP:         "192.168.1.42",
+		Mac:        "AA:BB:CC:DD:EE:42",
+		Known:      0,
+		Now:        1,
+		DeviceType: "",
+	})
+	pinned := true
+	if _, err := gdb.UpsertHostMetadata(host.Mac, models.HostMetadataUpdate{Pinned: &pinned}); err != nil {
+		t.Fatalf("UpsertHostMetadata: %v", err)
+	}
+
+	rec := patchHostInventory(router, host.ID, `{
+		"name": "workstation",
+		"known": true,
+		"deviceType": "desktop",
+		"owner": "  Miroslav  ",
+		"location": "  Office  ",
+		"notes": "Primary workstation",
+		"tags": [" daily ", "Trusted", "daily"]
+	}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("inventory patch status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var updated models.Host
+	if err := json.Unmarshal(rec.Body.Bytes(), &updated); err != nil {
+		t.Fatalf("json.Unmarshal inventory response: %v", err)
+	}
+	if updated.Name != "workstation" || updated.Known != 1 || updated.DeviceType != "desktop" {
+		t.Fatalf("inventory host fields = %+v, want saved host edits", updated)
+	}
+	if updated.Owner != "Miroslav" || updated.Location != "Office" || updated.Notes != "Primary workstation" || !updated.Pinned {
+		t.Fatalf("inventory metadata fields = %+v, want saved metadata and preserved pinned", updated)
+	}
+	assertStringSlice(t, updated.Tags, []string{"daily", "Trusted"}, "inventory tags")
+
+	events, ok := gdb.SelectEvents(10, "")
+	if !ok {
+		t.Fatal("SelectEvents failed")
+	}
+	eventCounts := make(map[string]int, len(events))
+	for _, event := range events {
+		eventCounts[event.EventType]++
+		if event.EventType == string(models.EventPinnedChanged) {
+			t.Fatalf("unified host save created pinned event: %+v", events)
+		}
+	}
+	wantCounts := map[models.HostEventType]int{
+		models.EventKnown:             1,
+		models.EventDeviceTypeChanged: 1,
+		models.EventOwnerChanged:      1,
+		models.EventLocationChanged:   1,
+		models.EventNotesChanged:      1,
+		models.EventTagsChanged:       1,
+	}
+	if len(events) != len(wantCounts) {
+		t.Fatalf("events len = %d, want %d: %+v", len(events), len(wantCounts), events)
+	}
+	for eventType, want := range wantCounts {
+		if got := eventCounts[string(eventType)]; got != want {
+			t.Fatalf("event count %s = %d, want %d; events: %+v", eventType, got, want, events)
+		}
+	}
+}
+
+func TestSetHostInventoryRejectsInvalidInput(t *testing.T) {
+	router := setupTestRouter(t)
+	host := seedHost(t, models.Host{
+		Name: "desktop",
+		Mac:  "AA:BB:CC:DD:EE:42",
+	})
+
+	tests := []struct {
+		name string
+		body string
+	}{
+		{name: "invalid device type", body: `{"deviceType":"spaceship"}`},
+		{name: "unknown pinned field", body: `{"pinned":true}`},
+		{name: "name control character", body: metadataJSON(t, map[string]any{"name": "bad\u0001name"})},
+		{name: "owner too long", body: metadataJSON(t, map[string]any{"owner": strings.Repeat("a", 121)})},
+		{name: "malformed json", body: `not-json`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rec := patchHostInventory(router, host.ID, tt.body)
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+			}
+			if got := gdb.SelectByID(host.ID); got.DeviceType != host.DeviceType || got.Name != host.Name || got.Known != host.Known {
+				t.Fatalf("host changed after rejected input: got %+v, want %+v", got, host)
+			}
+		})
+	}
+
+	req := httptest.NewRequest(http.MethodPatch, "/api/host/not-a-number", bytes.NewBufferString(`{"known":true}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("invalid id status = %d, want %d; body: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+}
+
+func TestGetInventoryOptionsReturnsCurrentDistinctValues(t *testing.T) {
+	router := setupTestRouter(t)
+	routerHost := seedHost(t, models.Host{Name: "router", Mac: "AA:BB:CC:DD:EE:01"})
+	nasHost := seedHost(t, models.Host{Name: "NAS", Mac: "AA:BB:CC:DD:EE:20"})
+	seedHost(t, models.Host{Name: "desktop", Mac: "AA:BB:CC:DD:EE:42"})
+
+	network := "Network"
+	storage := "Storage"
+	office := "Office"
+	lowerOffice := "office"
+	if _, err := gdb.UpsertHostMetadata(routerHost.Mac, models.HostMetadataUpdate{Owner: &network, Location: &office}); err != nil {
+		t.Fatalf("router metadata: %v", err)
+	}
+	if _, err := gdb.UpsertHostMetadata(nasHost.Mac, models.HostMetadataUpdate{Owner: &storage, Location: &lowerOffice}); err != nil {
+		t.Fatalf("nas metadata: %v", err)
+	}
+	orphanOwner := "Orphan"
+	if _, err := gdb.UpsertHostMetadata("AA:BB:CC:DD:EE:99", models.HostMetadataUpdate{Owner: &orphanOwner}); err != nil {
+		t.Fatalf("orphan metadata: %v", err)
+	}
+
+	rec := getPath(router, "/api/inventory/options")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("options status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	var options models.InventoryOptions
+	if err := json.Unmarshal(rec.Body.Bytes(), &options); err != nil {
+		t.Fatalf("json.Unmarshal options: %v", err)
+	}
+	assertStringSlice(t, options.Owners, []string{"Network", "Storage"}, "owner options")
+	assertStringSlice(t, options.Locations, []string{"Office"}, "location options")
+}
+
+func TestGetInventoryOptionsReturnsEmptyArrays(t *testing.T) {
+	router := setupTestRouter(t)
+
+	rec := getPath(router, "/api/inventory/options")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("options status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	var options models.InventoryOptions
+	if err := json.Unmarshal(rec.Body.Bytes(), &options); err != nil {
+		t.Fatalf("json.Unmarshal options: %v", err)
+	}
+	if options.Owners == nil || len(options.Owners) != 0 {
+		t.Fatalf("owners = %#v, want non-nil empty slice", options.Owners)
+	}
+	if options.Locations == nil || len(options.Locations) != 0 {
+		t.Fatalf("locations = %#v, want non-nil empty slice", options.Locations)
+	}
+}
+
 func TestAddHostDoesNotFabricateLifecycleSeenTimestamps(t *testing.T) {
 	router := setupTestRouter(t)
 
@@ -733,6 +893,14 @@ func patchHostDeviceType(router *gin.Engine, id int, body string) *httptest.Resp
 
 func patchHostMetadata(router *gin.Engine, id int, body string) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(http.MethodPatch, "/api/host/"+itoa(id)+"/metadata", bytes.NewBufferString(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	return rec
+}
+
+func patchHostInventory(router *gin.Engine, id int, body string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(http.MethodPatch, "/api/host/"+itoa(id), bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)

@@ -6,6 +6,8 @@ import {
   activityDeviceIcon,
   activityHostName,
   activityIcon,
+  activityTimeDateTime,
+  activityTimeTitle,
   activityTone,
   relativeActivityTime,
 } from "../functions/activity";
@@ -54,7 +56,7 @@ function ActivityFeed(props: ActivityFeedProps) {
               </Show>
               <span class="activity-description">{activityDescription(event)}</span>
             </span>
-            <time class="activity-time" dateTime={event.Date} title={event.Date}>
+            <time class="activity-time" dateTime={activityTimeDateTime(event)} title={activityTimeTitle(event)}>
               {relativeActivityTime(event)}
             </time>
           </div>

@@ -181,6 +181,10 @@ export function relativeActivityTime(value: HostEvent | string, nowMs = Date.now
   }
 
   const seconds = Math.max(0, Math.floor((nowMs - date.getTime()) / 1000));
+  if (seconds > 12 * 60 * 60) {
+    return formatShortActivityDate(date);
+  }
+
   if (seconds < 60) {
     return "now";
   }
@@ -191,15 +195,20 @@ export function relativeActivityTime(value: HostEvent | string, nowMs = Date.now
   }
 
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) {
-    return hours + " h ago";
+  return hours + " h ago";
+}
+
+export function activityTimeDateTime(event: HostEvent): string {
+  return event.DateUTC?.trim() || event.Date;
+}
+
+export function activityTimeTitle(event: HostEvent): string {
+  const date = parseActivityDisplayDate(event);
+  if (date === null) {
+    return activityTimeDateTime(event);
   }
 
-  if (hours < 48) {
-    return "yesterday";
-  }
-
-  return Math.floor(hours / 24) + " d ago";
+  return formatExactActivityDate(date);
 }
 
 function compactNetworkDetail(event: HostEvent): string {
@@ -286,6 +295,32 @@ function parseActivityDisplayDate(event: HostEvent): Date | null {
   }
 
   return parseActivityDate(event.Date);
+}
+
+function formatShortActivityDate(date: Date): string {
+  return pad2(date.getDate()) + " " + monthLabel(date.getMonth()) + " " + pad2(date.getHours()) + ":" + pad2(date.getMinutes());
+}
+
+function formatExactActivityDate(date: Date): string {
+  return date.getFullYear()
+    + "-"
+    + pad2(date.getMonth() + 1)
+    + "-"
+    + pad2(date.getDate())
+    + " "
+    + pad2(date.getHours())
+    + ":"
+    + pad2(date.getMinutes())
+    + ":"
+    + pad2(date.getSeconds());
+}
+
+function monthLabel(monthIndex: number): string {
+  return ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][monthIndex] ?? "";
+}
+
+function pad2(value: number): string {
+  return value < 10 ? "0" + value : String(value);
 }
 
 function parseActivityDateUTC(value: string): Date | null {

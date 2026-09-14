@@ -981,6 +981,63 @@
                         }
                     }
                 }
+            },
+            "patch": {
+                "description": "Atomically update editable host fields and manually managed inventory metadata. Actual known, device type, and metadata changes are recorded as Device change events. Name changes do not create events.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Update host inventory",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Host inventory payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.HostInventoryPatchRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Host"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
             }
         },
         "/host/{id}/activity": {
@@ -1141,6 +1198,35 @@
                 }
             }
         },
+        "/inventory/options": {
+            "get": {
+                "description": "Retrieve distinct owner and location values from current host metadata for lightweight autocomplete.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Get inventory field options",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.InventoryOptions"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/notify_test": {
             "get": {
                 "description": "Trigger a test notification to verify notification settings",
@@ -1296,6 +1382,35 @@
         }
     },
     "definitions": {
+        "api.HostInventoryPatchRequest": {
+            "type": "object",
+            "properties": {
+                "deviceType": {
+                    "type": "string"
+                },
+                "known": {
+                    "type": "boolean"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "owner": {
+                    "type": "string"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "api.HostMetadataPatchRequest": {
             "type": "object",
             "properties": {
@@ -1590,6 +1705,23 @@
                 },
                 "oldValue": {
                     "type": "string"
+                }
+            }
+        },
+        "models.InventoryOptions": {
+            "type": "object",
+            "properties": {
+                "locations": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "owners": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
