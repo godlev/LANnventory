@@ -1,0 +1,54 @@
+name: Phase 28 Frontend Asset Export
+
+on:
+  push:
+    branches:
+      - inventory-ux-phase-28
+
+permissions:
+  contents: read
+
+jobs:
+  build-assets:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Prepare embedded assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/lannventory-embedded-assets
+          cp frontend/dist/assets/HostPage.js /tmp/lannventory-embedded-assets/HostPage.js
+          cp frontend/dist/assets/index.css /tmp/lannventory-embedded-assets/index.css
+          cp frontend/dist/assets/index.js /tmp/lannventory-embedded-assets/index.js
+          python3 - <<'PY'
+          from pathlib import Path
+          js = Path("/tmp/lannventory-embedded-assets/index.js")
+          css = Path("/tmp/lannventory-embedded-assets/index.css")
+          js.write_text(js.read_text().replace("assets/", "fs/public/assets/"))
+          css.write_text(css.read_text().replace("url(/assets/", "url(/fs/public/assets/"))
+          PY
+
+      - name: Upload embedded assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase28-embedded-assets
+          path: /tmp/lannventory-embedded-assets
+          if-no-files-found: error
