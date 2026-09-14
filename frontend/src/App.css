@@ -935,7 +935,7 @@ html[data-bs-theme] body {
     max-width: 100%;
     overflow-x: auto !important;
     overflow-y: visible;
-    scrollbar-gutter: stable;
+    scrollbar-gutter: auto;
 }
 .device-pinned-separator-row td {
     padding: 0.34rem 0.72rem;
@@ -967,10 +967,10 @@ html[data-bs-theme] body {
 .device-table {
     background-color: var(--wyl-table-bg);
     width: 100%;
-    max-width: 100%;
-    min-width: 0;
+    min-width: 100%;
+    max-width: none;
     margin-bottom: 0;
-    table-layout: fixed;
+    table-layout: auto;
     vertical-align: middle;
     --bs-table-bg: var(--wyl-table-row-bg);
     --bs-table-striped-bg: var(--wyl-table-row-bg);
@@ -1117,11 +1117,14 @@ html[data-bs-theme] .device-table > tbody > tr.device-row-unknown:hover > td {
     max-width: 8.15rem;
 }
 .device-table-mac {
+    width: 10.5rem;
     min-width: 10.5rem;
+    max-width: 10.5rem;
     text-align: center;
 }
 .device-table-name {
-    min-width: 9rem;
+    width: 18%;
+    min-width: 10rem;
     text-align: left !important;
 }
 .device-table-type {
@@ -1133,13 +1136,15 @@ html[data-bs-theme] .device-table > tbody > tr.device-row-unknown:hover > td {
     text-align: center;
 }
 .device-table-hardware {
-    min-width: 15rem;
-    max-width: 24rem;
+    width: auto;
+    min-width: 14rem;
+    overflow: hidden;
     text-align: left !important;
 }
 .device-hardware-text {
-    display: inline-block;
-    max-width: min(24rem, 34vw);
+    display: block;
+    width: 100%;
+    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     vertical-align: bottom;
@@ -1150,7 +1155,10 @@ html[data-bs-theme] .device-table > tbody > tr.device-row-unknown:hover > td {
     opacity: 0.82;
 }
 .device-table-last-seen {
-    min-width: 7.5rem;
+    width: 8.5rem;
+    min-width: 8.5rem;
+    max-width: 8.5rem;
+    overflow: hidden;
     text-align: center;
 }
 .device-known-toggle {
@@ -2935,6 +2943,15 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     gap: 0.5rem;
     flex-wrap: wrap;
 }
+.host-panel-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.32rem;
+    margin-top: 0.12rem;
+}
+.host-panel-status .device-status-icon {
+    font-size: 0.74rem;
+}
 .host-mode-button {
     min-width: 4.5rem;
 }
@@ -2942,6 +2959,14 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     color: var(--wyl-link);
     border-color: var(--wyl-link);
     background-color: var(--wyl-card-active-bg);
+}
+.host-known-button.is-known {
+    color: var(--wyl-accent-known);
+    border-color: currentColor;
+}
+.host-known-button.is-unknown {
+    color: var(--wyl-accent-unknown);
+    border-color: currentColor;
 }
 .host-static-value {
     display: inline-flex;
@@ -3052,7 +3077,8 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     max-width: 36rem;
     white-space: pre-wrap;
 }
-.host-edit-actions {
+.host-edit-actions,
+.host-edit-feedback {
     display: flex;
     align-items: center;
     justify-content: flex-end;
