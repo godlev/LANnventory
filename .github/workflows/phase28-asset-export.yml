@@ -1,4 +1,4 @@
-name: Phase 28 Frontend Asset Export
+name: Phase 28 Frontend Asset Finalize
 
 on:
   push:
@@ -6,14 +6,16 @@ on:
       - inventory-ux-phase-28
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  build-assets:
+  finalize-assets:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: inventory-ux-phase-28
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -30,25 +32,31 @@ jobs:
         working-directory: frontend
         run: npm run build
 
-      - name: Prepare embedded assets
+      - name: Refresh embedded frontend assets
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p /tmp/lannventory-embedded-assets
-          cp frontend/dist/assets/HostPage.js /tmp/lannventory-embedded-assets/HostPage.js
-          cp frontend/dist/assets/index.css /tmp/lannventory-embedded-assets/index.css
-          cp frontend/dist/assets/index.js /tmp/lannventory-embedded-assets/index.js
+          cp frontend/dist/assets/HostPage.js backend/internal/web/public/assets/HostPage.js
+          cp frontend/dist/assets/index.css backend/internal/web/public/assets/index.css
+          cp frontend/dist/assets/index.js backend/internal/web/public/assets/index.js
           python3 - <<'PY'
           from pathlib import Path
-          js = Path("/tmp/lannventory-embedded-assets/index.js")
-          css = Path("/tmp/lannventory-embedded-assets/index.css")
+          js = Path("backend/internal/web/public/assets/index.js")
+          css = Path("backend/internal/web/public/assets/index.css")
           js.write_text(js.read_text().replace("assets/", "fs/public/assets/"))
           css.write_text(css.read_text().replace("url(/assets/", "url(/fs/public/assets/"))
           PY
 
-      - name: Upload embedded assets
-        uses: actions/upload-artifact@v4
-        with:
-          name: phase28-embedded-assets
-          path: /tmp/lannventory-embedded-assets
-          if-no-files-found: error
+      - name: Commit generated assets and remove temporary workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/phase28-asset-export.yml
+          git add backend/internal/web/public/assets/HostPage.js \
+                  backend/internal/web/public/assets/index.css \
+                  backend/internal/web/public/assets/index.js
+          git diff --cached --check
+          git commit -m "Refresh Phase 28 embedded frontend assets"
+          git push origin HEAD:inventory-ux-phase-28
