@@ -59,13 +59,18 @@ function Body() {
       [key]: current[key] !== true,
     }));
   };
+  const hasPinnedAndOtherDevices = () =>
+    allHosts.some((host) => host.Pinned) && allHosts.some((host) => !host.Pinned);
   const shouldShowPinnedHeading = (index: number, host: { Pinned: boolean }) =>
-    index === 0 && host.Pinned === true;
+    hasPinnedAndOtherDevices()
+    && index === 0
+    && host.Pinned === true;
   const shouldShowOtherSeparator = (index: number, host: { Pinned: boolean }) =>
-    index > 0
+    hasPinnedAndOtherDevices()
+    && index > 0
     && !host.Pinned
     && allHosts[index - 1]?.Pinned === true;
-  const deviceTableColumnCount = () => hasMultipleIfaces() ? 11 : 10;
+  const deviceTableColumnCount = () => hasMultipleIfaces() ? 10 : 9;
 
   return (
     <>
