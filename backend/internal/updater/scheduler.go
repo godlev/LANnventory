@@ -7,11 +7,12 @@ import (
 )
 
 type AutoConfig struct {
-	CurrentVersion string
-	Channel        string
-	Automatic      bool
-	IntervalHours  int
-	HealthURL      string
+	CurrentVersion   string
+	Channel          string
+	AutomaticCheck   bool
+	AutomaticInstall bool
+	IntervalHours    int
+	HealthURL        string
 }
 
 type AutoScheduler struct {
@@ -52,7 +53,7 @@ func (s *AutoScheduler) NotifyConfigChanged() {
 
 func (s *AutoScheduler) RunOnce(ctx context.Context) error {
 	config := s.readConfig()
-	if !config.Automatic {
+	if !config.AutomaticCheck && !config.AutomaticInstall {
 		return nil
 	}
 
@@ -62,7 +63,7 @@ func (s *AutoScheduler) RunOnce(ctx context.Context) error {
 		s.log().Warn("Automatic update check failed", "err", err)
 		return err
 	}
-	if status.Updating || !status.Available {
+	if status.Updating || !status.Available || !config.AutomaticInstall {
 		return nil
 	}
 	if !status.InstallSupported {
@@ -115,6 +116,9 @@ func (s *AutoScheduler) readConfig() AutoConfig {
 	}
 	config := s.Config()
 	config.Channel = NormalizeChannel(config.Channel)
+	if config.AutomaticInstall {
+		config.AutomaticCheck = true
+	}
 	config.IntervalHours = NormalizeAutoIntervalHours(config.IntervalHours)
 	return config
 }
