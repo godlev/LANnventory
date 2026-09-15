@@ -107,7 +107,7 @@ func TestSafePathComponent(t *testing.T) {
 func TestAutoSchedulerDisabledDoesNotCheckOrInstall(t *testing.T) {
 	scheduler := &AutoScheduler{
 		Config: func() AutoConfig {
-			return AutoConfig{CurrentVersion: "0.1.0", Channel: BetaChannel, Automatic: false, IntervalHours: 24}
+			return AutoConfig{CurrentVersion: "0.1.0", Channel: BetaChannel, AutomaticCheck: false, AutomaticInstall: false, IntervalHours: 24}
 		},
 		Check: func(context.Context, string, string, bool) (Status, error) {
 			t.Fatal("Check called while automatic updates disabled")
@@ -124,11 +124,42 @@ func TestAutoSchedulerDisabledDoesNotCheckOrInstall(t *testing.T) {
 	}
 }
 
+func TestAutoSchedulerCheckOnlyNeverInstalls(t *testing.T) {
+	checks := 0
+	scheduler := &AutoScheduler{
+		Config: func() AutoConfig {
+			return AutoConfig{
+				CurrentVersion:   "0.1.0",
+				Channel:          BetaChannel,
+				AutomaticCheck:   true,
+				AutomaticInstall: false,
+				IntervalHours:    24,
+			}
+		},
+		Check: func(context.Context, string, string, bool) (Status, error) {
+			checks++
+			return Status{Available: true, InstallSupported: true, LatestVersion: "0.1.1"}, nil
+		},
+		Schedule: func(context.Context, string, string, string, string) (ApplyResult, error) {
+			t.Fatal("Schedule called while automatic installation is disabled")
+			return ApplyResult{}, nil
+		},
+	}
+
+	if err := scheduler.RunOnce(context.Background()); err != nil {
+		t.Fatalf("RunOnce: %v", err)
+	}
+	if checks != 1 {
+		t.Fatalf("checks = %d, want 1", checks)
+	}
+}
+
+
 func TestAutoSchedulerNoNewerVersionDoesNotInstall(t *testing.T) {
 	checks := 0
 	scheduler := &AutoScheduler{
 		Config: func() AutoConfig {
-			return AutoConfig{CurrentVersion: "0.1.0", Channel: BetaChannel, Automatic: true, IntervalHours: 24}
+			return AutoConfig{CurrentVersion: "0.1.0", Channel: BetaChannel, AutomaticCheck: true, AutomaticInstall: true, IntervalHours: 24}
 		},
 		Check: func(context.Context, string, string, bool) (Status, error) {
 			checks++
@@ -156,7 +187,7 @@ func TestAutoSchedulerSchedulesSupportedUpdate(t *testing.T) {
 	}
 	scheduler := &AutoScheduler{
 		Config: func() AutoConfig {
-			return AutoConfig{CurrentVersion: "0.1.0", Channel: BetaChannel, Automatic: true, IntervalHours: 24}
+			return AutoConfig{CurrentVersion: "0.1.0", Channel: BetaChannel, AutomaticCheck: true, AutomaticInstall: true, IntervalHours: 24}
 		},
 		Check: func(context.Context, string, string, bool) (Status, error) {
 			return Status{Available: true, InstallSupported: true, LatestVersion: "0.1.1"}, nil
@@ -182,7 +213,7 @@ func TestAutoSchedulerFailureDoesNotStopFutureRuns(t *testing.T) {
 	wantErr := errors.New("temporary")
 	scheduler := &AutoScheduler{
 		Config: func() AutoConfig {
-			return AutoConfig{CurrentVersion: "0.1.0", Channel: BetaChannel, Automatic: true, IntervalHours: 24}
+			return AutoConfig{CurrentVersion: "0.1.0", Channel: BetaChannel, AutomaticCheck: true, AutomaticInstall: true, IntervalHours: 24}
 		},
 		Check: func(context.Context, string, string, bool) (Status, error) {
 			checks++
@@ -211,7 +242,7 @@ func TestAutoSchedulerFailureDoesNotStopFutureRuns(t *testing.T) {
 func TestAutoSchedulerSkipsUnsupportedInstall(t *testing.T) {
 	scheduler := &AutoScheduler{
 		Config: func() AutoConfig {
-			return AutoConfig{CurrentVersion: "0.1.0", Channel: StableChannel, Automatic: true, IntervalHours: 24}
+			return AutoConfig{CurrentVersion: "0.1.0", Channel: StableChannel, AutomaticCheck: true, AutomaticInstall: true, IntervalHours: 24}
 		},
 		Check: func(context.Context, string, string, bool) (Status, error) {
 			return Status{Available: true, InstallSupported: false, InstallReason: "not a package install"}, nil
@@ -255,5 +286,53 @@ func TestAutoSchedulerNotifyConfigChangedCoalesces(t *testing.T) {
 	case <-scheduler.configChanged:
 		t.Fatal("duplicate config-change notification was queued")
 	default:
+	}
+}
+
+func TestExtractReleaseSummaryPrefersSummarySection(t *testing.T) {
+	markdown := "# Release\n\n## Summary\n- First item\n- Second item\n\n## Details\n- Not included\n"
+	got := extractReleaseSummary(markdown)
+	want := "- First item\n- Second item"
+	if got != want {
+		t.Fatalf("extractReleaseSummary() = %q, want %q", got, want)
+	}
+}
+
+func TestExtractReleaseSummaryFallsBackToHighlights(t *testing.T) {
+	markdown := "# Release\n\n## Highlights\n### Updates\n- Automatic checks\n- Local notes\n\n## Validation\n- Not included\n"
+	got := extractReleaseSummary(markdown)
+	want := "Updates:\n- Automatic checks\n- Local notes"
+	if got != want {
+		t.Fatalf("extractReleaseSummary() = %q, want %q", got, want)
+	}
+}
+
+func TestCheckCachedDoesNotContactReleaseServer(t *testing.T) {
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		_, _ = w.Write([]byte(`[{"tag_name":"v0.1.1","prerelease":true,"draft":false,"assets":[]}]`))
+	}))
+	defer server.Close()
+
+	service := NewServiceWithURL(server.Client(), server.URL)
+	status := service.CheckCached("0.1.0", BetaChannel)
+	if requests != 0 {
+		t.Fatalf("cached status performed %d HTTP requests, want 0", requests)
+	}
+	if status.Available {
+		t.Fatalf("empty cache unexpectedly reported update: %+v", status)
+	}
+
+	if _, err := service.Check(context.Background(), "0.1.0", BetaChannel, true); err != nil {
+		t.Fatalf("Check: %v", err)
+	}
+	requests = 0
+	status = service.CheckCached("0.1.0", BetaChannel)
+	if requests != 0 {
+		t.Fatalf("cached status performed %d HTTP requests after cache fill, want 0", requests)
+	}
+	if !status.Available || status.LatestVersion != "0.1.1" {
+		t.Fatalf("cached status = %+v", status)
 	}
 }
