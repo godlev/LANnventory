@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/linde12/gowol"
@@ -20,6 +21,22 @@ var portIsOpen = portscan.IsOpen
 type hostPortScanResponse struct {
 	Port int  `json:"port"`
 	Open bool `json:"open"`
+}
+
+type hostPortScanRangeRequest struct {
+	StartPort int `json:"startPort"`
+	EndPort   int `json:"endPort"`
+}
+
+type hostPortStateResponse struct {
+	HostID      int    `json:"hostId"`
+	Port        int    `json:"port"`
+	Protocol    string `json:"protocol"`
+	Open        bool   `json:"open"`
+	Service     string `json:"service"`
+	FirstSeen   string `json:"firstSeen"`
+	LastScanned string `json:"lastScanned"`
+	LastChanged string `json:"lastChanged"`
 }
 
 // getPortState godoc
@@ -75,14 +92,153 @@ func scanHostPort(c *gin.Context) {
 
 	port := strconv.Itoa(portNumber)
 	open := portIsOpen(host.IP, port)
-	if open {
-		if err := gdb.AddEvent(models.NewHostEvent(host, models.EventPortOpen, "", port)); err != nil {
-			c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to record port scan event"})
-			return
-		}
+	if _, err := gdb.ReconcileHostPortObservations(
+		host,
+		map[int]bool{portNumber: open},
+		time.Now().Format(models.HostEventDateLayout),
+	); err != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to persist port scan state"})
+		return
 	}
 
 	c.IndentedJSON(http.StatusOK, hostPortScanResponse{Port: portNumber, Open: open})
+}
+
+
+// startHostPortScan godoc
+// @Summary      Start host port range scan
+// @Description  Start an asynchronous bounded-concurrency TCP port scan for a current host.
+// @Tags         network
+// @Accept       json
+// @Produce      json
+// @Param        id       path      int                       true  "Host ID"
+// @Param        request  body      hostPortScanRangeRequest  true  "Port range"
+// @Success      202      {object}  portScanJobStatus
+// @Failure      400      {object}  map[string]string
+// @Failure      409      {object}  map[string]string
+// @Router       /host/{id}/ports/scan [post]
+func startHostPortScan(c *gin.Context) {
+	host, err := getHostByID(c.Param("id"))
+	if err != nil || host.ID < 1 {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": errInvalidHostID.Error()})
+		return
+	}
+	if strings.TrimSpace(host.IP) == "" {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "host has no current IP"})
+		return
+	}
+
+	var req hostPortScanRangeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid port scan request"})
+		return
+	}
+	if req.StartPort < 1 || req.StartPort > 65535 || req.EndPort < 1 || req.EndPort > 65535 {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "port range must be between 1 and 65535"})
+		return
+	}
+	if req.StartPort > req.EndPort {
+		req.StartPort, req.EndPort = req.EndPort, req.StartPort
+	}
+
+	status, err := portScanJobs.Start(host, req.StartPort, req.EndPort)
+	if err == errPortScanInProgress {
+		c.IndentedJSON(http.StatusConflict, gin.H{"error": err.Error()})
+		return
+	}
+	if err != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to start port scan"})
+		return
+	}
+
+	c.IndentedJSON(http.StatusAccepted, status)
+}
+
+// getHostPortScanStatus godoc
+// @Summary      Get host port scan status
+// @Tags         network
+// @Produce      json
+// @Param        id      path      int     true  "Host ID"
+// @Param        scanId  path      string  true  "Scan job ID"
+// @Success      200     {object}  portScanJobStatus
+// @Failure      404     {object}  map[string]string
+// @Router       /host/{id}/ports/scan/{scanId} [get]
+func getHostPortScanStatus(c *gin.Context) {
+	host, err := getHostByID(c.Param("id"))
+	if err != nil || host.ID < 1 {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": errInvalidHostID.Error()})
+		return
+	}
+
+	status, ok := portScanJobs.Status(host.ID, c.Param("scanId"))
+	if !ok {
+		c.IndentedJSON(http.StatusNotFound, gin.H{"error": "port scan job not found"})
+		return
+	}
+	c.IndentedJSON(http.StatusOK, status)
+}
+
+// cancelHostPortScan godoc
+// @Summary      Cancel host port scan
+// @Tags         network
+// @Produce      json
+// @Param        id      path      int     true  "Host ID"
+// @Param        scanId  path      string  true  "Scan job ID"
+// @Success      200     {object}  portScanJobStatus
+// @Failure      404     {object}  map[string]string
+// @Router       /host/{id}/ports/scan/{scanId} [delete]
+func cancelHostPortScan(c *gin.Context) {
+	host, err := getHostByID(c.Param("id"))
+	if err != nil || host.ID < 1 {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": errInvalidHostID.Error()})
+		return
+	}
+
+	status, ok := portScanJobs.Cancel(host.ID, c.Param("scanId"))
+	if !ok {
+		c.IndentedJSON(http.StatusNotFound, gin.H{"error": "port scan job not found"})
+		return
+	}
+	c.IndentedJSON(http.StatusOK, status)
+}
+
+// getHostPorts godoc
+// @Summary      Get persisted host port states
+// @Description  Return ports previously observed open for a host, plus any later closed transitions retained for history.
+// @Tags         network
+// @Produce      json
+// @Param        id  path      int  true  "Host ID"
+// @Success      200 {array}   hostPortStateResponse
+// @Failure      400 {object}  map[string]string
+// @Failure      500 {object}  map[string]string
+// @Router       /host/{id}/ports [get]
+func getHostPorts(c *gin.Context) {
+	host, err := getHostByID(c.Param("id"))
+	if err != nil || host.ID < 1 {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": errInvalidHostID.Error()})
+		return
+	}
+
+	states, err := gdb.SelectHostPorts(host.ID)
+	if err != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to load host port states"})
+		return
+	}
+
+	response := make([]hostPortStateResponse, 0, len(states))
+	for _, state := range states {
+		response = append(response, hostPortStateResponse{
+			HostID:      state.HostID,
+			Port:        state.Port,
+			Protocol:    state.Protocol,
+			Open:        state.Open,
+			Service:     portscan.ServiceName(state.Port),
+			FirstSeen:   state.FirstSeen,
+			LastScanned: state.LastScanned,
+			LastChanged: state.LastChanged,
+		})
+	}
+	c.IndentedJSON(http.StatusOK, response)
 }
 
 // sendWOL godoc
