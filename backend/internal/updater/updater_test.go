@@ -2,10 +2,12 @@ package updater
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestComparableVersionNormalizesSnapshots(t *testing.T) {
