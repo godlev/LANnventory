@@ -94,7 +94,10 @@ func DeleteCurrentHostWithMetadata(host models.Host) error {
 		if err := deleteHostMetadataByMAC(txDB, host.Mac); err != nil {
 			return err
 		}
-		return deleteHostLifecycleByMAC(txDB, host.Mac)
+		if err := deleteHostLifecycleByMAC(txDB, host.Mac); err != nil {
+			return err
+		}
+		return deleteHostPortsByHostID(txDB, host.ID)
 	})
 }
 
