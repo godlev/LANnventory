@@ -3832,6 +3832,17 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     padding-top: 0.72rem;
     border-top: 1px solid var(--wyl-panel-border);
 }
+.host-scan-progress-wrap {
+    display: grid;
+    flex: 1 1 auto;
+    gap: 0.32rem;
+    min-width: 0;
+}
+.host-port-progress {
+    width: 100%;
+    height: 0.48rem;
+    accent-color: var(--wyl-link);
+}
 .host-stop-button,
 .btn.host-stop-button {
     color: var(--wyl-accent-unknown);
@@ -3841,17 +3852,30 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     color: var(--wyl-muted);
     font-size: 0.86rem;
 }
+.host-found-ports-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    margin-top: 0.75rem;
+    color: var(--wyl-muted);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.035em;
+    text-transform: uppercase;
+}
 .host-found-ports {
     display: flex;
     flex-wrap: wrap;
     gap: 0.4rem;
-    margin-top: 0.72rem;
+    margin-top: 0.42rem;
     min-height: 1.65rem;
 }
 .host-port-chip {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    gap: 0.34rem;
     min-width: 2.4rem;
     padding: 0.18rem 0.48rem;
     color: var(--wyl-link);
@@ -3860,6 +3884,16 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     border-radius: 6px;
     font-size: 0.82rem;
     text-decoration: none;
+}
+.host-port-service {
+    color: var(--wyl-muted);
+    font-size: 0.68rem;
+    font-weight: 700;
+}
+.host-port-empty {
+    align-self: center;
+    color: var(--wyl-muted);
+    font-size: 0.78rem;
 }
 .host-port-chip:hover,
 .host-port-chip:focus-visible {
