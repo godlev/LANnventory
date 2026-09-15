@@ -71,9 +71,11 @@ jobs:
           run_audit_with_retries npm audit
           run_audit_with_retries npm audit --omit=dev
 
-      - name: Build frontend
+      - name: Build frontend and verify embedded bundle
         working-directory: frontend
-        run: npm run build
+        run: |
+          make all
+          git diff --exit-code -- ../backend/internal/web/public
 
       - name: Check mock API syntax
         run: node --check frontend/dev/mock-api.mjs
