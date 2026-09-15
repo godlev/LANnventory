@@ -12,6 +12,8 @@ All notable changes to this project will be documented in this file.
 - Open-port activity events so newly discovered open ports are recorded in Host activity.
 - Stable/Beta update channel selection in Settings.
 - One-click update status, check and install controls backed by verified GitHub release packages.
+- Optional automatic updates using the selected Stable/Beta channel and configurable 6-hour, 12-hour, 24-hour or 7-day check intervals.
+- Last-checked timestamp and direct release-notes link in Settings → Updates.
 - Versioned pre-update recovery backups for the current LANnventory binary and /etc/watchyourlan data.
 - Post-update service and health validation using the configured LANnventory bind address.
 
