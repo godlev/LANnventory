@@ -97,6 +97,16 @@ func TestBackupExportEndpointIncludesStableDataAndMetadata(t *testing.T) {
 	if err := gdb.RecordHostObservation("AA:BB:CC:DD:EE:01", "2026-09-05 08:00:00"); err != nil {
 		t.Fatalf("RecordHostObservation router: %v", err)
 	}
+	if _, err := gdb.ReconcileHostPortObservations(models.Host{
+		ID: 1, Name: "router", IP: "192.168.1.1", Mac: "AA:BB:CC:DD:EE:01", Iface: "eth0",
+	}, map[int]bool{443: true}, "2026-09-05 10:05:00"); err != nil {
+		t.Fatalf("ReconcileHostPortObservations router: %v", err)
+	}
+	if _, err := gdb.ReconcileHostPortObservations(models.Host{
+		ID: 2, Name: "NAS", IP: "192.168.1.20", Mac: "AA:BB:CC:DD:EE:20", Iface: "eth0", DeviceType: "nas",
+	}, map[int]bool{445: true}, "2026-09-05 10:06:00"); err != nil {
+		t.Fatalf("ReconcileHostPortObservations NAS: %v", err)
+	}
 
 	rec := getPath(router, "/api/export/backup")
 	if rec.Code != http.StatusOK {
@@ -169,9 +179,18 @@ func TestBackupExportEndpointIncludesStableDataAndMetadata(t *testing.T) {
 
 	assertExportHostIDs(t, document.Data.CurrentHosts, []int{1, 2}, "current hosts")
 	assertExportHostIDs(t, document.Data.History, []int{10, 20}, "history")
-	assertExportEventIDs(t, document.Data.Events, []int{1, 2}, "events")
+	assertExportEventIDs(t, document.Data.Events, []int{1, 2, 3, 4}, "events")
 	assertExportMetadataMACs(t, document.Data.HostMetadata, []string{"AA:BB:CC:DD:EE:01", "AA:BB:CC:DD:EE:20"})
 	assertExportLifecycleMACs(t, document.Data.HostLifecycle, []string{"AA:BB:CC:DD:EE:01", "AA:BB:CC:DD:EE:20"})
+	if len(document.Data.HostPorts) != 2 {
+		t.Fatalf("host ports len = %d, want 2: %+v", len(document.Data.HostPorts), document.Data.HostPorts)
+	}
+	if document.Data.HostPorts[0].HostID != 1 || document.Data.HostPorts[0].Port != 443 || !document.Data.HostPorts[0].Open || document.Data.HostPorts[0].Protocol != "tcp" {
+		t.Fatalf("router port backup = %+v, want host 1 tcp/443 open", document.Data.HostPorts[0])
+	}
+	if document.Data.HostPorts[1].HostID != 2 || document.Data.HostPorts[1].Port != 445 || !document.Data.HostPorts[1].Open || document.Data.HostPorts[1].Protocol != "tcp" {
+		t.Fatalf("NAS port backup = %+v, want host 2 tcp/445 open", document.Data.HostPorts[1])
+	}
 	assertStringSlice(t, document.Data.HostMetadata[0].Tags, routerTags, "router metadata tags")
 	assertStringSlice(t, document.Data.HostMetadata[1].Tags, nasTags, "nas metadata tags")
 	if !document.Data.HostMetadata[0].Pinned {
@@ -196,7 +215,8 @@ func TestBackupExportEndpointEmptyTablesUsesArrays(t *testing.T) {
 		!strings.Contains(rec.Body.String(), `"history": []`) ||
 		!strings.Contains(rec.Body.String(), `"events": []`) ||
 		!strings.Contains(rec.Body.String(), `"hostMetadata": []`) ||
-		!strings.Contains(rec.Body.String(), `"hostLifecycle": []`) {
+		!strings.Contains(rec.Body.String(), `"hostLifecycle": []`) ||
+		!strings.Contains(rec.Body.String(), `"hostPorts": []`) {
 		t.Fatalf("empty backup did not encode empty arrays: %s", rec.Body.String())
 	}
 }
