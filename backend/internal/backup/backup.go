@@ -12,7 +12,7 @@ import (
 
 const (
 	Format        = "lannventory-backup"
-	FormatVersion = 3
+	FormatVersion = 4
 )
 
 // Document is the stable, versioned logical backup format.
@@ -32,6 +32,7 @@ type Data struct {
 	Events        []Event         `json:"events"`
 	HostMetadata  []HostMetadata  `json:"hostMetadata"`
 	HostLifecycle []HostLifecycle `json:"hostLifecycle"`
+	HostPorts     []HostPort      `json:"hostPorts"`
 }
 
 // Host mirrors the currently persisted host columns in the now/history tables.
@@ -83,6 +84,16 @@ type HostLifecycle struct {
 	FirstSeenEstimated bool   `json:"firstSeenEstimated"`
 }
 
+type HostPort struct {
+	HostID      int    `json:"hostId"`
+	Port        int    `json:"port"`
+	Protocol    string `json:"protocol"`
+	Open        bool   `json:"open"`
+	FirstSeen   string `json:"firstSeen"`
+	LastScanned string `json:"lastScanned"`
+	LastChanged string `json:"lastChanged"`
+}
+
 // InventoryHost is the current-inventory CSV representation.
 type InventoryHost struct {
 	Host
@@ -128,13 +139,14 @@ func NewDocument(data Data, appVersion string, createdAt time.Time) Document {
 	}
 }
 
-func DataFromModels(currentHosts, history []models.Host, events []models.HostEvent, hostMetadata []models.HostMetadata, hostLifecycle []models.HostLifecycle) Data {
+func DataFromModels(currentHosts, history []models.Host, events []models.HostEvent, hostMetadata []models.HostMetadata, hostLifecycle []models.HostLifecycle, hostPorts []models.HostPort) Data {
 	data := Data{
 		CurrentHosts:  make([]Host, 0, len(currentHosts)),
 		History:       make([]Host, 0, len(history)),
 		Events:        make([]Event, 0, len(events)),
 		HostMetadata:  make([]HostMetadata, 0, len(hostMetadata)),
 		HostLifecycle: make([]HostLifecycle, 0, len(hostLifecycle)),
+		HostPorts:     make([]HostPort, 0, len(hostPorts)),
 	}
 
 	for _, host := range currentHosts {
@@ -151,6 +163,9 @@ func DataFromModels(currentHosts, history []models.Host, events []models.HostEve
 	}
 	for _, lifecycle := range hostLifecycle {
 		data.HostLifecycle = append(data.HostLifecycle, HostLifecycleFromModel(lifecycle))
+	}
+	for _, port := range hostPorts {
+		data.HostPorts = append(data.HostPorts, HostPortFromModel(port))
 	}
 
 	return data
@@ -205,6 +220,18 @@ func HostLifecycleFromModel(lifecycle models.HostLifecycle) HostLifecycle {
 		FirstSeen:          lifecycle.FirstSeen,
 		LastSeen:           lifecycle.LastSeen,
 		FirstSeenEstimated: lifecycle.FirstSeenEstimated,
+	}
+}
+
+func HostPortFromModel(port models.HostPort) HostPort {
+	return HostPort{
+		HostID:      port.HostID,
+		Port:        port.Port,
+		Protocol:    port.Protocol,
+		Open:        port.Open,
+		FirstSeen:   port.FirstSeen,
+		LastScanned: port.LastScanned,
+		LastChanged: port.LastChanged,
 	}
 }
 
@@ -273,6 +300,9 @@ func normalizeData(data Data) Data {
 	}
 	if data.HostLifecycle == nil {
 		data.HostLifecycle = []HostLifecycle{}
+	}
+	if data.HostPorts == nil {
+		data.HostPorts = []HostPort{}
 	}
 
 	return data
