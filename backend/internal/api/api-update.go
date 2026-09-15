@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"sync"
 
 	"github.com/gin-gonic/gin"
 
@@ -14,6 +15,11 @@ import (
 )
 
 var updateService = updater.NewService()
+
+var (
+	updateSchedulerMu sync.RWMutex
+	updateScheduler   *updater.AutoScheduler
+)
 
 type updateChannelRequest struct {
 	Channel string `json:"channel"`
@@ -64,7 +70,30 @@ func StartUpdateScheduler(ctx context.Context) {
 			IntervalHours:  config.UpdateCheckIntervalHours,
 		}
 	})
+
+	updateSchedulerMu.Lock()
+	updateScheduler = scheduler
+	updateSchedulerMu.Unlock()
+
 	scheduler.Start(ctx)
+
+	go func() {
+		<-ctx.Done()
+		updateSchedulerMu.Lock()
+		if updateScheduler == scheduler {
+			updateScheduler = nil
+		}
+		updateSchedulerMu.Unlock()
+	}()
+}
+
+func notifyUpdateSchedulerConfigChanged() {
+	updateSchedulerMu.RLock()
+	scheduler := updateScheduler
+	updateSchedulerMu.RUnlock()
+	if scheduler != nil {
+		scheduler.NotifyConfigChanged()
+	}
 }
 
 // getUpdateStatus godoc
@@ -120,6 +149,7 @@ func saveUpdateChannel(c *gin.Context) {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to persist update channel"})
 		return
 	}
+	notifyUpdateSchedulerConfigChanged()
 
 	status, err := updateService.Check(c.Request.Context(), nextConfig.Version, channel, true)
 	if err != nil {
@@ -168,6 +198,7 @@ func saveUpdateSettings(c *gin.Context) {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to persist update settings"})
 		return
 	}
+	notifyUpdateSchedulerConfigChanged()
 
 	status, err := updateService.Check(c.Request.Context(), nextConfig.Version, channel, true)
 	if err != nil {
