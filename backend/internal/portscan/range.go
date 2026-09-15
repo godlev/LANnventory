@@ -75,11 +75,10 @@ func ScanRange(
 					return
 				}
 				open := IsOpenContext(ctx, host, port, timeout)
-				select {
-				case results <- Result{Port: port, Open: open}:
-				case <-ctx.Done():
+				if ctx.Err() != nil {
 					return
 				}
+				results <- Result{Port: port, Open: open}
 			}
 		}()
 	}
