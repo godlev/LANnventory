@@ -46,6 +46,14 @@ func ReconcileHostPortObservations(host models.Host, observations map[int]bool, 
 	defer release()
 
 	err = activeDB.Transaction(func(txDB *gorm.DB) error {
+		var currentHost models.Host
+		if err := txDB.Table("now").
+			Select("ID", "MAC").
+			Where("\"ID\" = ? AND \"MAC\" = ?", host.ID, host.Mac).
+			First(&currentHost).Error; err != nil {
+			return err
+		}
+
 		existing := []models.HostPort{}
 		if err := txDB.Table(hostPortsTable).
 			Where("\"HOST_ID\" = ? AND \"PROTOCOL\" = ?", host.ID, "tcp").
