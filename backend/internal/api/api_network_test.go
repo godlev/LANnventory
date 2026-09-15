@@ -250,6 +250,20 @@ func TestHostPortRangeScanCanBeCancelled(t *testing.T) {
 	status := startRangeScanRequest(t, router, host.ID, 1, 100)
 	<-started
 
+	activeReq := httptest.NewRequest(http.MethodGet, "/api/host/"+strconv.Itoa(host.ID)+"/ports/scan", nil)
+	activeRec := httptest.NewRecorder()
+	router.ServeHTTP(activeRec, activeReq)
+	if activeRec.Code != http.StatusOK {
+		t.Fatalf("active scan status = %d; body: %s", activeRec.Code, activeRec.Body.String())
+	}
+	var active portScanJobStatus
+	if err := json.Unmarshal(activeRec.Body.Bytes(), &active); err != nil {
+		t.Fatalf("json.Unmarshal active scan: %v", err)
+	}
+	if active.ID != status.ID || !active.Running {
+		t.Fatalf("active scan = %+v, want running job %s", active, status.ID)
+	}
+
 	req := httptest.NewRequest(http.MethodDelete, "/api/host/"+strconv.Itoa(host.ID)+"/ports/scan/"+status.ID, nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -260,6 +274,13 @@ func TestHostPortRangeScanCanBeCancelled(t *testing.T) {
 	status = waitForRangeScan(t, router, host.ID, status.ID)
 	if !status.Completed || !status.Cancelled || status.Running {
 		t.Fatalf("cancelled scan status = %+v", status)
+	}
+
+	activeReq = httptest.NewRequest(http.MethodGet, "/api/host/"+strconv.Itoa(host.ID)+"/ports/scan", nil)
+	activeRec = httptest.NewRecorder()
+	router.ServeHTTP(activeRec, activeReq)
+	if activeRec.Code != http.StatusNotFound {
+		t.Fatalf("active scan after completion status = %d, want %d; body: %s", activeRec.Code, http.StatusNotFound, activeRec.Body.String())
 	}
 }
 
