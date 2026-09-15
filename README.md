@@ -149,10 +149,11 @@ Recent release-readiness work includes:
 - Stored sensitive configuration values are no longer returned by `/api/config`.
 - Secret settings are write-only in the Settings UI and can be kept, replaced or explicitly cleared.
 
-### Remaining validation work before the first beta
+### Remaining beta validation work
 
-- PostgreSQL runtime integration testing is still required.
-- The race detector has not been run in the current Windows development environment because CGO/gcc is unavailable there.
+- PostgreSQL runtime integration testing is still required before PostgreSQL can be treated as a fully validated deployment path.
+- SQLite remains the primary packaging-validated database path.
+- GitHub Packaging Check runs the backend race detector on Linux even when a local development environment cannot run it.
 
 ## Security and exposure
 
