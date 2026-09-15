@@ -71,6 +71,7 @@ type ApplyResult struct {
 	Version string `json:"version"`
 	Scheduled bool `json:"scheduled"`
 	Message string `json:"message"`
+	BackupPath string `json:"backupPath"`
 }
 
 type Service struct {
@@ -153,7 +154,7 @@ func (s *Service) Check(ctx context.Context, currentVersion, channel string, ref
 	return status, nil
 }
 
-func (s *Service) Schedule(ctx context.Context, currentVersion, channel, expectedVersion string) (ApplyResult, error) {
+func (s *Service) Schedule(ctx context.Context, currentVersion, channel, expectedVersion, healthURL string) (ApplyResult, error) {
 	s.mu.Lock()
 	if s.updating {
 		s.mu.Unlock()
@@ -239,14 +240,35 @@ func (s *Service) Schedule(ctx context.Context, currentVersion, channel, expecte
 		return ApplyResult{}, fmt.Errorf("write package: %w", err)
 	}
 
+	healthURL = strings.TrimSpace(healthURL)
+	if healthURL == "" {
+		healthURL = "http://127.0.0.1:8840/api/health"
+	}
+	backupDir := filepath.Join(
+		"/var/lib/lannventory/update-backups",
+		fmt.Sprintf("%s-to-%s-%d", safePathComponent(currentVersion), safePathComponent(targetVersion), s.now().Unix()),
+	)
+
 	scriptPath := filepath.Join(updateDir, "apply-update.sh")
 	script := "#!/bin/sh\n" +
 		"set -eu\n" +
 		"sleep 2\n" +
 		"echo " + shellQuote(actualHashHex+"  "+debPath) + " | sha256sum -c -\n" +
+		"mkdir -p " + shellQuote(backupDir) + "\n" +
+		"cp -a /usr/bin/lannventory " + shellQuote(filepath.Join(backupDir, "lannventory")) + "\n" +
+		"printf '%s\\n' " + shellQuote("from="+currentVersion) + " " + shellQuote("to="+targetVersion) + " > " + shellQuote(filepath.Join(backupDir, "update.txt")) + "\n" +
+		"systemctl stop lannventory\n" +
+		"if [ -d /etc/watchyourlan ]; then cp -a /etc/watchyourlan " + shellQuote(filepath.Join(backupDir, "watchyourlan")) + "; fi\n" +
+		"recover_service() { systemctl daemon-reload >/dev/null 2>&1 || true; systemctl start lannventory >/dev/null 2>&1 || true; echo 'LANnventory update did not complete successfully. Recovery files are preserved at " + backupDir + "' >&2; }\n" +
+		"trap recover_service EXIT\n" +
 		"dpkg -i " + shellQuote(debPath) + "\n" +
 		"systemctl daemon-reload\n" +
-		"systemctl restart lannventory\n" +
+		"systemctl start lannventory\n" +
+		"healthy=0\n" +
+		"i=0\n" +
+		"while [ \"$i\" -lt 45 ]; do if systemctl is-active --quiet lannventory && curl -fsS --max-time 3 " + shellQuote(healthURL) + " >/dev/null 2>&1; then healthy=1; break; fi; i=$((i + 1)); sleep 2; done\n" +
+		"if [ \"$healthy\" -ne 1 ]; then echo 'LANnventory did not pass the post-update health check at " + healthURL + "' >&2; exit 1; fi\n" +
+		"trap - EXIT\n" +
 		"rm -rf " + shellQuote(updateDir) + "\n"
 	if err := os.WriteFile(scriptPath, []byte(script), 0o700); err != nil {
 		return ApplyResult{}, fmt.Errorf("write update helper: %w", err)
@@ -260,7 +282,12 @@ func (s *Service) Schedule(ctx context.Context, currentVersion, channel, expecte
 
 	scheduled = true
 	cleanup = false
-	return ApplyResult{Version: targetVersion, Scheduled: true, Message: "Update scheduled. LANnventory will restart automatically."}, nil
+	return ApplyResult{
+		Version: targetVersion,
+		Scheduled: true,
+		Message: "Update scheduled. LANnventory will back up its current data, install the verified package, restart, and run a health check.",
+		BackupPath: backupDir,
+	}, nil
 }
 
 func (s *Service) isUpdating() bool {
@@ -389,7 +416,7 @@ func detectInstallSupport(selected release) (bool, string, releaseAsset, release
 	if os.Geteuid() != 0 {
 		return false, "LANnventory must run as root to install package updates.", releaseAsset{}, releaseAsset{}
 	}
-	for _, command := range []string{"dpkg", "dpkg-query", "systemctl", "systemd-run", "sha256sum"} {
+	for _, command := range []string{"curl", "dpkg", "dpkg-query", "systemctl", "systemd-run", "sha256sum"} {
 		if _, err := exec.LookPath(command); err != nil {
 			return false, command + " is not available on this system.", releaseAsset{}, releaseAsset{}
 		}
@@ -459,6 +486,29 @@ func checksumForFile(data []byte, filename string) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("checksums.txt does not contain %s", filename)
+}
+
+func safePathComponent(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return "unknown"
+	}
+	var out strings.Builder
+	for _, r := range value {
+		switch {
+		case r >= 'a' && r <= 'z':
+			out.WriteRune(r)
+		case r >= 'A' && r <= 'Z':
+			out.WriteRune(r)
+		case r >= '0' && r <= '9':
+			out.WriteRune(r)
+		case r == '.', r == '-', r == '_':
+			out.WriteRune(r)
+		default:
+			out.WriteByte('_')
+		}
+	}
+	return out.String()
 }
 
 func shellQuote(value string) string {
