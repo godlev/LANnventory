@@ -561,7 +561,7 @@ main() {
   print_success
 }
 
-if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+if [[ -z "${BASH_SOURCE[0]:-}" || "${BASH_SOURCE[0]}" == "$0" ]]; then
   trap show_failure_diagnostics ERR
   main "$@"
 fi
