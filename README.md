@@ -266,6 +266,8 @@ See [proxmox/README.md](proxmox/README.md) for details.
 
 Debian package installations can use **Settings → Updates** to select the **Stable** or **Beta** channel, check GitHub Releases and install a newer matching LANnventory `.deb` package.
 
+For supported Debian-package/systemd installations, **Automatic updates** can also be enabled. LANnventory can check every **6 hours**, **12 hours**, **24 hours** or **7 days** and automatically schedule a newer compatible release through the same hardened installer used by the manual Update button. Changing the setting or interval reschedules the next automatic check from that point in time.
+
 The updater:
 
 - selects only LANnventory releases from the configured channel
