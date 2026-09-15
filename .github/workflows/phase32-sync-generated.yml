@@ -1,0 +1,66 @@
+name: Sync Phase 32 generated assets
+
+on:
+  push:
+    branches:
+      - phase-32-port-intelligence
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase-32-port-intelligence
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Format Go
+        run: |
+          gofmt -w backend/internal/models/host_port.go
+          gofmt -w backend/internal/models/host_event.go
+          gofmt -w backend/internal/portscan/range.go backend/internal/portscan/range_test.go backend/internal/portscan/services.go
+          gofmt -w backend/internal/gdb/ports.go backend/internal/gdb/ports_test.go backend/internal/gdb/start.go backend/internal/gdb/start_test.go backend/internal/gdb/edit.go backend/internal/gdb/export.go
+          gofmt -w backend/internal/api/api-portscan-jobs.go backend/internal/api/api-network.go backend/internal/api/api_network_test.go backend/internal/api/api-activity.go backend/internal/api/api_export_test.go backend/internal/api/routes.go
+          gofmt -w backend/internal/backup/backup.go
+
+      - name: Regenerate Swagger
+        working-directory: backend
+        run: go run github.com/swaggo/swag/cmd/swag@v1.16.6 init -g main.go --dir cmd/LANnventory,internal/api,internal/models
+
+      - name: Rebuild embedded frontend
+        working-directory: frontend
+        run: |
+          npm ci
+          make all
+
+      - name: Check mock syntax
+        run: node --check frontend/dev/mock-api.mjs
+
+      - name: Test backend
+        working-directory: backend
+        run: go test ./...
+
+      - name: Commit generated changes
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/docs backend/internal/web/public backend/internal frontend/src frontend/dev/mock-api.mjs
+          git commit -m "Format Phase 32 and regenerate generated assets"
+          git push origin HEAD:phase-32-port-intelligence
