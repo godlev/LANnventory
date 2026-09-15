@@ -36,6 +36,7 @@ func Routes(router *gin.Engine) {
 		r0.GET("/rescan", triggerRescan)    // api-system.go
 		r0.GET("/update/status", getUpdateStatus)
 		r0.POST("/update/channel", saveUpdateChannel)
+		r0.POST("/update/settings", saveUpdateSettings)
 		r0.POST("/update/apply", applyUpdate)
 
 		r0.GET("/history", getHistory)                  // api-history.go

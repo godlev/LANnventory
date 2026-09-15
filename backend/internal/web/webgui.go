@@ -80,6 +80,8 @@ func GuiContext(ctx context.Context) error {
 		Handler: NewRouter(),
 	}
 
+	api.StartUpdateScheduler(ctx)
+
 	go func() {
 		<-ctx.Done()
 

@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 const host = '127.0.0.1';
 const port = 8840;
 const now = '2026-08-23 10:15:00';
+const mockUpdateAvailable = process.env.LANNVENTORY_MOCK_UPDATE_AVAILABLE === '1';
 let nextActivityId = 1;
 const deviceTypes = new Set([
   '',
@@ -170,7 +171,11 @@ const config = {
   InfluxBucket: '',
   InfluxSkipTLS: false,
   PrometheusEnable: false,
+  UpdateChannel: 'beta',
+  UpdateAuto: false,
+  UpdateCheckIntervalHours: 24,
 };
+let mockUpdateLastChecked = new Date().toISOString();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const frontendPublicPath = path.resolve(__dirname, '../public/fs/public');
@@ -482,6 +487,43 @@ function publicConfig() {
     PGConnectConfigured: config.PGConnect !== '',
     InfluxToken: '',
     InfluxTokenConfigured: config.InfluxToken !== '',
+  };
+}
+
+function channelLabel(channel) {
+  return channel === 'stable' ? 'Stable' : 'Beta';
+}
+
+function isUpdateChannel(channel) {
+  return channel === 'stable' || channel === 'beta';
+}
+
+function isUpdateIntervalHours(value) {
+  return [6, 12, 24, 168].includes(Number(value));
+}
+
+function mockUpdateStatus(refresh = false) {
+  if (refresh) {
+    mockUpdateLastChecked = new Date().toISOString();
+  }
+
+  return {
+    currentVersion: config.Version,
+    channel: config.UpdateChannel,
+    latestVersion: '0.1.0-beta.2',
+    available: mockUpdateAvailable,
+    publishedAt: '2026-09-14T00:00:00Z',
+    releaseUrl: 'https://github.com/godlev/LANnventory/releases/tag/v0.1.0-beta.2',
+    installSupported: false,
+    installReason: 'Mock API does not install updates.',
+    message: mockUpdateAvailable
+      ? 'Update 0.1.0-beta.2 is available.'
+      : 'No newer ' + channelLabel(config.UpdateChannel) + ' release is available.',
+    updating: false,
+    automatic: config.UpdateAuto,
+    intervalHours: config.UpdateCheckIntervalHours,
+    lastChecked: mockUpdateLastChecked,
+    snapshotBaseVersion: '',
   };
 }
 
@@ -1016,6 +1058,11 @@ function routeReadOnly(req, res, url) {
     return true;
   }
 
+  if (req.method === 'GET' && pathname === '/api/update/status') {
+    sendJSON(res, mockUpdateStatus(url.searchParams.get('refresh') === '1' || url.searchParams.get('refresh') === 'true'));
+    return true;
+  }
+
   if (req.method === 'GET' && pathname === '/api/all') {
     sendJSON(res, fakeHosts.map(enrichHost));
     return true;
@@ -1252,6 +1299,47 @@ async function routeSafeAction(req, res, url) {
 
   if (req.method === 'GET' && pathname.startsWith('/api/port/')) {
     sendJSON(res, false);
+    return true;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/update/channel') {
+    const body = await readBody(req);
+    const params = parseRequestBody(body);
+    const channel = String(params.channel ?? '').trim().toLowerCase();
+    if (!isUpdateChannel(channel)) {
+      sendJSON(res, { error: 'update channel must be stable or beta' }, 400);
+      return true;
+    }
+
+    config.UpdateChannel = channel;
+    sendJSON(res, mockUpdateStatus(true));
+    return true;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/update/settings') {
+    const body = await readBody(req);
+    const params = parseRequestBody(body);
+    const channel = String(params.channel ?? '').trim().toLowerCase();
+    const intervalHours = Number(params.intervalHours);
+    if (!isUpdateChannel(channel)) {
+      sendJSON(res, { error: 'update channel must be stable or beta' }, 400);
+      return true;
+    }
+    if (!isUpdateIntervalHours(intervalHours)) {
+      sendJSON(res, { error: 'update interval must be 6, 12, 24, or 168 hours' }, 400);
+      return true;
+    }
+
+    config.UpdateChannel = channel;
+    config.UpdateAuto = params.automatic === true || params.automatic === 'true' || params.automatic === 'on';
+    config.UpdateCheckIntervalHours = intervalHours;
+    sendJSON(res, mockUpdateStatus(true));
+    return true;
+  }
+
+  if (req.method === 'POST' && pathname === '/api/update/apply') {
+    await readBody(req);
+    sendJSON(res, { error: 'mock update skipped' }, 409);
     return true;
   }
 

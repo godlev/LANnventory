@@ -39,6 +39,13 @@ var (
 	ErrUnsupportedInstall = errors.New("automatic install is not supported")
 )
 
+var validAutoIntervalHours = map[int]struct{}{
+	6:   {},
+	12:  {},
+	24:  {},
+	168: {},
+}
+
 type releaseAsset struct {
 	Name               string `json:"name"`
 	BrowserDownloadURL string `json:"browser_download_url"`
@@ -55,16 +62,20 @@ type release struct {
 }
 
 type Status struct {
-	CurrentVersion   string `json:"currentVersion"`
-	Channel          string `json:"channel"`
-	LatestVersion    string `json:"latestVersion"`
-	Available        bool   `json:"available"`
-	PublishedAt      string `json:"publishedAt"`
-	ReleaseURL       string `json:"releaseUrl"`
-	InstallSupported bool   `json:"installSupported"`
-	InstallReason    string `json:"installReason"`
-	Message          string `json:"message"`
-	Updating         bool   `json:"updating"`
+	CurrentVersion      string `json:"currentVersion"`
+	Channel             string `json:"channel"`
+	LatestVersion       string `json:"latestVersion"`
+	Available           bool   `json:"available"`
+	PublishedAt         string `json:"publishedAt"`
+	ReleaseURL          string `json:"releaseUrl"`
+	InstallSupported    bool   `json:"installSupported"`
+	InstallReason       string `json:"installReason"`
+	Message             string `json:"message"`
+	Updating            bool   `json:"updating"`
+	Automatic           bool   `json:"automatic"`
+	IntervalHours       int    `json:"intervalHours"`
+	LastChecked         string `json:"lastChecked"`
+	SnapshotBaseVersion string `json:"snapshotBaseVersion"`
 }
 
 type ApplyResult struct {
@@ -79,10 +90,11 @@ type Service struct {
 	releasesURL string
 	now         func() time.Time
 
-	mu         sync.Mutex
-	cached     []release
-	cacheUntil time.Time
-	updating   bool
+	mu          sync.Mutex
+	cached      []release
+	cacheUntil  time.Time
+	lastChecked time.Time
+	updating    bool
 }
 
 func NewService() *Service {
@@ -108,6 +120,18 @@ func NormalizeChannel(channel string) string {
 	return DefaultChannel
 }
 
+func ValidAutoIntervalHours(hours int) bool {
+	_, ok := validAutoIntervalHours[hours]
+	return ok
+}
+
+func NormalizeAutoIntervalHours(hours int) int {
+	if ValidAutoIntervalHours(hours) {
+		return hours
+	}
+	return 24
+}
+
 func (s *Service) Check(ctx context.Context, currentVersion, channel string, refresh bool) (Status, error) {
 	channel = NormalizeChannel(channel)
 	releases, err := s.loadReleases(ctx, refresh)
@@ -117,6 +141,9 @@ func (s *Service) Check(ctx context.Context, currentVersion, channel string, ref
 
 	selected, ok := selectLatestRelease(releases, channel)
 	status := Status{CurrentVersion: currentVersion, Channel: channel, Updating: s.isUpdating()}
+	if lastChecked := s.LastChecked(); !lastChecked.IsZero() {
+		status.LastChecked = lastChecked.Format(time.RFC3339)
+	}
 	if !ok {
 		if channel == StableChannel {
 			status.Message = "No stable release is published yet."
@@ -133,6 +160,9 @@ func (s *Service) Check(ctx context.Context, currentVersion, channel string, ref
 
 	currentSemver := comparableVersion(currentVersion)
 	latestSemver := comparableVersion(selected.TagName)
+	if snapshotBase := snapshotBaseVersion(currentVersion); snapshotBase != "" {
+		status.SnapshotBaseVersion = snapshotBase
+	}
 	if currentSemver == "" || latestSemver == "" {
 		status.Message = "The running version cannot be compared automatically."
 		status.InstallReason = "Version comparison is unavailable."
@@ -149,9 +179,15 @@ func (s *Service) Check(ctx context.Context, currentVersion, channel string, ref
 	} else if status.Available {
 		status.Message = "Update " + status.LatestVersion + " is available."
 	} else {
-		status.Message = "LANnventory is up to date for the " + channel + " channel."
+		status.Message = "No newer " + channelDisplayLabel(channel) + " release is available."
 	}
 	return status, nil
+}
+
+func (s *Service) LastChecked() time.Time {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.lastChecked
 }
 
 func (s *Service) Schedule(ctx context.Context, currentVersion, channel, expectedVersion, healthURL string) (ApplyResult, error) {
@@ -334,9 +370,11 @@ func (s *Service) loadReleases(ctx context.Context, refresh bool) ([]release, er
 		return nil, err
 	}
 
+	checkedAt := s.now()
 	s.mu.Lock()
 	s.cached = append([]release(nil), releases...)
-	s.cacheUntil = s.now().Add(cacheTTL)
+	s.lastChecked = checkedAt
+	s.cacheUntil = checkedAt.Add(cacheTTL)
 	s.mu.Unlock()
 	return releases, nil
 }
@@ -405,8 +443,31 @@ func comparableVersion(value string) string {
 	return value
 }
 
+func snapshotBaseVersion(value string) string {
+	value = strings.TrimSpace(value)
+	value = strings.TrimPrefix(value, "v")
+	if idx := strings.Index(value, "-SNAPSHOT-"); idx >= 0 {
+		base := value[:idx]
+		if semver.IsValid("v" + base) {
+			return base
+		}
+	}
+	return ""
+}
+
 func displayVersion(value string) string {
 	return strings.TrimPrefix(strings.TrimSpace(value), "v")
+}
+
+func channelDisplayLabel(channel string) string {
+	switch channel {
+	case StableChannel:
+		return "Stable"
+	case BetaChannel:
+		return "Beta"
+	default:
+		return "Beta"
+	}
 }
 
 func detectInstallSupport(selected release) (bool, string, releaseAsset, releaseAsset) {
