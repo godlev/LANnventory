@@ -14,6 +14,18 @@ type PingProps = {
 };
 
 const pollIntervalMs = 350;
+const httpBrowserPorts = new Set([80, 3000, 8000, 8080, 8840, 9090, 32400]);
+const httpsBrowserPorts = new Set([443, 8443]);
+
+function browserPortHref(host: string, port: number): string | undefined {
+  if (httpsBrowserPorts.has(port)) {
+    return "https://" + host + ":" + port;
+  }
+  if (httpBrowserPorts.has(port)) {
+    return "http://" + host + ":" + port;
+  }
+  return undefined;
+}
 
 function Ping(props: PingProps) {
   const [beginStr, setBegin] = createSignal("");
@@ -289,19 +301,33 @@ function Ping(props: PingProps) {
         <div class="host-found-ports">
           <For each={displayedOpenPorts()}>{(port) => {
             const state = () => knownByPort().get(port);
-            return (
-              <a
-                class="host-port-chip"
-                href={"http://" + props.host.IP + ":" + port}
-                target="_blank"
-                rel="noreferrer"
-                title={portTitle(port)}
-              >
+            const href = () => browserPortHref(props.host.IP, port);
+            const content = () => (
+              <>
                 <span>{port}</span>
                 <Show when={state()?.service}>
                   <span class="host-port-service">{state()!.service}</span>
                 </Show>
-              </a>
+              </>
+            );
+
+            return (
+              <Show
+                when={href()}
+                fallback={<span class="host-port-chip" title={portTitle(port)}>{content()}</span>}
+              >
+                {(url) =>
+                  <a
+                    class="host-port-chip"
+                    href={url()}
+                    target="_blank"
+                    rel="noreferrer"
+                    title={portTitle(port)}
+                  >
+                    {content()}
+                  </a>
+                }
+              </Show>
             );
           }}</For>
           <Show when={!loadingPorts() && displayedOpenPorts().length === 0}>
