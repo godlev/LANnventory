@@ -1,6 +1,7 @@
 import { createEffect, createMemo, createSignal, For, onCleanup, Show } from "solid-js";
 import {
   apiCancelHostPortScan,
+  apiGetActiveHostPortScan,
   apiGetHostPortScan,
   apiGetHostPorts,
   apiStartHostPortScan,
@@ -60,14 +61,6 @@ function Ping(props: PingProps) {
       setLoadingPorts(false);
     }
   };
-
-  createEffect(() => {
-    const hostID = props.host.ID;
-    clearPoll();
-    setJob(undefined);
-    setScanError("");
-    void loadKnownPorts(hostID);
-  });
 
   onCleanup(clearPoll);
 
@@ -175,6 +168,33 @@ function Ping(props: PingProps) {
 
     pollTimer = window.setTimeout(run, pollIntervalMs);
   };
+
+  const resumeActiveScan = async (hostID: number, token: number) => {
+    if (hostID < 1) {
+      return;
+    }
+
+    try {
+      const active = await apiGetActiveHostPortScan(hostID);
+      if (token !== pollToken || !active) {
+        return;
+      }
+
+      setJob(active);
+      pollScan(hostID, active.id, token);
+    } catch {
+      // Port-state loading remains useful even if active-job recovery fails.
+    }
+  };
+
+  createEffect(() => {
+    const hostID = props.host.ID;
+    clearPoll();
+    setJob(undefined);
+    setScanError("");
+    void loadKnownPorts(hostID);
+    void resumeActiveScan(hostID, pollToken);
+  });
 
   const handleScan = async () => {
     if (props.host.ID < 1 || !props.host.IP || job()?.running) {
