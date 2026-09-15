@@ -16,6 +16,7 @@ func ExportData() (backup.Data, error) {
 	var events []models.HostEvent
 	var hostMetadata []models.HostMetadata
 	var hostLifecycle []models.HostLifecycle
+	var hostPorts []models.HostPort
 
 	activeDB, release, err := acquireDB()
 	if err != nil {
@@ -41,6 +42,12 @@ func ExportData() (backup.Data, error) {
 		if err := txDB.Table(hostLifecycleTable).Order(clause.OrderByColumn{Column: clause.Column{Name: "MAC"}}).Find(&hostLifecycle).Error; err != nil {
 			return err
 		}
+		if err := txDB.Table(hostPortsTable).
+			Order(clause.OrderByColumn{Column: clause.Column{Name: "HOST_ID"}}).
+			Order(clause.OrderByColumn{Column: clause.Column{Name: "PORT"}}).
+			Find(&hostPorts).Error; err != nil {
+			return err
+		}
 
 		return nil
 	})
@@ -48,7 +55,7 @@ func ExportData() (backup.Data, error) {
 		return backup.Data{}, err
 	}
 
-	return backup.DataFromModels(currentHosts, history, events, hostMetadata, hostLifecycle), nil
+	return backup.DataFromModels(currentHosts, history, events, hostMetadata, hostLifecycle, hostPorts), nil
 }
 
 // ExportCurrentHosts returns enriched current inventory without reading history tables.
