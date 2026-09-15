@@ -2,7 +2,7 @@ import { createEffect, createSignal, onCleanup, onMount, Show } from "solid-js";
 import { A, useLocation } from "@solidjs/router";
 import { appConfig, pageContext } from "../functions/exports";
 import { normalizeColorMode, refreshAppConfig, setColorMode } from "../functions/theme";
-import { apiGetUpdateStatus, type UpdateStatus } from "../functions/updateApi";
+import { apiGetUpdateStatus, setSharedUpdateStatus, sharedUpdateStatus } from "../functions/updateApi";
 import { confirmUpdate, startUpdateFlow } from "../functions/updateFlow";
 
 const updateStatusPollMs = 30 * 60 * 1000;
@@ -12,7 +12,8 @@ function Header() {
   const [themeError, setThemeError] = createSignal(false);
   const [supportOpen, setSupportOpen] = createSignal(false);
   const [mobileNavOpen, setMobileNavOpen] = createSignal(false);
-  const [updateStatus, setUpdateStatus] = createSignal<UpdateStatus>();
+  const updateStatus = sharedUpdateStatus;
+  const setUpdateStatus = setSharedUpdateStatus;
   const [updateOpen, setUpdateOpen] = createSignal(false);
   const [updateInstalling, setUpdateInstalling] = createSignal(false);
   const [updateMessage, setUpdateMessage] = createSignal("");
