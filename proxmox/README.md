@@ -32,10 +32,10 @@ The installer asks whether the new container should start automatically with Pro
 
 ## Installation Source
 
-The current installer installs LANnventory `v0.1.0-beta.3` from the official GitHub release package:
+The current installer installs LANnventory `v0.1.0-beta.3.1` from the official GitHub release package:
 
 ```text
-https://github.com/godlev/LANnventory/releases/download/v0.1.0-beta.3/lannventory_0.1.0-beta.3_linux_amd64.deb
+https://github.com/godlev/LANnventory/releases/download/v0.1.0-beta.3.1/lannventory_0.1.0-beta.3.1_linux_amd64.deb
 ```
 
 No Docker setup is required. No source compilation is performed.
@@ -98,7 +98,7 @@ If installation fails after the container is created, the installer leaves the c
 
 ## Updating Later
 
-This installer currently installs `v0.1.0-beta.3`. Future installer versions can update the release tag and package URL. Manual package upgrades should use a newer official LANnventory `.deb` release package and install it with `apt` inside the container so package dependencies remain managed by the OS.
+This installer currently installs `v0.1.0-beta.3.1`. Future installer versions can update the release tag and package URL. Manual package upgrades should use a newer official LANnventory `.deb` release package and install it with `apt` inside the container so package dependencies remain managed by the OS.
 
 ## Notes About ARP Scanning In LXC
 
