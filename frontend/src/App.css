@@ -473,6 +473,85 @@ html[data-bs-theme] body {
 .wyl-support-item {
     position: relative;
 }
+.wyl-update-item {
+    position: relative;
+}
+.wyl-update-toggle {
+    color: var(--wyl-summary-unknown-text) !important;
+    opacity: 1;
+}
+.wyl-update-popover {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: 1200;
+    display: grid;
+    gap: 0.68rem;
+    width: min(20rem, calc(100vw - 24px));
+    margin-top: 0.35rem;
+    padding: 0.85rem;
+    color: var(--bs-body-color);
+    background-color: var(--wyl-panel-bg);
+    border: 1px solid var(--wyl-panel-border);
+    border-radius: 8px;
+    box-shadow: 0 1rem 2.5rem rgba(0, 0, 0, 0.28);
+}
+.wyl-update-title {
+    color: var(--wyl-heading);
+    font-size: 0.76rem;
+    font-weight: 850;
+    line-height: 1.2;
+    text-transform: uppercase;
+}
+.wyl-update-details {
+    display: grid;
+    gap: 0.34rem;
+    margin: 0;
+}
+.wyl-update-details > div {
+    display: grid;
+    grid-template-columns: 5.2rem minmax(0, 1fr);
+    gap: 0.5rem;
+    align-items: baseline;
+}
+.wyl-update-details dt {
+    color: var(--wyl-muted);
+    font-size: 0.68rem;
+    font-weight: 850;
+    line-height: 1.15;
+    text-transform: uppercase;
+}
+.wyl-update-details dd {
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
+    font-size: 0.82rem;
+    font-weight: 750;
+    line-height: 1.25;
+}
+.wyl-update-popover-message,
+.wyl-update-popover-error,
+.wyl-update-popover-note {
+    font-size: 0.78rem;
+    line-height: 1.35;
+}
+.wyl-update-popover-message {
+    color: var(--wyl-link);
+    font-weight: 750;
+}
+.wyl-update-popover-error {
+    color: var(--bs-danger);
+    font-weight: 750;
+}
+.wyl-update-popover-note {
+    color: var(--wyl-muted);
+}
+.wyl-update-popover-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+}
 .wyl-support-popover {
     position: absolute;
     top: 100%;
@@ -4064,6 +4143,13 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
         grid-template-columns: 1fr;
     }
     .wyl-support-popover {
+        position: fixed;
+        top: 3.25rem;
+        right: 12px;
+        left: 12px;
+        width: auto;
+    }
+    .wyl-update-popover {
         position: fixed;
         top: 3.25rem;
         right: 12px;

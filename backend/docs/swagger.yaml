@@ -53,6 +53,67 @@ definitions:
       presenceRetention:
         type: integer
     type: object
+  api.updateApplyRequest:
+    properties:
+      version:
+        type: string
+    type: object
+  api.updateApplyResponse:
+    properties:
+      backupPath:
+        type: string
+      message:
+        type: string
+      scheduled:
+        type: boolean
+      version:
+        type: string
+    type: object
+  api.updateChannelRequest:
+    properties:
+      channel:
+        type: string
+    type: object
+  api.updateSettingsRequest:
+    properties:
+      automatic:
+        type: boolean
+      channel:
+        type: string
+      intervalHours:
+        type: integer
+    type: object
+  api.updateStatusResponse:
+    properties:
+      automatic:
+        type: boolean
+      available:
+        type: boolean
+      channel:
+        type: string
+      currentVersion:
+        type: string
+      installReason:
+        type: string
+      installSupported:
+        type: boolean
+      intervalHours:
+        type: integer
+      lastChecked:
+        type: string
+      latestVersion:
+        type: string
+      message:
+        type: string
+      publishedAt:
+        type: string
+      releaseUrl:
+        type: string
+      snapshotBaseVersion:
+        type: string
+      updating:
+        type: boolean
+    type: object
   models.ActivityDeviceOption:
     properties:
       deviceType:
@@ -149,8 +210,12 @@ definitions:
         type: integer
       trimHist:
         type: integer
+      updateAuto:
+        type: boolean
       updateChannel:
         type: string
+      updateCheckIntervalHours:
+        type: integer
       useDB:
         description: PostgreSQL
         type: string
@@ -1209,6 +1274,153 @@ paths:
       summary: Get network status
       tags:
       - system
+  /update/apply:
+    post:
+      consumes:
+      - application/json
+      description: Verifies and schedules installation of the newest release in the
+        configured channel. The service restarts after the package update is scheduled.
+      parameters:
+      - description: Expected version
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/api.updateApplyRequest'
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            $ref: '#/definitions/api.updateApplyResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "502":
+          description: Bad Gateway
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Apply update
+      tags:
+      - updates
+  /update/channel:
+    post:
+      consumes:
+      - application/json
+      description: Persists the Stable or Beta update channel and immediately refreshes
+        update status.
+      parameters:
+      - description: Update channel
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.updateChannelRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.updateStatusResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "502":
+          description: Bad Gateway
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Set update channel
+      tags:
+      - updates
+  /update/settings:
+    post:
+      consumes:
+      - application/json
+      description: Persists release channel, automatic update preference, and automatic
+        check interval, then immediately refreshes update status.
+      parameters:
+      - description: Update settings
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.updateSettingsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.updateStatusResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "502":
+          description: Bad Gateway
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Set update settings
+      tags:
+      - updates
+  /update/status:
+    get:
+      description: Checks the selected release channel for a newer LANnventory release.
+        Cached release metadata is used unless refresh is true.
+      parameters:
+      - description: Refresh cached release metadata
+        in: query
+        name: refresh
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.updateStatusResponse'
+        "502":
+          description: Bad Gateway
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get update status
+      tags:
+      - updates
   /version:
     get:
       description: Returns the current running version of the application

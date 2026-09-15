@@ -1,24 +1,52 @@
-import { createSignal, onCleanup, onMount, Show } from "solid-js";
+import { createMemo, createSignal, onCleanup, onMount, Show } from "solid-js";
 import {
-  apiApplyUpdate,
   apiGetUpdateStatus,
-  apiSetUpdateChannel,
+  apiSetUpdateSettings,
   type UpdateChannel,
   type UpdateStatus,
 } from "../../functions/updateApi";
+import { confirmUpdate, startUpdateFlow } from "../../functions/updateFlow";
 
-const reconnectIntervalMs = 2000;
-const reconnectTimeoutMs = 90000;
+const updateIntervals = [
+  { label: "6 hours", value: 6 },
+  { label: "12 hours", value: 12 },
+  { label: "24 hours", value: 24 },
+  { label: "7 days", value: 168 },
+];
 
 function Updates() {
   const [status, setStatus] = createSignal<UpdateStatus>();
   const [loading, setLoading] = createSignal(true);
-  const [savingChannel, setSavingChannel] = createSignal(false);
+  const [savingSettings, setSavingSettings] = createSignal(false);
   const [installing, setInstalling] = createSignal(false);
   const [error, setError] = createSignal("");
   const [message, setMessage] = createSignal("");
   let reconnectTimer: number | undefined;
-  let reconnectStartedAt = 0;
+
+  const current = () => status();
+  const channel = () => current()?.channel ?? "beta";
+  const automatic = () => current()?.automatic ?? false;
+  const intervalHours = () => current()?.intervalHours ?? 24;
+  const channelLabel = () => channel() === "stable" ? "Stable" : "Beta";
+  const latestLabel = () => "Latest published " + channelLabel();
+  const statusMessage = createMemo(() => {
+    const currentStatus = current();
+    if (!currentStatus) {
+      return "";
+    }
+
+    if (currentStatus.message) {
+      return currentStatus.message;
+    }
+    if (!currentStatus.available) {
+      return "No newer " + channelLabel() + " release is available.";
+    }
+    return "Update " + currentStatus.latestVersion + " is available.";
+  });
+  const snapshotMessage = createMemo(() => {
+    const base = current()?.snapshotBaseVersion;
+    return base ? "This bootstrap build is based on " + base + "." : "";
+  });
 
   const clearReconnectTimer = () => {
     if (reconnectTimer !== undefined) {
@@ -39,79 +67,39 @@ function Updates() {
     }
   };
 
-  const pollAfterUpdate = async (targetVersion: string) => {
-    clearReconnectTimer();
-    reconnectStartedAt = Date.now();
-
-    const poll = async () => {
-      if (Date.now() - reconnectStartedAt > reconnectTimeoutMs) {
-        setInstalling(false);
-        setError("LANnventory did not come back online within 90 seconds. Check the service status on the host.");
-        return;
-      }
-
-      try {
-        const nextStatus = await apiGetUpdateStatus(true);
-        setStatus(nextStatus);
-        if (nextStatus.currentVersion === targetVersion || !nextStatus.available) {
-          setMessage("Update completed. Reloading LANnventory…");
-          window.setTimeout(() => window.location.reload(), 700);
-          return;
-        }
-      } catch {
-        // A failed request is expected while the service is restarting.
-      }
-
-      reconnectTimer = window.setTimeout(poll, reconnectIntervalMs);
-    };
-
-    reconnectTimer = window.setTimeout(poll, reconnectIntervalMs);
-  };
-
-  const handleChannelChange = async (channel: UpdateChannel) => {
-    if (savingChannel() || installing() || status()?.channel === channel) {
+  const saveSettings = async (nextChannel: UpdateChannel, nextAutomatic: boolean, nextIntervalHours: number) => {
+    if (savingSettings() || installing()) {
       return;
     }
 
-    setSavingChannel(true);
+    setSavingSettings(true);
     setError("");
     setMessage("");
     try {
-      setStatus(await apiSetUpdateChannel(channel));
+      setStatus(await apiSetUpdateSettings(nextChannel, nextAutomatic, nextIntervalHours));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Update channel could not be saved");
+      setError(err instanceof Error ? err.message : "Update settings could not be saved");
     } finally {
-      setSavingChannel(false);
+      setSavingSettings(false);
     }
   };
 
   const handleInstall = async () => {
-    const current = status();
-    if (!current?.available || !current.installSupported || installing()) {
+    const currentStatus = current();
+    if (!currentStatus?.available || !currentStatus.installSupported || installing()) {
+      return;
+    }
+    if (!confirmUpdate(currentStatus)) {
       return;
     }
 
-    const confirmed = window.confirm(
-      "Update LANnventory from " + current.currentVersion + " to " + current.latestVersion + "?\n\n" +
-      "LANnventory will verify the release package, install it, and restart the service. Existing configuration and database files will be preserved.",
-    );
-    if (!confirmed) {
-      return;
-    }
-
-    setInstalling(true);
-    setError("");
-    setMessage("Verifying and scheduling update…");
-    try {
-      const result = await apiApplyUpdate(current.latestVersion);
-      const backupNote = result.backupPath ? " Recovery backup: " + result.backupPath + "." : "";
-      setMessage(result.message + backupNote + " Waiting for LANnventory to come back online…");
-      void pollAfterUpdate(result.version);
-    } catch (err) {
-      setInstalling(false);
-      setMessage("");
-      setError(err instanceof Error ? err.message : "Update could not be scheduled");
-    }
+    clearReconnectTimer();
+    reconnectTimer = await startUpdateFlow(currentStatus, {
+      onStatus: setStatus,
+      onMessage: setMessage,
+      onError: setError,
+      onInstalling: setInstalling,
+    });
   };
 
   onMount(() => void loadStatus(false));
@@ -120,56 +108,91 @@ function Updates() {
   return (
     <div class="card wyl-panel config-panel update-panel">
       <div class="card-header update-panel-header">
-        <div>
-          <div>Updates</div>
-          <div class="config-panel-subtitle">Stable or Beta release channel</div>
-        </div>
+        <div class="update-panel-title">Updates</div>
         <Show when={status()}>
-          {(current) =>
-            <span class={"update-state-badge " + (current().available ? "is-available" : "is-current")}>
-              {current().available ? "Update available" : "Up to date"}
+          {(currentStatus) =>
+            <span class={"update-state-badge " + (currentStatus().available ? "is-available" : "is-current")}>
+              {currentStatus().available ? "Update available" : "Up to date"}
             </span>
           }
         </Show>
       </div>
 
       <div class="card-body update-panel-body">
-        <div class="update-channel-control" role="group" aria-label="Update channel">
-          <button
-            type="button"
-            class={"btn btn-sm wyl-button update-channel-button" + (status()?.channel === "stable" ? " is-active" : "")}
-            aria-pressed={status()?.channel === "stable"}
-            disabled={loading() || savingChannel() || installing()}
-            onClick={() => void handleChannelChange("stable")}
+        <label class="update-field">
+          <span class="update-field-label">Update channel</span>
+          <select
+            class="form-select form-select-sm update-select"
+            value={channel()}
+            disabled={loading() || savingSettings() || installing()}
+            onChange={(event) => void saveSettings(event.currentTarget.value as UpdateChannel, automatic(), intervalHours())}
           >
-            Stable
-          </button>
-          <button
-            type="button"
-            class={"btn btn-sm wyl-button update-channel-button" + (status()?.channel === "beta" ? " is-active" : "")}
-            aria-pressed={status()?.channel === "beta"}
-            disabled={loading() || savingChannel() || installing()}
-            onClick={() => void handleChannelChange("beta")}
-          >
-            Beta
-          </button>
-        </div>
+            <option value="stable">Stable</option>
+            <option value="beta">Beta</option>
+          </select>
+        </label>
 
-        <Show when={!loading()} fallback={<div class="update-status-message">Checking releases…</div>}>
+        <Show when={!loading()} fallback={<div class="update-status-message">Checking releases...</div>}>
           <Show when={status()}>
-            {(current) =>
-              <div class="update-version-grid">
-                <span>Installed</span><strong>{current().currentVersion || "Unknown"}</strong>
-                <span>Latest {current().channel}</span><strong>{current().latestVersion || "None published"}</strong>
+            {(currentStatus) =>
+              <div class="update-version-stack">
+                <div class="update-version-item">
+                  <span>Installed version</span>
+                  <strong>{currentStatus().currentVersion || "Unknown"}</strong>
+                </div>
+                <div class="update-version-item">
+                  <span>{latestLabel()}</span>
+                  <strong>{currentStatus().latestVersion || "None published"}</strong>
+                </div>
               </div>
             }
           </Show>
         </Show>
 
-        <Show when={status()?.message}>
-          <div class="update-status-message">{status()?.message}</div>
+        <label class="form-check form-switch update-auto-toggle">
+          <input
+            class="form-check-input"
+            type="checkbox"
+            checked={automatic()}
+            disabled={loading() || savingSettings() || installing()}
+            onChange={(event) => void saveSettings(channel(), event.currentTarget.checked, intervalHours())}
+          />
+          <span class="form-check-label">Automatic updates</span>
+        </label>
+
+        <Show when={automatic()}>
+          <label class="update-field">
+            <span class="update-field-label">Check for updates</span>
+            <select
+              class="form-select form-select-sm update-select"
+              value={String(intervalHours())}
+              disabled={loading() || savingSettings() || installing()}
+              onChange={(event) => void saveSettings(channel(), automatic(), Number(event.currentTarget.value))}
+            >
+              {updateIntervals.map((interval) =>
+                <option value={interval.value}>{interval.label}</option>
+              )}
+            </select>
+          </label>
         </Show>
-        <Show when={status() && !status()!.installSupported && status()!.installReason}>
+
+        <Show when={current()?.lastChecked}>
+          <div class="update-meta-row">
+            <span>Last checked</span>
+            <strong>{formatUpdateTime(current()!.lastChecked)}</strong>
+          </div>
+        </Show>
+
+        <Show when={statusMessage()}>
+          <div class="update-status-message">{statusMessage()}</div>
+        </Show>
+        <Show when={snapshotMessage()}>
+          <div class="update-support-note">
+            <i class="bi bi-info-circle" aria-hidden="true"></i>
+            <span>{snapshotMessage()}</span>
+          </div>
+        </Show>
+        <Show when={status()?.available && !status()!.installSupported && status()!.installReason}>
           <div class="update-support-note">
             <i class="bi bi-info-circle" aria-hidden="true"></i>
             <span>{status()!.installReason}</span>
@@ -186,29 +209,47 @@ function Updates() {
           <button
             type="button"
             class="btn btn-sm wyl-button"
-            disabled={loading() || savingChannel() || installing()}
+            disabled={loading() || savingSettings() || installing()}
             onClick={() => void loadStatus(true)}
           >
             <i class="bi bi-arrow-clockwise" aria-hidden="true"></i>
-            <span>Check now</span>
+            <span>{loading() ? "Checking" : "Check now"}</span>
           </button>
-          <button
-            type="button"
-            class="btn btn-sm wyl-button update-install-button"
-            disabled={!status()?.available || !status()?.installSupported || installing() || savingChannel()}
-            onClick={() => void handleInstall()}
-          >
-            <i class={installing() ? "bi bi-hourglass-split" : "bi bi-download"} aria-hidden="true"></i>
-            <span>{installing() ? "Updating" : "Update"}</span>
-          </button>
+          <Show when={status()?.available && status()!.installSupported}>
+            <button
+              type="button"
+              class="btn btn-sm wyl-button update-install-button"
+              disabled={installing() || savingSettings()}
+              onClick={() => void handleInstall()}
+            >
+              <i class={installing() ? "bi bi-hourglass-split" : "bi bi-download"} aria-hidden="true"></i>
+              <span>{installing() ? "Updating" : "Update"}</span>
+            </button>
+          </Show>
         </div>
 
         <Show when={status()?.releaseUrl}>
-          <a class="update-release-link" href={status()!.releaseUrl} target="_blank" rel="noreferrer">View selected release</a>
+          <a class="update-release-link" href={status()!.releaseUrl} target="_blank" rel="noreferrer">
+            <span>Release notes</span>
+            <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
+          </a>
         </Show>
       </div>
     </div>
   );
+}
+
+function formatUpdateTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][date.getMonth()];
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+  return day + " " + month + " " + hour + ":" + minute;
 }
 
 export default Updates;

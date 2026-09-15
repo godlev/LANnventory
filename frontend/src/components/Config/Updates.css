@@ -3,6 +3,14 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
+  min-height: 2.55rem;
+}
+
+.update-panel-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .update-panel-body {
@@ -10,18 +18,41 @@
   gap: 0.8rem;
 }
 
-.update-channel-control {
-  display: inline-grid;
-  grid-template-columns: repeat(2, minmax(5.5rem, 1fr));
-  gap: 0.4rem;
-  width: min(15rem, 100%);
+.update-field {
+  display: grid;
+  gap: 0.3rem;
+  width: min(16rem, 100%);
 }
 
-.update-channel-button.is-active {
-  color: var(--wyl-control-text-strong);
-  background-color: var(--wyl-card-active-bg);
-  border-color: var(--wyl-link);
-  box-shadow: inset 0 0 0 1px var(--wyl-link);
+.update-field-label,
+.update-meta-row > span,
+.update-version-item > span {
+  color: var(--wyl-muted);
+  font-size: 0.72rem;
+  font-weight: 850;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+
+.update-select {
+  width: 100%;
+}
+
+.update-auto-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.46rem;
+  width: max-content;
+  max-width: 100%;
+  min-height: 1.6rem;
+  margin: 0;
+  font-size: 0.84rem;
+  font-weight: 750;
+}
+
+.update-auto-toggle .form-check-input {
+  margin-top: 0;
+  margin-left: 0;
 }
 
 .update-state-badge {
@@ -51,25 +82,26 @@
   border-color: var(--wyl-summary-unknown-border);
 }
 
-.update-version-grid {
+.update-version-stack {
   display: grid;
-  grid-template-columns: minmax(6.5rem, auto) minmax(0, 1fr);
+  gap: 0.5rem;
+}
+
+.update-version-item,
+.update-meta-row {
+  display: grid;
+  grid-template-columns: minmax(7.5rem, auto) minmax(0, 1fr);
   column-gap: 0.7rem;
-  row-gap: 0.36rem;
+  row-gap: 0.18rem;
   align-items: baseline;
 }
 
-.update-version-grid > span {
-  color: var(--wyl-muted);
-  font-size: 0.72rem;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.update-version-grid > strong {
+.update-version-item > strong,
+.update-meta-row > strong {
   min-width: 0;
   overflow-wrap: anywhere;
   font-size: 0.82rem;
+  line-height: 1.25;
 }
 
 .update-status-message,
@@ -109,23 +141,34 @@
 }
 
 .update-release-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
   width: max-content;
   max-width: 100%;
+  color: var(--wyl-link);
   font-size: 0.75rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.update-release-link:hover,
+.update-release-link:focus-visible {
+  color: var(--wyl-link-hover);
+  text-decoration: underline;
 }
 
 @media (max-width: 575.98px) {
   .update-panel-header {
-    align-items: flex-start;
-    flex-direction: column;
+    align-items: center;
   }
 
-  .update-channel-control {
+  .update-field {
     width: 100%;
   }
 
-  .update-version-grid {
+  .update-version-item,
+  .update-meta-row {
     grid-template-columns: 1fr;
-    row-gap: 0.18rem;
   }
 }

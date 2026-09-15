@@ -1,3 +1,5 @@
+import { createSignal } from "solid-js";
+
 export type UpdateChannel = "stable" | "beta";
 
 export type UpdateStatus = {
@@ -11,6 +13,10 @@ export type UpdateStatus = {
   installReason: string;
   message: string;
   updating: boolean;
+  automatic: boolean;
+  intervalHours: number;
+  lastChecked: string;
+  snapshotBaseVersion: string;
 };
 
 export type UpdateApplyResult = {
@@ -18,6 +24,13 @@ export type UpdateApplyResult = {
   scheduled: boolean;
   message: string;
   backupPath: string;
+};
+
+export const [sharedUpdateStatus, setSharedUpdateStatus] = createSignal<UpdateStatus>();
+
+const publishUpdateStatus = (status: UpdateStatus): UpdateStatus => {
+  setSharedUpdateStatus(status);
+  return status;
 };
 
 const apiJSON = async <T>(url: string, init?: RequestInit): Promise<T> => {
@@ -37,15 +50,19 @@ const apiJSON = async <T>(url: string, init?: RequestInit): Promise<T> => {
 
 export const apiGetUpdateStatus = async (refresh = false): Promise<UpdateStatus> => {
   const suffix = refresh ? "?refresh=1" : "";
-  return await apiJSON<UpdateStatus>("/api/update/status" + suffix);
+  return publishUpdateStatus(await apiJSON<UpdateStatus>("/api/update/status" + suffix));
 };
 
-export const apiSetUpdateChannel = async (channel: UpdateChannel): Promise<UpdateStatus> => {
-  return await apiJSON<UpdateStatus>("/api/update/channel", {
+export const apiSetUpdateSettings = async (
+  channel: UpdateChannel,
+  automatic: boolean,
+  intervalHours: number,
+): Promise<UpdateStatus> => {
+  return publishUpdateStatus(await apiJSON<UpdateStatus>("/api/update/settings", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ channel }),
-  });
+    body: JSON.stringify({ channel, automatic, intervalHours }),
+  }));
 };
 
 export const apiApplyUpdate = async (version: string): Promise<UpdateApplyResult> => {
