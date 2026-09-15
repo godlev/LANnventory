@@ -18,6 +18,8 @@ type AutoScheduler struct {
 	Check    func(context.Context, string, string, bool) (Status, error)
 	Schedule func(context.Context, string, string, string) (ApplyResult, error)
 	Log      *slog.Logger
+
+	configChanged chan struct{}
 }
 
 func NewAutoScheduler(
@@ -25,15 +27,30 @@ func NewAutoScheduler(
 	config func() AutoConfig,
 ) *AutoScheduler {
 	return &AutoScheduler{
-		Config:   config,
-		Check:    service.Check,
-		Schedule: service.Schedule,
-		Log:      slog.Default(),
+		Config:        config,
+		Check:         service.Check,
+		Schedule:      service.Schedule,
+		Log:           slog.Default(),
+		configChanged: make(chan struct{}, 1),
 	}
 }
 
 func (s *AutoScheduler) Start(ctx context.Context) {
 	go s.run(ctx)
+}
+
+// NotifyConfigChanged reschedules the next automatic update check from now
+// using the latest persisted configuration. The notification is coalesced so
+// rapid Settings changes cannot block request handlers or queue stale timers.
+func (s *AutoScheduler) NotifyConfigChanged() {
+	if s == nil || s.configChanged == nil {
+		return
+	}
+
+	select {
+	case s.configChanged <- struct{}{}:
+	default:
+	}
 }
 
 func (s *AutoScheduler) RunOnce(ctx context.Context) error {
@@ -71,17 +88,31 @@ func (s *AutoScheduler) NextInterval() time.Duration {
 }
 
 func (s *AutoScheduler) run(ctx context.Context) {
-	timer := time.NewTimer(s.NextInterval())
-	defer timer.Stop()
-
 	for {
+		timer := time.NewTimer(s.NextInterval())
+
 		select {
 		case <-ctx.Done():
+			stopAndDrainTimer(timer)
 			return
+		case <-s.configChanged:
+			stopAndDrainTimer(timer)
+			// Recreate the timer immediately from the latest persisted settings.
+			continue
 		case <-timer.C:
 			_ = s.RunOnce(ctx)
-			timer.Reset(s.NextInterval())
 		}
+	}
+}
+
+func stopAndDrainTimer(timer *time.Timer) {
+	if timer == nil || timer.Stop() {
+		return
+	}
+
+	select {
+	case <-timer.C:
+	default:
 	}
 }
 
