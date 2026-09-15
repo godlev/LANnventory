@@ -150,12 +150,127 @@
   font-size: 0.75rem;
   font-weight: 800;
   text-decoration: none;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
 }
 
 .update-release-link:hover,
 .update-release-link:focus-visible {
   color: var(--wyl-link-hover);
   text-decoration: underline;
+}
+
+
+.update-automation-options {
+  display: grid;
+  gap: 0.45rem;
+  width: max-content;
+  max-width: 100%;
+}
+
+.update-notes-backdrop {
+  position: fixed;
+  z-index: 2000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.58);
+}
+
+.update-notes-dialog {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: min(42rem, 100%);
+  max-height: min(80vh, 44rem);
+  overflow: hidden;
+  color: var(--bs-body-color);
+  background-color: var(--wyl-panel-bg);
+  border: 1px solid var(--wyl-panel-border);
+  border-radius: 10px;
+  box-shadow: 0 1.25rem 3rem rgba(0, 0, 0, 0.36);
+}
+
+.update-notes-header,
+.update-notes-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 0.95rem;
+}
+
+.update-notes-header {
+  justify-content: space-between;
+  border-bottom: 1px solid var(--wyl-panel-border);
+}
+
+.update-notes-header h2 {
+  margin: 0.16rem 0 0;
+  color: var(--wyl-heading);
+  font-size: 1rem;
+  font-weight: 850;
+}
+
+.update-notes-kicker {
+  color: var(--wyl-muted);
+  font-size: 0.67rem;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.update-notes-close {
+  flex: 0 0 auto;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+}
+
+.update-notes-body {
+  overflow-y: auto;
+  padding: 0.9rem 0.95rem;
+}
+
+.update-notes-section {
+  margin: 0.75rem 0 0.38rem;
+  color: var(--wyl-heading);
+  font-size: 0.82rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.update-notes-section:first-child {
+  margin-top: 0;
+}
+
+.update-notes-bullet {
+  display: grid;
+  grid-template-columns: 0.8rem minmax(0, 1fr);
+  gap: 0.25rem;
+  margin: 0.28rem 0;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.update-notes-bullet > span:first-child {
+  color: var(--wyl-link);
+  font-weight: 900;
+}
+
+.update-notes-paragraph,
+.update-notes-empty {
+  margin: 0.3rem 0;
+  color: var(--wyl-muted);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.update-notes-footer {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--wyl-panel-border);
 }
 
 @media (max-width: 575.98px) {

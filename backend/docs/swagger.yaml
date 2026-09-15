@@ -78,6 +78,8 @@ definitions:
     properties:
       automatic:
         type: boolean
+      automaticCheck:
+        type: boolean
       channel:
         type: string
       intervalHours:
@@ -86,6 +88,8 @@ definitions:
   api.updateStatusResponse:
     properties:
       automatic:
+        type: boolean
+      automaticCheck:
         type: boolean
       available:
         type: boolean
@@ -106,6 +110,8 @@ definitions:
       message:
         type: string
       publishedAt:
+        type: string
+      releaseSummary:
         type: string
       releaseUrl:
         type: string
@@ -214,6 +220,8 @@ definitions:
         type: boolean
       updateChannel:
         type: string
+      updateCheckAuto:
+        type: boolean
       updateCheckIntervalHours:
         type: integer
       useDB:
@@ -1359,8 +1367,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Persists release channel, automatic update preference, and automatic
-        check interval, then immediately refreshes update status.
+      description: Persists release channel, automatic check/install preferences,
+        and automatic check interval, then immediately refreshes update status.
       parameters:
       - description: Update settings
         in: body
@@ -1404,6 +1412,10 @@ paths:
       - description: Refresh cached release metadata
         in: query
         name: refresh
+        type: boolean
+      - description: Use cached release metadata only and never contact GitHub
+        in: query
+        name: cached
         type: boolean
       produces:
       - application/json

@@ -25,6 +25,7 @@ func read(path string) (config models.Conf) {
 	viper.SetDefault("TRIM_HIST", 48)
 	viper.SetDefault("SHOUTRRR_URL", "")
 	viper.SetDefault("UPDATE_CHANNEL", "beta")
+	viper.SetDefault("UPDATE_CHECK_AUTO", false)
 	viper.SetDefault("UPDATE_AUTO", false)
 	viper.SetDefault("UPDATE_CHECK_INTERVAL_HOURS", 24)
 
@@ -67,7 +68,12 @@ func read(path string) (config models.Conf) {
 	if config.UpdateChannel != "stable" && config.UpdateChannel != "beta" {
 		config.UpdateChannel = "beta"
 	}
+	config.UpdateCheckAuto = viper.GetBool("UPDATE_CHECK_AUTO")
 	config.UpdateAuto = viper.GetBool("UPDATE_AUTO")
+	// Preserve beta.3 behavior: automatic installation always implies background checks.
+	if config.UpdateAuto {
+		config.UpdateCheckAuto = true
+	}
 	config.UpdateCheckIntervalHours = normalizeUpdateIntervalHours(viper.GetInt("UPDATE_CHECK_INTERVAL_HOURS"))
 
 	config.UseDB = viper.Get("USE_DB").(string)

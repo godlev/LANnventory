@@ -1516,7 +1516,7 @@ const docTemplate = `{
         },
         "/update/settings": {
             "post": {
-                "description": "Persists release channel, automatic update preference, and automatic check interval, then immediately refreshes update status.",
+                "description": "Persists release channel, automatic check/install preferences, and automatic check interval, then immediately refreshes update status.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1590,6 +1590,12 @@ const docTemplate = `{
                         "type": "boolean",
                         "description": "Refresh cached release metadata",
                         "name": "refresh",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Use cached release metadata only and never contact GitHub",
+                        "name": "cached",
                         "in": "query"
                     }
                 ],
@@ -1784,6 +1790,9 @@ const docTemplate = `{
                 "automatic": {
                     "type": "boolean"
                 },
+                "automaticCheck": {
+                    "type": "boolean"
+                },
                 "channel": {
                     "type": "string"
                 },
@@ -1796,6 +1805,9 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "automatic": {
+                    "type": "boolean"
+                },
+                "automaticCheck": {
                     "type": "boolean"
                 },
                 "available": {
@@ -1826,6 +1838,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "publishedAt": {
+                    "type": "string"
+                },
+                "releaseSummary": {
                     "type": "string"
                 },
                 "releaseUrl": {
@@ -1984,6 +1999,9 @@ const docTemplate = `{
                 },
                 "updateChannel": {
                     "type": "string"
+                },
+                "updateCheckAuto": {
+                    "type": "boolean"
                 },
                 "updateCheckIntervalHours": {
                     "type": "integer"

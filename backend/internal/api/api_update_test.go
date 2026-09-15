@@ -16,7 +16,7 @@ func TestSaveUpdateSettingsPersistsAndReturnsStatus(t *testing.T) {
 	conf.SetVersion("0.1.0-beta.2-SNAPSHOT-deadbee")
 	stubUpdateService(t, `[{"tag_name":"v0.1.0-beta.2","prerelease":true,"draft":false,"published_at":"2026-09-01T00:00:00Z","html_url":"https://github.com/godlev/LANnventory/releases/tag/v0.1.0-beta.2","assets":[]}]`)
 
-	req := httptest.NewRequest(http.MethodPost, "/api/update/settings", strings.NewReader(`{"channel":"stable","automatic":true,"intervalHours":12}`))
+	req := httptest.NewRequest(http.MethodPost, "/api/update/settings", strings.NewReader(`{"channel":"stable","automaticCheck":true,"automatic":true,"intervalHours":12}`))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -26,15 +26,15 @@ func TestSaveUpdateSettingsPersistsAndReturnsStatus(t *testing.T) {
 	}
 
 	config := conf.GetAppConfig()
-	if config.UpdateChannel != "stable" || !config.UpdateAuto || config.UpdateCheckIntervalHours != 12 {
-		t.Fatalf("config update settings = channel %q auto %v interval %d", config.UpdateChannel, config.UpdateAuto, config.UpdateCheckIntervalHours)
+	if config.UpdateChannel != "stable" || !config.UpdateCheckAuto || !config.UpdateAuto || config.UpdateCheckIntervalHours != 12 {
+		t.Fatalf("config update settings = channel %q check %v auto %v interval %d", config.UpdateChannel, config.UpdateCheckAuto, config.UpdateAuto, config.UpdateCheckIntervalHours)
 	}
 	var status updater.Status
 	if err := json.Unmarshal(rec.Body.Bytes(), &status); err != nil {
 		t.Fatalf("json.Unmarshal: %v", err)
 	}
-	if status.Channel != "stable" || !status.Automatic || status.IntervalHours != 12 {
-		t.Fatalf("response update settings = channel %q auto %v interval %d", status.Channel, status.Automatic, status.IntervalHours)
+	if status.Channel != "stable" || !status.AutomaticCheck || !status.Automatic || status.IntervalHours != 12 {
+		t.Fatalf("response update settings = channel %q check %v auto %v interval %d", status.Channel, status.AutomaticCheck, status.Automatic, status.IntervalHours)
 	}
 }
 
@@ -42,7 +42,7 @@ func TestSaveUpdateSettingsRejectsInvalidInterval(t *testing.T) {
 	router := setupConfigRouter(t)
 	original := conf.GetAppConfig()
 
-	req := httptest.NewRequest(http.MethodPost, "/api/update/settings", strings.NewReader(`{"channel":"beta","automatic":true,"intervalHours":5}`))
+	req := httptest.NewRequest(http.MethodPost, "/api/update/settings", strings.NewReader(`{"channel":"beta","automaticCheck":true,"automatic":true,"intervalHours":5}`))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
@@ -51,7 +51,7 @@ func TestSaveUpdateSettingsRejectsInvalidInterval(t *testing.T) {
 		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
 	}
 	config := conf.GetAppConfig()
-	if config.UpdateAuto != original.UpdateAuto || config.UpdateCheckIntervalHours != original.UpdateCheckIntervalHours || config.UpdateChannel != original.UpdateChannel {
+	if config.UpdateCheckAuto != original.UpdateCheckAuto || config.UpdateAuto != original.UpdateAuto || config.UpdateCheckIntervalHours != original.UpdateCheckIntervalHours || config.UpdateChannel != original.UpdateChannel {
 		t.Fatalf("invalid request changed config: got %+v want %+v", config, original)
 	}
 }
@@ -61,6 +61,7 @@ func TestSaveUpdateChannelPreservesAutomaticSettings(t *testing.T) {
 	conf.SetVersion("0.1.0")
 	config := conf.GetAppConfig()
 	config.UpdateChannel = "beta"
+	config.UpdateCheckAuto = true
 	config.UpdateAuto = true
 	config.UpdateCheckIntervalHours = 6
 	conf.SetAppConfigForTest(config)
@@ -76,15 +77,15 @@ func TestSaveUpdateChannelPreservesAutomaticSettings(t *testing.T) {
 	}
 
 	config = conf.GetAppConfig()
-	if config.UpdateChannel != "stable" || !config.UpdateAuto || config.UpdateCheckIntervalHours != 6 {
-		t.Fatalf("channel update settings = channel %q auto %v interval %d", config.UpdateChannel, config.UpdateAuto, config.UpdateCheckIntervalHours)
+	if config.UpdateChannel != "stable" || !config.UpdateCheckAuto || !config.UpdateAuto || config.UpdateCheckIntervalHours != 6 {
+		t.Fatalf("channel update settings = channel %q check %v auto %v interval %d", config.UpdateChannel, config.UpdateCheckAuto, config.UpdateAuto, config.UpdateCheckIntervalHours)
 	}
 	var status updater.Status
 	if err := json.Unmarshal(rec.Body.Bytes(), &status); err != nil {
 		t.Fatalf("json.Unmarshal: %v", err)
 	}
-	if status.Channel != "stable" || !status.Automatic || status.IntervalHours != 6 {
-		t.Fatalf("response update settings = channel %q auto %v interval %d", status.Channel, status.Automatic, status.IntervalHours)
+	if status.Channel != "stable" || !status.AutomaticCheck || !status.Automatic || status.IntervalHours != 6 {
+		t.Fatalf("response update settings = channel %q check %v auto %v interval %d", status.Channel, status.AutomaticCheck, status.Automatic, status.IntervalHours)
 	}
 }
 
@@ -120,5 +121,53 @@ func TestUpdateHealthURL(t *testing.T) {
 				t.Fatalf("updateHealthURL(%q, %q) = %q, want %q", tc.host, tc.port, got, tc.want)
 			}
 		})
+	}
+}
+
+func TestSaveUpdateSettingsSupportsCheckOnlyMode(t *testing.T) {
+	router := setupConfigRouter(t)
+	conf.SetVersion("0.1.0-beta.3")
+	stubUpdateService(t, `[{"tag_name":"v0.1.0-beta.3","prerelease":true,"draft":false,"assets":[]}]`)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/update/settings", strings.NewReader(`{"channel":"beta","automaticCheck":true,"automatic":false,"intervalHours":24}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	config := conf.GetAppConfig()
+	if !config.UpdateCheckAuto || config.UpdateAuto {
+		t.Fatalf("check-only settings not persisted: %+v", config)
+	}
+
+	var status updater.Status
+	if err := json.Unmarshal(rec.Body.Bytes(), &status); err != nil {
+		t.Fatalf("json.Unmarshal: %v", err)
+	}
+	if !status.AutomaticCheck || status.Automatic {
+		t.Fatalf("check-only response = %+v", status)
+	}
+}
+
+func TestSaveUpdateSettingsAutomaticInstallImpliesChecks(t *testing.T) {
+	router := setupConfigRouter(t)
+	conf.SetVersion("0.1.0-beta.3")
+	stubUpdateService(t, `[{"tag_name":"v0.1.0-beta.3","prerelease":true,"draft":false,"assets":[]}]`)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/update/settings", strings.NewReader(`{"channel":"beta","automaticCheck":false,"automatic":true,"intervalHours":24}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	config := conf.GetAppConfig()
+	if !config.UpdateCheckAuto || !config.UpdateAuto {
+		t.Fatalf("automatic install should imply automatic checks: %+v", config)
 	}
 }

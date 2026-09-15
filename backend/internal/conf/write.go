@@ -44,6 +44,7 @@ func writeErrNoLock(config models.Conf) error {
 	viper.Set("CONNECTIVITY_RETENTION", config.ConnectivityRetention)
 	viper.Set("SHOUTRRR_URL", config.ShoutURL)
 	viper.Set("UPDATE_CHANNEL", config.UpdateChannel)
+	viper.Set("UPDATE_CHECK_AUTO", config.UpdateCheckAuto)
 	viper.Set("UPDATE_AUTO", config.UpdateAuto)
 	viper.Set("UPDATE_CHECK_INTERVAL_HOURS", config.UpdateCheckIntervalHours)
 

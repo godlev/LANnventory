@@ -477,8 +477,29 @@ html[data-bs-theme] body {
     position: relative;
 }
 .wyl-update-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.38rem;
+    width: auto;
     color: var(--wyl-summary-unknown-text) !important;
     opacity: 1;
+}
+.wyl-update-nav-label {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.28rem;
+    font-size: 0.72rem;
+    font-weight: 850;
+    line-height: 1;
+    letter-spacing: 0.025em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+.wyl-update-nav-version {
+    font-size: 0.68rem;
+    font-weight: 750;
+    letter-spacing: 0;
+    text-transform: none;
 }
 .wyl-update-popover {
     position: absolute;
@@ -4117,6 +4138,9 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
         min-width: 2.4rem;
         padding-right: 0.42rem !important;
         padding-left: 0.42rem !important;
+    }
+    .wyl-update-nav-version {
+        display: none;
     }
 }
 

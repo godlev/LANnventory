@@ -159,7 +159,7 @@ const config = {
   ConnectivityRetention: 168,
   ShoutURL: '',
   ShoutURLConfigured: false,
-  Version: '0.1.0-beta.2-dev-mock',
+  Version: '0.1.0-beta.3-dev-mock',
   UseDB: 'sqlite',
   PGConnect: '',
   PGConnectConfigured: false,
@@ -172,6 +172,7 @@ const config = {
   InfluxSkipTLS: false,
   PrometheusEnable: false,
   UpdateChannel: 'beta',
+  UpdateCheckAuto: false,
   UpdateAuto: false,
   UpdateCheckIntervalHours: 24,
 };
@@ -507,19 +508,27 @@ function mockUpdateStatus(refresh = false) {
     mockUpdateLastChecked = new Date().toISOString();
   }
 
+  const latestVersion = mockUpdateAvailable ? '0.1.0-beta.4' : '0.1.0-beta.3';
   return {
     currentVersion: config.Version,
     channel: config.UpdateChannel,
-    latestVersion: '0.1.0-beta.2',
+    latestVersion,
     available: mockUpdateAvailable,
-    publishedAt: '2026-09-14T00:00:00Z',
-    releaseUrl: 'https://github.com/godlev/LANnventory/releases/tag/v0.1.0-beta.2',
+    publishedAt: '2026-09-16T00:00:00Z',
+    releaseUrl: 'https://github.com/godlev/LANnventory/releases/tag/v' + latestVersion,
+    releaseSummary: [
+      'Update experience:',
+      '- Separate background update checks from automatic installation.',
+      '- Show a persistent update reminder in the top navigation.',
+      '- Open a concise release summary inside LANnventory before visiting GitHub.',
+    ].join('\n'),
     installSupported: false,
     installReason: 'Mock API does not install updates.',
     message: mockUpdateAvailable
-      ? 'Update 0.1.0-beta.2 is available.'
+      ? 'Update ' + latestVersion + ' is available.'
       : 'No newer ' + channelLabel(config.UpdateChannel) + ' release is available.',
     updating: false,
+    automaticCheck: config.UpdateCheckAuto || config.UpdateAuto,
     automatic: config.UpdateAuto,
     intervalHours: config.UpdateCheckIntervalHours,
     lastChecked: mockUpdateLastChecked,
@@ -1331,7 +1340,10 @@ async function routeSafeAction(req, res, url) {
     }
 
     config.UpdateChannel = channel;
-    config.UpdateAuto = params.automatic === true || params.automatic === 'true' || params.automatic === 'on';
+    const automatic = params.automatic === true || params.automatic === 'true' || params.automatic === 'on';
+    const automaticCheck = params.automaticCheck === true || params.automaticCheck === 'true' || params.automaticCheck === 'on';
+    config.UpdateCheckAuto = automaticCheck || automatic;
+    config.UpdateAuto = automatic && config.UpdateCheckAuto;
     config.UpdateCheckIntervalHours = intervalHours;
     sendJSON(res, mockUpdateStatus(true));
     return true;

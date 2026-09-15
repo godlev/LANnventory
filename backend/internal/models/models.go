@@ -20,6 +20,7 @@ type Conf struct {
 	ShoutURL                 string
 	Version                  string
 	UpdateChannel            string
+	UpdateCheckAuto          bool
 	UpdateAuto               bool
 	UpdateCheckIntervalHours int
 	// PostgreSQL

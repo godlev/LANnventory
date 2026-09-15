@@ -91,3 +91,48 @@ func TestWriteErrPersistsConnectivityRetentionKey(t *testing.T) {
 		t.Fatalf("config file did not persist connectivity retention: %s", string(written))
 	}
 }
+
+func TestUpdateAutoImpliesAutomaticChecksOnRead(t *testing.T) {
+	t.Cleanup(viper.Reset)
+	viper.Reset()
+
+	confPath := filepath.Join(t.TempDir(), "config_v2.yaml")
+	if err := os.WriteFile(confPath, []byte("UPDATE_AUTO: true\nUPDATE_CHECK_AUTO: false\n"), 0o600); err != nil {
+		t.Fatalf("os.WriteFile: %v", err)
+	}
+
+	config := read(confPath)
+	if !config.UpdateAuto || !config.UpdateCheckAuto {
+		t.Fatalf("automatic install should imply automatic checks: %+v", config)
+	}
+}
+
+func TestWriteErrPersistsAutomaticCheckPreference(t *testing.T) {
+	t.Cleanup(viper.Reset)
+	viper.Reset()
+
+	confPath := filepath.Join(t.TempDir(), "config_v2.yaml")
+	if err := os.WriteFile(confPath, []byte("{}\n"), 0o600); err != nil {
+		t.Fatalf("os.WriteFile: %v", err)
+	}
+
+	config := models.Conf{
+		ConfPath:                 confPath,
+		UpdateChannel:            "beta",
+		UpdateCheckAuto:          true,
+		UpdateAuto:               false,
+		UpdateCheckIntervalHours: 24,
+	}
+	if err := WriteErr(config); err != nil {
+		t.Fatalf("WriteErr: %v", err)
+	}
+
+	written, err := os.ReadFile(confPath)
+	if err != nil {
+		t.Fatalf("os.ReadFile: %v", err)
+	}
+	lower := strings.ToLower(string(written))
+	if !strings.Contains(lower, "update_check_auto: true") {
+		t.Fatalf("config file did not persist update check preference: %s", string(written))
+	}
+}
