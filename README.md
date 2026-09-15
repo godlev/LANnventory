@@ -10,7 +10,7 @@ LANnventory is an independent project originally based on [WatchYourLAN by acebe
 
 Current repository: [godlev/LANnventory](https://github.com/godlev/LANnventory)
 
-Current beta release: `0.1.0-beta.2`
+Current beta release: `0.1.0-beta.3`
 
 The original WatchYourLAN scanning/backend foundation is preserved and credited. LANnventory adds a substantially expanded interface, persistent event model, device classification, configurable retention, migration hardening, safer configuration handling and other reliability improvements.
 
@@ -149,10 +149,11 @@ Recent release-readiness work includes:
 - Stored sensitive configuration values are no longer returned by `/api/config`.
 - Secret settings are write-only in the Settings UI and can be kept, replaced or explicitly cleared.
 
-### Remaining validation work before the first beta
+### Remaining beta validation work
 
-- PostgreSQL runtime integration testing is still required.
-- The race detector has not been run in the current Windows development environment because CGO/gcc is unavailable there.
+- PostgreSQL runtime integration testing is still required before PostgreSQL is treated as a fully validated deployment path.
+- SQLite remains the primary packaging-validated database path.
+- GitHub Packaging Check runs the backend race detector on Linux for every release candidate.
 
 ## Security and exposure
 
@@ -260,6 +261,25 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/godlev/LANnventory/main/
 The installer downloads the pinned official `.deb` release package, detects Proxmox storage/template/bridge choices, prefers `vmbr0` when available, filters Proxmox per-guest firewall bridges, supports DHCP or static IPv4, seeds `IFACES: "eth0"`, and validates `/api/health`, `/api/version` and `arp-scan` availability. It does not build LANnventory from source and does not loosen LXC security by enabling privileged mode, nesting, AppArmor relaxation or broad capabilities.
 
 See [proxmox/README.md](proxmox/README.md) for details.
+
+### In-app software updates
+
+Supported Debian-package/systemd installations can update from **Settings → Updates**.
+
+The update panel provides:
+
+- **Stable** and **Beta** release channels
+- manual **Check now** and **Update** actions
+- optional **Automatic updates**
+- automatic check intervals of **6 hours, 12 hours, 24 hours, or 7 days**
+- the installed version, latest published release and last-check time
+- an update-available indicator in the main header
+
+The updater verifies the selected LANnventory GitHub release and SHA256 checksum, creates a versioned recovery backup under `/var/lib/lannventory/update-backups`, stops the service before copying `/etc/watchyourlan`, installs the matching Debian package, restarts LANnventory and validates `/api/health` using the configured bind address.
+
+Changes to the update channel, automatic-update toggle or check interval are applied to the scheduler immediately without requiring a service restart.
+
+Automatic package installation is intentionally limited to supported Debian-package/systemd installations in this beta. Docker, RPM, APK and manual-binary deployments should continue to use their normal deployment/update method.
 
 ### Docker / Compose development install
 
