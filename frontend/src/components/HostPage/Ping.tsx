@@ -1,82 +1,215 @@
-import { createSignal, For } from "solid-js";
-import { apiScanHostPort } from "../../functions/api";
+import { createEffect, createMemo, createSignal, For, onCleanup, Show } from "solid-js";
+import {
+  apiCancelHostPortScan,
+  apiGetHostPortScan,
+  apiGetHostPorts,
+  apiStartHostPortScan,
+  type HostPortScanJob,
+  type HostPortState,
+} from "../../functions/api";
 import type { Host } from "../../functions/exports";
 
 type PingProps = {
   host: Host;
 };
 
-function Ping(props: PingProps) {
-  let stop = false;
+const pollIntervalMs = 350;
 
+function Ping(props: PingProps) {
   const [beginStr, setBegin] = createSignal("");
   const [endStr, setEnd] = createSignal("");
-  const [curPort, setCurPort] = createSignal("");
-  const [foundPorts, setFoundPorts] = createSignal<number[]>([]);
-  const [isStopped, setIsStopped] = createSignal(false);
-  const [isRunning, setIsRunning] = createSignal(false);
+  const [job, setJob] = createSignal<HostPortScanJob>();
+  const [knownPorts, setKnownPorts] = createSignal<HostPortState[]>([]);
   const [scanError, setScanError] = createSignal("");
+  const [loadingPorts, setLoadingPorts] = createSignal(false);
+  let pollTimer: number | undefined;
+  let pollToken = 0;
 
-  const handleScan = async () => {
-    if (props.host.ID < 1 || !props.host.IP) {
+  const clearPoll = () => {
+    pollToken++;
+    if (pollTimer !== undefined) {
+      window.clearTimeout(pollTimer);
+      pollTimer = undefined;
+    }
+  };
+
+  const loadKnownPorts = async (hostID: number) => {
+    if (hostID < 1) {
+      setKnownPorts([]);
       return;
     }
 
-    stop = false;
-    setIsStopped(false);
-    setIsRunning(true);
-    setScanError("");
-    setFoundPorts([]);
-
-    let begin = Number(beginStr());
-    if (Number.isNaN(begin) || begin < 1 || begin > 65535) {
-      begin = 1;
-    }
-    let end = Number(endStr());
-    if (Number.isNaN(end) || end < 1 || end > 65535) {
-      end = 65535;
-    }
-    if (begin > end) {
-      [begin, end] = [end, begin];
-    }
-
+    setLoadingPorts(true);
     try {
-      for (let i = begin; i <= end; i++) {
-        if (stop) {
-          break;
-        }
-
-        setCurPort(i.toString());
-        const result = await apiScanHostPort(props.host.ID, i);
-        if (result.open) {
-          setFoundPorts((current) => current.includes(i) ? current : [...current, i]);
-        }
-      }
-    } catch (error) {
-      setScanError(error instanceof Error ? error.message : "Port scan failed");
+      setKnownPorts(await apiGetHostPorts(hostID));
+    } catch {
+      setKnownPorts([]);
     } finally {
-      setIsRunning(false);
+      setLoadingPorts(false);
     }
   };
 
-  const handleStop = () => {
-    if (stop) {
-      setBegin(curPort());
-      void handleScan();
-    } else {
-      stop = true;
-      setIsStopped(true);
+  createEffect(() => {
+    const hostID = props.host.ID;
+    clearPoll();
+    setJob(undefined);
+    setScanError("");
+    void loadKnownPorts(hostID);
+  });
+
+  onCleanup(clearPoll);
+
+  const knownByPort = createMemo(() => {
+    const map = new Map<number, HostPortState>();
+    for (const state of knownPorts()) {
+      map.set(state.port, state);
     }
+    return map;
+  });
+
+  const displayedOpenPorts = createMemo(() => {
+    const ports = new Set<number>();
+    for (const state of knownPorts()) {
+      if (state.open) {
+        ports.add(state.port);
+      }
+    }
+    for (const port of job()?.openPorts ?? []) {
+      ports.add(port);
+    }
+    return [...ports].sort((left, right) => left - right);
+  });
+
+  const progressPercent = () => {
+    const current = job();
+    if (!current || current.total <= 0) {
+      return 0;
+    }
+    return Math.min(100, Math.round((current.scanned / current.total) * 1000) / 10);
   };
 
   const scanStatus = () => {
-    if (isStopped()) {
-      return "Paused at port: " + curPort();
+    const current = job();
+    if (!current) {
+      return "";
     }
-    if (isRunning()) {
-      return "Scanning port: " + curPort();
+    if (current.running) {
+      const latest = current.currentPort > 0 ? " · latest port " + current.currentPort : "";
+      return "Scanning " + current.scanned + " / " + current.total + " (" + progressPercent() + "%)" + latest;
     }
-    return "Last scanned port: " + curPort();
+    if (current.cancelled) {
+      return "Stopped after " + current.scanned + " / " + current.total + " ports";
+    }
+    if (current.error) {
+      return "Scan ended with an error";
+    }
+    return "Completed " + current.scanned + " / " + current.total + " ports";
+  };
+
+  const parseRange = (): [number, number] | undefined => {
+    const parsePort = (raw: string, fallback: number): number | undefined => {
+      const trimmed = raw.trim();
+      if (trimmed === "") {
+        return fallback;
+      }
+      const value = Number(trimmed);
+      if (!Number.isInteger(value) || value < 1 || value > 65535) {
+        return undefined;
+      }
+      return value;
+    };
+
+    let startPort = parsePort(beginStr(), 1);
+    let endPort = parsePort(endStr(), 65535);
+    if (startPort === undefined || endPort === undefined) {
+      setScanError("Ports must be whole numbers between 1 and 65535.");
+      return undefined;
+    }
+    if (startPort > endPort) {
+      [startPort, endPort] = [endPort, startPort];
+    }
+    return [startPort, endPort];
+  };
+
+  const pollScan = (hostID: number, scanID: string, token: number) => {
+    const run = async () => {
+      if (token !== pollToken) {
+        return;
+      }
+
+      try {
+        const next = await apiGetHostPortScan(hostID, scanID);
+        if (token !== pollToken) {
+          return;
+        }
+        setJob(next);
+
+        if (next.running) {
+          pollTimer = window.setTimeout(run, pollIntervalMs);
+          return;
+        }
+
+        if (next.error) {
+          setScanError(next.error);
+        }
+        await loadKnownPorts(hostID);
+      } catch (error) {
+        if (token !== pollToken) {
+          return;
+        }
+        setScanError(error instanceof Error ? error.message : "Port scan status could not be loaded");
+      }
+    };
+
+    pollTimer = window.setTimeout(run, pollIntervalMs);
+  };
+
+  const handleScan = async () => {
+    if (props.host.ID < 1 || !props.host.IP || job()?.running) {
+      return;
+    }
+
+    const range = parseRange();
+    if (!range) {
+      return;
+    }
+
+    clearPoll();
+    setScanError("");
+    try {
+      const next = await apiStartHostPortScan(props.host.ID, range[0], range[1]);
+      setJob(next);
+      const token = pollToken;
+      pollScan(props.host.ID, next.id, token);
+    } catch (error) {
+      setScanError(error instanceof Error ? error.message : "Port scan could not be started");
+    }
+  };
+
+  const handleStop = async () => {
+    const current = job();
+    if (!current?.running) {
+      return;
+    }
+
+    try {
+      const next = await apiCancelHostPortScan(props.host.ID, current.id);
+      setJob(next);
+    } catch (error) {
+      setScanError(error instanceof Error ? error.message : "Port scan could not be stopped");
+    }
+  };
+
+  const portTitle = (port: number) => {
+    const state = knownByPort().get(port);
+    const parts = ["TCP " + port];
+    if (state?.service) {
+      parts.push(state.service);
+    }
+    if (state?.lastScanned) {
+      parts.push("last scanned " + state.lastScanned);
+    }
+    return parts.join(" · ");
   };
 
   return (
@@ -88,62 +221,96 @@ function Ping(props: PingProps) {
         </div>
       </div>
       <div class="card-body host-port-body">
-        <form class="host-port-controls">
+        <form class="host-port-controls" onSubmit={(event) => event.preventDefault()}>
           <label class="host-port-field">
             <span>Start port</span>
             <input
               type="text"
+              inputmode="numeric"
               class="form-control form-control-sm wyl-control host-port-input"
               placeholder="1"
-              onInput={e => setBegin(e.target.value)}
-            ></input>
+              value={beginStr()}
+              disabled={job()?.running}
+              onInput={(event) => setBegin(event.currentTarget.value)}
+            />
           </label>
           <label class="host-port-field">
             <span>End port</span>
             <input
               type="text"
+              inputmode="numeric"
               class="form-control form-control-sm wyl-control host-port-input"
               placeholder="65535"
-              onInput={e => setEnd(e.target.value)}
-            ></input>
+              value={endStr()}
+              disabled={job()?.running}
+              onInput={(event) => setEnd(event.currentTarget.value)}
+            />
           </label>
           <button
             type="button"
-            onClick={handleScan}
+            onClick={() => void handleScan()}
             class="btn btn-sm wyl-button host-scan-button"
-            disabled={props.host.ID < 1 || !props.host.IP || isRunning()}
+            disabled={props.host.ID < 1 || !props.host.IP || job()?.running}
           >
             <i class="bi bi-search" aria-hidden="true"></i>
             <span>Scan</span>
           </button>
         </form>
 
-        {curPort() !== ""
-          ? <div class="host-scan-state">
-              {isRunning() || isStopped()
-                ? <button type="button" onClick={handleStop} class="btn btn-sm wyl-button host-stop-button">
-                    {isStopped() ? "Continue" : "Stop"}
-                  </button>
-                : <></>
-              }
-              <div class="host-scan-status">{scanStatus()}</div>
+        <Show when={job()}>
+          {(current) =>
+            <div class="host-scan-state">
+              <div class="host-scan-progress-wrap">
+                <progress
+                  class="host-port-progress"
+                  max={Math.max(1, current().total)}
+                  value={current().scanned}
+                  aria-label="Port scan progress"
+                />
+                <div class="host-scan-status">{scanStatus()}</div>
+              </div>
+              <Show when={current().running}>
+                <button type="button" onClick={() => void handleStop()} class="btn btn-sm wyl-button host-stop-button">
+                  Stop
+                </button>
+              </Show>
             </div>
-          : <></>
-        }
+          }
+        </Show>
 
-        {scanError()
-          ? <div class="host-inline-error" role="alert">{scanError()}</div>
-          : <></>
-        }
+        <Show when={scanError()}>
+          <div class="host-inline-error" role="alert">{scanError()}</div>
+        </Show>
 
+        <div class="host-found-ports-header">
+          <span>Known open ports</span>
+          <span>{loadingPorts() ? "…" : displayedOpenPorts().length}</span>
+        </div>
         <div class="host-found-ports">
-          <For each={foundPorts()}>{(port) =>
-            <a class="host-port-chip" href={"http://" + props.host.IP + ":" + port} target="_blank" rel="noreferrer">{port}</a>
-          }</For>
+          <For each={displayedOpenPorts()}>{(port) => {
+            const state = () => knownByPort().get(port);
+            return (
+              <a
+                class="host-port-chip"
+                href={"http://" + props.host.IP + ":" + port}
+                target="_blank"
+                rel="noreferrer"
+                title={portTitle(port)}
+              >
+                <span>{port}</span>
+                <Show when={state()?.service}>
+                  <span class="host-port-service">{state()!.service}</span>
+                </Show>
+              </a>
+            );
+          }}</For>
+          <Show when={!loadingPorts() && displayedOpenPorts().length === 0}>
+            <span class="host-port-empty">No open ports recorded yet</span>
+          </Show>
         </div>
       </div>
     </div>
   );
 }
 
-export default Ping
+export default Ping;
