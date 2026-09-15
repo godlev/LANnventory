@@ -6,6 +6,7 @@ import {
   type UpdateStatus,
 } from "../../functions/updateApi";
 import { confirmUpdate, startUpdateFlow } from "../../functions/updateFlow";
+import ReleaseNotesDialog from "../ReleaseNotesDialog";
 
 const updateIntervals = [
   { label: "6 hours", value: 6 },
@@ -21,11 +22,13 @@ function Updates() {
   const [installing, setInstalling] = createSignal(false);
   const [error, setError] = createSignal("");
   const [message, setMessage] = createSignal("");
+  const [releaseNotesOpen, setReleaseNotesOpen] = createSignal(false);
   let reconnectTimer: number | undefined;
 
   const current = () => status();
   const channel = () => current()?.channel ?? "beta";
   const automatic = () => current()?.automatic ?? false;
+  const automaticCheck = () => current()?.automaticCheck ?? automatic();
   const intervalHours = () => current()?.intervalHours ?? 24;
   const channelLabel = () => channel() === "stable" ? "Stable" : "Beta";
   const latestLabel = () => "Latest published " + channelLabel();
@@ -67,7 +70,12 @@ function Updates() {
     }
   };
 
-  const saveSettings = async (nextChannel: UpdateChannel, nextAutomatic: boolean, nextIntervalHours: number) => {
+  const saveSettings = async (
+    nextChannel: UpdateChannel,
+    nextAutomaticCheck: boolean,
+    nextAutomatic: boolean,
+    nextIntervalHours: number,
+  ) => {
     if (savingSettings() || installing()) {
       return;
     }
@@ -76,7 +84,7 @@ function Updates() {
     setError("");
     setMessage("");
     try {
-      setStatus(await apiSetUpdateSettings(nextChannel, nextAutomatic, nextIntervalHours));
+      setStatus(await apiSetUpdateSettings(nextChannel, nextAutomaticCheck || nextAutomatic, nextAutomatic, nextIntervalHours));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Update settings could not be saved");
     } finally {
@@ -125,7 +133,7 @@ function Updates() {
             class="form-select form-select-sm update-select"
             value={channel()}
             disabled={loading() || savingSettings() || installing()}
-            onChange={(event) => void saveSettings(event.currentTarget.value as UpdateChannel, automatic(), intervalHours())}
+            onChange={(event) => void saveSettings(event.currentTarget.value as UpdateChannel, automaticCheck(), automatic(), intervalHours())}
           >
             <option value="stable">Stable</option>
             <option value="beta">Beta</option>
@@ -149,31 +157,54 @@ function Updates() {
           </Show>
         </Show>
 
-        <label class="form-check form-switch update-auto-toggle">
-          <input
-            class="form-check-input"
-            type="checkbox"
-            checked={automatic()}
-            disabled={loading() || savingSettings() || installing()}
-            onChange={(event) => void saveSettings(channel(), event.currentTarget.checked, intervalHours())}
-          />
-          <span class="form-check-label">Automatic updates</span>
-        </label>
+        <div class="update-automation-options">
+          <label class="form-check form-switch update-auto-toggle">
+            <input
+              class="form-check-input"
+              type="checkbox"
+              checked={automaticCheck()}
+              disabled={loading() || savingSettings() || installing()}
+              onChange={(event) => {
+                const enabled = event.currentTarget.checked;
+                void saveSettings(channel(), enabled, enabled ? automatic() : false, intervalHours());
+              }}
+            />
+            <span class="form-check-label">Check automatically</span>
+          </label>
 
-        <Show when={automatic()}>
+          <label class="form-check form-switch update-auto-toggle">
+            <input
+              class="form-check-input"
+              type="checkbox"
+              checked={automatic()}
+              disabled={loading() || savingSettings() || installing() || !automaticCheck()}
+              onChange={(event) => void saveSettings(channel(), true, event.currentTarget.checked, intervalHours())}
+            />
+            <span class="form-check-label">Install updates automatically</span>
+          </label>
+        </div>
+
+        <Show when={automaticCheck()}>
           <label class="update-field">
             <span class="update-field-label">Check for updates</span>
             <select
               class="form-select form-select-sm update-select"
               value={String(intervalHours())}
               disabled={loading() || savingSettings() || installing()}
-              onChange={(event) => void saveSettings(channel(), automatic(), Number(event.currentTarget.value))}
+              onChange={(event) => void saveSettings(channel(), automaticCheck(), automatic(), Number(event.currentTarget.value))}
             >
               {updateIntervals.map((interval) =>
                 <option value={interval.value}>{interval.label}</option>
               )}
             </select>
           </label>
+        </Show>
+
+        <Show when={automaticCheck() && !automatic()}>
+          <div class="update-support-note">
+            <i class="bi bi-bell" aria-hidden="true"></i>
+            <span>LANnventory will check in the background and show an update reminder in the top bar, but it will not install anything automatically.</span>
+          </div>
         </Show>
 
         <Show when={current()?.lastChecked}>
@@ -229,12 +260,24 @@ function Updates() {
         </div>
 
         <Show when={status()?.releaseUrl}>
-          <a class="update-release-link" href={status()!.releaseUrl} target="_blank" rel="noreferrer">
+          <button
+            type="button"
+            class="update-release-link"
+            onClick={() => setReleaseNotesOpen(true)}
+          >
             <span>Release notes</span>
-            <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
-          </a>
+            <i class="bi bi-card-text" aria-hidden="true"></i>
+          </button>
         </Show>
       </div>
+
+      <ReleaseNotesDialog
+        open={releaseNotesOpen()}
+        version={status()?.latestVersion || status()?.currentVersion || ""}
+        summary={status()?.releaseSummary || ""}
+        releaseUrl={status()?.releaseUrl || ""}
+        onClose={() => setReleaseNotesOpen(false)}
+      />
     </div>
   );
 }
