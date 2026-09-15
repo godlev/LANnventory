@@ -126,9 +126,10 @@ func (m *portScanJobManager) run(ctx context.Context, host models.Host, job *por
 		err = nil
 	}
 	job.finish(cancelled, err)
+	jobID := job.snapshot().ID
 
 	m.mu.Lock()
-	if m.activeByHost[host.ID] == job.status.ID {
+	if m.activeByHost[host.ID] == jobID {
 		delete(m.activeByHost, host.ID)
 	}
 	m.mu.Unlock()
