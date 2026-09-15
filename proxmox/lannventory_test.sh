@@ -98,4 +98,8 @@ assert_equal "$(package_url_for_arch amd64)" "$expected_url" "amd64 package URL"
 assert_equal "$(package_url_for_arch x86_64)" "$expected_url" "x86_64 package URL"
 assert_failure package_url_for_arch arm64
 
+inline_output="$(bash -c "$(cat "${script_dir}/lannventory.sh")" 2>&1 || true)"
+[[ "$inline_output" != *"BASH_SOURCE[0]: unbound variable"* ]] || fail "bash -c entrypoint still dereferences an unset BASH_SOURCE[0]"
+[[ "$inline_output" == *"ERROR:"* ]] || fail "bash -c entrypoint did not execute installer preflight"
+
 printf 'LANnventory Proxmox installer helper tests passed\n'
