@@ -1,0 +1,131 @@
+.update-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.update-panel-body {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.update-channel-control {
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(5.5rem, 1fr));
+  gap: 0.4rem;
+  width: min(15rem, 100%);
+}
+
+.update-channel-button.is-active {
+  color: var(--wyl-control-text-strong);
+  background-color: var(--wyl-card-active-bg);
+  border-color: var(--wyl-link);
+  box-shadow: inset 0 0 0 1px var(--wyl-link);
+}
+
+.update-state-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.45rem;
+  padding: 0.16rem 0.48rem;
+  border: 1px solid var(--wyl-card-border);
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 850;
+  line-height: 1;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.update-state-badge.is-current {
+  color: var(--wyl-summary-online-text);
+  background-color: var(--wyl-summary-online-bg);
+  border-color: var(--wyl-summary-online-border);
+}
+
+.update-state-badge.is-available {
+  color: var(--wyl-summary-unknown-text);
+  background-color: var(--wyl-summary-unknown-bg);
+  border-color: var(--wyl-summary-unknown-border);
+}
+
+.update-version-grid {
+  display: grid;
+  grid-template-columns: minmax(6.5rem, auto) minmax(0, 1fr);
+  column-gap: 0.7rem;
+  row-gap: 0.36rem;
+  align-items: baseline;
+}
+
+.update-version-grid > span {
+  color: var(--wyl-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.update-version-grid > strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 0.82rem;
+}
+
+.update-status-message,
+.update-progress-message,
+.update-support-note {
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.update-status-message,
+.update-support-note {
+  color: var(--wyl-muted);
+}
+
+.update-support-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.42rem;
+}
+
+.update-progress-message {
+  color: var(--wyl-link);
+  font-weight: 750;
+}
+
+.update-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.update-install-button:not(:disabled) {
+  color: var(--wyl-summary-online-text);
+  border-color: var(--wyl-summary-online-border);
+  background-color: var(--wyl-summary-online-bg);
+}
+
+.update-release-link {
+  width: max-content;
+  max-width: 100%;
+  font-size: 0.75rem;
+}
+
+@media (max-width: 575.98px) {
+  .update-panel-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .update-channel-control {
+    width: 100%;
+  }
+
+  .update-version-grid {
+    grid-template-columns: 1fr;
+    row-gap: 0.18rem;
+  }
+}
