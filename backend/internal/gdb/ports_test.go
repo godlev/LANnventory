@@ -125,3 +125,34 @@ func TestDeleteCurrentHostRemovesPortStates(t *testing.T) {
 		t.Fatalf("port states remain after host delete: %+v", states)
 	}
 }
+
+
+func TestReconcileHostPortObservationsRejectsMissingHost(t *testing.T) {
+	startSelectTestDB(t)
+	host := models.Host{
+		ID:   99,
+		Name: "deleted",
+		IP:   "192.168.1.99",
+		Mac:  "AA:BB:CC:DD:EE:99",
+	}
+
+	if _, err := ReconcileHostPortObservations(host, map[int]bool{22: true}, "2026-09-16 12:00:00"); err == nil {
+		t.Fatal("missing host reconcile returned nil error")
+	}
+
+	states, err := SelectHostPorts(host.ID)
+	if err != nil {
+		t.Fatalf("SelectHostPorts missing host: %v", err)
+	}
+	if len(states) != 0 {
+		t.Fatalf("missing host created port state: %+v", states)
+	}
+
+	var events []models.HostEvent
+	if err := db.Table("events").Find(&events).Error; err != nil {
+		t.Fatalf("load events: %v", err)
+	}
+	if len(events) != 0 {
+		t.Fatalf("missing host created events: %+v", events)
+	}
+}
