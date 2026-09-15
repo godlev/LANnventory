@@ -1210,6 +1210,30 @@ paths:
       tags:
       - network
   /host/{id}/ports/scan:
+    get:
+      description: Return the currently running port scan for a host, if one exists.
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.portScanJobStatus'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get active host port scan
+      tags:
+      - network
     post:
       consumes:
       - application/json

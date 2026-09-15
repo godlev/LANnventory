@@ -71,7 +71,6 @@ func TestServiceName(t *testing.T) {
 	}
 }
 
-
 func TestScanRangeCancelledContextEmitsNoResults(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()

@@ -47,7 +47,7 @@ func Routes(router *gin.Engine) {
 		r0.POST("/host/:id/port/:port/scan", scanHostPort)            // api-network.go
 		r0.GET("/host/:id/ports", getHostPorts)                       // api-network.go
 		r0.POST("/host/:id/ports/scan", startHostPortScan)            // api-network.go
-		r0.GET("/host/:id/ports/scan", getActiveHostPortScan)          // api-network.go
+		r0.GET("/host/:id/ports/scan", getActiveHostPortScan)         // api-network.go
 		r0.GET("/host/:id/ports/scan/:scanId", getHostPortScanStatus) // api-network.go
 		r0.DELETE("/host/:id/ports/scan/:scanId", cancelHostPortScan) // api-network.go
 		r0.GET("/wol/:mac", sendWOL)                                  // api-network.go

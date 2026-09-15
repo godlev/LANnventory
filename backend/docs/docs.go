@@ -1271,6 +1271,42 @@ const docTemplate = `{
             }
         },
         "/host/{id}/ports/scan": {
+            "get": {
+                "description": "Return the currently running port scan for a host, if one exists.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "network"
+                ],
+                "summary": "Get active host port scan",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.portScanJobStatus"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
             "post": {
                 "description": "Start an asynchronous bounded-concurrency TCP port scan for a current host.",
                 "consumes": [
