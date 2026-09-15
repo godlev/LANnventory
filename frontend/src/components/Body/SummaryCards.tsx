@@ -16,8 +16,7 @@ type SplitSummaryItem = {
 
 type CombinedSummary = {
   label: string;
-  shortLabel: string;
-  detail: string;
+  scopeCount: number;
   icon: string;
   tone: string;
   primary: SplitSummaryItem;
@@ -80,17 +79,15 @@ function SummaryCards() {
       combined: [
         {
           label: "Connectivity",
-          shortLabel: "NET",
-          detail: statusFacetHosts.length + " scoped devices",
+          scopeCount: statusFacetHosts.length,
           icon: "bi-broadcast-pin",
           tone: "connectivity",
-          primary: makeSplit("Online", online, statusFacetHosts.length, "bi-check-circle-fill", "online", "Now", 1),
-          secondary: makeSplit("Offline", offline, statusFacetHosts.length, "bi-slash-circle-fill", "offline", "Now", 0),
+          primary: makeSplit("On", online, statusFacetHosts.length, "bi-check-circle-fill", "online", "Now", 1),
+          secondary: makeSplit("Off", offline, statusFacetHosts.length, "bi-slash-circle-fill", "offline", "Now", 0),
         },
         {
           label: "Recognition",
-          shortLabel: "ID",
-          detail: knownFacetHosts.length + " scoped devices",
+          scopeCount: knownFacetHosts.length,
           icon: "bi-bookmarks-fill",
           tone: "recognition",
           primary: makeSplit("Known", known, knownFacetHosts.length, "bi-bookmark-check-fill", "known", "Known", 1),
@@ -137,24 +134,43 @@ function SummaryCards() {
         </div>
       </button>
       {summary().combined.map((card) =>
-        <article class={"overview-card overview-card-split overview-card-" + card.tone}>
-          <div class="overview-card-icon" aria-hidden="true">
-            <i class={"bi " + card.icon}></i>
+        <article
+          class={"overview-card overview-card-split overview-card-" + card.tone}
+          aria-label={card.label + ": " + card.scopeCount + " scoped devices"}
+        >
+          <div class="overview-summary-rail">
+            <div class="overview-summary-rail-icon" aria-hidden="true">
+              <i class={"bi " + card.icon}></i>
+            </div>
+            <div class="overview-summary-title">{card.label}</div>
           </div>
           <div class="overview-split-content">
-            <div class="overview-card-label">
-              <span class="overview-card-label-full">{card.label}</span>
-              <span class="overview-card-label-short" aria-hidden="true">{card.shortLabel}</span>
+            <div class="overview-summary-scope">
+              <strong>{card.scopeCount}</strong>
+              <span>scoped devices</span>
             </div>
             <div class="overview-split-actions">
               <SplitButton item={card.primary} active={isSplitActive(card.primary)} onClick={handleSplitFilter}></SplitButton>
               <SplitButton item={card.secondary} active={isSplitActive(card.secondary)} onClick={handleSplitFilter}></SplitButton>
             </div>
-            <div class="overview-split-bar" aria-hidden="true">
-              <span class={"overview-split-bar-segment overview-split-bar-" + card.primary.tone} style={{ width: card.primary.percent + "%" }}></span>
-              <span class={"overview-split-bar-segment overview-split-bar-" + card.secondary.tone} style={{ width: card.secondary.percent + "%" }}></span>
+            <div
+              class="overview-split-bar"
+              aria-hidden="true"
+              title={card.primary.percent + "% " + card.primary.label + ", " + card.secondary.percent + "% " + card.secondary.label}
+            >
+              <span
+                class={"overview-split-bar-segment overview-split-bar-" + card.primary.tone}
+                style={{ width: card.primary.percent + "%" }}
+              ></span>
+              <span
+                class={"overview-split-bar-segment overview-split-bar-" + card.secondary.tone}
+                style={{ width: card.secondary.percent + "%" }}
+              ></span>
+              <span class="overview-split-bar-labels">
+                <span>{card.primary.percent}%</span>
+                <span>{card.secondary.percent}%</span>
+              </span>
             </div>
-            <div class="overview-card-detail">{card.detail}</div>
           </div>
         </article>
       )}
@@ -174,12 +190,11 @@ function SplitButton(props: { item: SplitSummaryItem; active: boolean; onClick: 
       aria-pressed={props.active}
       onClick={[props.onClick, props.item]}
     >
+      <span class="overview-split-action-value">{props.item.value}</span>
       <span class="overview-split-action-main">
         <i class={"bi " + props.item.icon} aria-hidden="true"></i>
         <span>{props.item.label}</span>
       </span>
-      <span class="overview-split-action-value">{props.item.value}</span>
-      <span class="overview-split-action-percent">{props.item.percent}%</span>
     </button>
   );
 }
