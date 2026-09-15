@@ -1395,6 +1395,23 @@ async function routeSafeAction(req, res, url) {
   }
 
   const hostPortScanStartMatch = pathname.match(/^\/api\/host\/(\d+)\/ports\/scan$/);
+  if (req.method === 'GET' && hostPortScanStartMatch) {
+    const hostId = Number(hostPortScanStartMatch[1]);
+    if (!findHostByID(hostId)) {
+      sendJSON(res, { error: 'invalid host id' }, 400);
+      return true;
+    }
+
+    const active = [...mockPortScans.values()].find((job) => job.hostId === hostId && job.running);
+    if (!active) {
+      sendJSON(res, { error: 'no active port scan' }, 404);
+      return true;
+    }
+
+    sendJSON(res, mockScanSnapshot(active));
+    return true;
+  }
+
   if (req.method === 'POST' && hostPortScanStartMatch) {
     const hostId = Number(hostPortScanStartMatch[1]);
     if (!findHostByID(hostId)) {
