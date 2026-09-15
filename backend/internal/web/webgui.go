@@ -6,7 +6,9 @@ import (
 	"errors"
 	"html/template"
 	"log/slog"
+	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -32,6 +34,7 @@ func NewRouter() *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
 	router.Use(gin.Recovery())
+	router.Use(frontendRevalidationHeaders())
 
 	templ := template.Must(template.New("").ParseFS(templFS, "templates/*"))
 	router.SetHTMLTemplate(templ) // templates
@@ -48,6 +51,28 @@ func NewRouter() *gin.Engine {
 	api.Routes(router)
 
 	return router
+}
+
+func frontendRevalidationHeaders() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		path := c.Request.URL.Path
+		if isFrontendEntryRoute(path) || strings.HasPrefix(path, "/fs/public/assets/") {
+			c.Header("Cache-Control", "no-cache, max-age=0, must-revalidate")
+			c.Header("Pragma", "no-cache")
+			c.Header("Expires", "0")
+		}
+
+		c.Next()
+	}
+}
+
+func isFrontendEntryRoute(path string) bool {
+	switch path {
+	case "/", "/config", "/history", "/activity":
+		return true
+	default:
+		return strings.HasPrefix(path, "/host/")
+	}
 }
 
 // Gui - start web server
@@ -80,6 +105,14 @@ func GuiContext(ctx context.Context) error {
 		Handler: NewRouter(),
 	}
 
+	listener, err := net.Listen("tcp", address)
+	if err != nil {
+		return err
+	}
+	defer listener.Close()
+
+	api.StartUpdateScheduler(ctx)
+
 	go func() {
 		<-ctx.Done()
 
@@ -91,7 +124,7 @@ func GuiContext(ctx context.Context) error {
 		}
 	}()
 
-	err := server.ListenAndServe()
+	err = server.Serve(listener)
 	if errors.Is(err, http.ErrServerClosed) {
 		return nil
 	}

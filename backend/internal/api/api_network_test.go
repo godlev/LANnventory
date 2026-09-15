@@ -35,7 +35,6 @@ func TestPortEndpointRejectsInvalidPort(t *testing.T) {
 	}
 }
 
-
 func TestHostPortScanRecordsOpenPortEvent(t *testing.T) {
 	router := setupTestRouter(t)
 	host := seedHost(t, models.Host{
@@ -115,5 +114,71 @@ func TestHostPortScanDoesNotRecordClosedPort(t *testing.T) {
 	}
 	if len(events) != 0 {
 		t.Fatalf("closed port unexpectedly recorded events: %+v", events)
+	}
+}
+
+func TestHostPortScanInvalidPortDoesNotRecordEvent(t *testing.T) {
+	router := setupTestRouter(t)
+	host := seedHost(t, models.Host{
+		Name:  "desktop",
+		IP:    "192.168.1.20",
+		Mac:   "AA:BB:CC:DD:EE:92",
+		Iface: "eth0",
+		Known: 1,
+		Now:   1,
+	})
+
+	originalPortIsOpen := portIsOpen
+	portIsOpen = func(addr, port string) bool {
+		t.Fatal("portIsOpen called for invalid port")
+		return false
+	}
+	t.Cleanup(func() {
+		portIsOpen = originalPortIsOpen
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/api/host/"+strconv.Itoa(host.ID)+"/port/65536/scan", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+
+	events, ok := gdb.SelectEventsByHostID(host.ID, 10)
+	if !ok {
+		t.Fatal("SelectEventsByHostID failed")
+	}
+	if len(events) != 0 {
+		t.Fatalf("invalid port unexpectedly recorded events: %+v", events)
+	}
+}
+
+func TestHostPortScanInvalidHostDoesNotRecordEvent(t *testing.T) {
+	router := setupTestRouter(t)
+
+	originalPortIsOpen := portIsOpen
+	portIsOpen = func(addr, port string) bool {
+		t.Fatal("portIsOpen called for invalid host")
+		return false
+	}
+	t.Cleanup(func() {
+		portIsOpen = originalPortIsOpen
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/api/host/999/port/443/scan", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+
+	events, ok := gdb.SelectEvents(10, "")
+	if !ok {
+		t.Fatal("SelectEvents failed")
+	}
+	if len(events) != 0 {
+		t.Fatalf("invalid host unexpectedly recorded events: %+v", events)
 	}
 }

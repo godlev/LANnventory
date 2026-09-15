@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/godlev/LANnventory/internal/conf"
@@ -44,5 +45,52 @@ func TestGuiContextReturnsListenerStartupError(t *testing.T) {
 	}
 	if errors.Is(err, http.ErrServerClosed) {
 		t.Fatalf("GuiContext() error = %v, want listener startup error", err)
+	}
+}
+
+func TestFrontendEntryRoutesUseRevalidationHeaders(t *testing.T) {
+	router := NewRouter()
+
+	for _, path := range []string{"/", "/config", "/history", "/activity", "/host/1"} {
+		t.Run(path, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, path, nil)
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			if rec.Header().Get("Cache-Control") != "no-cache, max-age=0, must-revalidate" {
+				t.Fatalf("Cache-Control = %q", rec.Header().Get("Cache-Control"))
+			}
+		})
+	}
+}
+
+func TestFrontendAssetsUseRevalidationHeaders(t *testing.T) {
+	router := NewRouter()
+	req := httptest.NewRequest(http.MethodGet, "/fs/public/assets/index.js", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+	}
+	if rec.Header().Get("Cache-Control") != "no-cache, max-age=0, must-revalidate" {
+		t.Fatalf("Cache-Control = %q", rec.Header().Get("Cache-Control"))
+	}
+}
+
+func TestPublicImagesDoNotUseFrontendRevalidationHeaders(t *testing.T) {
+	router := NewRouter()
+	req := httptest.NewRequest(http.MethodGet, "/fs/public/favicon.png", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+	}
+	if rec.Header().Get("Cache-Control") == "no-cache, max-age=0, must-revalidate" {
+		t.Fatal("favicon unexpectedly received frontend asset revalidation headers")
 	}
 }

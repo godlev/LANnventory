@@ -117,8 +117,8 @@ function HostPage() {
         </div>
       }
     >
-      <div class="row g-3 mx-0 host-page-row">
-        <div class="col-12 col-md-8 col-lg-9 col-xl-10 host-details-column">
+      <div class="host-page-layout">
+        <div class="host-details-column">
           <HostCard
             host={currentHost()}
             editMode={isEditMode()}
@@ -127,17 +127,15 @@ function HostPage() {
             onDirtyChange={setHasUnsavedHostChanges}
           ></HostCard>
         </div>
-        <div class="col-12 col-md-4 col-lg-3 col-xl-2 host-port-column">
-          <Ping host={currentHost()}></Ping>
+        <div class="host-diagnostics-grid">
+          <div class="host-events-column">
+            <HostActivityCard host={currentHost()}></HostActivityCard>
+          </div>
+          <div class="host-port-column">
+            <Ping host={currentHost()}></Ping>
+          </div>
         </div>
-      </div>
-      <div class="row g-3 mx-0 mt-1 host-page-row">
-        <div class="col-md">
-          <HostActivityCard host={currentHost()}></HostActivityCard>
-        </div>
-      </div>
-      <div class="row g-3 mx-0 mt-1 host-page-row">
-        <div class="col-md">
+        <div class="host-history-column">
           <HistCard mac={currentHost().Mac}></HistCard>
         </div>
       </div>

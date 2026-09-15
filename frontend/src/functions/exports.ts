@@ -72,6 +72,9 @@ export interface Conf {
 	ArpStrs:   string[];
 	TrimHist:  number;
 	ConnectivityRetention: number;
+	UpdateChannel: string;
+	UpdateAuto: boolean;
+	UpdateCheckIntervalHours: number;
 	ShoutURL:  string;
 	ShoutURLConfigured: boolean;
 	UseDB:     string;
@@ -145,6 +148,9 @@ export const emptyConf:Conf = {
 	ArpStrs: [],
 	TrimHist: 48,
 	ConnectivityRetention: 48,
+	UpdateChannel: "beta",
+	UpdateAuto: false,
+	UpdateCheckIntervalHours: 24,
 	ShoutURL: "",
 	ShoutURLConfigured: false,
 	UseDB: "",

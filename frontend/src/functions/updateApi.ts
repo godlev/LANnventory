@@ -11,6 +11,10 @@ export type UpdateStatus = {
   installReason: string;
   message: string;
   updating: boolean;
+  automatic: boolean;
+  intervalHours: number;
+  lastChecked: string;
+  snapshotBaseVersion: string;
 };
 
 export type UpdateApplyResult = {
@@ -39,11 +43,15 @@ export const apiGetUpdateStatus = async (refresh = false): Promise<UpdateStatus>
   return await apiJSON<UpdateStatus>("/api/update/status" + suffix);
 };
 
-export const apiSetUpdateChannel = async (channel: UpdateChannel): Promise<UpdateStatus> => {
-  return await apiJSON<UpdateStatus>("/api/update/channel", {
+export const apiSetUpdateSettings = async (
+  channel: UpdateChannel,
+  automatic: boolean,
+  intervalHours: number,
+): Promise<UpdateStatus> => {
+  return await apiJSON<UpdateStatus>("/api/update/settings", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ channel }),
+    body: JSON.stringify({ channel, automatic, intervalHours }),
   });
 };
 

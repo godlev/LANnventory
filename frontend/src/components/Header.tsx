@@ -2,17 +2,31 @@ import { createEffect, createSignal, onCleanup, onMount, Show } from "solid-js";
 import { A, useLocation } from "@solidjs/router";
 import { appConfig, pageContext } from "../functions/exports";
 import { normalizeColorMode, refreshAppConfig, setColorMode } from "../functions/theme";
+import { apiGetUpdateStatus, type UpdateStatus } from "../functions/updateApi";
+import { confirmUpdate, startUpdateFlow } from "../functions/updateFlow";
+
+const updateStatusPollMs = 30 * 60 * 1000;
 
 function Header() {
 
   const [themeError, setThemeError] = createSignal(false);
   const [supportOpen, setSupportOpen] = createSignal(false);
   const [mobileNavOpen, setMobileNavOpen] = createSignal(false);
+  const [updateStatus, setUpdateStatus] = createSignal<UpdateStatus>();
+  const [updateOpen, setUpdateOpen] = createSignal(false);
+  const [updateInstalling, setUpdateInstalling] = createSignal(false);
+  const [updateMessage, setUpdateMessage] = createSignal("");
+  const [updateError, setUpdateError] = createSignal("");
   const location = useLocation();
   let mobileNavButtonRef: HTMLButtonElement | undefined;
   let mobileNavPanelRef: HTMLDivElement | undefined;
   let supportButtonRef: HTMLButtonElement | undefined;
   let supportPanelRef: HTMLDivElement | undefined;
+  let updateButtonRef: HTMLButtonElement | undefined;
+  let updatePanelRef: HTMLDivElement | undefined;
+  let updateInitialTimer: number | undefined;
+  let updatePollTimer: number | undefined;
+  let updateReconnectTimer: number | undefined;
   const navItems = [
     { label: "Home", href: "/" },
     { label: "Presence", href: "/history" },
@@ -30,6 +44,7 @@ function Header() {
     return "nav-link wyl-nav-tab" + (isActivePath(href) ? " is-active" : "");
   };
   const settingsUtilityClass = () => "nav-link wyl-navbar-utility wyl-navbar-settings" + (isActivePath("/config") ? " is-active" : "");
+  const showUpdateIndicator = () => !!updateStatus()?.available;
   const activeSectionLabel = () => {
     if (showHostContext()) {
       return hostNavLabel();
@@ -97,6 +112,47 @@ function Header() {
     setMobileNavOpen((open) => !open);
   };
 
+  const closeUpdatePopover = (returnFocus = false) => {
+    setUpdateOpen(false);
+
+    if (returnFocus) {
+      queueMicrotask(() => updateButtonRef?.focus());
+    }
+  };
+
+  const loadUpdateStatus = async (refresh = false) => {
+    try {
+      setUpdateStatus(await apiGetUpdateStatus(refresh));
+      setUpdateError("");
+    } catch {
+      setUpdateStatus(undefined);
+    }
+  };
+
+  const handleUpdateToggle = () => {
+    setUpdateOpen((open) => !open);
+  };
+
+  const handleHeaderUpdateNow = async () => {
+    const status = updateStatus();
+    if (!status?.available || !status.installSupported || updateInstalling()) {
+      return;
+    }
+    if (!confirmUpdate(status)) {
+      return;
+    }
+
+    if (updateReconnectTimer !== undefined) {
+      window.clearTimeout(updateReconnectTimer);
+    }
+    updateReconnectTimer = await startUpdateFlow(status, {
+      onStatus: setUpdateStatus,
+      onMessage: setUpdateMessage,
+      onError: setUpdateError,
+      onInstalling: setUpdateInstalling,
+    });
+  };
+
   onMount(() => {
     refreshAppConfig().catch((error) => {
       setThemeError(true);
@@ -108,6 +164,10 @@ function Header() {
 
       if (supportOpen() && !supportButtonRef?.contains(target) && !supportPanelRef?.contains(target)) {
         closeSupport();
+      }
+
+      if (updateOpen() && !updateButtonRef?.contains(target) && !updatePanelRef?.contains(target)) {
+        closeUpdatePopover();
       }
 
       if (mobileNavOpen() && !mobileNavButtonRef?.contains(target) && !mobileNavPanelRef?.contains(target)) {
@@ -125,6 +185,11 @@ function Header() {
         closeSupport(true);
       }
 
+      if (updateOpen()) {
+        event.preventDefault();
+        closeUpdatePopover(true);
+      }
+
       if (mobileNavOpen()) {
         event.preventDefault();
         closeMobileNav(true);
@@ -133,10 +198,21 @@ function Header() {
 
     document.addEventListener("pointerdown", handlePointerDown);
     document.addEventListener("keydown", handleKeyDown);
+    updateInitialTimer = window.setTimeout(() => void loadUpdateStatus(false), 1000);
+    updatePollTimer = window.setInterval(() => void loadUpdateStatus(false), updateStatusPollMs);
 
     onCleanup(() => {
       document.removeEventListener("pointerdown", handlePointerDown);
       document.removeEventListener("keydown", handleKeyDown);
+      if (updateInitialTimer !== undefined) {
+        window.clearTimeout(updateInitialTimer);
+      }
+      if (updatePollTimer !== undefined) {
+        window.clearInterval(updatePollTimer);
+      }
+      if (updateReconnectTimer !== undefined) {
+        window.clearTimeout(updateReconnectTimer);
+      }
     });
   });
 
@@ -144,6 +220,7 @@ function Header() {
     currentPath();
     setSupportOpen(false);
     setMobileNavOpen(false);
+    setUpdateOpen(false);
   });
 
   return (
@@ -221,6 +298,73 @@ function Header() {
           </Show>
         </ul>
         <ul class="navbar-nav wyl-navbar-actions">
+          <Show when={showUpdateIndicator()}>
+            <li class="nav-item wyl-update-item">
+              <button
+                ref={updateButtonRef}
+                type="button"
+                class={"nav-link wyl-navbar-utility wyl-update-toggle" + (updateOpen() ? " is-active" : "")}
+                title="LANnventory update available"
+                aria-label="LANnventory update available"
+                aria-expanded={updateOpen() ? "true" : "false"}
+                aria-controls="update-popover"
+                onClick={handleUpdateToggle}
+              >
+                <i class="bi bi-arrow-up-circle-fill" aria-hidden="true"></i>
+              </button>
+              <Show when={updateOpen()}>
+                <div
+                  ref={updatePanelRef}
+                  id="update-popover"
+                  class="wyl-update-popover"
+                  role="dialog"
+                  aria-labelledby="update-popover-title"
+                >
+                  <div id="update-popover-title" class="wyl-update-title">Update available</div>
+                  <dl class="wyl-update-details">
+                    <div>
+                      <dt>Installed</dt>
+                      <dd>{updateStatus()?.currentVersion || "Unknown"}</dd>
+                    </div>
+                    <div>
+                      <dt>Latest</dt>
+                      <dd>{updateStatus()?.latestVersion || "Unknown"}</dd>
+                    </div>
+                    <div>
+                      <dt>Channel</dt>
+                      <dd>{updateStatus()?.channel === "stable" ? "Stable" : "Beta"}</dd>
+                    </div>
+                  </dl>
+                  <Show when={updateMessage()}>
+                    <div class="wyl-update-popover-message" role="status">{updateMessage()}</div>
+                  </Show>
+                  <Show when={updateError()}>
+                    <div class="wyl-update-popover-error" role="alert">{updateError()}</div>
+                  </Show>
+                  <div class="wyl-update-popover-actions">
+                    <Show
+                      when={updateStatus()?.installSupported}
+                      fallback={<span class="wyl-update-popover-note">{updateStatus()?.installReason || "Automatic install is not supported on this system."}</span>}
+                    >
+                      <button
+                        type="button"
+                        class="btn btn-sm wyl-button"
+                        disabled={updateInstalling()}
+                        onClick={() => void handleHeaderUpdateNow()}
+                      >
+                        <i class={updateInstalling() ? "bi bi-hourglass-split" : "bi bi-download"} aria-hidden="true"></i>
+                        <span>{updateInstalling() ? "Updating" : "Update now"}</span>
+                      </button>
+                    </Show>
+                    <A class="btn btn-sm wyl-button" href="/config#updates" onClick={() => closeUpdatePopover()}>
+                      <i class="bi bi-card-text" aria-hidden="true"></i>
+                      <span>Review update</span>
+                    </A>
+                  </div>
+                </div>
+              </Show>
+            </li>
+          </Show>
           <li class="nav-item">
             <A
               class={settingsUtilityClass()}

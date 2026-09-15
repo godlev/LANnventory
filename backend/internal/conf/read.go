@@ -25,6 +25,8 @@ func read(path string) (config models.Conf) {
 	viper.SetDefault("TRIM_HIST", 48)
 	viper.SetDefault("SHOUTRRR_URL", "")
 	viper.SetDefault("UPDATE_CHANNEL", "beta")
+	viper.SetDefault("UPDATE_AUTO", false)
+	viper.SetDefault("UPDATE_CHECK_INTERVAL_HOURS", 24)
 
 	viper.SetDefault("USE_DB", "sqlite")
 	viper.SetDefault("PG_CONNECT", "")
@@ -65,6 +67,8 @@ func read(path string) (config models.Conf) {
 	if config.UpdateChannel != "stable" && config.UpdateChannel != "beta" {
 		config.UpdateChannel = "beta"
 	}
+	config.UpdateAuto = viper.GetBool("UPDATE_AUTO")
+	config.UpdateCheckIntervalHours = normalizeUpdateIntervalHours(viper.GetInt("UPDATE_CHECK_INTERVAL_HOURS"))
 
 	config.UseDB = viper.Get("USE_DB").(string)
 	config.PGConnect = viper.Get("PG_CONNECT").(string)
@@ -86,4 +90,14 @@ func read(path string) (config models.Conf) {
 	}
 
 	return config
+}
+
+func normalizeUpdateIntervalHours(value int) int {
+	switch value {
+	case 6, 12, 24, 168:
+		return value
+	default:
+		slog.Warn("Invalid UPDATE_CHECK_INTERVAL_HOURS; falling back to 24", "value", value)
+		return 24
+	}
 }

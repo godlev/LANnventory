@@ -91,3 +91,75 @@ func TestWriteErrPersistsConnectivityRetentionKey(t *testing.T) {
 		t.Fatalf("config file did not persist connectivity retention: %s", string(written))
 	}
 }
+
+func TestUpdateSettingsDefaultsPersistAndReadBack(t *testing.T) {
+	t.Cleanup(viper.Reset)
+	viper.Reset()
+
+	confPath := filepath.Join(t.TempDir(), "config_v2.yaml")
+	if err := os.WriteFile(confPath, []byte("{}\n"), 0o600); err != nil {
+		t.Fatalf("os.WriteFile: %v", err)
+	}
+
+	config := read(confPath)
+	if config.UpdateChannel != "beta" {
+		t.Fatalf("UpdateChannel = %q, want beta", config.UpdateChannel)
+	}
+	if config.UpdateAuto {
+		t.Fatal("UpdateAuto = true, want default false")
+	}
+	if config.UpdateCheckIntervalHours != 24 {
+		t.Fatalf("UpdateCheckIntervalHours = %d, want 24", config.UpdateCheckIntervalHours)
+	}
+
+	config.ConfPath = confPath
+	config.UpdateChannel = "stable"
+	config.UpdateAuto = true
+	config.UpdateCheckIntervalHours = 12
+	if err := WriteErr(config); err != nil {
+		t.Fatalf("WriteErr: %v", err)
+	}
+
+	written, err := os.ReadFile(confPath)
+	if err != nil {
+		t.Fatalf("os.ReadFile: %v", err)
+	}
+	lowerWritten := strings.ToLower(string(written))
+	for _, want := range []string{
+		"update_channel: stable",
+		"update_auto: true",
+		"update_check_interval_hours: 12",
+	} {
+		if !strings.Contains(lowerWritten, want) {
+			t.Fatalf("config file missing %q: %s", want, string(written))
+		}
+	}
+
+	viper.Reset()
+	reread := read(confPath)
+	if reread.UpdateChannel != "stable" || !reread.UpdateAuto || reread.UpdateCheckIntervalHours != 12 {
+		t.Fatalf("reread update settings = channel %q auto %v interval %d", reread.UpdateChannel, reread.UpdateAuto, reread.UpdateCheckIntervalHours)
+	}
+}
+
+func TestReadUpdateSettingsFallbacks(t *testing.T) {
+	t.Cleanup(viper.Reset)
+	viper.Reset()
+
+	confPath := filepath.Join(t.TempDir(), "config_v2.yaml")
+	configBody := "UPDATE_CHANNEL: nightly\nUPDATE_AUTO: true\nUPDATE_CHECK_INTERVAL_HOURS: 5\n"
+	if err := os.WriteFile(confPath, []byte(configBody), 0o600); err != nil {
+		t.Fatalf("os.WriteFile: %v", err)
+	}
+
+	config := read(confPath)
+	if config.UpdateChannel != "beta" {
+		t.Fatalf("UpdateChannel = %q, want beta fallback", config.UpdateChannel)
+	}
+	if !config.UpdateAuto {
+		t.Fatal("UpdateAuto = false, want true")
+	}
+	if config.UpdateCheckIntervalHours != 24 {
+		t.Fatalf("UpdateCheckIntervalHours = %d, want 24 fallback", config.UpdateCheckIntervalHours)
+	}
+}
