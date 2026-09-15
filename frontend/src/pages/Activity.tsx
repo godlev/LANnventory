@@ -52,14 +52,25 @@ type EventFilterOption = {
   eventTypes: ActivityEventType[];
 };
 
-type EventSummaryCard = {
+type EventSummaryMetric = {
   key: EventFilterKey;
   label: string;
   value: number;
   detail: string;
   icon: string;
-  tone: string;
+  tone: "online" | "offline" | "new" | "recognition" | "type" | "metadata";
   eventTypes: ActivityEventType[];
+};
+
+type EventSummaryGroup = {
+  key: EventFilterKey;
+  label: string;
+  value: number;
+  detail: string;
+  icon: string;
+  tone: "connectivity" | "changes";
+  eventTypes: ActivityEventType[];
+  metrics: EventSummaryMetric[];
 };
 
 type EventGroup = {
@@ -440,74 +451,109 @@ function Activity() {
     });
   });
 
-  const summaryCards = createMemo<EventSummaryCard[]>(() => {
+  const summaryGroups = createMemo<EventSummaryGroup[]>(() => {
     const currentStats = stats();
+    const connectivityTotal = currentStats.Online + currentStats.Offline;
+    const deviceChangeTotal = currentStats.Discovered
+      + currentStats.Known
+      + currentStats.Unknown
+      + currentStats.DeviceTypeChanged
+      + currentStats.MetadataChanged;
+
     return [
       {
-        key: "all",
-        label: "Total events",
-        value: currentStats.Total,
-        detail: statsError() ? "Counts unavailable" : "All retained events",
-        icon: "bi-collection-fill",
-        tone: "total",
-        eventTypes: [],
+        key: "connectivity",
+        label: "Connectivity",
+        value: connectivityTotal,
+        detail: connectivityTotal === 1 ? "connectivity event" : "connectivity events",
+        icon: "bi-broadcast-pin",
+        tone: "connectivity",
+        eventTypes: connectivityEventTypes,
+        metrics: [
+          {
+            key: "online",
+            label: "Online",
+            value: currentStats.Online,
+            detail: "Came online",
+            icon: "bi-check-circle-fill",
+            tone: "online",
+            eventTypes: ["online"],
+          },
+          {
+            key: "offline",
+            label: "Offline",
+            value: currentStats.Offline,
+            detail: "Went offline",
+            icon: "bi-x-circle-fill",
+            tone: "offline",
+            eventTypes: ["offline"],
+          },
+        ],
       },
       {
-        key: "online",
-        label: "Online",
-        value: currentStats.Online,
-        detail: "Connectivity",
-        icon: "bi-check-circle-fill",
-        tone: "online",
-        eventTypes: ["online"],
-      },
-      {
-        key: "offline",
-        label: "Offline",
-        value: currentStats.Offline,
-        detail: "Connectivity",
-        icon: "bi-x-circle-fill",
-        tone: "offline",
-        eventTypes: ["offline"],
-      },
-      {
-        key: "discovered",
-        label: "New devices",
-        value: currentStats.Discovered,
-        detail: "Discovery",
-        icon: "bi-plus-circle-fill",
-        tone: "unknown",
-        eventTypes: ["discovered"],
-      },
-      {
-        key: "recognition",
-        label: "Recognition",
-        value: currentStats.Known + currentStats.Unknown,
-        detail: "Known and unknown",
-        icon: "bi-bookmark-check-fill",
-        tone: "known",
-        eventTypes: ["known", "unknown"],
-      },
-      {
-        key: "device-type-changed",
-        label: "Type changes",
-        value: currentStats.DeviceTypeChanged,
-        detail: "Classification",
-        icon: "bi-tag-fill",
-        tone: "type",
-        eventTypes: ["device-type-changed"],
-      },
-      {
-        key: "metadata-changes",
-        label: "Metadata",
-        value: currentStats.MetadataChanged,
-        detail: "Inventory metadata",
-        icon: "bi-card-checklist",
-        tone: "type",
-        eventTypes: metadataEventTypes,
+        key: "changes",
+        label: "Device changes",
+        value: deviceChangeTotal,
+        detail: deviceChangeTotal === 1 ? "change event" : "change events",
+        icon: "bi-pencil-square",
+        tone: "changes",
+        eventTypes: deviceChangeEventTypes,
+        metrics: [
+          {
+            key: "discovered",
+            label: "New",
+            value: currentStats.Discovered,
+            detail: "New devices",
+            icon: "bi-plus-circle-fill",
+            tone: "new",
+            eventTypes: ["discovered"],
+          },
+          {
+            key: "recognition",
+            label: "Recognition",
+            value: currentStats.Known + currentStats.Unknown,
+            detail: currentStats.Known + " known · " + currentStats.Unknown + " unknown",
+            icon: "bi-bookmark-check-fill",
+            tone: "recognition",
+            eventTypes: recognitionEventTypes,
+          },
+          {
+            key: "device-type-changed",
+            label: "Type",
+            value: currentStats.DeviceTypeChanged,
+            detail: "Classification",
+            icon: "bi-tag-fill",
+            tone: "type",
+            eventTypes: ["device-type-changed"],
+          },
+          {
+            key: "metadata-changes",
+            label: "Metadata",
+            value: currentStats.MetadataChanged,
+            detail: "Inventory metadata",
+            icon: "bi-card-checklist",
+            tone: "metadata",
+            eventTypes: metadataEventTypes,
+          },
+        ],
       },
     ];
   });
+
+  const connectivityPercentages = createMemo(() => {
+    const currentStats = stats();
+    const total = currentStats.Online + currentStats.Offline;
+    if (total <= 0) {
+      return { online: 0, offline: 0 };
+    }
+
+    const online = Math.round((currentStats.Online / total) * 100);
+    return {
+      online,
+      offline: 100 - online,
+    };
+  });
+
 
   const groupedEvents = createMemo<EventGroup[]>(() => {
     const keys = normalizedGroupByKeys();
@@ -523,16 +569,13 @@ function Activity() {
   const groupAllControlTitle = () => hasExpandedGroups() ? "Collapse all groups" : "Expand all groups";
   const groupAllControlIcon = () => hasExpandedGroups() ? "bi-arrows-collapse" : "bi-arrows-expand";
   const groupAllControlLabel = () => hasExpandedGroups() ? "Collapse all" : "Expand all";
-  const isSummaryCardActive = (card: EventSummaryCard) => {
-    if (card.key === "all") {
-      return allEventTypesSelected();
-    }
+  const isSummarySelectionActive = (eventTypes: ActivityEventType[]) => {
     if (allEventTypesSelected()) {
       return false;
     }
 
     const selected = selectedEventTypeSet();
-    return card.eventTypes.length > 0 && card.eventTypes.every((eventType) => selected.has(eventType));
+    return eventTypes.length > 0 && eventTypes.every((eventType) => selected.has(eventType));
   };
 
   const handleReset = () => {
@@ -636,18 +679,13 @@ function Activity() {
     applyGroupByKeys([]);
   };
 
-  const handleSummaryClick = (event: MouseEvent, card: EventSummaryCard) => {
-    if (card.key === "all") {
-      setSelectedEventTypes(normalizeSelectedEventTypes(eventTypeOrder));
-      return;
-    }
-
+  const handleSummarySelection = (event: MouseEvent, eventTypes: ActivityEventType[]) => {
     if (event.ctrlKey || event.metaKey) {
       const selected = new Set(selectedEventTypes());
-      const allCardTypesSelected = card.eventTypes.every((eventType) => selected.has(eventType));
+      const allTypesSelected = eventTypes.every((eventType) => selected.has(eventType));
 
-      for (const eventType of card.eventTypes) {
-        if (allCardTypesSelected) {
+      for (const eventType of eventTypes) {
+        if (allTypesSelected) {
           selected.delete(eventType);
         } else {
           selected.add(eventType);
@@ -659,9 +697,9 @@ function Activity() {
     }
 
     setSelectedEventTypes(
-      sameEventTypes(selectedEventTypes(), card.eventTypes)
+      sameEventTypes(selectedEventTypes(), eventTypes)
         ? normalizeSelectedEventTypes(eventTypeOrder)
-        : normalizeSelectedEventTypes(card.eventTypes),
+        : normalizeSelectedEventTypes(eventTypes),
     );
   };
 
@@ -748,23 +786,71 @@ function Activity() {
         </div>
       </header>
 
-      <section class="activity-summary-grid overview-grid" aria-label="Event overview">
-        <For each={summaryCards()}>{(card) =>
-          <button
-            type="button"
-            class={"overview-card overview-card-button overview-card-" + card.tone + (isSummaryCardActive(card) ? " is-active" : "")}
-            aria-pressed={isSummaryCardActive(card)}
-            onClick={(event) => handleSummaryClick(event, card)}
-          >
-            <div class="overview-card-icon" aria-hidden="true">
-              <i class={"bi " + card.icon}></i>
+      <section class="activity-summary-grid" aria-label="Event overview">
+        <For each={summaryGroups()}>{(group) =>
+          <article class={"activity-summary-card activity-summary-card-" + group.tone}>
+            <button
+              type="button"
+              class={"activity-summary-rail" + (isSummarySelectionActive(group.eventTypes) ? " is-active" : "")}
+              title={"Filter to " + group.label.toLowerCase()}
+              aria-label={"Filter to " + group.label.toLowerCase()}
+              aria-pressed={isSummarySelectionActive(group.eventTypes)}
+              onClick={(event) => handleSummarySelection(event, group.eventTypes)}
+            >
+              <span class="activity-summary-rail-icon" aria-hidden="true">
+                <i class={"bi " + group.icon}></i>
+              </span>
+              <span class="activity-summary-rail-title">{group.label}</span>
+            </button>
+
+            <div class="activity-summary-content">
+              <div class="activity-summary-count">
+                <strong>{statsError() ? "—" : group.value.toLocaleString()}</strong>
+                <span>{statsError() ? "counts unavailable" : group.detail}</span>
+              </div>
+
+              <div class={"activity-summary-metrics activity-summary-metrics-" + group.tone}>
+                <For each={group.metrics}>{(metric) =>
+                  <button
+                    type="button"
+                    class={"activity-summary-metric activity-summary-metric-" + metric.tone + (isSummarySelectionActive(metric.eventTypes) ? " is-active" : "")}
+                    title={metric.label + ": " + metric.value + ". " + metric.detail}
+                    aria-label={metric.label + ": " + metric.value + ". " + metric.detail}
+                    aria-pressed={isSummarySelectionActive(metric.eventTypes)}
+                    onClick={(event) => handleSummarySelection(event, metric.eventTypes)}
+                  >
+                    <span class="activity-summary-metric-value">{statsError() ? "—" : metric.value.toLocaleString()}</span>
+                    <span class="activity-summary-metric-label">
+                      <i class={"bi " + metric.icon} aria-hidden="true"></i>
+                      <span>{metric.label}</span>
+                    </span>
+                    <span class="activity-summary-metric-detail">{statsError() ? "Counts unavailable" : metric.detail}</span>
+                  </button>
+                }</For>
+              </div>
+
+              <Show when={group.tone === "connectivity"}>
+                <div
+                  class="overview-split-bar activity-connectivity-bar"
+                  aria-label={connectivityPercentages().online + "% online, " + connectivityPercentages().offline + "% offline"}
+                  role="img"
+                >
+                  <span
+                    class="overview-split-bar-segment overview-split-bar-online"
+                    style={{ width: connectivityPercentages().online + "%" }}
+                  ></span>
+                  <span
+                    class="overview-split-bar-segment overview-split-bar-offline"
+                    style={{ width: connectivityPercentages().offline + "%" }}
+                  ></span>
+                  <span class="overview-split-bar-labels">
+                    <span>{connectivityPercentages().online}%</span>
+                    <span>{connectivityPercentages().offline}%</span>
+                  </span>
+                </div>
+              </Show>
             </div>
-            <div>
-              <div class="overview-card-label">{card.label}</div>
-              <div class="overview-card-value">{card.value}</div>
-              <div class="overview-card-detail">{card.detail}</div>
-            </div>
-          </button>
+          </article>
         }</For>
       </section>
 
@@ -1066,7 +1152,7 @@ function Activity() {
                 </span>
               </Show>
             </div>
-            <div class="activity-table-subtitle">{tableSubtitle(events().length, normalizedGroupByKeys())}</div>
+            <div class="activity-table-subtitle">{tableSubtitle(events().length, stats().Total, normalizedGroupByKeys(), statsError())}</div>
           </div>
         </div>
         <div class="card-body activity-table-body">
@@ -1357,9 +1443,13 @@ function cleanEventValue(value: string | null | undefined) {
   return (value ?? "").trim();
 }
 
-function tableSubtitle(count: number, groupByKeys: GroupByKey[]) {
-  const base = count + " loaded " + (count === 1 ? "event" : "events");
-  return groupByKeys.length === 0 ? base : base + " grouped by " + groupByFullSummary(groupByKeys);
+function tableSubtitle(count: number, total: number, groupByKeys: GroupByKey[], totalUnavailable: boolean) {
+  const loaded = count.toLocaleString() + " loaded " + (count === 1 ? "event" : "events");
+  const totalSummary = totalUnavailable
+    ? "total count unavailable"
+    : "out of " + total.toLocaleString() + " total " + (total === 1 ? "event" : "events");
+  const base = loaded + " " + totalSummary;
+  return groupByKeys.length === 0 ? base : base + " · grouped by " + groupByFullSummary(groupByKeys);
 }
 
 function buildEventGroupTree(
