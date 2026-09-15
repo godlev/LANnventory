@@ -3,7 +3,7 @@ All notable changes to this project will be documented in this file.
 
 ## LANnventory Releases
 
-## [Unreleased]
+## [v0.1.0-beta.3] - 2026-09-16
 
 ### Added
 - Redesigned Home and Events summary cards with more compact responsive presentation.
@@ -12,6 +12,10 @@ All notable changes to this project will be documented in this file.
 - Open-port activity events so newly discovered open ports are recorded in Host activity.
 - Stable/Beta update channel selection in Settings.
 - One-click update status, check and install controls backed by verified GitHub release packages.
+- Optional automatic updates with 6-hour, 12-hour, 24-hour or 7-day check intervals.
+- Live update-scheduler rescheduling when channel, automation or interval settings change.
+- Header update-available indicator and popover with direct update/review actions.
+- Last-checked and snapshot-base version details in the update UI.
 - Versioned pre-update recovery backups for the current LANnventory binary and /etc/watchyourlan data.
 - Post-update service and health validation using the configured LANnventory bind address.
 
