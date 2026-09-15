@@ -322,6 +322,7 @@ function HostCard(_props: HostCardProps) {
             type="button"
             class={"btn btn-sm wyl-button host-known-button" + (isKnown() ? " is-known" : " is-unknown")}
             title={knownTitle()}
+            data-wyl-tooltip={knownTitle()}
             aria-label={knownTitle()}
             aria-pressed={isKnown()}
             disabled={_props.host.ID === 0 || knownSaving()}
@@ -334,6 +335,7 @@ function HostCard(_props: HostCardProps) {
             type="button"
             class={"btn btn-sm wyl-button host-pin-button" + (_props.host.Pinned ? " is-active" : "")}
             title={pinTitle()}
+            data-wyl-tooltip={pinTitle()}
             aria-label={pinTitle()}
             aria-pressed={_props.host.Pinned}
             disabled={_props.host.ID === 0 || pinSaving()}
@@ -349,6 +351,7 @@ function HostCard(_props: HostCardProps) {
                 type="button"
                 class="btn btn-sm wyl-button host-mode-button"
                 title="Edit host"
+                data-wyl-tooltip="Edit host"
                 aria-label="Edit host"
                 disabled={_props.host.ID === 0}
                 onClick={handleModeToggle}
@@ -365,7 +368,7 @@ function HostCard(_props: HostCardProps) {
               onClick={handleSaveChanges}
             >
               <i class={saving() ? "bi bi-hourglass-split" : "bi bi-save"} aria-hidden="true"></i>
-              <span>{saving() ? "Saving" : "Save changes"}</span>
+              <span>{saving() ? "Saving" : "Save"}</span>
             </button>
             <button
               type="button"
@@ -531,7 +534,15 @@ function HostCard(_props: HostCardProps) {
               <span class="host-lifecycle-value">
                 <span>{formattedFirstSeen()}</span>
                 <Show when={_props.host.FirstSeenEstimated}>
-                  <span class="host-lifecycle-estimate" title="Estimated from retained history">Estimated</span>
+                  <span
+                    class="host-lifecycle-estimate"
+                    title="First seen was estimated from retained historical data because this device existed before lifecycle tracking was available."
+                    data-wyl-tooltip="First seen was estimated from retained historical data because this device existed before lifecycle tracking was available."
+                    aria-label="Estimated first seen date"
+                    role="img"
+                  >
+                    <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
+                  </span>
                 </Show>
               </span>
             </Show>
