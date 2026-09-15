@@ -182,7 +182,7 @@ func DeleteHostDeviceChangeEvents(hostID int) int64 {
 func deleteHostDeviceChangeEvents(activeDB *gorm.DB, hostID int) *gorm.DB {
 	return activeDB.Table("events").
 		Where("\"HOST_ID\" = ?", hostID).
-		Where("\"EVENT_TYPE\" IN ?", hostEventTypeStrings(models.DeviceChangeEventTypes)).
+		Where("\"EVENT_TYPE\" IN ?", hostEventTypeStrings(models.HostBoundPersistentEventTypes)).
 		Delete(&models.HostEvent{})
 }
 
