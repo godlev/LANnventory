@@ -17,6 +17,7 @@ export type UpdateApplyResult = {
   version: string;
   scheduled: boolean;
   message: string;
+  backupPath: string;
 };
 
 const apiJSON = async <T>(url: string, init?: RequestInit): Promise<T> => {
