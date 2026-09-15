@@ -1,0 +1,65 @@
+name: Phase 30 Final Checkpoint Package
+
+on:
+  push:
+    branches:
+      - checkpoint-phase-30-final
+
+permissions:
+  contents: read
+
+jobs:
+  build-checkpoint-deb:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: checkpoint-phase-30-final
+          fetch-depth: 0
+
+      - name: Verify Phase 30 embedded UI
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'LANnventory update available' backend/internal/web/public/assets/index.js
+          grep -Fq 'Review update' backend/internal/web/public/assets/index.js
+          grep -Fq 'Update now' backend/internal/web/public/assets/index.js
+          grep -Fq 'Automatic updates' backend/internal/web/public/assets/Config.js
+          grep -Fq 'Update channel' backend/internal/web/public/assets/Config.js
+          grep -Fq 'Release notes' backend/internal/web/public/assets/Config.js
+          grep -Fq 'No update' backend/internal/web/public/assets/Config.js
+          grep -Fq 'host-diagnostics-grid' backend/internal/web/public/assets/HostPage.js
+          grep -Fq 'Approximate first seen' backend/internal/web/public/assets/HostPage.js
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Build GoReleaser snapshot
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: v2.18.0
+          args: release --snapshot --clean
+          workdir: backend
+
+      - name: Stage amd64 Debian package
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p checkpoint
+          deb="$(find backend/dist -maxdepth 1 -type f -name '*amd64*.deb' | sort | head -n 1)"
+          test -n "$deb"
+          cp "$deb" checkpoint/lannventory-phase30-final-amd64.deb
+          sha256sum checkpoint/lannventory-phase30-final-amd64.deb > checkpoint/SHA256SUMS.txt
+
+      - name: Upload checkpoint package
+        uses: actions/upload-artifact@v4
+        with:
+          name: lannventory-phase30-final-amd64
+          path: checkpoint/*
+          if-no-files-found: error
+          retention-days: 14
