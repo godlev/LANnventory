@@ -21,68 +21,68 @@ import (
 )
 
 const (
-	DefaultChannel = "beta"
-	StableChannel = "stable"
-	BetaChannel = "beta"
-	defaultReleasesURL = "https://api.github.com/repos/godlev/LANnventory/releases?per_page=50"
-	releaseDownloadPrefix = "https://github.com/godlev/LANnventory/releases/download/"
-	cacheTTL = 15 * time.Minute
-	maxReleaseBody int64 = 4 << 20
-	maxChecksumBody int64 = 2 << 20
-	maxPackageBody int64 = 256 << 20
+	DefaultChannel              = "beta"
+	StableChannel               = "stable"
+	BetaChannel                 = "beta"
+	defaultReleasesURL          = "https://api.github.com/repos/godlev/LANnventory/releases?per_page=50"
+	releaseDownloadPrefix       = "https://github.com/godlev/LANnventory/releases/download/"
+	cacheTTL                    = 15 * time.Minute
+	maxReleaseBody        int64 = 4 << 20
+	maxChecksumBody       int64 = 2 << 20
+	maxPackageBody        int64 = 256 << 20
 )
 
 var (
-	ErrInvalidChannel = errors.New("invalid update channel")
-	ErrNoUpdate = errors.New("no update available")
-	ErrUpdateInProgress = errors.New("update already in progress")
+	ErrInvalidChannel     = errors.New("invalid update channel")
+	ErrNoUpdate           = errors.New("no update available")
+	ErrUpdateInProgress   = errors.New("update already in progress")
 	ErrUnsupportedInstall = errors.New("automatic install is not supported")
 )
 
 type releaseAsset struct {
-	Name string `json:"name"`
+	Name               string `json:"name"`
 	BrowserDownloadURL string `json:"browser_download_url"`
-	Digest string `json:"digest"`
+	Digest             string `json:"digest"`
 }
 
 type release struct {
-	TagName string `json:"tag_name"`
-	Prerelease bool `json:"prerelease"`
-	Draft bool `json:"draft"`
-	PublishedAt string `json:"published_at"`
-	HTMLURL string `json:"html_url"`
-	Assets []releaseAsset `json:"assets"`
+	TagName     string         `json:"tag_name"`
+	Prerelease  bool           `json:"prerelease"`
+	Draft       bool           `json:"draft"`
+	PublishedAt string         `json:"published_at"`
+	HTMLURL     string         `json:"html_url"`
+	Assets      []releaseAsset `json:"assets"`
 }
 
 type Status struct {
-	CurrentVersion string `json:"currentVersion"`
-	Channel string `json:"channel"`
-	LatestVersion string `json:"latestVersion"`
-	Available bool `json:"available"`
-	PublishedAt string `json:"publishedAt"`
-	ReleaseURL string `json:"releaseUrl"`
-	InstallSupported bool `json:"installSupported"`
-	InstallReason string `json:"installReason"`
-	Message string `json:"message"`
-	Updating bool `json:"updating"`
+	CurrentVersion   string `json:"currentVersion"`
+	Channel          string `json:"channel"`
+	LatestVersion    string `json:"latestVersion"`
+	Available        bool   `json:"available"`
+	PublishedAt      string `json:"publishedAt"`
+	ReleaseURL       string `json:"releaseUrl"`
+	InstallSupported bool   `json:"installSupported"`
+	InstallReason    string `json:"installReason"`
+	Message          string `json:"message"`
+	Updating         bool   `json:"updating"`
 }
 
 type ApplyResult struct {
-	Version string `json:"version"`
-	Scheduled bool `json:"scheduled"`
-	Message string `json:"message"`
+	Version    string `json:"version"`
+	Scheduled  bool   `json:"scheduled"`
+	Message    string `json:"message"`
 	BackupPath string `json:"backupPath"`
 }
 
 type Service struct {
-	client *http.Client
+	client      *http.Client
 	releasesURL string
-	now func() time.Time
+	now         func() time.Time
 
-	mu sync.Mutex
-	cached []release
+	mu         sync.Mutex
+	cached     []release
 	cacheUntil time.Time
-	updating bool
+	updating   bool
 }
 
 func NewService() *Service {
@@ -283,9 +283,9 @@ func (s *Service) Schedule(ctx context.Context, currentVersion, channel, expecte
 	scheduled = true
 	cleanup = false
 	return ApplyResult{
-		Version: targetVersion,
-		Scheduled: true,
-		Message: "Update scheduled. LANnventory will back up its current data, install the verified package, restart, and run a health check.",
+		Version:    targetVersion,
+		Scheduled:  true,
+		Message:    "Update scheduled. LANnventory will back up its current data, install the verified package, restart, and run a health check.",
 		BackupPath: backupDir,
 	}, nil
 }
