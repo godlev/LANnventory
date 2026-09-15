@@ -230,7 +230,15 @@ function TableRow(_props: any) {
               <span class="device-mobile-detail-value">
                 {firstSeen()}
                 <Show when={_props.host.FirstSeenEstimated}>
-                  <span class="host-lifecycle-estimate" title="Estimated from retained history">Estimated</span>
+                  <span
+                    class="host-lifecycle-estimate"
+                    title="First seen was estimated from retained historical data because this device existed before lifecycle tracking was available."
+                    data-wyl-tooltip="First seen was estimated from retained historical data because this device existed before lifecycle tracking was available."
+                    aria-label="Estimated first seen date"
+                    role="img"
+                  >
+                    <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
+                  </span>
                 </Show>
               </span>
             </Show>
