@@ -1,0 +1,41 @@
+name: Refresh Swagger for Port Events
+
+on:
+  push:
+    branches:
+      - phase-28-4-1-host-layout-port-events
+
+permissions:
+  contents: write
+
+jobs:
+  refresh-swagger:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: phase-28-4-1-host-layout-port-events
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Regenerate Swagger docs
+        working-directory: backend
+        run: go run github.com/swaggo/swag/cmd/swag@v1.16.6 init -g main.go --dir cmd/LANnventory,internal/api,internal/models
+
+      - name: Commit Swagger docs and remove temporary workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/phase28-4-1-swagger-refresh.yml
+          git add backend/docs
+          git diff --cached --check
+          git commit -m "Refresh Swagger docs for port scan events"
+          git push origin HEAD:phase-28-4-1-host-layout-port-events
