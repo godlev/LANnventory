@@ -41,7 +41,8 @@ type EventFilterKey =
   | "notes-changed"
   | "tags-changed"
   | "pinned-changed"
-  | "port-open";
+  | "port-open"
+  | "port-closed";
 
 type GroupByKey = "device" | "event" | "category" | "device-type" | "ip" | "iface" | "day";
 type DeviceDisplayMode = "name-icon" | "name" | "icon";
@@ -96,7 +97,7 @@ const connectivityEventTypes: ActivityEventType[] = ["online", "offline"];
 const recognitionEventTypes: ActivityEventType[] = ["known", "unknown"];
 const metadataEventTypes: ActivityEventType[] = ["owner-changed", "location-changed", "notes-changed", "tags-changed", "pinned-changed"];
 const deviceChangeEventTypes: ActivityEventType[] = ["discovered", ...recognitionEventTypes, "device-type-changed", ...metadataEventTypes];
-const networkDiagnosticEventTypes: ActivityEventType[] = ["port-open"];
+const networkDiagnosticEventTypes: ActivityEventType[] = ["port-open", "port-closed"];
 const eventTypeOrder: ActivityEventType[] = [...connectivityEventTypes, ...deviceChangeEventTypes, ...networkDiagnosticEventTypes];
 const deviceDropdownId = "activity-device-filter";
 const eventTypeDropdownId = "activity-event-type-filter";
@@ -133,6 +134,7 @@ const eventFilterOptions: EventFilterOption[] = [
   { key: "tags-changed", label: "Tags changed", eventTypes: ["tags-changed"] },
   { key: "pinned-changed", label: "Pinned changed", eventTypes: ["pinned-changed"] },
   { key: "port-open", label: "Open port discovered", eventTypes: ["port-open"] },
+  { key: "port-closed", label: "Port closed", eventTypes: ["port-closed"] },
 ];
 
 const groupByOptions: { key: GroupByKey; label: string }[] = [
