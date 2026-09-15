@@ -1,0 +1,63 @@
+name: Reconcile Phase 30 generated assets
+
+on:
+  push:
+    branches:
+      - phase-30-update-ux-reconciled
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase-30-update-ux-reconciled
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Format reconciled Go files
+        run: |
+          gofmt -w             backend/internal/api/api-update.go             backend/internal/api/api_update_test.go             backend/internal/api/config_public.go             backend/internal/conf/read.go             backend/internal/conf/write.go             backend/internal/models/models.go             backend/internal/updater/scheduler.go             backend/internal/updater/updater.go             backend/internal/updater/updater_test.go             backend/internal/web/webgui.go
+
+      - name: Regenerate Swagger
+        working-directory: backend
+        run: go run github.com/swaggo/swag/cmd/swag@v1.16.6 init -g main.go --dir cmd/LANnventory,internal/api,internal/models
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Validate mock API
+        run: node --check frontend/dev/mock-api.mjs
+
+      - name: Rebuild embedded frontend
+        working-directory: frontend
+        run: make all
+
+      - name: Run focused updater tests
+        working-directory: backend
+        run: go test ./internal/updater ./internal/api
+
+      - name: Commit generated and formatted changes
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add             backend/docs             backend/internal/api/api-update.go             backend/internal/api/api_update_test.go             backend/internal/api/config_public.go             backend/internal/conf/read.go             backend/internal/conf/write.go             backend/internal/models/models.go             backend/internal/updater/scheduler.go             backend/internal/updater/updater.go             backend/internal/updater/updater_test.go             backend/internal/web/public             backend/internal/web/webgui.go
+          git commit -m "Format Phase 30 updater and regenerate assets"
+          git push origin HEAD:phase-30-update-ux-reconciled
