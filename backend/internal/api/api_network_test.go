@@ -39,7 +39,6 @@ func TestPortEndpointRejectsInvalidPort(t *testing.T) {
 	}
 }
 
-
 func TestHostPortScanRecordsOpenPortEvent(t *testing.T) {
 	router := setupTestRouter(t)
 	host := seedHost(t, models.Host{
@@ -121,7 +120,6 @@ func TestHostPortScanDoesNotRecordClosedPort(t *testing.T) {
 		t.Fatalf("closed port unexpectedly recorded events: %+v", events)
 	}
 }
-
 
 func TestHostPortRangeScanPersistsOnlyStateTransitions(t *testing.T) {
 	router := setupTestRouter(t)

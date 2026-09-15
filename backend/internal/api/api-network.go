@@ -104,7 +104,6 @@ func scanHostPort(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, hostPortScanResponse{Port: portNumber, Open: open})
 }
 
-
 // startHostPortScan godoc
 // @Summary      Start host port range scan
 // @Description  Start an asynchronous bounded-concurrency TCP port scan for a current host.
