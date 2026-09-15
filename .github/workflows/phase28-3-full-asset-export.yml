@@ -1,0 +1,79 @@
+name: Phase 28.3 Full Frontend Asset Finalize
+
+on:
+  push:
+    branches:
+      - phase-28-3-unknown-event-scope-home-summary
+
+permissions:
+  contents: write
+
+jobs:
+  finalize-assets:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: phase-28-3-unknown-event-scope-home-summary
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Replace complete embedded frontend asset set
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf backend/internal/web/public/assets
+          mkdir -p backend/internal/web/public/assets
+          cp -a frontend/dist/assets/. backend/internal/web/public/assets/
+          python3 - <<'PY'
+          from pathlib import Path
+          root = Path("backend/internal/web/public/assets")
+          entry_js = root / "index.js"
+          entry_css = root / "index.css"
+          entry_js.write_text(entry_js.read_text().replace("assets/", "fs/public/assets/"))
+          entry_css.write_text(entry_css.read_text().replace("url(/assets/", "url(/fs/public/assets/"))
+          PY
+
+      - name: Verify Phase 28.3 generated UI
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'Unknown devices (' backend/internal/web/public/assets/Activity.js
+          grep -Fq 'activity-device-scope-chip' backend/internal/web/public/assets/Activity.js
+          grep -Fq 'activity-summary-card' backend/internal/web/public/assets/Activity.js
+          grep -Fq 'out of ' backend/internal/web/public/assets/index.js
+          if grep -Fq 'Total Devices' backend/internal/web/public/assets/index.js; then
+            echo "::error::Removed Home Total Devices card is still present in the embedded bundle."
+            exit 1
+          fi
+          if grep -Fq 'label:"Total events"' backend/internal/web/public/assets/Activity.js; then
+            echo "::error::Stale Events Total events card is still present in the embedded bundle."
+            exit 1
+          fi
+
+      - name: Commit complete generated asset set and remove temporary workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/phase28-3-full-asset-export.yml
+          git add -A backend/internal/web/public/assets
+          git diff --cached --check
+          git commit -m "Refresh complete Phase 28.3 frontend asset set"
+          git push origin HEAD:phase-28-3-unknown-event-scope-home-summary
