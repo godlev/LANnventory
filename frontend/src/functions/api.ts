@@ -14,7 +14,8 @@ export type ActivityEventType =
   | "location-changed"
   | "notes-changed"
   | "tags-changed"
-  | "pinned-changed";
+  | "pinned-changed"
+  | "port-open";
 
 type ActivityQuery = {
   category?: ActivityCategory;
@@ -273,11 +274,22 @@ export const apiDelHost = async (id:number) => {
 };
 
 export const apiPortScan = async (ip:string, port:number) => {
-
   const url = apiPath+'/api/port/'+ip+'/'+port;
   const res = await apiJSON<boolean>(url);
 
   return res;
+};
+
+export type HostPortScanResult = {
+  port: number;
+  open: boolean;
+};
+
+export const apiScanHostPort = async (id:number, port:number): Promise<HostPortScanResult> => {
+  const url = apiPath+'/api/host/'+id+'/port/'+port+'/scan';
+  return await apiJSON<HostPortScanResult>(url, {
+    method: 'POST',
+  });
 };
 
 export const apiGetHistory = async (mac:string) => {

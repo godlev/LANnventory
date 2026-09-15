@@ -40,7 +40,8 @@ type EventFilterKey =
   | "location-changed"
   | "notes-changed"
   | "tags-changed"
-  | "pinned-changed";
+  | "pinned-changed"
+  | "port-open";
 
 type GroupByKey = "device" | "event" | "category" | "device-type" | "ip" | "iface" | "day";
 type DeviceDisplayMode = "name-icon" | "name" | "icon";
@@ -95,7 +96,8 @@ const connectivityEventTypes: ActivityEventType[] = ["online", "offline"];
 const recognitionEventTypes: ActivityEventType[] = ["known", "unknown"];
 const metadataEventTypes: ActivityEventType[] = ["owner-changed", "location-changed", "notes-changed", "tags-changed", "pinned-changed"];
 const deviceChangeEventTypes: ActivityEventType[] = ["discovered", ...recognitionEventTypes, "device-type-changed", ...metadataEventTypes];
-const eventTypeOrder: ActivityEventType[] = [...connectivityEventTypes, ...deviceChangeEventTypes];
+const networkDiagnosticEventTypes: ActivityEventType[] = ["port-open"];
+const eventTypeOrder: ActivityEventType[] = [...connectivityEventTypes, ...deviceChangeEventTypes, ...networkDiagnosticEventTypes];
 const deviceDropdownId = "activity-device-filter";
 const eventTypeDropdownId = "activity-event-type-filter";
 const groupByDropdownId = "activity-group-by-filter";
@@ -130,6 +132,7 @@ const eventFilterOptions: EventFilterOption[] = [
   { key: "notes-changed", label: "Notes updated", eventTypes: ["notes-changed"] },
   { key: "tags-changed", label: "Tags changed", eventTypes: ["tags-changed"] },
   { key: "pinned-changed", label: "Pinned changed", eventTypes: ["pinned-changed"] },
+  { key: "port-open", label: "Open port discovered", eventTypes: ["port-open"] },
 ];
 
 const groupByOptions: { key: GroupByKey; label: string }[] = [
@@ -1105,6 +1108,12 @@ function Activity() {
                     className="activity-multiselect-grandchild"
                     checked={selectedEventTypeSet().has("pinned-changed")}
                     onChange={() => handleEventTypeToggle("pinned-changed")}
+                  />
+                  <EventTypeCheckbox
+                    label="Open port discovered"
+                    className="activity-multiselect-parent"
+                    checked={selectedEventTypeSet().has("port-open")}
+                    onChange={() => handleEventTypeToggle("port-open")}
                   />
                 </div>
                 <div class="activity-multiselect-footer">
