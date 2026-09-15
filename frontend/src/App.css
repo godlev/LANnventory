@@ -3617,7 +3617,7 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
     .activity-summary-grid {
-        grid-template-columns: minmax(18rem, 20rem) minmax(30rem, 1fr);
+        grid-template-columns: minmax(15rem, 0.75fr) minmax(26rem, 1.25fr);
     }
     .overview-grid.home-overview-grid {
         grid-template-columns: 9rem repeat(2, 16rem);
