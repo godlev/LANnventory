@@ -1,10 +1,12 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"net"
 	"net/http"
 	"strings"
+	"sync"
 
 	"github.com/gin-gonic/gin"
 
@@ -15,15 +17,97 @@ import (
 
 var updateService = updater.NewService()
 
+var (
+	updateSchedulerMu sync.RWMutex
+	updateScheduler   *updater.AutoScheduler
+)
+
 type updateChannelRequest struct {
 	Channel string `json:"channel"`
+}
+
+type updateSettingsRequest struct {
+	Channel       string `json:"channel"`
+	Automatic     bool   `json:"automatic"`
+	IntervalHours int    `json:"intervalHours"`
 }
 
 type updateApplyRequest struct {
 	Version string `json:"version"`
 }
 
-// getUpdateStatus checks the selected GitHub release channel for a newer LANnventory release.
+type updateStatusResponse struct {
+	CurrentVersion      string `json:"currentVersion"`
+	Channel             string `json:"channel"`
+	LatestVersion       string `json:"latestVersion"`
+	Available           bool   `json:"available"`
+	PublishedAt         string `json:"publishedAt"`
+	ReleaseURL          string `json:"releaseUrl"`
+	InstallSupported    bool   `json:"installSupported"`
+	InstallReason       string `json:"installReason"`
+	Message             string `json:"message"`
+	Updating            bool   `json:"updating"`
+	Automatic           bool   `json:"automatic"`
+	IntervalHours       int    `json:"intervalHours"`
+	LastChecked         string `json:"lastChecked"`
+	SnapshotBaseVersion string `json:"snapshotBaseVersion"`
+}
+
+type updateApplyResponse struct {
+	Version    string `json:"version"`
+	Scheduled  bool   `json:"scheduled"`
+	Message    string `json:"message"`
+	BackupPath string `json:"backupPath"`
+}
+
+// StartUpdateScheduler starts automatic update polling using the same updater service
+// as the manual update endpoints.
+func StartUpdateScheduler(ctx context.Context) {
+	scheduler := updater.NewAutoScheduler(updateService, func() updater.AutoConfig {
+		config := conf.GetAppConfig()
+		return updater.AutoConfig{
+			CurrentVersion: config.Version,
+			Channel:        config.UpdateChannel,
+			Automatic:      config.UpdateAuto,
+			IntervalHours:  config.UpdateCheckIntervalHours,
+			HealthURL:      updateHealthURL(config.Host, config.Port),
+		}
+	})
+
+	updateSchedulerMu.Lock()
+	updateScheduler = scheduler
+	updateSchedulerMu.Unlock()
+
+	scheduler.Start(ctx)
+
+	go func() {
+		<-ctx.Done()
+		updateSchedulerMu.Lock()
+		if updateScheduler == scheduler {
+			updateScheduler = nil
+		}
+		updateSchedulerMu.Unlock()
+	}()
+}
+
+func notifyUpdateSchedulerConfigChanged() {
+	updateSchedulerMu.RLock()
+	scheduler := updateScheduler
+	updateSchedulerMu.RUnlock()
+	if scheduler != nil {
+		scheduler.NotifyConfigChanged()
+	}
+}
+
+// getUpdateStatus godoc
+// @Summary      Get update status
+// @Description  Checks the selected release channel for a newer LANnventory release. Cached release metadata is used unless refresh is true.
+// @Tags         updates
+// @Produce      json
+// @Param        refresh  query     bool  false  "Refresh cached release metadata"
+// @Success      200      {object}  updateStatusResponse
+// @Failure      502      {object}  map[string]string
+// @Router       /update/status [get]
 func getUpdateStatus(c *gin.Context) {
 	config := conf.GetAppConfig()
 	refresh := c.Query("refresh") == "1" || strings.EqualFold(c.Query("refresh"), "true")
@@ -32,10 +116,21 @@ func getUpdateStatus(c *gin.Context) {
 		c.IndentedJSON(http.StatusBadGateway, gin.H{"error": "update check failed", "detail": err.Error()})
 		return
 	}
-	c.IndentedJSON(http.StatusOK, status)
+	c.IndentedJSON(http.StatusOK, withUpdateSettings(status, config))
 }
 
-// saveUpdateChannel persists Stable or Beta and immediately refreshes update status.
+// saveUpdateChannel godoc
+// @Summary      Set update channel
+// @Description  Persists the Stable or Beta update channel and immediately refreshes update status.
+// @Tags         updates
+// @Accept       json
+// @Produce      json
+// @Param        request  body      updateChannelRequest  true  "Update channel"
+// @Success      200      {object}  updateStatusResponse
+// @Failure      400      {object}  map[string]string
+// @Failure      500      {object}  map[string]string
+// @Failure      502      {object}  map[string]string
+// @Router       /update/channel [post]
 func saveUpdateChannel(c *gin.Context) {
 	var req updateChannelRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -57,16 +152,77 @@ func saveUpdateChannel(c *gin.Context) {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to persist update channel"})
 		return
 	}
+	notifyUpdateSchedulerConfigChanged()
 
 	status, err := updateService.Check(c.Request.Context(), nextConfig.Version, channel, true)
 	if err != nil {
 		c.IndentedJSON(http.StatusBadGateway, gin.H{"error": "channel saved but update check failed", "detail": err.Error()})
 		return
 	}
-	c.IndentedJSON(http.StatusOK, status)
+	c.IndentedJSON(http.StatusOK, withUpdateSettings(status, nextConfig))
 }
 
-// applyUpdate verifies and schedules installation of the newest release in the configured channel.
+// saveUpdateSettings godoc
+// @Summary      Set update settings
+// @Description  Persists release channel, automatic update preference, and automatic check interval, then immediately refreshes update status.
+// @Tags         updates
+// @Accept       json
+// @Produce      json
+// @Param        request  body      updateSettingsRequest  true  "Update settings"
+// @Success      200      {object}  updateStatusResponse
+// @Failure      400      {object}  map[string]string
+// @Failure      500      {object}  map[string]string
+// @Failure      502      {object}  map[string]string
+// @Router       /update/settings [post]
+func saveUpdateSettings(c *gin.Context) {
+	var req updateSettingsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid update settings request"})
+		return
+	}
+
+	channel := strings.ToLower(strings.TrimSpace(req.Channel))
+	if !updater.ValidChannel(channel) {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "update channel must be stable or beta"})
+		return
+	}
+	if !updater.ValidAutoIntervalHours(req.IntervalHours) {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "update interval must be 6, 12, 24, or 168 hours"})
+		return
+	}
+
+	nextConfig, err := conf.UpdateAppConfig(func(next *models.Conf) error {
+		next.UpdateChannel = channel
+		next.UpdateAuto = req.Automatic
+		next.UpdateCheckIntervalHours = req.IntervalHours
+		return nil
+	})
+	if err != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to persist update settings"})
+		return
+	}
+	notifyUpdateSchedulerConfigChanged()
+
+	status, err := updateService.Check(c.Request.Context(), nextConfig.Version, channel, true)
+	if err != nil {
+		c.IndentedJSON(http.StatusBadGateway, gin.H{"error": "settings saved but update check failed", "detail": err.Error()})
+		return
+	}
+	c.IndentedJSON(http.StatusOK, withUpdateSettings(status, nextConfig))
+}
+
+// applyUpdate godoc
+// @Summary      Apply update
+// @Description  Verifies and schedules installation of the newest release in the configured channel. The service restarts after the package update is scheduled.
+// @Tags         updates
+// @Accept       json
+// @Produce      json
+// @Param        request  body      updateApplyRequest  false  "Expected version"
+// @Success      202      {object}  updateApplyResponse
+// @Failure      400      {object}  map[string]string
+// @Failure      409      {object}  map[string]string
+// @Failure      502      {object}  map[string]string
+// @Router       /update/apply [post]
 func applyUpdate(c *gin.Context) {
 	var req updateApplyRequest
 	if c.Request.ContentLength != 0 {
@@ -99,6 +255,12 @@ func applyUpdate(c *gin.Context) {
 	}
 
 	c.IndentedJSON(http.StatusAccepted, result)
+}
+
+func withUpdateSettings(status updater.Status, config models.Conf) updater.Status {
+	status.Automatic = config.UpdateAuto
+	status.IntervalHours = updater.NormalizeAutoIntervalHours(config.UpdateCheckIntervalHours)
+	return status
 }
 
 func updateHealthURL(host, port string) string {
