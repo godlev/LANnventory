@@ -38,6 +38,32 @@ function ActionTooltip(props: ActionTooltipProps) {
   let longPressShown = false;
   let suppressNextClick = false;
   let supportsPointerEvents = false;
+  let nativeTitle: string | undefined;
+
+  const suppressNativeTitle = () => {
+    if (!anchor || nativeTitle !== undefined) {
+      return;
+    }
+
+    const titledElement = anchor.querySelector<HTMLElement>("[title]");
+    const currentTitle = titledElement?.getAttribute("title");
+    if (titledElement && currentTitle !== null && currentTitle !== "") {
+      nativeTitle = currentTitle;
+      titledElement.removeAttribute("title");
+    }
+  };
+
+  const restoreNativeTitle = () => {
+    if (!anchor || nativeTitle === undefined) {
+      return;
+    }
+
+    const titledElement = anchor.querySelector<HTMLElement>("button, [role='button'], [tabindex]");
+    if (titledElement) {
+      titledElement.setAttribute("title", nativeTitle);
+    }
+    nativeTitle = undefined;
+  };
 
   const clearLongPressTimer = () => {
     if (longPressTimer !== undefined) {
@@ -57,6 +83,7 @@ function ActionTooltip(props: ActionTooltipProps) {
     clearAutoHideTimer();
     longPressShown = false;
     setVisible(false);
+    restoreNativeTitle();
   };
 
   const hideIfIdle = () => {
@@ -71,6 +98,7 @@ function ActionTooltip(props: ActionTooltipProps) {
     }
 
     clearAutoHideTimer();
+    suppressNativeTitle();
 
     const rect = anchor.getBoundingClientRect();
     const viewportWidth = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
@@ -262,6 +290,7 @@ function ActionTooltip(props: ActionTooltipProps) {
     onCleanup(() => {
       clearLongPressTimer();
       clearAutoHideTimer();
+      restoreNativeTitle();
 
       if (!anchor) {
         return;
