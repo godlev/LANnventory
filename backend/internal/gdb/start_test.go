@@ -262,6 +262,14 @@ func assertPackagingSchema(t *testing.T) {
 			t.Fatalf("host_lifecycle table missing %s column", column)
 		}
 	}
+	if !db.Migrator().HasTable(hostPortsTable) {
+		t.Fatal("host_ports table missing")
+	}
+	for _, column := range []string{"HOST_ID", "PORT", "PROTOCOL", "OPEN", "FIRST_SEEN", "LAST_SCANNED", "LAST_CHANGED"} {
+		if !db.Table(hostPortsTable).Migrator().HasColumn(&models.HostPort{}, column) {
+			t.Fatalf("host_ports table missing %s column", column)
+		}
+	}
 }
 
 func openMigrationFixtureDB(t *testing.T, dbPath string) *gorm.DB {
@@ -339,6 +347,17 @@ func assertMigratedLegacyRows(t *testing.T) {
 	}
 	if !db.Migrator().HasTable(hostLifecycleTable) {
 		t.Fatal("host_lifecycle table missing after startup migration")
+	}
+	if !db.Migrator().HasTable(hostPortsTable) {
+		t.Fatal("host_ports table missing after startup migration")
+	}
+
+	var ports []models.HostPort
+	if err := db.Table(hostPortsTable).Find(&ports).Error; err != nil {
+		t.Fatalf("read migrated host port rows: %v", err)
+	}
+	if len(ports) != 0 {
+		t.Fatalf("legacy migration invented host port state: %+v", ports)
 	}
 
 	var hosts []models.Host
