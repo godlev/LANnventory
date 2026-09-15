@@ -22,15 +22,7 @@ type updateApplyRequest struct {
 	Version string `json:"version"`
 }
 
-// getUpdateStatus godoc
-// @Summary      Check for LANnventory updates
-// @Description  Check the selected release channel and report whether a newer release is available.
-// @Tags         system
-// @Produce      json
-// @Param        refresh  query     bool  false  "Bypass the short release cache"
-// @Success      200      {object}  updater.Status
-// @Failure      502      {object}  map[string]string
-// @Router       /update/status [get]
+// getUpdateStatus checks the selected GitHub release channel for a newer LANnventory release.
 func getUpdateStatus(c *gin.Context) {
 	config := conf.GetAppConfig()
 	refresh := c.Query("refresh") == "1" || strings.EqualFold(c.Query("refresh"), "true")
@@ -42,18 +34,7 @@ func getUpdateStatus(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, status)
 }
 
-// saveUpdateChannel godoc
-// @Summary      Set update channel
-// @Description  Persist Stable or Beta as the release channel used for update checks.
-// @Tags         configuration
-// @Accept       json
-// @Produce      json
-// @Param        body  body      updateChannelRequest  true  "Update channel"
-// @Success      200   {object}  updater.Status
-// @Failure      400   {object}  map[string]string
-// @Failure      500   {object}  map[string]string
-// @Failure      502   {object}  map[string]string
-// @Router       /update/channel [post]
+// saveUpdateChannel persists Stable or Beta and immediately refreshes update status.
 func saveUpdateChannel(c *gin.Context) {
 	var req updateChannelRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -84,18 +65,7 @@ func saveUpdateChannel(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, status)
 }
 
-// applyUpdate godoc
-// @Summary      Install available LANnventory update
-// @Description  Verify the latest release for the selected channel, schedule Debian package installation, and restart LANnventory.
-// @Tags         system
-// @Accept       json
-// @Produce      json
-// @Param        body  body      updateApplyRequest  false  "Expected target version"
-// @Success      202   {object}  updater.ApplyResult
-// @Failure      400   {object}  map[string]string
-// @Failure      409   {object}  map[string]string
-// @Failure      502   {object}  map[string]string
-// @Router       /update/apply [post]
+// applyUpdate verifies and schedules installation of the newest release in the configured channel.
 func applyUpdate(c *gin.Context) {
 	var req updateApplyRequest
 	if c.Request.ContentLength != 0 {
