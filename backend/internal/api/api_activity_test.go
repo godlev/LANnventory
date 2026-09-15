@@ -785,7 +785,7 @@ func TestActivityStatsEndpointReturnsTotals(t *testing.T) {
 		t.Fatalf("stats status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
 	}
 	stats := decodeActivityStats(t, rec)
-	if stats.Total != 14 || stats.Online != 2 || stats.Offline != 2 || stats.Discovered != 1 || stats.Known != 1 || stats.Unknown != 1 || stats.DeviceTypeChanged != 1 || stats.MetadataChanged != 5 {
+	if stats.Total != 15 || stats.Online != 2 || stats.Offline != 2 || stats.Discovered != 1 || stats.Known != 1 || stats.Unknown != 1 || stats.DeviceTypeChanged != 1 || stats.MetadataChanged != 5 {
 		t.Fatalf("stats = %+v, want totals for all seeded events", stats)
 	}
 }
