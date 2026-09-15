@@ -54,12 +54,12 @@ jobs:
         run: |
           set -euo pipefail
           test -f backend/internal/web/public/assets/HostPage.js
-          grep -Fq 'Network & Discovery' backend/internal/web/public/assets/HostPage.js
           grep -Fq 'Wake on LAN' backend/internal/web/public/assets/HostPage.js
-          grep -Fq 'This device is currently marked Unknown' backend/internal/web/public/assets/HostPage.js
-          grep -Fq 'Pin this device at the top of the Home device list' backend/internal/web/public/assets/HostPage.js
+          grep -Fq 'host-details-layout' backend/internal/web/public/assets/HostPage.js
+          grep -Fq 'host-detail-section-inventory' backend/internal/web/public/assets/HostPage.js
+          grep -Fq 'host-detail-section-discovery' backend/internal/web/public/assets/HostPage.js
           grep -Fq 'host-pin-icons' backend/internal/web/public/assets/HostPage.js
-          grep -Fq 'Remove this device from LANnventory' backend/internal/web/public/assets/HostPage.js
+          grep -Fq 'wyl-tooltip-anchor' backend/internal/web/public/assets/HostPage.js
           grep -Fq '.wyl-tooltip' backend/internal/web/public/assets/index.css
           grep -Fq '.host-details-layout' backend/internal/web/public/assets/index.css
 
