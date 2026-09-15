@@ -1666,6 +1666,9 @@ const docTemplate = `{
                 "trimHist": {
                     "type": "integer"
                 },
+                "updateChannel": {
+                    "type": "string"
+                },
                 "useDB": {
                     "description": "PostgreSQL",
                     "type": "string"

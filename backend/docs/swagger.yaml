@@ -149,6 +149,8 @@ definitions:
         type: integer
       trimHist:
         type: integer
+      updateChannel:
+        type: string
       useDB:
         description: PostgreSQL
         type: string
