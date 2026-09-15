@@ -1,0 +1,51 @@
+name: Phase 28.2 Checkpoint Package
+
+on:
+  push:
+    branches:
+      - checkpoint-phase-28-2
+
+permissions:
+  contents: read
+
+jobs:
+  build-checkpoint-deb:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: checkpoint-phase-28-2
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Build GoReleaser snapshot
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: v2.18.0
+          args: release --snapshot --clean
+          workdir: backend
+
+      - name: Stage amd64 Debian package
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p checkpoint
+          deb="$(find backend/dist -maxdepth 1 -type f -name '*amd64*.deb' | sort | head -n 1)"
+          test -n "$deb"
+          cp "$deb" checkpoint/lannventory-phase28-2-checkpoint-amd64.deb
+          sha256sum checkpoint/lannventory-phase28-2-checkpoint-amd64.deb > checkpoint/SHA256SUMS.txt
+
+      - name: Upload checkpoint package
+        uses: actions/upload-artifact@v4
+        with:
+          name: lannventory-phase28-2-checkpoint-amd64
+          path: checkpoint/*
+          if-no-files-found: error
+          retention-days: 14
