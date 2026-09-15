@@ -967,7 +967,7 @@ function Activity() {
                     <For each={filteredDeviceOptions()}>{(device) =>
                       <DeviceCheckbox
                         device={device}
-                        checked={deviceSelectionMode() === "all" || (deviceSelectionMode() === "custom" && selectedMacSet().has(device.Mac))}
+                        checked={deviceSelectionMode() === "all" || ((deviceSelectionMode() === "custom" || deviceSelectionMode() === "unknown") && selectedMacSet().has(device.Mac))}
                         onChange={() => handleDeviceToggle(device.Mac)}
                       />
                     }</For>
