@@ -1393,6 +1393,225 @@ const docTemplate = `{
                 }
             }
         },
+        "/update/apply": {
+            "post": {
+                "description": "Verifies and schedules installation of the newest release in the configured channel. The service restarts after the package update is scheduled.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "updates"
+                ],
+                "summary": "Apply update",
+                "parameters": [
+                    {
+                        "description": "Expected version",
+                        "name": "request",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/api.updateApplyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "$ref": "#/definitions/api.updateApplyResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/update/channel": {
+            "post": {
+                "description": "Persists the Stable or Beta update channel and immediately refreshes update status.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "updates"
+                ],
+                "summary": "Set update channel",
+                "parameters": [
+                    {
+                        "description": "Update channel",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.updateChannelRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.updateStatusResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/update/settings": {
+            "post": {
+                "description": "Persists release channel, automatic update preference, and automatic check interval, then immediately refreshes update status.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "updates"
+                ],
+                "summary": "Set update settings",
+                "parameters": [
+                    {
+                        "description": "Update settings",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.updateSettingsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.updateStatusResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/update/status": {
+            "get": {
+                "description": "Checks the selected release channel for a newer LANnventory release. Cached release metadata is used unless refresh is true.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "updates"
+                ],
+                "summary": "Get update status",
+                "parameters": [
+                    {
+                        "type": "boolean",
+                        "description": "Refresh cached release metadata",
+                        "name": "refresh",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.updateStatusResponse"
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/version": {
             "get": {
                 "description": "Returns the current running version of the application",
@@ -1523,6 +1742,100 @@ const docTemplate = `{
                 },
                 "presenceRetention": {
                     "type": "integer"
+                }
+            }
+        },
+        "api.updateApplyRequest": {
+            "type": "object",
+            "properties": {
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.updateApplyResponse": {
+            "type": "object",
+            "properties": {
+                "backupPath": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "scheduled": {
+                    "type": "boolean"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.updateChannelRequest": {
+            "type": "object",
+            "properties": {
+                "channel": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.updateSettingsRequest": {
+            "type": "object",
+            "properties": {
+                "automatic": {
+                    "type": "boolean"
+                },
+                "channel": {
+                    "type": "string"
+                },
+                "intervalHours": {
+                    "type": "integer"
+                }
+            }
+        },
+        "api.updateStatusResponse": {
+            "type": "object",
+            "properties": {
+                "automatic": {
+                    "type": "boolean"
+                },
+                "available": {
+                    "type": "boolean"
+                },
+                "channel": {
+                    "type": "string"
+                },
+                "currentVersion": {
+                    "type": "string"
+                },
+                "installReason": {
+                    "type": "string"
+                },
+                "installSupported": {
+                    "type": "boolean"
+                },
+                "intervalHours": {
+                    "type": "integer"
+                },
+                "lastChecked": {
+                    "type": "string"
+                },
+                "latestVersion": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "publishedAt": {
+                    "type": "string"
+                },
+                "releaseUrl": {
+                    "type": "string"
+                },
+                "snapshotBaseVersion": {
+                    "type": "string"
+                },
+                "updating": {
+                    "type": "boolean"
                 }
             }
         },
@@ -1666,8 +1979,14 @@ const docTemplate = `{
                 "trimHist": {
                     "type": "integer"
                 },
+                "updateAuto": {
+                    "type": "boolean"
+                },
                 "updateChannel": {
                     "type": "string"
+                },
+                "updateCheckIntervalHours": {
+                    "type": "integer"
                 },
                 "useDB": {
                     "description": "PostgreSQL",
