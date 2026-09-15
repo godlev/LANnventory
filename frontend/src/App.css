@@ -2991,16 +2991,55 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
 .host-lifecycle-estimate {
     display: inline-flex;
     align-items: center;
-    min-height: 1.2rem;
-    padding: 0.08rem 0.34rem;
+    justify-content: center;
+    width: 1.15rem;
+    height: 1.15rem;
     color: var(--wyl-filter-active);
-    background-color: var(--wyl-control-hover-bg);
-    border: 1px solid var(--wyl-control-border);
-    border-radius: 999px;
-    font-size: 0.68rem;
-    font-weight: 800;
+    font-size: 0.78rem;
     line-height: 1;
-    text-transform: uppercase;
+    cursor: help;
+}
+
+[data-wyl-tooltip] {
+    position: relative;
+}
+
+[data-wyl-tooltip]::after {
+    content: attr(data-wyl-tooltip);
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 0.5rem);
+    z-index: 1100;
+    width: max-content;
+    max-width: min(22rem, 80vw);
+    padding: 0.38rem 0.52rem;
+    color: var(--bs-body-color);
+    background: var(--wyl-panel-bg);
+    border: 1px solid var(--wyl-control-border);
+    border-radius: 0.4rem;
+    box-shadow: 0 0.35rem 1rem rgba(0, 0, 0, 0.24);
+    font-size: 0.76rem;
+    font-weight: 650;
+    line-height: 1.25;
+    text-align: left;
+    white-space: normal;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translate(-50%, 0.2rem);
+    transition:
+        opacity 0.08s ease,
+        transform 0.08s ease,
+        visibility 0s linear 0.08s;
+}
+
+[data-wyl-tooltip]:hover::after,
+[data-wyl-tooltip]:focus-visible::after,
+[data-wyl-tooltip]:active::after {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, 0);
+    transition-delay: 0.55s, 0.55s, 0.55s;
 }
 .host-metadata-check {
     display: inline-flex;
