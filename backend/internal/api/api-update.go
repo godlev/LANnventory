@@ -2,6 +2,7 @@ package api
 
 import (
 	"errors"
+	"net"
 	"net/http"
 	"strings"
 
@@ -76,7 +77,13 @@ func applyUpdate(c *gin.Context) {
 	}
 
 	config := conf.GetAppConfig()
-	result, err := updateService.Schedule(c.Request.Context(), config.Version, config.UpdateChannel, strings.TrimSpace(req.Version))
+	result, err := updateService.Schedule(
+		c.Request.Context(),
+		config.Version,
+		config.UpdateChannel,
+		strings.TrimSpace(req.Version),
+		updateHealthURL(config.Host, config.Port),
+	)
 	if err != nil {
 		switch {
 		case errors.Is(err, updater.ErrNoUpdate):
@@ -92,4 +99,25 @@ func applyUpdate(c *gin.Context) {
 	}
 
 	c.IndentedJSON(http.StatusAccepted, result)
+}
+
+func updateHealthURL(host, port string) string {
+	host = strings.TrimSpace(host)
+	port = strings.TrimSpace(port)
+	if port == "" {
+		port = "8840"
+	}
+
+	switch host {
+	case "", "0.0.0.0":
+		host = "127.0.0.1"
+	case "::", "[::]":
+		host = "::1"
+	default:
+		if strings.HasPrefix(host, "[") && strings.HasSuffix(host, "]") {
+			host = strings.TrimSuffix(strings.TrimPrefix(host, "["), "]")
+		}
+	}
+
+	return "http://" + net.JoinHostPort(host, port) + "/api/health"
 }

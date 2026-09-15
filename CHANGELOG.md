@@ -3,6 +3,30 @@ All notable changes to this project will be documented in this file.
 
 ## LANnventory Releases
 
+## [Unreleased]
+
+### Added
+- Redesigned Home and Events summary cards with more compact responsive presentation.
+- Current-Unknown device scope in Events.
+- Adaptive action tooltips with touch long-press behavior and native browser tooltip fallback.
+- Open-port activity events so newly discovered open ports are recorded in Host activity.
+- Stable/Beta update channel selection in Settings.
+- One-click update status, check and install controls backed by verified GitHub release packages.
+- Versioned pre-update recovery backups for the current LANnventory binary and /etc/watchyourlan data.
+- Post-update service and health validation using the configured LANnventory bind address.
+
+### Changed
+- Refined Host details and Port Scan layout across desktop breakpoints.
+- Improved Host action placement and tooltip behavior.
+- Hardened update installation with SHA256 verification, Debian package/architecture checks and recovery-path reporting.
+- Release packaging now rebuilds and verifies the embedded frontend before dry runs and published binaries.
+- Debian/RPM packages explicitly include curl and CA certificates required by the updater health path.
+
+### Fixed
+- Avoided stale embedded frontend assets being packaged into DEB/RPM/APK releases.
+- Update health checks no longer assume LANnventory is bound to 127.0.0.1.
+- Updater failure handling preserves recovery files and restarts the service when an update cannot complete.
+
 ## [v0.1.0-beta.2] - 2026-09-04
 ### Added
 - Event Type and Device multi-select filters for the Events explorer.

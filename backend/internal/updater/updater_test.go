@@ -10,10 +10,10 @@ import (
 
 func TestComparableVersionNormalizesSnapshots(t *testing.T) {
 	tests := map[string]string{
-		"0.1.0-beta.2": "v0.1.0-beta.2",
-		"v0.1.0-beta.2": "v0.1.0-beta.2",
+		"0.1.0-beta.2":                  "v0.1.0-beta.2",
+		"v0.1.0-beta.2":                 "v0.1.0-beta.2",
 		"0.1.0-beta.2-SNAPSHOT-deadbee": "v0.1.0-beta.2",
-		"not-a-version": "",
+		"not-a-version":                 "",
 	}
 	for input, want := range tests {
 		if got := comparableVersion(input); got != want {
@@ -86,5 +86,18 @@ func TestChecksumForFile(t *testing.T) {
 	}
 	if got != hash {
 		t.Fatalf("hash = %q, want %q", got, hash)
+	}
+}
+
+func TestSafePathComponent(t *testing.T) {
+	tests := map[string]string{
+		"0.1.0-beta.2-SNAPSHOT-0251fa4": "0.1.0-beta.2-SNAPSHOT-0251fa4",
+		" v0.1.0 beta/3 ":               "v0.1.0_beta_3",
+		"":                              "unknown",
+	}
+	for input, want := range tests {
+		if got := safePathComponent(input); got != want {
+			t.Fatalf("safePathComponent(%q) = %q, want %q", input, got, want)
+		}
 	}
 }
