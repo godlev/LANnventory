@@ -9,10 +9,12 @@ export type UpdateStatus = {
   available: boolean;
   publishedAt: string;
   releaseUrl: string;
+  releaseSummary: string;
   installSupported: boolean;
   installReason: string;
   message: string;
   updating: boolean;
+  automaticCheck: boolean;
   automatic: boolean;
   intervalHours: number;
   lastChecked: string;
@@ -53,15 +55,20 @@ export const apiGetUpdateStatus = async (refresh = false): Promise<UpdateStatus>
   return publishUpdateStatus(await apiJSON<UpdateStatus>("/api/update/status" + suffix));
 };
 
+export const apiGetCachedUpdateStatus = async (): Promise<UpdateStatus> => {
+  return publishUpdateStatus(await apiJSON<UpdateStatus>("/api/update/status?cached=1"));
+};
+
 export const apiSetUpdateSettings = async (
   channel: UpdateChannel,
+  automaticCheck: boolean,
   automatic: boolean,
   intervalHours: number,
 ): Promise<UpdateStatus> => {
   return publishUpdateStatus(await apiJSON<UpdateStatus>("/api/update/settings", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ channel, automatic, intervalHours }),
+    body: JSON.stringify({ channel, automaticCheck, automatic, intervalHours }),
   }));
 };
 
