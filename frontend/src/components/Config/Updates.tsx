@@ -112,7 +112,7 @@ function Updates() {
         <Show when={status()}>
           {(currentStatus) =>
             <span class={"update-state-badge " + (currentStatus().available ? "is-available" : "is-current")}>
-              {currentStatus().available ? "Update available" : "No update"}
+              {currentStatus().available ? "Update available" : "Up to date"}
             </span>
           }
         </Show>
