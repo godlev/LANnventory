@@ -131,6 +131,9 @@ func migrate(candidate *gorm.DB) error {
 	if err := candidate.Table(hostLifecycleTable).AutoMigrate(&models.HostLifecycle{}); err != nil {
 		return err
 	}
+	if err := candidate.Table(hostPortsTable).AutoMigrate(&models.HostPort{}); err != nil {
+		return err
+	}
 	return backfillHostLifecycle(candidate)
 }
 
