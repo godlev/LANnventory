@@ -149,10 +149,11 @@ Recent release-readiness work includes:
 - Stored sensitive configuration values are no longer returned by `/api/config`.
 - Secret settings are write-only in the Settings UI and can be kept, replaced or explicitly cleared.
 
-### Remaining validation work before the first beta
+### Remaining beta validation work
 
-- PostgreSQL runtime integration testing is still required.
-- The race detector has not been run in the current Windows development environment because CGO/gcc is unavailable there.
+- PostgreSQL runtime integration testing is still required before PostgreSQL is treated as a fully validated deployment path.
+- SQLite remains the primary packaging-validated database path.
+- GitHub Packaging Check runs the backend race detector on Linux for every release candidate.
 
 ## Security and exposure
 
@@ -260,6 +261,23 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/godlev/LANnventory/main/
 The installer downloads the pinned official `.deb` release package, detects Proxmox storage/template/bridge choices, prefers `vmbr0` when available, filters Proxmox per-guest firewall bridges, supports DHCP or static IPv4, seeds `IFACES: "eth0"`, and validates `/api/health`, `/api/version` and `arp-scan` availability. It does not build LANnventory from source and does not loosen LXC security by enabling privileged mode, nesting, AppArmor relaxation or broad capabilities.
 
 See [proxmox/README.md](proxmox/README.md) for details.
+
+### In-app software updates
+
+Debian package installations can use **Settings → Updates** to select the **Stable** or **Beta** channel, check GitHub Releases and install a newer matching LANnventory `.deb` package.
+
+The updater:
+
+- selects only LANnventory releases from the configured channel
+- requires a matching Debian architecture package and `checksums.txt`
+- verifies the downloaded package SHA256 before installation
+- creates a versioned recovery backup under `/var/lib/lannventory/update-backups`
+- stops LANnventory before copying `/etc/watchyourlan` so SQLite/config data is backed up consistently
+- installs through the Debian package manager
+- restarts LANnventory and checks `/api/health` using the configured bind host and port
+- preserves the recovery backup path if the update does not complete cleanly
+
+Automatic installation is intentionally limited to supported Debian-package/systemd installations for this beta. Other installation types can still be updated using their normal deployment method.
 
 ### Docker / Compose development install
 
