@@ -581,7 +581,20 @@ function HostCard(_props: HostCardProps) {
                   <span class="host-lifecycle-value">
                     <span>{formattedFirstSeen()}</span>
                     <Show when={_props.host.FirstSeenEstimated}>
-                      <span class="host-lifecycle-estimate" title="Estimated from retained history">Estimated</span>
+                      <ActionTooltip
+                        title="Approximate first seen"
+                        detail="Lifecycle tracking started after this device was already known. This time is the earliest retained evidence LANnventory could find."
+                      >
+                        <span
+                          class="host-lifecycle-approx"
+                          title="Approximate first seen"
+                          aria-label="Approximate first seen"
+                          role="img"
+                          tabIndex={0}
+                        >
+                          <i class="bi bi-info-circle" aria-hidden="true"></i>
+                        </span>
+                      </ActionTooltip>
                     </Show>
                   </span>
                 </Show>

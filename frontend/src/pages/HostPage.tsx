@@ -118,7 +118,7 @@ function HostPage() {
       }
     >
       <div class="row g-3 mx-0 host-page-row">
-        <div class="col-md">
+        <div class="col-12 col-md-8 col-lg-9 col-xl-10 host-details-column">
           <HostCard
             host={currentHost()}
             editMode={isEditMode()}
@@ -127,8 +127,8 @@ function HostPage() {
             onDirtyChange={setHasUnsavedHostChanges}
           ></HostCard>
         </div>
-        <div class="col-md">
-          <Ping IP={currentHost().IP}></Ping>
+        <div class="col-12 col-md-4 col-lg-3 col-xl-2 host-port-column">
+          <Ping host={currentHost()}></Ping>
         </div>
       </div>
       <div class="row g-3 mx-0 mt-1 host-page-row">
