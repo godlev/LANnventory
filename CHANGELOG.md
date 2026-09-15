@@ -18,6 +18,7 @@ All notable changes to this project will be documented in this file.
 - Simplified the Host editor action label from `Save changes` to `Save`.
 - Replaced the ambiguous visible `Estimated` lifecycle badge with an explanatory information indicator.
 - Added delayed custom hover/focus/press tooltips while retaining native `title` text as a fallback.
+- Hardened packaging so CI verifies the committed embedded frontend bundle, while release dry runs and tag-driven releases rebuild the current frontend before GoReleaser.
 
 ### Fixed
 - Proxmox installer invocation through the documented `bash -c "$(curl ...)"` command when `BASH_SOURCE[0]` is unset.
