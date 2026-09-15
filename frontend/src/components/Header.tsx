@@ -2,10 +2,10 @@ import { createEffect, createSignal, onCleanup, onMount, Show } from "solid-js";
 import { A, useLocation } from "@solidjs/router";
 import { appConfig, pageContext } from "../functions/exports";
 import { normalizeColorMode, refreshAppConfig, setColorMode } from "../functions/theme";
-import { apiGetUpdateStatus, setSharedUpdateStatus, sharedUpdateStatus } from "../functions/updateApi";
+import { apiGetCachedUpdateStatus, apiGetUpdateStatus, setSharedUpdateStatus, sharedUpdateStatus } from "../functions/updateApi";
 import { confirmUpdate, startUpdateFlow } from "../functions/updateFlow";
 
-const updateStatusPollMs = 30 * 60 * 1000;
+const updateStatusPollMs = 60 * 1000;
 
 function Header() {
 
@@ -123,7 +123,7 @@ function Header() {
 
   const loadUpdateStatus = async (refresh = false) => {
     try {
-      setUpdateStatus(await apiGetUpdateStatus(refresh));
+      setUpdateStatus(refresh ? await apiGetUpdateStatus(true) : await apiGetCachedUpdateStatus());
       setUpdateError("");
     } catch {
       setUpdateStatus(undefined);
@@ -312,6 +312,9 @@ function Header() {
                 onClick={handleUpdateToggle}
               >
                 <i class="bi bi-arrow-up-circle-fill" aria-hidden="true"></i>
+                <span class="wyl-update-nav-label">
+                  Update <span class="wyl-update-nav-version">{updateStatus()?.latestVersion || "available"}</span>
+                </span>
               </button>
               <Show when={updateOpen()}>
                 <div
