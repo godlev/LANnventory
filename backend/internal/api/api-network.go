@@ -161,7 +161,7 @@ func startHostPortScan(c *gin.Context) {
 // @Param        id  path      int  true  "Host ID"
 // @Success      200 {object}  portScanJobStatus
 // @Failure      404 {object}  map[string]string
-// @Router       /host/{id}/ports/scan/active [get]
+// @Router       /host/{id}/ports/scan [get]
 func getActiveHostPortScan(c *gin.Context) {
 	host, err := getHostByID(c.Param("id"))
 	if err != nil || host.ID < 1 {
