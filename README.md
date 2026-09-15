@@ -16,7 +16,7 @@ The original WatchYourLAN scanning/backend foundation is preserved and credited.
 
 ## LANnventory dashboard
 
-![LANnventory dashboard]
+![LANnventory dashboard](assets/image.png)
 
 ## Branding assets
 
