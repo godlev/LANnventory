@@ -16,7 +16,7 @@ The original WatchYourLAN scanning/backend foundation is preserved and credited.
 
 ## LANnventory dashboard
 
-![LANnventory dashboard](https://github.com/godlev/LANnventory/blob/bbc905f07eacd4b1a926d56ce99e29bd1b217d7b/assets/Screenshot%202026-09-16%20022246.png)
+![LANnventory dashboard]
 
 ## Branding assets
 
