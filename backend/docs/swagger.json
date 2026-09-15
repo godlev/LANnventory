@@ -76,7 +76,8 @@
                             "location-changed",
                             "notes-changed",
                             "tags-changed",
-                            "pinned-changed"
+                            "pinned-changed",
+                            "port-open"
                         ],
                         "type": "string",
                         "description": "Repeatable event type filter",
@@ -1157,6 +1158,60 @@
                 }
             }
         },
+        "/host/{id}/port/{port}/scan": {
+            "post": {
+                "description": "Scan a TCP port using the host's current IP. When the port is open, persist an activity event for that host.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "network"
+                ],
+                "summary": "Scan one port for a host",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Port number",
+                        "name": "port",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.hostPortScanResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/host/{id}/type": {
             "patch": {
                 "description": "Update only a host's manually assigned device type",
@@ -1439,6 +1494,17 @@
             "properties": {
                 "color": {
                     "type": "string"
+                }
+            }
+        },
+        "api.hostPortScanResponse": {
+            "type": "object",
+            "properties": {
+                "open": {
+                    "type": "boolean"
+                },
+                "port": {
+                    "type": "integer"
                 }
             }
         },
