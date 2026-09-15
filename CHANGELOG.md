@@ -3,6 +3,18 @@ All notable changes to this project will be documented in this file.
 
 ## LANnventory Releases
 
+## [Unreleased]
+
+### Added
+- Separate background **automatic update checks** from **automatic installation**, allowing notification-only update monitoring.
+- Navbar update reminder with the available version when a background or manual check finds a newer release.
+- In-app release-notes summary dialog with a separate link to the full GitHub release.
+- Curated release-summary loading from the versioned `docs/releases/<tag>.md` file in the published tag.
+
+### Changed
+- Navbar update polling now reads cached local status only and no longer causes implicit GitHub release checks.
+- Automatic installation still implies automatic checks for backward-compatible beta.3 behavior.
+
 ## [v0.1.0-beta.3] - 2026-09-16
 
 ### Added
