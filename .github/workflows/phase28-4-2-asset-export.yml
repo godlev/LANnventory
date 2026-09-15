@@ -1,0 +1,73 @@
+name: Phase 28.4.2 Full Frontend Asset Finalize
+
+on:
+  push:
+    branches:
+      - phase-28-4-1-host-layout-port-events
+
+permissions:
+  contents: write
+
+jobs:
+  finalize-assets:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: phase-28-4-1-host-layout-port-events
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Replace complete embedded frontend asset set
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf backend/internal/web/public/assets
+          mkdir -p backend/internal/web/public/assets
+          cp -a frontend/dist/assets/. backend/internal/web/public/assets/
+          python3 - <<'PY'
+          from pathlib import Path
+          root = Path("backend/internal/web/public/assets")
+          entry_js = root / "index.js"
+          entry_css = root / "index.css"
+          entry_js.write_text(entry_js.read_text().replace("assets/", "fs/public/assets/"))
+          entry_css.write_text(entry_css.read_text().replace("url(/assets/", "url(/fs/public/assets/"))
+          PY
+
+      - name: Verify generated Host and Events UI
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'host-port-column' backend/internal/web/public/assets/HostPage.js
+          grep -Fq 'Approximate first seen' backend/internal/web/public/assets/HostPage.js
+          grep -Fq 'api/host/' backend/internal/web/public/assets/HostPage.js
+          grep -Fq 'Open port discovered' backend/internal/web/public/assets/Activity.js
+          grep -Fq 'Network diagnostics' backend/internal/web/public/assets/Activity.js
+          grep -Fq '.host-port-column' backend/internal/web/public/assets/index.css
+
+      - name: Commit generated assets and remove temporary workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/phase28-4-2-asset-export.yml
+          git add -A backend/internal/web/public/assets
+          git diff --cached --check
+          git commit -m "Refresh Phase 28.4.2 embedded frontend assets"
+          git push origin HEAD:phase-28-4-1-host-layout-port-events
