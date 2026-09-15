@@ -3,6 +3,26 @@ All notable changes to this project will be documented in this file.
 
 ## LANnventory Releases
 
+## [Unreleased]
+### Added
+- Portable versioned JSON backup export and current-inventory CSV export.
+- Persistent inventory metadata for Owner, Location, Notes, Tags and Home pinning.
+- Device lifecycle tracking with scanner-derived First Seen / Last Seen values and explicit migrated-data estimation metadata.
+- Owner and Location autocomplete in the Host editor while preserving free-text entry.
+- Proxmox installer prompt for container autostart behavior.
+
+### Changed
+- Consolidated Host editing into a staged Save / Cancel workflow while keeping Known / Unknown and Pin / Unpin as immediate actions.
+- Refined Home pinned-device grouping, table sizing, Hardware truncation and Last Seen readability.
+- Rebalanced the Host page so Host Details receives more space and Port Scan is narrower.
+- Simplified the Host editor action label from `Save changes` to `Save`.
+- Replaced the ambiguous visible `Estimated` lifecycle badge with an explanatory information indicator.
+- Added delayed custom hover/focus/press tooltips while retaining native `title` text as a fallback.
+
+### Fixed
+- Proxmox installer invocation through the documented `bash -c "$(curl ...)"` command when `BASH_SOURCE[0]` is unset.
+- Lifecycle backfill evidence handling and metadata cleanup edge cases.
+
 ## [v0.1.0-beta.2] - 2026-09-04
 ### Added
 - Event Type and Device multi-select filters for the Events explorer.
