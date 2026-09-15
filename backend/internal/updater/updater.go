@@ -257,17 +257,17 @@ func (s *Service) Schedule(ctx context.Context, currentVersion, channel, expecte
 		"mkdir -p " + shellQuote(backupDir) + "\n" +
 		"cp -a /usr/bin/lannventory " + shellQuote(filepath.Join(backupDir, "lannventory")) + "\n" +
 		"printf '%s\\n' " + shellQuote("from="+currentVersion) + " " + shellQuote("to="+targetVersion) + " > " + shellQuote(filepath.Join(backupDir, "update.txt")) + "\n" +
+		"recover_service() { systemctl daemon-reload >/dev/null 2>&1 || true; systemctl start lannventory >/dev/null 2>&1 || true; echo " + shellQuote("LANnventory update did not complete successfully. Recovery files are preserved at "+backupDir) + " >&2; }\n" +
+		"trap recover_service EXIT\n" +
 		"systemctl stop lannventory\n" +
 		"if [ -d /etc/watchyourlan ]; then cp -a /etc/watchyourlan " + shellQuote(filepath.Join(backupDir, "watchyourlan")) + "; fi\n" +
-		"recover_service() { systemctl daemon-reload >/dev/null 2>&1 || true; systemctl start lannventory >/dev/null 2>&1 || true; echo 'LANnventory update did not complete successfully. Recovery files are preserved at " + backupDir + "' >&2; }\n" +
-		"trap recover_service EXIT\n" +
 		"dpkg -i " + shellQuote(debPath) + "\n" +
 		"systemctl daemon-reload\n" +
 		"systemctl start lannventory\n" +
 		"healthy=0\n" +
 		"i=0\n" +
 		"while [ \"$i\" -lt 45 ]; do if systemctl is-active --quiet lannventory && curl -fsS --max-time 3 " + shellQuote(healthURL) + " >/dev/null 2>&1; then healthy=1; break; fi; i=$((i + 1)); sleep 2; done\n" +
-		"if [ \"$healthy\" -ne 1 ]; then echo 'LANnventory did not pass the post-update health check at " + healthURL + "' >&2; exit 1; fi\n" +
+		"if [ \"$healthy\" -ne 1 ]; then echo " + shellQuote("LANnventory did not pass the post-update health check at "+healthURL) + " >&2; exit 1; fi\n" +
 		"trap - EXIT\n" +
 		"rm -rf " + shellQuote(updateDir) + "\n"
 	if err := os.WriteFile(scriptPath, []byte(script), 0o700); err != nil {
