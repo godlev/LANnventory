@@ -25,9 +25,11 @@ const (
 	StableChannel               = "stable"
 	BetaChannel                 = "beta"
 	defaultReleasesURL          = "https://api.github.com/repos/godlev/LANnventory/releases?per_page=50"
+	defaultReleaseNotesBaseURL  = "https://raw.githubusercontent.com/godlev/LANnventory/"
 	releaseDownloadPrefix       = "https://github.com/godlev/LANnventory/releases/download/"
 	cacheTTL                    = 15 * time.Minute
 	maxReleaseBody        int64 = 4 << 20
+	maxReleaseNotesBody   int64 = 256 << 10
 	maxChecksumBody       int64 = 2 << 20
 	maxPackageBody        int64 = 256 << 20
 )
@@ -68,10 +70,12 @@ type Status struct {
 	Available           bool   `json:"available"`
 	PublishedAt         string `json:"publishedAt"`
 	ReleaseURL          string `json:"releaseUrl"`
+	ReleaseSummary      string `json:"releaseSummary"`
 	InstallSupported    bool   `json:"installSupported"`
 	InstallReason       string `json:"installReason"`
 	Message             string `json:"message"`
 	Updating            bool   `json:"updating"`
+	AutomaticCheck      bool   `json:"automaticCheck"`
 	Automatic           bool   `json:"automatic"`
 	IntervalHours       int    `json:"intervalHours"`
 	LastChecked         string `json:"lastChecked"`
@@ -86,26 +90,35 @@ type ApplyResult struct {
 }
 
 type Service struct {
-	client      *http.Client
-	releasesURL string
-	now         func() time.Time
+	client               *http.Client
+	releasesURL          string
+	releaseNotesBaseURL  string
+	now                  func() time.Time
 
-	mu          sync.Mutex
-	cached      []release
-	cacheUntil  time.Time
-	lastChecked time.Time
-	updating    bool
+	mu               sync.Mutex
+	cached           []release
+	releaseSummaries map[string]string
+	cacheUntil       time.Time
+	lastChecked      time.Time
+	updating         bool
 }
 
 func NewService() *Service {
-	return NewServiceWithURL(&http.Client{Timeout: 30 * time.Second}, defaultReleasesURL)
+	service := NewServiceWithURL(&http.Client{Timeout: 30 * time.Second}, defaultReleasesURL)
+	service.releaseNotesBaseURL = defaultReleaseNotesBaseURL
+	return service
 }
 
 func NewServiceWithURL(client *http.Client, releasesURL string) *Service {
 	if client == nil {
 		client = &http.Client{Timeout: 30 * time.Second}
 	}
-	return &Service{client: client, releasesURL: releasesURL, now: time.Now}
+	return &Service{
+		client: client,
+		releasesURL: releasesURL,
+		releaseSummaries: make(map[string]string),
+		now: time.Now,
+	}
 }
 
 func ValidChannel(channel string) bool {
@@ -139,9 +152,41 @@ func (s *Service) Check(ctx context.Context, currentVersion, channel string, ref
 		return Status{}, err
 	}
 
+	status, selected, ok := buildStatus(currentVersion, channel, releases, s.LastChecked(), s.isUpdating())
+	if ok {
+		status.ReleaseSummary = s.loadReleaseSummary(ctx, selected.TagName, refresh)
+	}
+	return status, nil
+}
+
+// CheckCached returns only status derived from release data already held in memory.
+// It never contacts GitHub and is intended for lightweight UI notification polling.
+func (s *Service) CheckCached(currentVersion, channel string) Status {
+	channel = NormalizeChannel(channel)
+
+	s.mu.Lock()
+	releases := append([]release(nil), s.cached...)
+	lastChecked := s.lastChecked
+	summaries := make(map[string]string, len(s.releaseSummaries))
+	for tag, summary := range s.releaseSummaries {
+		summaries[tag] = summary
+	}
+	s.mu.Unlock()
+
+	status, selected, ok := buildStatus(currentVersion, channel, releases, lastChecked, s.isUpdating())
+	if ok {
+		status.ReleaseSummary = summaries[selected.TagName]
+	}
+	if len(releases) == 0 && lastChecked.IsZero() {
+		status.Message = "No update check has been performed yet."
+	}
+	return status
+}
+
+func buildStatus(currentVersion, channel string, releases []release, lastChecked time.Time, updating bool) (Status, release, bool) {
 	selected, ok := selectLatestRelease(releases, channel)
-	status := Status{CurrentVersion: currentVersion, Channel: channel, Updating: s.isUpdating()}
-	if lastChecked := s.LastChecked(); !lastChecked.IsZero() {
+	status := Status{CurrentVersion: currentVersion, Channel: channel, Updating: updating}
+	if !lastChecked.IsZero() {
 		status.LastChecked = lastChecked.Format(time.RFC3339)
 	}
 	if !ok {
@@ -151,7 +196,7 @@ func (s *Service) Check(ctx context.Context, currentVersion, channel string, ref
 			status.Message = "No release is published for this channel yet."
 		}
 		status.InstallReason = "No installable release is available."
-		return status, nil
+		return status, release{}, false
 	}
 
 	status.LatestVersion = displayVersion(selected.TagName)
@@ -166,7 +211,7 @@ func (s *Service) Check(ctx context.Context, currentVersion, channel string, ref
 	if currentSemver == "" || latestSemver == "" {
 		status.Message = "The running version cannot be compared automatically."
 		status.InstallReason = "Version comparison is unavailable."
-		return status, nil
+		return status, selected, true
 	}
 
 	status.Available = semver.Compare(latestSemver, currentSemver) > 0
@@ -181,7 +226,7 @@ func (s *Service) Check(ctx context.Context, currentVersion, channel string, ref
 	} else {
 		status.Message = "No newer " + channelDisplayLabel(channel) + " release is available."
 	}
-	return status, nil
+	return status, selected, true
 }
 
 func (s *Service) LastChecked() time.Time {
@@ -189,6 +234,94 @@ func (s *Service) LastChecked() time.Time {
 	defer s.mu.Unlock()
 	return s.lastChecked
 }
+
+func (s *Service) loadReleaseSummary(ctx context.Context, tagName string, refresh bool) string {
+	if s.releaseNotesBaseURL == "" || comparableVersion(tagName) == "" {
+		return ""
+	}
+
+	s.mu.Lock()
+	if summary, ok := s.releaseSummaries[tagName]; ok && !refresh {
+		s.mu.Unlock()
+		return summary
+	}
+	s.mu.Unlock()
+
+	tag := "v" + displayVersion(tagName)
+	rawURL := strings.TrimRight(s.releaseNotesBaseURL, "/") + "/" + tag + "/docs/releases/" + tag + ".md"
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
+	if err != nil {
+		return ""
+	}
+	req.Header.Set("User-Agent", "LANnventory-release-notes")
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return ""
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return ""
+	}
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxReleaseNotesBody+1))
+	if err != nil || int64(len(body)) > maxReleaseNotesBody {
+		return ""
+	}
+
+	summary := extractReleaseSummary(string(body))
+	s.mu.Lock()
+	s.releaseSummaries[tagName] = summary
+	s.mu.Unlock()
+	return summary
+}
+
+func extractReleaseSummary(markdown string) string {
+	lines := strings.Split(markdown, "\n")
+	start := -1
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "## Summary" {
+			start = i + 1
+			break
+		}
+	}
+	if start == -1 {
+		for i, line := range lines {
+			if strings.TrimSpace(line) == "## Highlights" {
+				start = i + 1
+				break
+			}
+		}
+	}
+	if start == -1 {
+		return ""
+	}
+
+	summaryLines := make([]string, 0, 16)
+	for _, line := range lines[start:] {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "## ") {
+			break
+		}
+		if trimmed == "" {
+			continue
+		}
+		if strings.HasPrefix(trimmed, "### ") {
+			trimmed = strings.TrimSpace(strings.TrimPrefix(trimmed, "### "))
+			if trimmed != "" {
+				summaryLines = append(summaryLines, trimmed+":")
+			}
+			continue
+		}
+		summaryLines = append(summaryLines, trimmed)
+		if len(summaryLines) >= 24 {
+			break
+		}
+	}
+	return strings.TrimSpace(strings.Join(summaryLines, "\n"))
+}
+
 
 func (s *Service) Schedule(ctx context.Context, currentVersion, channel, expectedVersion, healthURL string) (ApplyResult, error) {
 	s.mu.Lock()
