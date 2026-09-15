@@ -55,9 +55,9 @@ jobs:
           set -euo pipefail
           grep -Fq 'host-port-column' backend/internal/web/public/assets/HostPage.js
           grep -Fq 'Approximate first seen' backend/internal/web/public/assets/HostPage.js
-          grep -Fq 'api/host/' backend/internal/web/public/assets/HostPage.js
-          grep -Fq 'Open port discovered' backend/internal/web/public/assets/Activity.js
-          grep -Fq 'Network diagnostics' backend/internal/web/public/assets/Activity.js
+          grep -Fq 'api/host/' backend/internal/web/public/assets/*.js
+          grep -Fq 'Open port discovered' backend/internal/web/public/assets/*.js
+          grep -Fq 'Network diagnostics' backend/internal/web/public/assets/*.js
           grep -Fq '.host-port-column' backend/internal/web/public/assets/index.css
 
       - name: Commit generated assets and remove temporary workflow
