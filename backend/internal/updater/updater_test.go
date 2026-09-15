@@ -231,3 +231,22 @@ func TestAutoSchedulerNormalizesInvalidInterval(t *testing.T) {
 		t.Fatalf("NextInterval = %v, want 24h", got)
 	}
 }
+
+func TestAutoSchedulerNotifyConfigChangedCoalesces(t *testing.T) {
+	scheduler := &AutoScheduler{configChanged: make(chan struct{}, 1)}
+
+	scheduler.NotifyConfigChanged()
+	scheduler.NotifyConfigChanged()
+
+	select {
+	case <-scheduler.configChanged:
+	default:
+		t.Fatal("expected config-change notification")
+	}
+
+	select {
+	case <-scheduler.configChanged:
+		t.Fatal("duplicate config-change notification was queued")
+	default:
+	}
+}
