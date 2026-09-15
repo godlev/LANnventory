@@ -266,7 +266,12 @@ See [proxmox/README.md](proxmox/README.md) for details.
 
 Debian package installations can use **Settings → Updates** to select the **Stable** or **Beta** channel, check GitHub Releases and install a newer matching LANnventory `.deb` package.
 
-For supported Debian-package/systemd installations, **Automatic updates** can also be enabled. LANnventory can check every **6 hours**, **12 hours**, **24 hours** or **7 days** and automatically schedule a newer compatible release through the same hardened installer used by the manual Update button. Changing the setting or interval reschedules the next automatic check from that point in time.
+For supported Debian-package/systemd installations, update monitoring is split into two choices:
+
+- **Check automatically** checks every **6 hours**, **12 hours**, **24 hours** or **7 days**. If a newer release exists, LANnventory shows a persistent update reminder in the top navigation but does not install anything.
+- **Install updates automatically** uses the same schedule and, when a compatible release is found, runs the same hardened installer used by the manual Update button. Automatic installation always implies automatic checks.
+
+Changing either setting or the interval reschedules the next background check from that point in time. Navbar polling reads only LANnventory's cached local update state and does not itself contact GitHub.
 
 The updater:
 
@@ -278,6 +283,7 @@ The updater:
 - installs through the Debian package manager
 - restarts LANnventory and checks `/api/health` using the configured bind host and port
 - preserves the recovery backup path if the update does not complete cleanly
+- loads the curated summary from the selected release's versioned `docs/releases/<tag>.md` file and displays it inside LANnventory before offering a separate **View full release on GitHub** link
 
 Automatic installation is intentionally limited to supported Debian-package/systemd installations for this beta. Other installation types can still be updated using their normal deployment method.
 
