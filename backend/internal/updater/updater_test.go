@@ -111,7 +111,7 @@ func TestAutoSchedulerDisabledDoesNotCheckOrInstall(t *testing.T) {
 			t.Fatal("Check called while automatic updates disabled")
 			return Status{}, nil
 		},
-		Schedule: func(context.Context, string, string, string) (ApplyResult, error) {
+		Schedule: func(context.Context, string, string, string, string) (ApplyResult, error) {
 			t.Fatal("Schedule called while automatic updates disabled")
 			return ApplyResult{}, nil
 		},
@@ -132,7 +132,7 @@ func TestAutoSchedulerNoNewerVersionDoesNotInstall(t *testing.T) {
 			checks++
 			return Status{Available: false}, nil
 		},
-		Schedule: func(context.Context, string, string, string) (ApplyResult, error) {
+		Schedule: func(context.Context, string, string, string, string) (ApplyResult, error) {
 			t.Fatal("Schedule called despite no newer version")
 			return ApplyResult{}, nil
 		},
@@ -159,7 +159,7 @@ func TestAutoSchedulerSchedulesSupportedUpdate(t *testing.T) {
 		Check: func(context.Context, string, string, bool) (Status, error) {
 			return Status{Available: true, InstallSupported: true, LatestVersion: "0.1.1"}, nil
 		},
-		Schedule: func(_ context.Context, current, channel, version string) (ApplyResult, error) {
+		Schedule: func(_ context.Context, current, channel, version, healthURL string) (ApplyResult, error) {
 			scheduled.current = current
 			scheduled.channel = channel
 			scheduled.version = version
@@ -189,7 +189,7 @@ func TestAutoSchedulerFailureDoesNotStopFutureRuns(t *testing.T) {
 			}
 			return Status{Available: false}, nil
 		},
-		Schedule: func(context.Context, string, string, string) (ApplyResult, error) {
+		Schedule: func(context.Context, string, string, string, string) (ApplyResult, error) {
 			t.Fatal("Schedule called")
 			return ApplyResult{}, nil
 		},
@@ -214,7 +214,7 @@ func TestAutoSchedulerSkipsUnsupportedInstall(t *testing.T) {
 		Check: func(context.Context, string, string, bool) (Status, error) {
 			return Status{Available: true, InstallSupported: false, InstallReason: "not a package install"}, nil
 		},
-		Schedule: func(context.Context, string, string, string) (ApplyResult, error) {
+		Schedule: func(context.Context, string, string, string, string) (ApplyResult, error) {
 			t.Fatal("Schedule called for unsupported install")
 			return ApplyResult{}, nil
 		},
