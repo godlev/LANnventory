@@ -1509,7 +1509,7 @@
         },
         "/update/settings": {
             "post": {
-                "description": "Persists release channel, automatic update preference, and automatic check interval, then immediately refreshes update status.",
+                "description": "Persists release channel, automatic check/install preferences, and automatic check interval, then immediately refreshes update status.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1583,6 +1583,12 @@
                         "type": "boolean",
                         "description": "Refresh cached release metadata",
                         "name": "refresh",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Use cached release metadata only and never contact GitHub",
+                        "name": "cached",
                         "in": "query"
                     }
                 ],
@@ -1777,6 +1783,9 @@
                 "automatic": {
                     "type": "boolean"
                 },
+                "automaticCheck": {
+                    "type": "boolean"
+                },
                 "channel": {
                     "type": "string"
                 },
@@ -1789,6 +1798,9 @@
             "type": "object",
             "properties": {
                 "automatic": {
+                    "type": "boolean"
+                },
+                "automaticCheck": {
                     "type": "boolean"
                 },
                 "available": {
@@ -1819,6 +1831,9 @@
                     "type": "string"
                 },
                 "publishedAt": {
+                    "type": "string"
+                },
+                "releaseSummary": {
                     "type": "string"
                 },
                 "releaseUrl": {
@@ -1977,6 +1992,9 @@
                 },
                 "updateChannel": {
                     "type": "string"
+                },
+                "updateCheckAuto": {
+                    "type": "boolean"
                 },
                 "updateCheckIntervalHours": {
                     "type": "integer"

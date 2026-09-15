@@ -154,7 +154,6 @@ func TestAutoSchedulerCheckOnlyNeverInstalls(t *testing.T) {
 	}
 }
 
-
 func TestAutoSchedulerNoNewerVersionDoesNotInstall(t *testing.T) {
 	checks := 0
 	scheduler := &AutoScheduler{

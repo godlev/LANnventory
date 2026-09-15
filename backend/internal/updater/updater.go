@@ -21,17 +21,17 @@ import (
 )
 
 const (
-	DefaultChannel              = "beta"
-	StableChannel               = "stable"
-	BetaChannel                 = "beta"
-	defaultReleasesURL          = "https://api.github.com/repos/godlev/LANnventory/releases?per_page=50"
-	defaultReleaseNotesBaseURL  = "https://raw.githubusercontent.com/godlev/LANnventory/"
-	releaseDownloadPrefix       = "https://github.com/godlev/LANnventory/releases/download/"
-	cacheTTL                    = 15 * time.Minute
-	maxReleaseBody        int64 = 4 << 20
-	maxReleaseNotesBody   int64 = 256 << 10
-	maxChecksumBody       int64 = 2 << 20
-	maxPackageBody        int64 = 256 << 20
+	DefaultChannel                   = "beta"
+	StableChannel                    = "stable"
+	BetaChannel                      = "beta"
+	defaultReleasesURL               = "https://api.github.com/repos/godlev/LANnventory/releases?per_page=50"
+	defaultReleaseNotesBaseURL       = "https://raw.githubusercontent.com/godlev/LANnventory/"
+	releaseDownloadPrefix            = "https://github.com/godlev/LANnventory/releases/download/"
+	cacheTTL                         = 15 * time.Minute
+	maxReleaseBody             int64 = 4 << 20
+	maxReleaseNotesBody        int64 = 256 << 10
+	maxChecksumBody            int64 = 2 << 20
+	maxPackageBody             int64 = 256 << 20
 )
 
 var (
@@ -90,10 +90,10 @@ type ApplyResult struct {
 }
 
 type Service struct {
-	client               *http.Client
-	releasesURL          string
-	releaseNotesBaseURL  string
-	now                  func() time.Time
+	client              *http.Client
+	releasesURL         string
+	releaseNotesBaseURL string
+	now                 func() time.Time
 
 	mu               sync.Mutex
 	cached           []release
@@ -114,10 +114,10 @@ func NewServiceWithURL(client *http.Client, releasesURL string) *Service {
 		client = &http.Client{Timeout: 30 * time.Second}
 	}
 	return &Service{
-		client: client,
-		releasesURL: releasesURL,
+		client:           client,
+		releasesURL:      releasesURL,
 		releaseSummaries: make(map[string]string),
-		now: time.Now,
+		now:              time.Now,
 	}
 }
 
@@ -321,7 +321,6 @@ func extractReleaseSummary(markdown string) string {
 	}
 	return strings.TrimSpace(strings.Join(summaryLines, "\n"))
 }
-
 
 func (s *Service) Schedule(ctx context.Context, currentVersion, channel, expectedVersion, healthURL string) (ApplyResult, error) {
 	s.mu.Lock()
