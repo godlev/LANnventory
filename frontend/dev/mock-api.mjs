@@ -580,7 +580,7 @@ function mockUpdateStatus(refresh = false) {
     mockUpdateLastChecked = new Date().toISOString();
   }
 
-  const latestVersion = mockUpdateAvailable ? '0.1.0-beta.4' : '0.1.0-beta.3';
+  const latestVersion = mockUpdateAvailable ? '0.1.0-beta.4' : '0.1.0-beta.3.1';
   return {
     currentVersion: config.Version,
     channel: config.UpdateChannel,
