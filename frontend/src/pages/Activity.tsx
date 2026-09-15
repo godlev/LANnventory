@@ -40,11 +40,12 @@ type EventFilterKey =
   | "location-changed"
   | "notes-changed"
   | "tags-changed"
-  | "pinned-changed";
+  | "pinned-changed"
+  | "port-open";
 
 type GroupByKey = "device" | "event" | "category" | "device-type" | "ip" | "iface" | "day";
 type DeviceDisplayMode = "name-icon" | "name" | "icon";
-type DeviceSelectionMode = "all" | "custom" | "none";
+type DeviceSelectionMode = "all" | "custom" | "none" | "unknown";
 
 type EventFilterOption = {
   key: EventFilterKey;
@@ -52,14 +53,25 @@ type EventFilterOption = {
   eventTypes: ActivityEventType[];
 };
 
-type EventSummaryCard = {
+type EventSummaryMetric = {
   key: EventFilterKey;
   label: string;
   value: number;
   detail: string;
   icon: string;
-  tone: string;
+  tone: "online" | "offline" | "new" | "recognition" | "type" | "metadata";
   eventTypes: ActivityEventType[];
+};
+
+type EventSummaryGroup = {
+  key: EventFilterKey;
+  label: string;
+  value: number;
+  detail: string;
+  icon: string;
+  tone: "connectivity" | "changes";
+  eventTypes: ActivityEventType[];
+  metrics: EventSummaryMetric[];
 };
 
 type EventGroup = {
@@ -84,7 +96,8 @@ const connectivityEventTypes: ActivityEventType[] = ["online", "offline"];
 const recognitionEventTypes: ActivityEventType[] = ["known", "unknown"];
 const metadataEventTypes: ActivityEventType[] = ["owner-changed", "location-changed", "notes-changed", "tags-changed", "pinned-changed"];
 const deviceChangeEventTypes: ActivityEventType[] = ["discovered", ...recognitionEventTypes, "device-type-changed", ...metadataEventTypes];
-const eventTypeOrder: ActivityEventType[] = [...connectivityEventTypes, ...deviceChangeEventTypes];
+const networkDiagnosticEventTypes: ActivityEventType[] = ["port-open"];
+const eventTypeOrder: ActivityEventType[] = [...connectivityEventTypes, ...deviceChangeEventTypes, ...networkDiagnosticEventTypes];
 const deviceDropdownId = "activity-device-filter";
 const eventTypeDropdownId = "activity-event-type-filter";
 const groupByDropdownId = "activity-group-by-filter";
@@ -119,6 +132,7 @@ const eventFilterOptions: EventFilterOption[] = [
   { key: "notes-changed", label: "Notes updated", eventTypes: ["notes-changed"] },
   { key: "tags-changed", label: "Tags changed", eventTypes: ["tags-changed"] },
   { key: "pinned-changed", label: "Pinned changed", eventTypes: ["pinned-changed"] },
+  { key: "port-open", label: "Open port discovered", eventTypes: ["port-open"] },
 ];
 
 const groupByOptions: { key: GroupByKey; label: string }[] = [
@@ -173,10 +187,20 @@ function Activity() {
   const eventTypeFilterActive = () => !allEventTypesSelected();
   const groupingActive = () => normalizedGroupByKeys().length > 0;
   const deviceFilterActive = () => deviceSelectionMode() !== "all";
-  const noDevicesSelected = () => deviceSelectionMode() === "none";
   const normalizedSelectedMacs = createMemo(() => normalizeSelectedMacs(selectedMacs()));
-  const selectedMacSet = createMemo(() => new Set(normalizedSelectedMacs()));
+  const currentUnknownMacs = createMemo(() => normalizeSelectedMacs(
+    bkpHosts()
+      .filter((host) => host.Known === 0)
+      .map((host) => host.Mac),
+  ));
+  const effectiveSelectedMacs = createMemo(() =>
+    deviceSelectionMode() === "unknown" ? currentUnknownMacs() : normalizedSelectedMacs(),
+  );
+  const selectedMacSet = createMemo(() => new Set(effectiveSelectedMacs()));
   const availableDeviceMacs = createMemo(() => normalizeSelectedMacs(devices().map((device) => device.Mac)));
+  const noDevicesSelected = () =>
+    deviceSelectionMode() === "none"
+    || (deviceSelectionMode() === "unknown" && currentUnknownMacs().length === 0);
   const deviceOptionsByMac = createMemo(() => {
     const options = new Map<string, ActivityDeviceOption>();
     for (const device of devices()) {
@@ -187,13 +211,26 @@ function Activity() {
     return options;
   });
   const filtersActive = () => deviceFilterActive() || eventTypeFilterActive();
-  const deviceRequestMacs = () => deviceSelectionMode() === "custom" ? normalizedSelectedMacs() : undefined;
+  const deviceRequestMacs = () => {
+    const mode = deviceSelectionMode();
+    if (mode === "custom") {
+      return normalizedSelectedMacs();
+    }
+    if (mode === "unknown") {
+      return currentUnknownMacs();
+    }
+    return undefined;
+  };
   const selectedDeviceLabel = () => {
-    const macs = normalizedSelectedMacs();
-    if (deviceSelectionMode() === "all") {
+    const mode = deviceSelectionMode();
+    const macs = effectiveSelectedMacs();
+    if (mode === "all") {
       return "All devices";
     }
-    if (deviceSelectionMode() === "none" || macs.length === 0) {
+    if (mode === "unknown") {
+      return "Unknown devices (" + macs.length + ")";
+    }
+    if (mode === "none" || macs.length === 0) {
       return "No devices";
     }
     if (macs.length === 1) {
@@ -204,9 +241,12 @@ function Activity() {
   };
   const deviceFilterTooltip = () => {
     const mode = deviceSelectionMode();
-    const macs = normalizedSelectedMacs();
+    const macs = effectiveSelectedMacs();
     if (mode === "all") {
       return "All devices included";
+    }
+    if (mode === "unknown") {
+      return "All events for " + macs.length + " devices currently marked Unknown";
     }
     if (mode === "none" || macs.length === 0) {
       return "No devices selected";
@@ -286,7 +326,6 @@ function Activity() {
   const loadEvents = async (reset: boolean) => {
     const activeRequest = ++eventsRequest;
     const eventTypes = selectedEventTypes();
-    const deviceMode = deviceSelectionMode();
     const macs = deviceRequestMacs();
     let lastEvent: HostEvent | undefined;
     if (!reset) {
@@ -306,7 +345,7 @@ function Activity() {
       setHasMore(false);
       return;
     }
-    if (deviceMode === "none") {
+    if (noDevicesSelected()) {
       setLoading(false);
       setHasMore(false);
       return;
@@ -348,11 +387,10 @@ function Activity() {
 
   const loadStats = async () => {
     const activeRequest = ++statsRequest;
-    const deviceMode = deviceSelectionMode();
     const macs = deviceRequestMacs();
     setStatsError(false);
 
-    if (deviceMode === "none") {
+    if (noDevicesSelected()) {
       setStats(emptyStats);
       return;
     }
@@ -383,6 +421,7 @@ function Activity() {
   createEffect(() => {
     deviceSelectionMode();
     normalizedSelectedMacs();
+    currentUnknownMacs();
     selectedEventTypes();
     loadEvents(true);
   });
@@ -390,6 +429,7 @@ function Activity() {
   createEffect(() => {
     deviceSelectionMode();
     normalizedSelectedMacs();
+    currentUnknownMacs();
     loadStats();
   });
 
@@ -440,74 +480,109 @@ function Activity() {
     });
   });
 
-  const summaryCards = createMemo<EventSummaryCard[]>(() => {
+  const summaryGroups = createMemo<EventSummaryGroup[]>(() => {
     const currentStats = stats();
+    const connectivityTotal = currentStats.Online + currentStats.Offline;
+    const deviceChangeTotal = currentStats.Discovered
+      + currentStats.Known
+      + currentStats.Unknown
+      + currentStats.DeviceTypeChanged
+      + currentStats.MetadataChanged;
+
     return [
       {
-        key: "all",
-        label: "Total events",
-        value: currentStats.Total,
-        detail: statsError() ? "Counts unavailable" : "All retained events",
-        icon: "bi-collection-fill",
-        tone: "total",
-        eventTypes: [],
+        key: "connectivity",
+        label: "Connectivity",
+        value: connectivityTotal,
+        detail: connectivityTotal === 1 ? "connectivity event" : "connectivity events",
+        icon: "bi-broadcast-pin",
+        tone: "connectivity",
+        eventTypes: connectivityEventTypes,
+        metrics: [
+          {
+            key: "online",
+            label: "Online",
+            value: currentStats.Online,
+            detail: "Came online",
+            icon: "bi-check-circle-fill",
+            tone: "online",
+            eventTypes: ["online"],
+          },
+          {
+            key: "offline",
+            label: "Offline",
+            value: currentStats.Offline,
+            detail: "Went offline",
+            icon: "bi-x-circle-fill",
+            tone: "offline",
+            eventTypes: ["offline"],
+          },
+        ],
       },
       {
-        key: "online",
-        label: "Online",
-        value: currentStats.Online,
-        detail: "Connectivity",
-        icon: "bi-check-circle-fill",
-        tone: "online",
-        eventTypes: ["online"],
-      },
-      {
-        key: "offline",
-        label: "Offline",
-        value: currentStats.Offline,
-        detail: "Connectivity",
-        icon: "bi-x-circle-fill",
-        tone: "offline",
-        eventTypes: ["offline"],
-      },
-      {
-        key: "discovered",
-        label: "New devices",
-        value: currentStats.Discovered,
-        detail: "Discovery",
-        icon: "bi-plus-circle-fill",
-        tone: "unknown",
-        eventTypes: ["discovered"],
-      },
-      {
-        key: "recognition",
-        label: "Recognition",
-        value: currentStats.Known + currentStats.Unknown,
-        detail: "Known and unknown",
-        icon: "bi-bookmark-check-fill",
-        tone: "known",
-        eventTypes: ["known", "unknown"],
-      },
-      {
-        key: "device-type-changed",
-        label: "Type changes",
-        value: currentStats.DeviceTypeChanged,
-        detail: "Classification",
-        icon: "bi-tag-fill",
-        tone: "type",
-        eventTypes: ["device-type-changed"],
-      },
-      {
-        key: "metadata-changes",
-        label: "Metadata",
-        value: currentStats.MetadataChanged,
-        detail: "Inventory metadata",
-        icon: "bi-card-checklist",
-        tone: "type",
-        eventTypes: metadataEventTypes,
+        key: "changes",
+        label: "Device changes",
+        value: deviceChangeTotal,
+        detail: deviceChangeTotal === 1 ? "change event" : "change events",
+        icon: "bi-pencil-square",
+        tone: "changes",
+        eventTypes: deviceChangeEventTypes,
+        metrics: [
+          {
+            key: "discovered",
+            label: "New",
+            value: currentStats.Discovered,
+            detail: "New devices",
+            icon: "bi-plus-circle-fill",
+            tone: "new",
+            eventTypes: ["discovered"],
+          },
+          {
+            key: "recognition",
+            label: "Recognition",
+            value: currentStats.Known + currentStats.Unknown,
+            detail: currentStats.Known + " known · " + currentStats.Unknown + " unknown",
+            icon: "bi-bookmark-check-fill",
+            tone: "recognition",
+            eventTypes: recognitionEventTypes,
+          },
+          {
+            key: "device-type-changed",
+            label: "Type",
+            value: currentStats.DeviceTypeChanged,
+            detail: "Classification",
+            icon: "bi-tag-fill",
+            tone: "type",
+            eventTypes: ["device-type-changed"],
+          },
+          {
+            key: "metadata-changes",
+            label: "Metadata",
+            value: currentStats.MetadataChanged,
+            detail: "Inventory metadata",
+            icon: "bi-card-checklist",
+            tone: "metadata",
+            eventTypes: metadataEventTypes,
+          },
+        ],
       },
     ];
   });
+
+  const connectivityPercentages = createMemo(() => {
+    const currentStats = stats();
+    const total = currentStats.Online + currentStats.Offline;
+    if (total <= 0) {
+      return { online: 0, offline: 0 };
+    }
+
+    const online = Math.round((currentStats.Online / total) * 100);
+    return {
+      online,
+      offline: 100 - online,
+    };
+  });
+
 
   const groupedEvents = createMemo<EventGroup[]>(() => {
     const keys = normalizedGroupByKeys();
@@ -523,16 +598,13 @@ function Activity() {
   const groupAllControlTitle = () => hasExpandedGroups() ? "Collapse all groups" : "Expand all groups";
   const groupAllControlIcon = () => hasExpandedGroups() ? "bi-arrows-collapse" : "bi-arrows-expand";
   const groupAllControlLabel = () => hasExpandedGroups() ? "Collapse all" : "Expand all";
-  const isSummaryCardActive = (card: EventSummaryCard) => {
-    if (card.key === "all") {
-      return allEventTypesSelected();
-    }
+  const isSummarySelectionActive = (eventTypes: ActivityEventType[]) => {
     if (allEventTypesSelected()) {
       return false;
     }
 
     const selected = selectedEventTypeSet();
-    return card.eventTypes.length > 0 && card.eventTypes.every((eventType) => selected.has(eventType));
+    return eventTypes.length > 0 && eventTypes.every((eventType) => selected.has(eventType));
   };
 
   const handleReset = () => {
@@ -570,14 +642,21 @@ function Activity() {
   };
 
   const handleDeviceToggle = (mac: string) => {
-    if (deviceSelectionMode() === "all") {
+    const mode = deviceSelectionMode();
+    if (mode === "all") {
       const nextMacs = availableDeviceMacs().filter((deviceMac) => deviceMac !== mac);
       setSelectedMacs(nextMacs);
       setDeviceSelectionMode(nextMacs.length > 0 ? "custom" : "none");
       return;
     }
 
-    const selected = new Set(deviceSelectionMode() === "custom" ? normalizedSelectedMacs() : []);
+    const selected = new Set(
+      mode === "unknown"
+        ? currentUnknownMacs()
+        : mode === "custom"
+          ? normalizedSelectedMacs()
+          : [],
+    );
     if (selected.has(mac)) {
       selected.delete(mac);
     } else {
@@ -587,6 +666,22 @@ function Activity() {
     const nextMacs = normalizeSelectedMacs([...selected]);
     setSelectedMacs(nextMacs);
     setDeviceSelectionMode(nextMacs.length > 0 ? "custom" : "none");
+  };
+
+  const handleUnknownDeviceScope = () => {
+    if (deviceSelectionMode() === "unknown") {
+      setDeviceSelectionMode("all");
+      setSelectedMacs([]);
+      return;
+    }
+    if (currentUnknownMacs().length === 0) {
+      return;
+    }
+
+    setSelectedMacs([]);
+    setDeviceSearch("");
+    setDeviceSelectionMode("unknown");
+    setDeviceDropdownOpen(false);
   };
 
   const handleDeviceSelectAll = () => {
@@ -636,18 +731,13 @@ function Activity() {
     applyGroupByKeys([]);
   };
 
-  const handleSummaryClick = (event: MouseEvent, card: EventSummaryCard) => {
-    if (card.key === "all") {
-      setSelectedEventTypes(normalizeSelectedEventTypes(eventTypeOrder));
-      return;
-    }
-
+  const handleSummarySelection = (event: MouseEvent, eventTypes: ActivityEventType[]) => {
     if (event.ctrlKey || event.metaKey) {
       const selected = new Set(selectedEventTypes());
-      const allCardTypesSelected = card.eventTypes.every((eventType) => selected.has(eventType));
+      const allTypesSelected = eventTypes.every((eventType) => selected.has(eventType));
 
-      for (const eventType of card.eventTypes) {
-        if (allCardTypesSelected) {
+      for (const eventType of eventTypes) {
+        if (allTypesSelected) {
           selected.delete(eventType);
         } else {
           selected.add(eventType);
@@ -659,9 +749,9 @@ function Activity() {
     }
 
     setSelectedEventTypes(
-      sameEventTypes(selectedEventTypes(), card.eventTypes)
+      sameEventTypes(selectedEventTypes(), eventTypes)
         ? normalizeSelectedEventTypes(eventTypeOrder)
-        : normalizeSelectedEventTypes(card.eventTypes),
+        : normalizeSelectedEventTypes(eventTypes),
     );
   };
 
@@ -748,30 +838,92 @@ function Activity() {
         </div>
       </header>
 
-      <section class="activity-summary-grid overview-grid" aria-label="Event overview">
-        <For each={summaryCards()}>{(card) =>
-          <button
-            type="button"
-            class={"overview-card overview-card-button overview-card-" + card.tone + (isSummaryCardActive(card) ? " is-active" : "")}
-            aria-pressed={isSummaryCardActive(card)}
-            onClick={(event) => handleSummaryClick(event, card)}
-          >
-            <div class="overview-card-icon" aria-hidden="true">
-              <i class={"bi " + card.icon}></i>
+      <section class="activity-summary-grid" aria-label="Event overview">
+        <For each={summaryGroups()}>{(group) =>
+          <article class={"activity-summary-card activity-summary-card-" + group.tone}>
+            <button
+              type="button"
+              class={"activity-summary-rail" + (isSummarySelectionActive(group.eventTypes) ? " is-active" : "")}
+              title={"Filter to " + group.label.toLowerCase()}
+              aria-label={"Filter to " + group.label.toLowerCase()}
+              aria-pressed={isSummarySelectionActive(group.eventTypes)}
+              onClick={(event) => handleSummarySelection(event, group.eventTypes)}
+            >
+              <span class="activity-summary-rail-icon" aria-hidden="true">
+                <i class={"bi " + group.icon}></i>
+              </span>
+              <span class="activity-summary-rail-title">{group.label}</span>
+            </button>
+
+            <div class="activity-summary-content">
+              <div class="activity-summary-count">
+                <strong>{statsError() ? "—" : group.value.toLocaleString()}</strong>
+                <span>{statsError() ? "counts unavailable" : group.detail}</span>
+              </div>
+
+              <div class={"activity-summary-metrics activity-summary-metrics-" + group.tone}>
+                <For each={group.metrics}>{(metric) =>
+                  <button
+                    type="button"
+                    class={"activity-summary-metric activity-summary-metric-" + metric.tone + (isSummarySelectionActive(metric.eventTypes) ? " is-active" : "")}
+                    title={metric.label + ": " + metric.value + ". " + metric.detail}
+                    aria-label={metric.label + ": " + metric.value + ". " + metric.detail}
+                    aria-pressed={isSummarySelectionActive(metric.eventTypes)}
+                    onClick={(event) => handleSummarySelection(event, metric.eventTypes)}
+                  >
+                    <span class="activity-summary-metric-value">{statsError() ? "—" : metric.value.toLocaleString()}</span>
+                    <span class="activity-summary-metric-label">
+                      <i class={"bi " + metric.icon} aria-hidden="true"></i>
+                      <span>{metric.label}</span>
+                    </span>
+                    <span class="activity-summary-metric-detail">{statsError() ? "Counts unavailable" : metric.detail}</span>
+                  </button>
+                }</For>
+              </div>
+
+              <Show when={group.tone === "connectivity"}>
+                <div
+                  class="overview-split-bar activity-connectivity-bar"
+                  aria-label={connectivityPercentages().online + "% online, " + connectivityPercentages().offline + "% offline"}
+                  role="img"
+                >
+                  <span
+                    class="overview-split-bar-segment overview-split-bar-online"
+                    style={{ width: connectivityPercentages().online + "%" }}
+                  ></span>
+                  <span
+                    class="overview-split-bar-segment overview-split-bar-offline"
+                    style={{ width: connectivityPercentages().offline + "%" }}
+                  ></span>
+                  <span class="overview-split-bar-labels">
+                    <span>{connectivityPercentages().online}%</span>
+                    <span>{connectivityPercentages().offline}%</span>
+                  </span>
+                </div>
+              </Show>
             </div>
-            <div>
-              <div class="overview-card-label">{card.label}</div>
-              <div class="overview-card-value">{card.value}</div>
-              <div class="overview-card-detail">{card.detail}</div>
-            </div>
-          </button>
+          </article>
         }</For>
       </section>
 
       <section class="card wyl-panel activity-filter-panel" aria-label="Event filters">
         <div class="card-body activity-filter-grid">
           <div class="activity-filter-field activity-multiselect-field activity-device-filter-field">
-            <span class="activity-filter-label">Device</span>
+            <div class="activity-filter-label-row">
+              <span class="activity-filter-label">Device</span>
+              <button
+                type="button"
+                class={"activity-device-scope-chip" + (deviceSelectionMode() === "unknown" ? " is-active" : "")}
+                title={"Show all events for devices currently marked Unknown (" + currentUnknownMacs().length + ")"}
+                aria-label={"Show all events for devices currently marked Unknown (" + currentUnknownMacs().length + ")"}
+                aria-pressed={deviceSelectionMode() === "unknown"}
+                disabled={currentUnknownMacs().length === 0}
+                onClick={handleUnknownDeviceScope}
+              >
+                <i class="bi bi-question-circle-fill" aria-hidden="true"></i>
+                <span>Unknown {currentUnknownMacs().length}</span>
+              </button>
+            </div>
             <button
               ref={deviceTriggerRef}
               type="button"
@@ -818,7 +970,7 @@ function Activity() {
                     <For each={filteredDeviceOptions()}>{(device) =>
                       <DeviceCheckbox
                         device={device}
-                        checked={deviceSelectionMode() === "all" || (deviceSelectionMode() === "custom" && selectedMacSet().has(device.Mac))}
+                        checked={deviceSelectionMode() === "all" || ((deviceSelectionMode() === "custom" || deviceSelectionMode() === "unknown") && selectedMacSet().has(device.Mac))}
                         onChange={() => handleDeviceToggle(device.Mac)}
                       />
                     }</For>
@@ -957,6 +1109,12 @@ function Activity() {
                     checked={selectedEventTypeSet().has("pinned-changed")}
                     onChange={() => handleEventTypeToggle("pinned-changed")}
                   />
+                  <EventTypeCheckbox
+                    label="Open port discovered"
+                    className="activity-multiselect-parent"
+                    checked={selectedEventTypeSet().has("port-open")}
+                    onChange={() => handleEventTypeToggle("port-open")}
+                  />
                 </div>
                 <div class="activity-multiselect-footer">
                   <button type="button" class="btn btn-sm device-reset-filter" onClick={() => setEventTypeDropdownOpen(false)}>
@@ -1066,7 +1224,7 @@ function Activity() {
                 </span>
               </Show>
             </div>
-            <div class="activity-table-subtitle">{tableSubtitle(events().length, normalizedGroupByKeys())}</div>
+            <div class="activity-table-subtitle">{tableSubtitle(events().length, stats().Total, normalizedGroupByKeys(), statsError())}</div>
           </div>
         </div>
         <div class="card-body activity-table-body">
@@ -1357,9 +1515,13 @@ function cleanEventValue(value: string | null | undefined) {
   return (value ?? "").trim();
 }
 
-function tableSubtitle(count: number, groupByKeys: GroupByKey[]) {
-  const base = count + " loaded " + (count === 1 ? "event" : "events");
-  return groupByKeys.length === 0 ? base : base + " grouped by " + groupByFullSummary(groupByKeys);
+function tableSubtitle(count: number, total: number, groupByKeys: GroupByKey[], totalUnavailable: boolean) {
+  const loaded = count.toLocaleString() + " loaded " + (count === 1 ? "event" : "events");
+  const totalSummary = totalUnavailable
+    ? "total count unavailable"
+    : "out of " + total.toLocaleString() + " total " + (total === 1 ? "event" : "events");
+  const base = loaded + " " + totalSummary;
+  return groupByKeys.length === 0 ? base : base + " · grouped by " + groupByFullSummary(groupByKeys);
 }
 
 function buildEventGroupTree(

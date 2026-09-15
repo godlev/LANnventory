@@ -31,6 +31,8 @@ nfpms:
     section: utils
     dependencies: # Don't forget to edit!
     - arp-scan
+    - ca-certificates
+    - curl
     - tzdata
     contents:
     - src: ./configs/watchyourlan.service

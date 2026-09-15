@@ -6,6 +6,8 @@ import Influx from "../components/Config/Influx"
 import Prometheus from "../components/Config/Prometheus"
 import Retention from "../components/Config/Retention"
 import Scan from "../components/Config/Scan"
+import Updates from "../components/Config/Updates"
+import "../components/Config/Updates.css"
 import { refreshAppConfig } from "../functions/theme"
 
 function Config() {
@@ -67,6 +69,10 @@ function Config() {
             </div>
 
             <div class="settings-column">
+              <section id="updates" class="settings-section" aria-label="Updates">
+                <Updates></Updates>
+              </section>
+
               <section id="integrations" class="settings-section" aria-label="Integrations">
                 <div class="settings-section-heading">
                   <h2>Integrations</h2>

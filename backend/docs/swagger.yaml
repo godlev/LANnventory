@@ -39,6 +39,13 @@ definitions:
       color:
         type: string
     type: object
+  api.hostPortScanResponse:
+    properties:
+      open:
+        type: boolean
+      port:
+        type: integer
+    type: object
   api.retentionRequest:
     properties:
       connectivityRetention:
@@ -142,6 +149,8 @@ definitions:
         type: integer
       trimHist:
         type: integer
+      updateChannel:
+        type: string
       useDB:
         description: PostgreSQL
         type: string
@@ -302,6 +311,7 @@ paths:
         - notes-changed
         - tags-changed
         - pinned-changed
+        - port-open
         in: query
         name: eventType
         type: string
@@ -995,6 +1005,43 @@ paths:
       summary: Update host metadata
       tags:
       - hosts
+  /host/{id}/port/{port}/scan:
+    post:
+      description: Scan a TCP port using the host's current IP. When the port is open,
+        persist an activity event for that host.
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Port number
+        in: path
+        name: port
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.hostPortScanResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Scan one port for a host
+      tags:
+      - network
   /host/{id}/type:
     patch:
       consumes:

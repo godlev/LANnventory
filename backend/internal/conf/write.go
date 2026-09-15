@@ -43,6 +43,7 @@ func writeErrNoLock(config models.Conf) error {
 	viper.Set("TRIM_HIST", config.TrimHist)
 	viper.Set("CONNECTIVITY_RETENTION", config.ConnectivityRetention)
 	viper.Set("SHOUTRRR_URL", config.ShoutURL)
+	viper.Set("UPDATE_CHANNEL", config.UpdateChannel)
 
 	viper.Set("USE_DB", config.UseDB)
 	viper.Set("PG_CONNECT", config.PGConnect)

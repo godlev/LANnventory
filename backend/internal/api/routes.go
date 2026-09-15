@@ -34,13 +34,17 @@ func Routes(router *gin.Engine) {
 		r0.GET("/status/*iface", getStatus) // api-system.go
 		r0.GET("/version", getVersion)      // api-system.go
 		r0.GET("/rescan", triggerRescan)    // api-system.go
+		r0.GET("/update/status", getUpdateStatus)
+		r0.POST("/update/channel", saveUpdateChannel)
+		r0.POST("/update/apply", applyUpdate)
 
 		r0.GET("/history", getHistory)                  // api-history.go
 		r0.GET("/history/:mac", getHistoryByMAC)        // api-history.go
 		r0.GET("/history/:mac/:date", getHistoryByDate) // api-history.go
 
-		r0.GET("/port/:addr/:port", getPortState) // api-network.go
-		r0.GET("/wol/:mac", sendWOL)              // api-network.go
+		r0.GET("/port/:addr/:port", getPortState)         // api-network.go
+		r0.POST("/host/:id/port/:port/scan", scanHostPort) // api-network.go
+		r0.GET("/wol/:mac", sendWOL)                      // api-network.go
 
 		r0.POST("/config/", saveConfigHandler)                // config.go
 		r0.POST("/config/color", saveColorHandler)            // config.go
