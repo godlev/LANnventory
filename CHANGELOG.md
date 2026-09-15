@@ -3,7 +3,7 @@ All notable changes to this project will be documented in this file.
 
 ## LANnventory Releases
 
-## [Unreleased]
+## [v0.1.0-beta.3.1] - 2026-09-16
 
 ### Added
 - Separate background **automatic update checks** from **automatic installation**, allowing notification-only update monitoring.
