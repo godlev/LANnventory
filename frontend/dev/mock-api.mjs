@@ -32,7 +32,8 @@ const deviceTypes = new Set([
 const connectivityEvents = new Set(['online', 'offline']);
 const metadataEvents = new Set(['owner-changed', 'location-changed', 'notes-changed', 'tags-changed', 'pinned-changed']);
 const changeEvents = new Set(['discovered', 'known', 'unknown', 'device-type-changed', ...metadataEvents]);
-const validActivityEvents = new Set([...connectivityEvents, ...changeEvents]);
+const networkDiagnosticEvents = new Set(['port-open', 'port-closed']);
+const validActivityEvents = new Set([...connectivityEvents, ...changeEvents, ...networkDiagnosticEvents]);
 
 const fakeHosts = [
   {
@@ -159,7 +160,7 @@ const config = {
   ConnectivityRetention: 168,
   ShoutURL: '',
   ShoutURLConfigured: false,
-  Version: '0.1.0-beta.3-dev-mock',
+  Version: '0.1.0-beta.3.1-dev-mock',
   UseDB: 'sqlite',
   PGConnect: '',
   PGConnectConfigured: false,
@@ -177,6 +178,77 @@ const config = {
   UpdateCheckIntervalHours: 24,
 };
 let mockUpdateLastChecked = new Date().toISOString();
+
+const mockServiceNames = new Map([
+  [22, 'SSH'],
+  [53, 'DNS'],
+  [80, 'HTTP'],
+  [135, 'RPC'],
+  [443, 'HTTPS'],
+  [445, 'SMB'],
+  [3389, 'RDP'],
+  [8840, 'LANnventory'],
+  [32400, 'Plex'],
+]);
+
+const mockHostPorts = new Map([
+  [1, [53, 80, 443]],
+  [2, [22, 445]],
+  [3, [135, 445, 3389]],
+  [4, []],
+  [5, []],
+]);
+const mockPortScans = new Map();
+let nextMockPortScanId = 1;
+
+function mockPortState(hostId, portNumber) {
+  const stamp = '2026-09-16 02:00:00';
+  return {
+    hostId,
+    port: portNumber,
+    protocol: 'tcp',
+    open: true,
+    service: mockServiceNames.get(portNumber) ?? '',
+    firstSeen: stamp,
+    lastScanned: stamp,
+    lastChanged: stamp,
+  };
+}
+
+function mockHostPortStates(hostId) {
+  return (mockHostPorts.get(hostId) ?? []).map((portNumber) => mockPortState(hostId, portNumber));
+}
+
+function mockScanSnapshot(job, advance = false) {
+  if (advance && job.running) {
+    job.polls += 1;
+    const target = Math.min(job.total, Math.max(1, Math.ceil(job.total * job.polls / 3)));
+    job.scanned = target;
+    job.currentPort = Math.min(job.endPort, job.startPort + target - 1);
+    if (job.polls >= 3 || job.scanned >= job.total) {
+      job.running = false;
+      job.completed = true;
+      job.finishedAt = new Date().toISOString();
+    }
+  }
+
+  return {
+    id: job.id,
+    hostId: job.hostId,
+    startPort: job.startPort,
+    endPort: job.endPort,
+    currentPort: job.currentPort,
+    scanned: job.scanned,
+    total: job.total,
+    running: job.running,
+    completed: job.completed,
+    cancelled: job.cancelled,
+    openPorts: [...job.openPorts],
+    startedAt: job.startedAt,
+    finishedAt: job.finishedAt,
+    error: '',
+  };
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const frontendPublicPath = path.resolve(__dirname, '../public/fs/public');
@@ -720,7 +792,7 @@ function backupDocument(createdAt = new Date()) {
 
   return {
     format: 'lannventory-backup',
-    formatVersion: 3,
+    formatVersion: 4,
     createdAt: formatDateUTC(createdAt),
     appVersion: config.Version,
     data: {
@@ -729,6 +801,9 @@ function backupDocument(createdAt = new Date()) {
       events: [...activityEvents].sort((left, right) => left.ID - right.ID).map(backupEventFromMock),
       hostMetadata: metadataEntries(),
       hostLifecycle: lifecycleEntries(),
+      hostPorts: [...mockHostPorts.entries()]
+        .flatMap(([hostId, ports]) => ports.map((portNumber) => mockPortState(hostId, portNumber)))
+        .sort((left, right) => left.hostId - right.hostId || left.port - right.port),
     },
   };
 }
@@ -821,6 +896,8 @@ function seedActivity() {
   addActivityMinutesAgo(fakeHosts[4], 'offline', 10);
   addActivityMinutesAgo(fakeHosts[3], 'offline', 8);
   addActivityMinutesAgo(fakeHosts[3], 'online', 2);
+  addActivityMinutesAgo(fakeHosts[0], 'port-open', 6, { newValue: '443' });
+  addActivityMinutesAgo(fakeHosts[2], 'port-closed', 14, { newValue: '3389' });
   addActivityMinutesAgo(deletedHostSnapshot, 'offline', 1440);
 
   for (let i = 0; i < 120; i += 1) {
@@ -1303,6 +1380,81 @@ async function routeSafeAction(req, res, url) {
 
   if (req.method === 'GET' && pathname.startsWith('/api/wol/')) {
     sendJSON(res, true);
+    return true;
+  }
+
+  const hostPortsMatch = pathname.match(/^\/api\/host\/(\d+)\/ports$/);
+  if (req.method === 'GET' && hostPortsMatch) {
+    const hostId = Number(hostPortsMatch[1]);
+    if (!findHostByID(hostId)) {
+      sendJSON(res, { error: 'invalid host id' }, 400);
+      return true;
+    }
+    sendJSON(res, mockHostPortStates(hostId));
+    return true;
+  }
+
+  const hostPortScanStartMatch = pathname.match(/^\/api\/host\/(\d+)\/ports\/scan$/);
+  if (req.method === 'POST' && hostPortScanStartMatch) {
+    const hostId = Number(hostPortScanStartMatch[1]);
+    if (!findHostByID(hostId)) {
+      sendJSON(res, { error: 'invalid host id' }, 400);
+      return true;
+    }
+
+    const body = await readBody(req);
+    const params = parseRequestBody(body);
+    let startPort = Number(params.startPort);
+    let endPort = Number(params.endPort);
+    if (!Number.isInteger(startPort) || !Number.isInteger(endPort) || startPort < 1 || endPort < 1 || startPort > 65535 || endPort > 65535) {
+      sendJSON(res, { error: 'port range must be between 1 and 65535' }, 400);
+      return true;
+    }
+    if (startPort > endPort) {
+      [startPort, endPort] = [endPort, startPort];
+    }
+
+    const id = 'mock-' + nextMockPortScanId;
+    nextMockPortScanId += 1;
+    const openPorts = (mockHostPorts.get(hostId) ?? []).filter((portNumber) => portNumber >= startPort && portNumber <= endPort);
+    const job = {
+      id,
+      hostId,
+      startPort,
+      endPort,
+      currentPort: 0,
+      scanned: 0,
+      total: endPort - startPort + 1,
+      running: true,
+      completed: false,
+      cancelled: false,
+      openPorts,
+      startedAt: new Date().toISOString(),
+      finishedAt: '',
+      polls: 0,
+    };
+    mockPortScans.set(id, job);
+    sendJSON(res, mockScanSnapshot(job), 202);
+    return true;
+  }
+
+  const hostPortScanJobMatch = pathname.match(/^\/api\/host\/(\d+)\/ports\/scan\/([^/]+)$/);
+  if (hostPortScanJobMatch && (req.method === 'GET' || req.method === 'DELETE')) {
+    const hostId = Number(hostPortScanJobMatch[1]);
+    const scanId = hostPortScanJobMatch[2];
+    const job = mockPortScans.get(scanId);
+    if (!job || job.hostId !== hostId) {
+      sendJSON(res, { error: 'port scan job not found' }, 404);
+      return true;
+    }
+
+    if (req.method === 'DELETE' && job.running) {
+      job.running = false;
+      job.completed = true;
+      job.cancelled = true;
+      job.finishedAt = new Date().toISOString();
+    }
+    sendJSON(res, mockScanSnapshot(job, req.method === 'GET'));
     return true;
   }
 
