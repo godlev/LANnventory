@@ -104,7 +104,8 @@ function Updates() {
     setMessage("Verifying and scheduling update…");
     try {
       const result = await apiApplyUpdate(current.latestVersion);
-      setMessage(result.message + " Waiting for LANnventory to come back online…");
+      const backupNote = result.backupPath ? " Recovery backup: " + result.backupPath + "." : "";
+      setMessage(result.message + backupNote + " Waiting for LANnventory to come back online…");
       void pollAfterUpdate(result.version);
     } catch (err) {
       setInstalling(false);
