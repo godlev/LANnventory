@@ -153,6 +153,30 @@ func startHostPortScan(c *gin.Context) {
 	c.IndentedJSON(http.StatusAccepted, status)
 }
 
+// getActiveHostPortScan godoc
+// @Summary      Get active host port scan
+// @Description  Return the currently running port scan for a host, if one exists.
+// @Tags         network
+// @Produce      json
+// @Param        id  path      int  true  "Host ID"
+// @Success      200 {object}  portScanJobStatus
+// @Failure      404 {object}  map[string]string
+// @Router       /host/{id}/ports/scan/active [get]
+func getActiveHostPortScan(c *gin.Context) {
+	host, err := getHostByID(c.Param("id"))
+	if err != nil || host.ID < 1 {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": errInvalidHostID.Error()})
+		return
+	}
+
+	status, ok := portScanJobs.Active(host.ID)
+	if !ok {
+		c.IndentedJSON(http.StatusNotFound, gin.H{"error": "no active port scan"})
+		return
+	}
+	c.IndentedJSON(http.StatusOK, status)
+}
+
 // getHostPortScanStatus godoc
 // @Summary      Get host port scan status
 // @Tags         network
