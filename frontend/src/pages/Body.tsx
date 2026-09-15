@@ -1,6 +1,6 @@
 import { createSignal, For, onMount, Show } from "solid-js";
 
-import { allHosts, filterState, hasMultipleIfaces, hostsLoadError } from "../functions/exports";
+import { allHosts, bkpHosts, filterState, hasMultipleIfaces, hostsLoadError } from "../functions/exports";
 
 import TableRow from "../components/Body/TableRow";
 import TableHead from "../components/Body/TableHead";
@@ -17,37 +17,30 @@ function Body() {
     getHosts();
   });
 
-  const hostLabel = (count: number) => count === 1 ? "host" : "hosts";
+  const deviceLabel = (count: number) => count === 1 ? "device" : "devices";
 
   const currentSubtitle = () => {
     const filters = filterState();
     const count = allHosts.length;
-    const states = [];
+    const total = bkpHosts().length;
+    const context: string[] = [];
 
-    if (filters.Known === 1) states.push("Known");
-    if (filters.Known === 0) states.push("Unknown");
-    if (filters.Now === 1) states.push("Online");
-    if (filters.Now === 0) states.push("Offline");
+    if (filters.Known === 1) context.push("Known");
+    if (filters.Known === 0) context.push("Unknown");
+    if (filters.Now === 1) context.push("Online");
+    if (filters.Now === 0) context.push("Offline");
+    if (filters.Search !== "") context.push("matching search");
+    if (filters.Iface !== "") context.push("Iface: " + filters.Iface);
+    if (filters.DeviceType !== "") context.push("Type: " + deviceTypeFilterLabel(filters.DeviceType));
 
-    let text = states.length > 0
-      ? `${count} ${states.join(" ")} ${hostLabel(count)}`
-      : `${count} ${hostLabel(count)}`;
+    const base = count.toLocaleString()
+      + " " + deviceLabel(count)
+      + " out of "
+      + total.toLocaleString()
+      + " total "
+      + deviceLabel(total);
 
-    if (filters.Search !== "") {
-      text = states.length > 0
-        ? `${text} matching search`
-        : `${count} matching ${hostLabel(count)}`;
-    }
-
-    if (filters.Iface !== "") {
-      text = `${text} on ${filters.Iface}`;
-    }
-
-    if (filters.DeviceType !== "") {
-      text = `${text} - Type: ${deviceTypeFilterLabel(filters.DeviceType)}`;
-    }
-
-    return text;
+    return context.length > 0 ? base + " · " + context.join(" · ") : base;
   };
 
   const deviceExpansionKey = (host: { ID: number; Mac: string }) => host.Mac || "id:" + host.ID;

@@ -44,7 +44,7 @@ type EventFilterKey =
 
 type GroupByKey = "device" | "event" | "category" | "device-type" | "ip" | "iface" | "day";
 type DeviceDisplayMode = "name-icon" | "name" | "icon";
-type DeviceSelectionMode = "all" | "custom" | "none";
+type DeviceSelectionMode = "all" | "custom" | "none" | "unknown";
 
 type EventFilterOption = {
   key: EventFilterKey;
@@ -184,10 +184,20 @@ function Activity() {
   const eventTypeFilterActive = () => !allEventTypesSelected();
   const groupingActive = () => normalizedGroupByKeys().length > 0;
   const deviceFilterActive = () => deviceSelectionMode() !== "all";
-  const noDevicesSelected = () => deviceSelectionMode() === "none";
   const normalizedSelectedMacs = createMemo(() => normalizeSelectedMacs(selectedMacs()));
-  const selectedMacSet = createMemo(() => new Set(normalizedSelectedMacs()));
+  const currentUnknownMacs = createMemo(() => normalizeSelectedMacs(
+    bkpHosts()
+      .filter((host) => host.Known === 0)
+      .map((host) => host.Mac),
+  ));
+  const effectiveSelectedMacs = createMemo(() =>
+    deviceSelectionMode() === "unknown" ? currentUnknownMacs() : normalizedSelectedMacs(),
+  );
+  const selectedMacSet = createMemo(() => new Set(effectiveSelectedMacs()));
   const availableDeviceMacs = createMemo(() => normalizeSelectedMacs(devices().map((device) => device.Mac)));
+  const noDevicesSelected = () =>
+    deviceSelectionMode() === "none"
+    || (deviceSelectionMode() === "unknown" && currentUnknownMacs().length === 0);
   const deviceOptionsByMac = createMemo(() => {
     const options = new Map<string, ActivityDeviceOption>();
     for (const device of devices()) {
@@ -198,13 +208,26 @@ function Activity() {
     return options;
   });
   const filtersActive = () => deviceFilterActive() || eventTypeFilterActive();
-  const deviceRequestMacs = () => deviceSelectionMode() === "custom" ? normalizedSelectedMacs() : undefined;
+  const deviceRequestMacs = () => {
+    const mode = deviceSelectionMode();
+    if (mode === "custom") {
+      return normalizedSelectedMacs();
+    }
+    if (mode === "unknown") {
+      return currentUnknownMacs();
+    }
+    return undefined;
+  };
   const selectedDeviceLabel = () => {
-    const macs = normalizedSelectedMacs();
-    if (deviceSelectionMode() === "all") {
+    const mode = deviceSelectionMode();
+    const macs = effectiveSelectedMacs();
+    if (mode === "all") {
       return "All devices";
     }
-    if (deviceSelectionMode() === "none" || macs.length === 0) {
+    if (mode === "unknown") {
+      return "Unknown devices (" + macs.length + ")";
+    }
+    if (mode === "none" || macs.length === 0) {
       return "No devices";
     }
     if (macs.length === 1) {
@@ -215,9 +238,12 @@ function Activity() {
   };
   const deviceFilterTooltip = () => {
     const mode = deviceSelectionMode();
-    const macs = normalizedSelectedMacs();
+    const macs = effectiveSelectedMacs();
     if (mode === "all") {
       return "All devices included";
+    }
+    if (mode === "unknown") {
+      return "All events for " + macs.length + " devices currently marked Unknown";
     }
     if (mode === "none" || macs.length === 0) {
       return "No devices selected";
@@ -297,7 +323,6 @@ function Activity() {
   const loadEvents = async (reset: boolean) => {
     const activeRequest = ++eventsRequest;
     const eventTypes = selectedEventTypes();
-    const deviceMode = deviceSelectionMode();
     const macs = deviceRequestMacs();
     let lastEvent: HostEvent | undefined;
     if (!reset) {
@@ -317,7 +342,7 @@ function Activity() {
       setHasMore(false);
       return;
     }
-    if (deviceMode === "none") {
+    if (noDevicesSelected()) {
       setLoading(false);
       setHasMore(false);
       return;
@@ -359,11 +384,10 @@ function Activity() {
 
   const loadStats = async () => {
     const activeRequest = ++statsRequest;
-    const deviceMode = deviceSelectionMode();
     const macs = deviceRequestMacs();
     setStatsError(false);
 
-    if (deviceMode === "none") {
+    if (noDevicesSelected()) {
       setStats(emptyStats);
       return;
     }
@@ -394,6 +418,7 @@ function Activity() {
   createEffect(() => {
     deviceSelectionMode();
     normalizedSelectedMacs();
+    currentUnknownMacs();
     selectedEventTypes();
     loadEvents(true);
   });
@@ -401,6 +426,7 @@ function Activity() {
   createEffect(() => {
     deviceSelectionMode();
     normalizedSelectedMacs();
+    currentUnknownMacs();
     loadStats();
   });
 
@@ -613,14 +639,21 @@ function Activity() {
   };
 
   const handleDeviceToggle = (mac: string) => {
-    if (deviceSelectionMode() === "all") {
+    const mode = deviceSelectionMode();
+    if (mode === "all") {
       const nextMacs = availableDeviceMacs().filter((deviceMac) => deviceMac !== mac);
       setSelectedMacs(nextMacs);
       setDeviceSelectionMode(nextMacs.length > 0 ? "custom" : "none");
       return;
     }
 
-    const selected = new Set(deviceSelectionMode() === "custom" ? normalizedSelectedMacs() : []);
+    const selected = new Set(
+      mode === "unknown"
+        ? currentUnknownMacs()
+        : mode === "custom"
+          ? normalizedSelectedMacs()
+          : [],
+    );
     if (selected.has(mac)) {
       selected.delete(mac);
     } else {
@@ -630,6 +663,22 @@ function Activity() {
     const nextMacs = normalizeSelectedMacs([...selected]);
     setSelectedMacs(nextMacs);
     setDeviceSelectionMode(nextMacs.length > 0 ? "custom" : "none");
+  };
+
+  const handleUnknownDeviceScope = () => {
+    if (deviceSelectionMode() === "unknown") {
+      setDeviceSelectionMode("all");
+      setSelectedMacs([]);
+      return;
+    }
+    if (currentUnknownMacs().length === 0) {
+      return;
+    }
+
+    setSelectedMacs([]);
+    setDeviceSearch("");
+    setDeviceSelectionMode("unknown");
+    setDeviceDropdownOpen(false);
   };
 
   const handleDeviceSelectAll = () => {
@@ -857,7 +906,21 @@ function Activity() {
       <section class="card wyl-panel activity-filter-panel" aria-label="Event filters">
         <div class="card-body activity-filter-grid">
           <div class="activity-filter-field activity-multiselect-field activity-device-filter-field">
-            <span class="activity-filter-label">Device</span>
+            <div class="activity-filter-label-row">
+              <span class="activity-filter-label">Device</span>
+              <button
+                type="button"
+                class={"activity-device-scope-chip" + (deviceSelectionMode() === "unknown" ? " is-active" : "")}
+                title={"Show all events for devices currently marked Unknown (" + currentUnknownMacs().length + ")"}
+                aria-label={"Show all events for devices currently marked Unknown (" + currentUnknownMacs().length + ")"}
+                aria-pressed={deviceSelectionMode() === "unknown"}
+                disabled={currentUnknownMacs().length === 0}
+                onClick={handleUnknownDeviceScope}
+              >
+                <i class="bi bi-question-circle-fill" aria-hidden="true"></i>
+                <span>Unknown {currentUnknownMacs().length}</span>
+              </button>
+            </div>
             <button
               ref={deviceTriggerRef}
               type="button"

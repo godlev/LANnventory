@@ -548,7 +548,7 @@ html[data-bs-theme] body {
 }
 .overview-grid.home-overview-grid {
     display: grid;
-    grid-template-columns: 10.5rem repeat(2, 18.5rem);
+    grid-template-columns: repeat(2, 18.5rem);
     justify-content: start;
     align-items: stretch;
     width: 100%;
@@ -2058,6 +2058,46 @@ html[data-bs-theme] .device-table > tbody > tr.device-row-unknown:hover > td {
     font-weight: 800;
     line-height: 1.2;
     text-transform: uppercase;
+}
+.activity-filter-label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.45rem;
+    min-width: 0;
+}
+.activity-device-scope-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.26rem;
+    flex: 0 0 auto;
+    padding: 0.12rem 0.4rem;
+    color: var(--wyl-summary-unknown-text);
+    background-color: var(--wyl-summary-unknown-bg);
+    border: 1px solid var(--wyl-summary-unknown-border);
+    border-radius: 999px;
+    font-size: 0.62rem;
+    font-weight: 850;
+    line-height: 1.2;
+    letter-spacing: 0.035em;
+    text-transform: uppercase;
+    cursor: pointer;
+}
+.activity-device-scope-chip:hover,
+.activity-device-scope-chip:focus-visible {
+    filter: brightness(1.08);
+}
+.activity-device-scope-chip:focus-visible {
+    outline: 2px solid var(--bs-primary);
+    outline-offset: 2px;
+}
+.activity-device-scope-chip.is-active {
+    box-shadow: inset 0 0 0 1px currentColor;
+}
+.activity-device-scope-chip:disabled {
+    opacity: 0.45;
+    cursor: default;
+    filter: none;
 }
 .activity-filter-select {
     color: var(--wyl-control-text);
@@ -3620,7 +3660,7 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
         grid-template-columns: minmax(15rem, 0.75fr) minmax(26rem, 1.25fr);
     }
     .overview-grid.home-overview-grid {
-        grid-template-columns: 9rem repeat(2, 16rem);
+        grid-template-columns: repeat(2, 16rem);
     }
     .device-panel-header {
         align-items: center;

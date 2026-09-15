@@ -1,6 +1,6 @@
 import { createMemo } from "solid-js";
 import { bkpHosts, filterState, setHistUpdOnFilter } from "../../functions/exports";
-import { resetFilters, toggleHostFilter } from "../../functions/filter";
+import { toggleHostFilter } from "../../functions/filter";
 import { filterHosts, hasActiveHostFilters } from "../../functions/hostView";
 
 type SplitSummaryItem = {
@@ -27,13 +27,10 @@ function SummaryCards() {
   const summary = createMemo(() => {
     const hosts = bkpHosts();
     const filters = filterState();
-    const total = hosts.length;
-    const filteredHosts = filterHosts(hosts, filters);
     const statusFacetHosts = filterHosts(hosts, filters, { ignore: ["Now"] });
     const knownFacetHosts = filterHosts(hosts, filters, { ignore: ["Known"] });
     const filtersActive = hasActiveHostFilters(filters);
 
-    const visible = filteredHosts.length;
     const online = statusFacetHosts.filter((host) => host.Now === 1).length;
     const offline = statusFacetHosts.filter((host) => host.Now === 0).length;
     const known = knownFacetHosts.filter((host) => host.Known === 1).length;
@@ -66,74 +63,36 @@ function SummaryCards() {
       filterValue,
     });
 
-    return {
-      total: {
-        label: "Total Devices",
-        shortLabel: "ALL",
-        value: filtersActive ? visible : total,
-        detail: filtersActive
-          ? visible + " visible / " + total + " total"
-          : total === 1 ? "1 loaded host" : total + " loaded hosts",
-        icon: "bi-hdd-network",
+    return [
+      {
+        label: "Connectivity",
+        scopeCount: statusFacetHosts.length,
+        icon: "bi-broadcast-pin",
+        tone: "connectivity",
+        primary: makeSplit("On", online, statusFacetHosts.length, "bi-check-circle-fill", "online", "Now", 1),
+        secondary: makeSplit("Off", offline, statusFacetHosts.length, "bi-slash-circle-fill", "offline", "Now", 0),
       },
-      combined: [
-        {
-          label: "Connectivity",
-          scopeCount: statusFacetHosts.length,
-          icon: "bi-broadcast-pin",
-          tone: "connectivity",
-          primary: makeSplit("On", online, statusFacetHosts.length, "bi-check-circle-fill", "online", "Now", 1),
-          secondary: makeSplit("Off", offline, statusFacetHosts.length, "bi-slash-circle-fill", "offline", "Now", 0),
-        },
-        {
-          label: "Recognition",
-          scopeCount: knownFacetHosts.length,
-          icon: "bi-bookmarks-fill",
-          tone: "recognition",
-          primary: makeSplit("Known", known, knownFacetHosts.length, "bi-bookmark-check-fill", "known", "Known", 1),
-          secondary: makeSplit("Unknown", unknown, knownFacetHosts.length, "bi-question-circle-fill", "unknown", "Known", 0),
-        },
-      ] satisfies CombinedSummary[],
-    };
+      {
+        label: "Recognition",
+        scopeCount: knownFacetHosts.length,
+        icon: "bi-bookmarks-fill",
+        tone: "recognition",
+        primary: makeSplit("Known", known, knownFacetHosts.length, "bi-bookmark-check-fill", "known", "Known", 1),
+        secondary: makeSplit("Unknown", unknown, knownFacetHosts.length, "bi-question-circle-fill", "unknown", "Known", 0),
+      },
+    ] satisfies CombinedSummary[];
   });
 
   const isSplitActive = (item: SplitSummaryItem) => filterState()[item.filterField] === item.filterValue;
-
-  const handleTotal = () => {
-    resetFilters();
-    setHistUpdOnFilter(true);
-  };
 
   const handleSplitFilter = (item: SplitSummaryItem) => {
     toggleHostFilter(item.filterField, item.filterValue);
     setHistUpdOnFilter(true);
   };
 
-  const totalActive = () => !hasActiveHostFilters(filterState());
-
   return (
     <section class="overview-grid home-overview-grid" aria-label="Device overview">
-      <button
-        type="button"
-        class={"overview-card overview-card-button overview-card-total" + (totalActive() ? " is-active" : "")}
-        title={summary().total.label + ": " + summary().total.value + ". " + summary().total.detail}
-        aria-label={summary().total.label + ": " + summary().total.value + ". " + summary().total.detail}
-        aria-pressed={totalActive()}
-        onClick={handleTotal}
-      >
-        <div class="overview-card-icon" aria-hidden="true">
-          <i class={"bi " + summary().total.icon}></i>
-        </div>
-        <div>
-          <div class="overview-card-label">
-            <span class="overview-card-label-full">{summary().total.label}</span>
-            <span class="overview-card-label-short" aria-hidden="true">{summary().total.shortLabel}</span>
-          </div>
-          <div class="overview-card-value">{summary().total.value}</div>
-          <div class="overview-card-detail">{summary().total.detail}</div>
-        </div>
-      </button>
-      {summary().combined.map((card) =>
+      {summary().map((card) =>
         <article
           class={"overview-card overview-card-split overview-card-" + card.tone}
           aria-label={card.label + ": " + card.scopeCount + " scoped devices"}
