@@ -135,6 +135,22 @@ func (m *portScanJobManager) run(ctx context.Context, host models.Host, job *por
 	m.mu.Unlock()
 }
 
+func (m *portScanJobManager) Active(hostID int) (portScanJobStatus, bool) {
+	m.mu.Lock()
+	id := m.activeByHost[hostID]
+	job := m.jobs[id]
+	m.mu.Unlock()
+	if job == nil {
+		return portScanJobStatus{}, false
+	}
+
+	status := job.snapshot()
+	if !status.Running {
+		return portScanJobStatus{}, false
+	}
+	return status, true
+}
+
 func (m *portScanJobManager) Status(hostID int, id string) (portScanJobStatus, bool) {
 	m.mu.Lock()
 	job := m.jobs[id]
