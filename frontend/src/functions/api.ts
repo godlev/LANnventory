@@ -340,7 +340,7 @@ export const apiStartHostPortScan = async (id: number, startPort: number, endPor
 };
 
 export const apiGetActiveHostPortScan = async (id: number): Promise<HostPortScanJob | undefined> => {
-  return await apiOptionalJSON<HostPortScanJob>(apiPath + "/api/host/" + id + "/ports/scan/active");
+  return await apiOptionalJSON<HostPortScanJob>(apiPath + "/api/host/" + id + "/ports/scan");
 };
 
 export const apiGetHostPortScan = async (id: number, scanId: string): Promise<HostPortScanJob> => {
