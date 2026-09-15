@@ -70,3 +70,20 @@ func TestServiceName(t *testing.T) {
 		}
 	}
 }
+
+
+func TestScanRangeCancelledContextEmitsNoResults(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	results := []Result{}
+	err := ScanRange(ctx, "192.0.2.1", 1, 100, 8, time.Second, func(result Result) {
+		results = append(results, result)
+	})
+	if err != context.Canceled {
+		t.Fatalf("ScanRange cancelled error = %v, want context.Canceled", err)
+	}
+	if len(results) != 0 {
+		t.Fatalf("cancelled scan emitted results: %+v", results)
+	}
+}
