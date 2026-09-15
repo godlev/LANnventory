@@ -109,6 +109,7 @@ func notifyUpdateSchedulerConfigChanged() {
 // @Tags         updates
 // @Produce      json
 // @Param        refresh  query     bool  false  "Refresh cached release metadata"
+// @Param        cached   query     bool  false  "Use cached release metadata only and never contact GitHub"
 // @Success      200      {object}  updateStatusResponse
 // @Failure      502      {object}  map[string]string
 // @Router       /update/status [get]
