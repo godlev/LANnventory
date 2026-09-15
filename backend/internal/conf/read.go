@@ -24,6 +24,7 @@ func read(path string) (config models.Conf) {
 	viper.SetDefault("TIMEOUT", 120)
 	viper.SetDefault("TRIM_HIST", 48)
 	viper.SetDefault("SHOUTRRR_URL", "")
+	viper.SetDefault("UPDATE_CHANNEL", "beta")
 
 	viper.SetDefault("USE_DB", "sqlite")
 	viper.SetDefault("PG_CONNECT", "")
@@ -60,6 +61,10 @@ func read(path string) (config models.Conf) {
 		}
 	}
 	config.ShoutURL = viper.Get("SHOUTRRR_URL").(string)
+	config.UpdateChannel = strings.ToLower(strings.TrimSpace(viper.GetString("UPDATE_CHANNEL")))
+	if config.UpdateChannel != "stable" && config.UpdateChannel != "beta" {
+		config.UpdateChannel = "beta"
+	}
 
 	config.UseDB = viper.Get("USE_DB").(string)
 	config.PGConnect = viper.Get("PG_CONNECT").(string)

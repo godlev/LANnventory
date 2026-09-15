@@ -19,6 +19,7 @@ type Conf struct {
 	ConnectivityRetention int
 	ShoutURL              string
 	Version               string
+	UpdateChannel         string
 	// PostgreSQL
 	UseDB     string
 	PGConnect string

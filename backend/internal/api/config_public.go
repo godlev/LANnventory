@@ -16,6 +16,7 @@ type publicConfig struct {
 	Timeout               int
 	TrimHist              int
 	ConnectivityRetention int
+	UpdateChannel         string
 	ShoutURL              string
 	ShoutURLConfigured    bool
 	UseDB                 string
@@ -46,6 +47,7 @@ func toPublicConfig(config models.Conf) publicConfig {
 		Timeout:               config.Timeout,
 		TrimHist:              config.TrimHist,
 		ConnectivityRetention: config.ConnectivityRetention,
+		UpdateChannel:         config.UpdateChannel,
 		ShoutURL:              "",
 		ShoutURLConfigured:    config.ShoutURL != "",
 		UseDB:                 config.UseDB,
