@@ -65,6 +65,19 @@ const apiJSON = async <T>(url: string, init?: RequestInit): Promise<T> => {
   return await (await apiFetch(url, init)).json();
 };
 
+const apiOptionalJSON = async <T>(url: string, init?: RequestInit): Promise<T | undefined> => {
+  const response = await fetch(url, init);
+  if (response.status === 404) {
+    return undefined;
+  }
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(detail || response.statusText || "API request failed");
+  }
+
+  return await response.json();
+};
+
 const getAttachmentFilename = (response: Response, fallback: string): string => {
   const disposition = response.headers.get("content-disposition") ?? "";
   const match = /filename="([^"]+)"/.exec(disposition) ?? /filename=([^;]+)/.exec(disposition);
@@ -324,6 +337,10 @@ export const apiStartHostPortScan = async (id: number, startPort: number, endPor
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ startPort, endPort }),
   });
+};
+
+export const apiGetActiveHostPortScan = async (id: number): Promise<HostPortScanJob | undefined> => {
+  return await apiOptionalJSON<HostPortScanJob>(apiPath + "/api/host/" + id + "/ports/scan/active");
 };
 
 export const apiGetHostPortScan = async (id: number, scanId: string): Promise<HostPortScanJob> => {
