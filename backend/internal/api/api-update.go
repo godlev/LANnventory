@@ -27,9 +27,10 @@ type updateChannelRequest struct {
 }
 
 type updateSettingsRequest struct {
-	Channel       string `json:"channel"`
-	Automatic     bool   `json:"automatic"`
-	IntervalHours int    `json:"intervalHours"`
+	Channel        string `json:"channel"`
+	AutomaticCheck bool   `json:"automaticCheck"`
+	Automatic      bool   `json:"automatic"`
+	IntervalHours  int    `json:"intervalHours"`
 }
 
 type updateApplyRequest struct {
@@ -43,10 +44,12 @@ type updateStatusResponse struct {
 	Available           bool   `json:"available"`
 	PublishedAt         string `json:"publishedAt"`
 	ReleaseURL          string `json:"releaseUrl"`
+	ReleaseSummary      string `json:"releaseSummary"`
 	InstallSupported    bool   `json:"installSupported"`
 	InstallReason       string `json:"installReason"`
 	Message             string `json:"message"`
 	Updating            bool   `json:"updating"`
+	AutomaticCheck      bool   `json:"automaticCheck"`
 	Automatic           bool   `json:"automatic"`
 	IntervalHours       int    `json:"intervalHours"`
 	LastChecked         string `json:"lastChecked"`
@@ -66,11 +69,12 @@ func StartUpdateScheduler(ctx context.Context) {
 	scheduler := updater.NewAutoScheduler(updateService, func() updater.AutoConfig {
 		config := conf.GetAppConfig()
 		return updater.AutoConfig{
-			CurrentVersion: config.Version,
-			Channel:        config.UpdateChannel,
-			Automatic:      config.UpdateAuto,
-			IntervalHours:  config.UpdateCheckIntervalHours,
-			HealthURL:      updateHealthURL(config.Host, config.Port),
+			CurrentVersion:   config.Version,
+			Channel:          config.UpdateChannel,
+			AutomaticCheck:   config.UpdateCheckAuto,
+			AutomaticInstall: config.UpdateAuto,
+			IntervalHours:    config.UpdateCheckIntervalHours,
+			HealthURL:        updateHealthURL(config.Host, config.Port),
 		}
 	})
 
@@ -110,6 +114,12 @@ func notifyUpdateSchedulerConfigChanged() {
 // @Router       /update/status [get]
 func getUpdateStatus(c *gin.Context) {
 	config := conf.GetAppConfig()
+	if c.Query("cached") == "1" || strings.EqualFold(c.Query("cached"), "true") {
+		status := updateService.CheckCached(config.Version, config.UpdateChannel)
+		c.IndentedJSON(http.StatusOK, withUpdateSettings(status, config))
+		return
+	}
+
 	refresh := c.Query("refresh") == "1" || strings.EqualFold(c.Query("refresh"), "true")
 	status, err := updateService.Check(c.Request.Context(), config.Version, config.UpdateChannel, refresh)
 	if err != nil {
@@ -164,7 +174,7 @@ func saveUpdateChannel(c *gin.Context) {
 
 // saveUpdateSettings godoc
 // @Summary      Set update settings
-// @Description  Persists release channel, automatic update preference, and automatic check interval, then immediately refreshes update status.
+// @Description  Persists release channel, automatic check/install preferences, and automatic check interval, then immediately refreshes update status.
 // @Tags         updates
 // @Accept       json
 // @Produce      json
@@ -191,9 +201,11 @@ func saveUpdateSettings(c *gin.Context) {
 		return
 	}
 
+	automaticCheck := req.AutomaticCheck || req.Automatic
 	nextConfig, err := conf.UpdateAppConfig(func(next *models.Conf) error {
 		next.UpdateChannel = channel
-		next.UpdateAuto = req.Automatic
+		next.UpdateCheckAuto = automaticCheck
+		next.UpdateAuto = req.Automatic && automaticCheck
 		next.UpdateCheckIntervalHours = req.IntervalHours
 		return nil
 	})
@@ -258,6 +270,7 @@ func applyUpdate(c *gin.Context) {
 }
 
 func withUpdateSettings(status updater.Status, config models.Conf) updater.Status {
+	status.AutomaticCheck = config.UpdateCheckAuto || config.UpdateAuto
 	status.Automatic = config.UpdateAuto
 	status.IntervalHours = updater.NormalizeAutoIntervalHours(config.UpdateCheckIntervalHours)
 	return status
