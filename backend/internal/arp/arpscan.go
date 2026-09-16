@@ -14,42 +14,101 @@ import (
 var scanCommandTimeout = 2 * time.Minute
 var commandRunner = runCommand
 
-func scanIface(iface, scanArgs string) (string, bool) {
+type ScanErrorKind string
+
+const (
+	ScanErrorExecution ScanErrorKind = "execution"
+	ScanErrorTimeout   ScanErrorKind = "timeout"
+)
+
+// ScanError describes one failed arp-scan source without relying on log parsing.
+type ScanError struct {
+	Source  string
+	Command string
+	Kind    ScanErrorKind
+	Message string
+	Output  string
+}
+
+// ScanResult is the structured outcome of one scanner execution.
+type ScanResult struct {
+	Hosts      []models.Host
+	Success    bool
+	Interfaces []string
+	Errors     []ScanError
+}
+
+type commandResult struct {
+	Output string
+	Error  *ScanError
+}
+
+func scanIface(iface, scanArgs string) commandResult {
 	args := []string{"-glNx"}
 	args = append(args, strings.Fields(scanArgs)...)
 	args = append(args, "-I", iface)
 
-	return commandRunner("arp-scan", args...)
-}
-
-func scanStr(str string) (string, bool) {
-
-	args := strings.Fields(str)
-	if len(args) == 0 {
-		return "", true
+	result := commandRunner("arp-scan", args...)
+	if result.Error != nil {
+		scanErr := *result.Error
+		scanErr.Source = iface
+		result.Error = &scanErr
 	}
 
-	return commandRunner("arp-scan", args...)
+	return result
 }
 
-func runCommand(name string, args ...string) (string, bool) {
+func scanStr(str string) commandResult {
+	args := strings.Fields(str)
+	if len(args) == 0 {
+		return commandResult{}
+	}
+
+	result := commandRunner("arp-scan", args...)
+	if result.Error != nil {
+		scanErr := *result.Error
+		scanErr.Source = str
+		result.Error = &scanErr
+	}
+
+	return result
+}
+
+func runCommand(name string, args ...string) commandResult {
 	ctx, cancel := context.WithTimeout(context.Background(), scanCommandTimeout)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, name, args...)
 
-	out, err := cmd.Output()
+	out, err := cmd.CombinedOutput()
 	slog.Debug(cmd.String())
 
 	if ctx.Err() == context.DeadlineExceeded {
+		message := "command timed out after " + scanCommandTimeout.String()
 		slog.Error("Command timed out", "cmd", cmd.String(), "timeout", scanCommandTimeout.String())
-		return string(""), false
+		return commandResult{
+			Error: &ScanError{
+				Command: cmd.String(),
+				Kind:    ScanErrorTimeout,
+				Message: message,
+				Output:  strings.TrimSpace(string(out)),
+			},
+		}
 	}
 
-	if check.IfError(err) {
-		return string(""), false
+	if err != nil {
+		check.IfError(err)
+		return commandResult{
+			Error: &ScanError{
+				Command: cmd.String(),
+				Kind:    ScanErrorExecution,
+				Message: err.Error(),
+				Output:  strings.TrimSpace(string(out)),
+			},
+		}
 	}
-	return string(out), true
+
+	return commandResult{Output: string(out)}
 }
 
 func parseOutput(text, iface string) []models.Host {
@@ -86,49 +145,87 @@ func parseOutput(text, iface string) []models.Host {
 	return foundHosts
 }
 
-// Scan all interfaces
-func Scan(ifaces, args string, strs []string) ([]models.Host, bool) {
-	var text string
-	var p []string
-	var foundHosts = []models.Host{}
-	scanOK := true
+// ScanDetailed scans all configured sources and returns structured execution metadata.
+func ScanDetailed(ifaces, args string, strs []string) ScanResult {
+	result := ScanResult{
+		Hosts:   []models.Host{},
+		Success: true,
+	}
 
 	if ifaces != "" {
-
-		p = strings.Fields(ifaces)
-
-		for _, iface := range p {
+		for _, iface := range strings.Fields(ifaces) {
+			result.Interfaces = appendUniqueInterface(result.Interfaces, iface)
 			slog.Debug("Scanning interface " + iface)
-			var ok bool
-			text, ok = scanIface(iface, args)
-			if !ok {
-				scanOK = false
+
+			cmdResult := scanIface(iface, args)
+			if cmdResult.Error != nil {
+				result.Success = false
+				result.Errors = append(result.Errors, *cmdResult.Error)
 				continue
 			}
-			slog.Debug("Found IPs: \n" + text)
 
-			foundHosts = append(foundHosts, parseOutput(text, iface)...)
+			slog.Debug("Found IPs: \n" + cmdResult.Output)
+			result.Hosts = append(result.Hosts, parseOutput(cmdResult.Output, iface)...)
 		}
 	}
 
-	for _, s := range strs {
-		s = strings.TrimSpace(s)
-		if s == "" {
+	for _, scanString := range strs {
+		scanString = strings.TrimSpace(scanString)
+		if scanString == "" {
 			continue
 		}
 
-		slog.Debug("Scanning string " + s)
-		var ok bool
-		text, ok = scanStr(s)
-		if !ok {
-			scanOK = false
+		scanArgs := strings.Fields(scanString)
+		if iface := interfaceFromScanArgs(scanArgs); iface != "" {
+			result.Interfaces = appendUniqueInterface(result.Interfaces, iface)
+		}
+
+		slog.Debug("Scanning string " + scanString)
+		cmdResult := scanStr(scanString)
+		if cmdResult.Error != nil {
+			result.Success = false
+			result.Errors = append(result.Errors, *cmdResult.Error)
 			continue
 		}
-		slog.Debug("Found IPs: \n" + text)
-		p = strings.Fields(s)
 
-		foundHosts = append(foundHosts, parseOutput(text, p[len(p)-1])...)
+		slog.Debug("Found IPs: \n" + cmdResult.Output)
+		result.Hosts = append(result.Hosts, parseOutput(cmdResult.Output, scanArgs[len(scanArgs)-1])...)
 	}
 
-	return foundHosts, scanOK
+	return result
+}
+
+// Scan preserves the existing scanner contract while callers migrate to ScanDetailed.
+func Scan(ifaces, args string, strs []string) ([]models.Host, bool) {
+	result := ScanDetailed(ifaces, args, strs)
+	return result.Hosts, result.Success
+}
+
+func interfaceFromScanArgs(args []string) string {
+	for i, arg := range args {
+		switch {
+		case (arg == "-I" || arg == "--interface") && i+1 < len(args):
+			return args[i+1]
+		case strings.HasPrefix(arg, "--interface="):
+			return strings.TrimPrefix(arg, "--interface=")
+		case strings.HasPrefix(arg, "-I") && len(arg) > 2:
+			return strings.TrimPrefix(arg, "-I")
+		}
+	}
+
+	return ""
+}
+
+func appendUniqueInterface(ifaces []string, iface string) []string {
+	if iface == "" {
+		return ifaces
+	}
+	for _, existing := range ifaces {
+		if existing == iface {
+			return ifaces
+		}
+	}
+	return append(ifaces, iface)
+}
+
 }

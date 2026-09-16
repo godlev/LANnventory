@@ -29,9 +29,9 @@ func startScan(quit chan bool) {
 
 			if nowDate.After(plusDate) {
 
-				var scanOK bool
-				foundHosts, scanOK = arp.Scan(config.Ifaces, config.ArpArgs, config.ArpStrs)
-				if !processScanResult(foundHosts, scanOK) {
+				scanResult := arp.ScanDetailed(config.Ifaces, config.ArpArgs, config.ArpStrs)
+				foundHosts = scanResult.Hosts
+				if !processScanResult(foundHosts, scanResult.Success) {
 					lastDate = time.Now()
 					continue
 				}

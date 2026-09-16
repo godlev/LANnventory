@@ -78,19 +78,46 @@ func TestRunCommandTimesOut(t *testing.T) {
 	})
 	t.Setenv("WYL_ARP_TEST_HELPER", "1")
 
-	out, ok := runCommand(os.Args[0], "-test.run=TestHelperProcess", "--", "sleep")
-	if ok {
-		t.Fatal("runCommand returned ok=true after timeout, want false")
+	result := runCommand(os.Args[0], "-test.run=TestHelperProcess", "--", "sleep")
+	if result.Error == nil {
+		t.Fatal("runCommand returned no error after timeout")
 	}
-	if out != "" {
-		t.Fatalf("runCommand returned %q, want empty output after timeout", out)
+	if result.Error.Kind != ScanErrorTimeout {
+		t.Fatalf("error kind = %q, want %q", result.Error.Kind, ScanErrorTimeout)
+	}
+	if result.Error.Message == "" {
+		t.Fatal("timeout error message is empty")
+	}
+	if result.Output != "" {
+		t.Fatalf("runCommand returned %q, want empty output after timeout", result.Output)
+	}
+}
+
+func TestRunCommandCapturesFailureDetails(t *testing.T) {
+	t.Setenv("WYL_ARP_TEST_HELPER", "1")
+
+	result := runCommand(os.Args[0], "-test.run=TestHelperProcess", "--", "fail")
+	if result.Error == nil {
+		t.Fatal("runCommand returned no error for failing command")
+	}
+	if result.Error.Kind != ScanErrorExecution {
+		t.Fatalf("error kind = %q, want %q", result.Error.Kind, ScanErrorExecution)
+	}
+	if result.Error.Command == "" {
+		t.Fatal("error command is empty")
+	}
+	if result.Error.Message == "" {
+		t.Fatal("error message is empty")
+	}
+	if result.Error.Output != "socket: operation not permitted" {
+		t.Fatalf("error output = %q, want captured stderr", result.Error.Output)
 	}
 }
 
 func TestScanReturnsFalseWhenCommandFails(t *testing.T) {
 	oldRunner := commandRunner
-	commandRunner = func(string, ...string) (string, bool) {
-		return "", false
+	commandRunner = func(string, ...string) commandResult {
+		return commandResult{Error: &ScanError{Kind: ScanErrorExecution, Message: "test command failed"}}
 	}
 	t.Cleanup(func() {
 		commandRunner = oldRunner
@@ -105,10 +132,104 @@ func TestScanReturnsFalseWhenCommandFails(t *testing.T) {
 	}
 }
 
+func TestScanDetailedReturnsStructuredFailure(t *testing.T) {
+	oldRunner := commandRunner
+	commandRunner = func(string, ...string) commandResult {
+		return commandResult{
+			Error: &ScanError{
+				Kind:    ScanErrorExecution,
+				Message: "permission denied",
+				Output:  "socket: operation not permitted",
+			},
+		}
+	}
+	t.Cleanup(func() {
+		commandRunner = oldRunner
+	})
+
+	result := ScanDetailed("eth0", "", nil)
+	if result.Success {
+		t.Fatal("ScanDetailed returned Success=true, want false")
+	}
+	if len(result.Hosts) != 0 {
+		t.Fatalf("ScanDetailed returned %d hosts, want 0", len(result.Hosts))
+	}
+	if len(result.Interfaces) != 1 || result.Interfaces[0] != "eth0" {
+		t.Fatalf("Interfaces = %v, want [eth0]", result.Interfaces)
+	}
+	if len(result.Errors) != 1 {
+		t.Fatalf("Errors len = %d, want 1", len(result.Errors))
+	}
+
+	scanErr := result.Errors[0]
+	if scanErr.Source != "eth0" {
+		t.Fatalf("error source = %q, want eth0", scanErr.Source)
+	}
+	if scanErr.Kind != ScanErrorExecution {
+		t.Fatalf("error kind = %q, want %q", scanErr.Kind, ScanErrorExecution)
+	}
+	if scanErr.Message != "permission denied" {
+		t.Fatalf("error message = %q, want permission denied", scanErr.Message)
+	}
+	if scanErr.Output != "socket: operation not permitted" {
+		t.Fatalf("error output = %q, want socket diagnostic", scanErr.Output)
+	}
+}
+
+func TestScanDetailedPreservesSuccessfulHostsOnPartialFailure(t *testing.T) {
+	oldRunner := commandRunner
+	commandRunner = func(_ string, args ...string) commandResult {
+		if ifaceFromArgs(args) == "wifi0" {
+			return commandResult{
+				Error: &ScanError{
+					Kind:    ScanErrorTimeout,
+					Message: "command timed out",
+				},
+			}
+		}
+		return commandResult{Output: "192.168.1.1\tAA:BB:CC:DD:EE:FF\tRouter Inc\n"}
+	}
+	t.Cleanup(func() {
+		commandRunner = oldRunner
+	})
+
+	result := ScanDetailed("eth0 wifi0", "", nil)
+	if result.Success {
+		t.Fatal("ScanDetailed returned Success=true after partial failure")
+	}
+	if len(result.Hosts) != 1 {
+		t.Fatalf("Hosts len = %d, want 1 successful host", len(result.Hosts))
+	}
+	if len(result.Interfaces) != 2 || result.Interfaces[0] != "eth0" || result.Interfaces[1] != "wifi0" {
+		t.Fatalf("Interfaces = %v, want [eth0 wifi0]", result.Interfaces)
+	}
+	if len(result.Errors) != 1 || result.Errors[0].Source != "wifi0" || result.Errors[0].Kind != ScanErrorTimeout {
+		t.Fatalf("Errors = %+v, want one wifi0 timeout", result.Errors)
+	}
+}
+
+func TestScanDetailedTracksExplicitInterfaceFromArpString(t *testing.T) {
+	oldRunner := commandRunner
+	commandRunner = func(string, ...string) commandResult {
+		return commandResult{}
+	}
+	t.Cleanup(func() {
+		commandRunner = oldRunner
+	})
+
+	result := ScanDetailed("", "", []string{"--localnet --interface=lan0"})
+	if !result.Success {
+		t.Fatal("ScanDetailed returned Success=false, want true")
+	}
+	if len(result.Interfaces) != 1 || result.Interfaces[0] != "lan0" {
+		t.Fatalf("Interfaces = %v, want [lan0]", result.Interfaces)
+	}
+}
+
 func TestScanReturnsTrueForSuccessfulEmptyResult(t *testing.T) {
 	oldRunner := commandRunner
-	commandRunner = func(string, ...string) (string, bool) {
-		return "", true
+	commandRunner = func(string, ...string) commandResult {
+		return commandResult{}
 	}
 	t.Cleanup(func() {
 		commandRunner = oldRunner
@@ -126,9 +247,9 @@ func TestScanReturnsTrueForSuccessfulEmptyResult(t *testing.T) {
 func TestScanWithNoSourcesDoesNotRunCommand(t *testing.T) {
 	oldRunner := commandRunner
 	called := false
-	commandRunner = func(string, ...string) (string, bool) {
+	commandRunner = func(string, ...string) commandResult {
 		called = true
-		return "", false
+		return commandResult{Error: &ScanError{Kind: ScanErrorExecution, Message: "test command failed"}}
 	}
 	t.Cleanup(func() {
 		commandRunner = oldRunner
@@ -149,9 +270,9 @@ func TestScanWithNoSourcesDoesNotRunCommand(t *testing.T) {
 func TestScanSplitsArpArgsAndIgnoresIfaceWhitespace(t *testing.T) {
 	oldRunner := commandRunner
 	var calls [][]string
-	commandRunner = func(_ string, args ...string) (string, bool) {
+	commandRunner = func(_ string, args ...string) commandResult {
 		calls = append(calls, append([]string(nil), args...))
-		return "192.168.1.1\tAA:BB:CC:DD:EE:FF\tRouter Inc\n", true
+		return commandResult{Output: "192.168.1.1\tAA:BB:CC:DD:EE:FF\tRouter Inc\n"}
 	}
 	t.Cleanup(func() {
 		commandRunner = oldRunner
@@ -193,7 +314,7 @@ func TestConcurrentScansKeepSeparateIfaceArgs(t *testing.T) {
 	var mu sync.Mutex
 	callsByIface := make(map[string][]string)
 
-	commandRunner = func(_ string, args ...string) (string, bool) {
+	commandRunner = func(_ string, args ...string) commandResult {
 		iface := ifaceFromArgs(args)
 
 		mu.Lock()
@@ -210,7 +331,7 @@ func TestConcurrentScansKeepSeparateIfaceArgs(t *testing.T) {
 			})
 		}
 
-		return "192.168.1.1\tAA:BB:CC:DD:EE:FF\tRouter Inc\n", true
+		return commandResult{Output: "192.168.1.1\tAA:BB:CC:DD:EE:FF\tRouter Inc\n"}
 	}
 
 	var wg sync.WaitGroup
@@ -295,8 +416,12 @@ func TestHelperProcess(t *testing.T) {
 		return
 	}
 
-	if os.Args[len(os.Args)-1] == "sleep" {
+	switch os.Args[len(os.Args)-1] {
+	case "sleep":
 		time.Sleep(time.Second)
+	case "fail":
+		_, _ = os.Stderr.WriteString("socket: operation not permitted\n")
+		os.Exit(7)
 	}
 	os.Exit(0)
 }
