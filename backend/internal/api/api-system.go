@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/godlev/LANnventory/internal/conf"
+	"github.com/godlev/LANnventory/internal/diagnostics"
 	"github.com/godlev/LANnventory/internal/gdb"
 	"github.com/godlev/LANnventory/internal/models"
 	"github.com/godlev/LANnventory/internal/notify"
@@ -145,6 +146,10 @@ func scannerTimePointer(value time.Time) *time.Time {
 	}
 	copy := value
 	return &copy
+}
+
+func getDiagnostics(c *gin.Context) {
+	c.IndentedJSON(http.StatusOK, diagnostics.Run(conf.GetAppConfig()))
 }
 
 // notifyTest godoc
