@@ -1049,6 +1049,50 @@ function activityDeviceOptions() {
   return options;
 }
 
+
+function mockScannerStatus() {
+  const serverTime = new Date();
+  const lastScanAt = new Date(serverTime.getTime() - 78 * 1000);
+  const nextScanAt = new Date(serverTime.getTime() + 42 * 1000);
+  return {
+    status: 'healthy',
+    scanning: false,
+    lastScanStartedAt: new Date(lastScanAt.getTime() - 2800).toISOString(),
+    lastScanAt: lastScanAt.toISOString(),
+    lastSuccessfulScanAt: lastScanAt.toISOString(),
+    durationMs: 2800,
+    devicesFound: fakeHosts.filter((hostEntry) => hostEntry.Now > 0).length,
+    interfaces: String(config.Ifaces || '').split(/\s+/).filter(Boolean),
+    lastError: null,
+    nextScanAt: nextScanAt.toISOString(),
+    serverTime: serverTime.toISOString(),
+    database: {
+      status: 'connected',
+      backend: 'sqlite',
+    },
+  };
+}
+
+function mockDiagnostics() {
+  const scanner = mockScannerStatus();
+  return {
+    ok: true,
+    generatedAt: scanner.serverTime,
+    checks: [
+      { check: 'LANnventory', status: 'ok', details: 'Running v' + String(config.Version).replace(/^v/, '') },
+      { check: 'Database', status: 'ok', details: 'SQLite connected' },
+      { check: 'arp-scan', status: 'ok', details: '/usr/bin/arp-scan' },
+      { check: 'Permissions', status: 'ok', details: 'Mock development environment' },
+      { check: 'Interface', status: 'ok', details: (scanner.interfaces.join(', ') || 'eth0') + ' available' },
+      { check: 'Scanner', status: 'ok', details: 'Healthy' },
+      { check: 'Last scan', status: 'ok', details: scanner.devicesFound + ' devices; completed ' + scanner.lastScanAt },
+      { check: 'Last successful scan', status: 'ok', details: scanner.lastSuccessfulScanAt },
+      { check: 'Scan duration', status: 'ok', details: '2.8 sec' },
+      { check: 'Scanner errors', status: 'ok', details: 'No scanner errors captured' },
+    ],
+  };
+}
+
 function routeReadOnly(req, res, url) {
   const pathname = decodeURIComponent(url.pathname);
 
@@ -1064,6 +1108,16 @@ function routeReadOnly(req, res, url) {
 
   if (req.method === 'GET' && pathname === '/api/version') {
     sendJSON(res, config.Version);
+    return true;
+  }
+
+  if (req.method === 'GET' && pathname === '/api/scanner/status') {
+    sendJSON(res, mockScannerStatus());
+    return true;
+  }
+
+  if (req.method === 'GET' && pathname === '/api/diagnostics') {
+    sendJSON(res, mockDiagnostics());
     return true;
   }
 

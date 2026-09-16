@@ -4,8 +4,15 @@ import { appConfig, pageContext } from "../functions/exports";
 import { normalizeColorMode, refreshAppConfig, setColorMode } from "../functions/theme";
 import { apiGetCachedUpdateStatus, apiGetUpdateStatus, setSharedUpdateStatus, sharedUpdateStatus } from "../functions/updateApi";
 import { confirmUpdate, startUpdateFlow } from "../functions/updateFlow";
+import {
+  refreshSharedScannerStatus,
+  scannerClockOffsetMs,
+  scannerCountdownLabel,
+  sharedScannerStatus,
+} from "../functions/scannerApi";
 
 const updateStatusPollMs = 60 * 1000;
+const scannerStatusPollMs = 15 * 1000;
 
 function Header() {
 
@@ -18,6 +25,8 @@ function Header() {
   const [updateInstalling, setUpdateInstalling] = createSignal(false);
   const [updateMessage, setUpdateMessage] = createSignal("");
   const [updateError, setUpdateError] = createSignal("");
+  const [scannerClockOffset, setScannerClockOffset] = createSignal(0);
+  const [scannerTick, setScannerTick] = createSignal(Date.now());
   const location = useLocation();
   let mobileNavButtonRef: HTMLButtonElement | undefined;
   let mobileNavPanelRef: HTMLDivElement | undefined;
@@ -28,6 +37,9 @@ function Header() {
   let updateInitialTimer: number | undefined;
   let updatePollTimer: number | undefined;
   let updateReconnectTimer: number | undefined;
+  let scannerInitialTimer: number | undefined;
+  let scannerPollTimer: number | undefined;
+  let scannerTickTimer: number | undefined;
   const navItems = [
     { label: "Home", href: "/" },
     { label: "Presence", href: "/history" },
@@ -46,6 +58,23 @@ function Header() {
   };
   const settingsUtilityClass = () => "nav-link wyl-navbar-utility wyl-navbar-settings" + (isActivePath("/config") ? " is-active" : "");
   const showUpdateIndicator = () => !!updateStatus()?.available;
+  const scannerStatus = sharedScannerStatus;
+  const scannerLabel = () => {
+    scannerTick();
+    const status = scannerStatus();
+    return status ? scannerCountdownLabel(status, scannerClockOffset()) : "";
+  };
+  const scannerNavClass = () => {
+    const status = scannerStatus()?.status;
+    if (status === "problem") return " is-problem";
+    if (status === "scanning") return " is-scanning";
+    return " is-healthy";
+  };
+  const scannerIconClass = () => scannerStatus()?.status === "problem"
+    ? "bi bi-exclamation-triangle-fill"
+    : scannerStatus()?.status === "scanning"
+      ? "bi bi-arrow-repeat"
+      : "bi bi-broadcast-pin";
   const activeSectionLabel = () => {
     if (showHostContext()) {
       return hostNavLabel();
@@ -134,6 +163,15 @@ function Header() {
     setUpdateOpen((open) => !open);
   };
 
+  const loadScannerStatus = async () => {
+    try {
+      const status = await refreshSharedScannerStatus();
+      setScannerClockOffset(scannerClockOffsetMs(status));
+    } catch (error) {
+      console.error("Failed to load scanner status", error);
+    }
+  };
+
   const handleHeaderUpdateNow = async () => {
     const status = updateStatus();
     if (!status?.available || !status.installSupported || updateInstalling()) {
@@ -201,6 +239,9 @@ function Header() {
     document.addEventListener("keydown", handleKeyDown);
     updateInitialTimer = window.setTimeout(() => void loadUpdateStatus(false), 1000);
     updatePollTimer = window.setInterval(() => void loadUpdateStatus(false), updateStatusPollMs);
+    scannerInitialTimer = window.setTimeout(() => void loadScannerStatus(), 350);
+    scannerPollTimer = window.setInterval(() => void loadScannerStatus(), scannerStatusPollMs);
+    scannerTickTimer = window.setInterval(() => setScannerTick(Date.now()), 1000);
 
     onCleanup(() => {
       document.removeEventListener("pointerdown", handlePointerDown);
@@ -213,6 +254,15 @@ function Header() {
       }
       if (updateReconnectTimer !== undefined) {
         window.clearTimeout(updateReconnectTimer);
+      }
+      if (scannerInitialTimer !== undefined) {
+        window.clearTimeout(scannerInitialTimer);
+      }
+      if (scannerPollTimer !== undefined) {
+        window.clearInterval(scannerPollTimer);
+      }
+      if (scannerTickTimer !== undefined) {
+        window.clearInterval(scannerTickTimer);
       }
     });
   });
@@ -299,6 +349,19 @@ function Header() {
           </Show>
         </ul>
         <ul class="navbar-nav wyl-navbar-actions">
+          <Show when={scannerStatus()}>
+            <li class="nav-item wyl-scanner-item">
+              <A
+                class={"nav-link wyl-navbar-utility wyl-scanner-toggle" + scannerNavClass()}
+                href="/config#diagnostics"
+                title={scannerLabel()}
+                aria-label={scannerLabel()}
+              >
+                <i class={scannerIconClass()} aria-hidden="true"></i>
+                <span class="wyl-scanner-nav-label">{scannerLabel()}</span>
+              </A>
+            </li>
+          </Show>
           <Show when={showUpdateIndicator()}>
             <li class="nav-item wyl-update-item">
               <button
