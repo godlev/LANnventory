@@ -227,5 +227,3 @@ func appendUniqueInterface(ifaces []string, iface string) []string {
 	}
 	return append(ifaces, iface)
 }
-
-}
