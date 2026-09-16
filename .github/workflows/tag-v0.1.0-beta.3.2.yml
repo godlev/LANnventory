@@ -1,0 +1,33 @@
+name: Tag v0.1.0-beta.3.2
+
+on:
+  push:
+    branches:
+      - tag-v0.1.0-beta.3.2
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout validated Phase 32 commit
+        uses: actions/checkout@v4
+        with:
+          ref: 2fd3728275adeddb89375d3a30699aa346186ab6
+          fetch-depth: 0
+
+      - name: Create beta.3.2 tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="v0.1.0-beta.3.2"
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+            echo "Tag $tag already exists; refusing to overwrite it."
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$tag" -m "LANnventory $tag Phase 32 test release"
+          git push origin "$tag"
