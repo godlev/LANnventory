@@ -17,9 +17,10 @@ var commandRunner = runCommand
 type ScanErrorKind string
 
 const (
-	ScanErrorCanceled  ScanErrorKind = "canceled"
-	ScanErrorExecution ScanErrorKind = "execution"
-	ScanErrorTimeout   ScanErrorKind = "timeout"
+	ScanErrorCanceled      ScanErrorKind = "canceled"
+	ScanErrorConfiguration ScanErrorKind = "configuration"
+	ScanErrorExecution     ScanErrorKind = "execution"
+	ScanErrorTimeout       ScanErrorKind = "timeout"
 )
 
 // ScanError describes one failed arp-scan source without relying on log parsing.
@@ -170,6 +171,22 @@ func ScanDetailedContext(ctx context.Context, ifaces, args string, strs []string
 		Success: true,
 	}
 
+	if ctx.Err() != nil {
+		result.Success = false
+		result.Canceled = true
+		return result
+	}
+
+	if !hasConfiguredScanSource(ifaces, strs) {
+		result.Success = false
+		result.Errors = append(result.Errors, ScanError{
+			Source:  "configuration",
+			Kind:    ScanErrorConfiguration,
+			Message: "no scan source configured",
+		})
+		return result
+	}
+
 	if ifaces != "" {
 		for _, iface := range strings.Fields(ifaces) {
 			if ctx.Err() != nil {
@@ -236,6 +253,18 @@ func ScanDetailedContext(ctx context.Context, ifaces, args string, strs []string
 func Scan(ifaces, args string, strs []string) ([]models.Host, bool) {
 	result := ScanDetailed(ifaces, args, strs)
 	return result.Hosts, result.Success
+}
+
+func hasConfiguredScanSource(ifaces string, strs []string) bool {
+	if len(strings.Fields(ifaces)) > 0 {
+		return true
+	}
+	for _, scanString := range strs {
+		if strings.TrimSpace(scanString) != "" {
+			return true
+		}
+	}
+	return false
 }
 
 func interfaceFromScanArgs(args []string) string {

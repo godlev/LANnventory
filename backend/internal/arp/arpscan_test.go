@@ -288,7 +288,7 @@ func TestScanReturnsTrueForSuccessfulEmptyResult(t *testing.T) {
 	}
 }
 
-func TestScanWithNoSourcesDoesNotRunCommand(t *testing.T) {
+func TestScanWithNoSourcesReturnsConfigurationFailureWithoutRunningCommand(t *testing.T) {
 	oldRunner := commandRunner
 	called := false
 	commandRunner = func(context.Context, string, ...string) commandResult {
@@ -299,15 +299,47 @@ func TestScanWithNoSourcesDoesNotRunCommand(t *testing.T) {
 		commandRunner = oldRunner
 	})
 
-	hosts, ok := Scan("", "-r 1", []string{"", "   "})
-	if !ok {
-		t.Fatal("Scan returned ok=false, want true when no scan source is configured")
+	result := ScanDetailed("", "-r 1", []string{"", "   "})
+	if result.Success {
+		t.Fatal("ScanDetailed returned Success=true with no configured scan source")
+	}
+	if result.Canceled {
+		t.Fatal("ScanDetailed returned Canceled=true for configuration failure")
 	}
 	if called {
-		t.Fatal("Scan executed commandRunner with empty IFACES and empty ARP strings")
+		t.Fatal("ScanDetailed executed commandRunner with empty IFACES and empty ARP strings")
+	}
+	if len(result.Hosts) != 0 {
+		t.Fatalf("ScanDetailed returned %d hosts, want 0", len(result.Hosts))
+	}
+	if len(result.Errors) != 1 {
+		t.Fatalf("Errors len = %d, want 1", len(result.Errors))
+	}
+	if result.Errors[0].Kind != ScanErrorConfiguration || result.Errors[0].Source != "configuration" {
+		t.Fatalf("Errors = %+v, want one configuration error", result.Errors)
+	}
+
+	hosts, ok := Scan("", "-r 1", []string{"", "   "})
+	if ok {
+		t.Fatal("Scan returned ok=true with no configured scan source")
 	}
 	if len(hosts) != 0 {
 		t.Fatalf("Scan returned %d hosts, want 0", len(hosts))
+	}
+}
+
+func TestConfiguredScanSourceDetectionDoesNotAutoDetectInterfaces(t *testing.T) {
+	if hasConfiguredScanSource("", nil) {
+		t.Fatal("empty configuration was treated as a scan source")
+	}
+	if hasConfiguredScanSource("   ", []string{"", "   "}) {
+		t.Fatal("whitespace-only configuration was treated as a scan source")
+	}
+	if !hasConfiguredScanSource("eth0", nil) {
+		t.Fatal("manual IFACES source was not detected")
+	}
+	if !hasConfiguredScanSource("", []string{"--localnet --interface=eth0"}) {
+		t.Fatal("manual ARP string source was not detected")
 	}
 }
 
