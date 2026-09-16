@@ -98,6 +98,40 @@ assert_no_arp_scan() {
     fail "${name} executed arp-scan"
 }
 
+assert_phase32_runtime_diagnostics() {
+  local name="$1"
+  local scanner_response="${tmpdir}/scanner-status.json"
+  local diagnostics_response="${tmpdir}/diagnostics.json"
+
+  docker exec "${name}" curl -fsS "http://127.0.0.1:8840/api/scanner/status" >"${scanner_response}" ||
+    fail "${name} /api/scanner/status request failed"
+  grep -Fq '"serverTime"' "${scanner_response}" ||
+    fail "${name} scanner status is missing serverTime"
+  grep -Fq '"database"' "${scanner_response}" ||
+    fail "${name} scanner status is missing database health"
+  grep -Fq '"nextScanAt"' "${scanner_response}" ||
+    fail "${name} scanner status is missing nextScanAt"
+  grep -Fq '"interfaces"' "${scanner_response}" ||
+    fail "${name} scanner status is missing interfaces"
+  grep -Fq '"lastError"' "${scanner_response}" ||
+    fail "${name} scanner status is missing lastError"
+
+  docker exec "${name}" curl -fsS "http://127.0.0.1:8840/api/diagnostics" >"${diagnostics_response}" ||
+    fail "${name} /api/diagnostics request failed"
+  grep -Fq '"checks"' "${diagnostics_response}" ||
+    fail "${name} diagnostics response is missing checks"
+  grep -Fq '"LANnventory"' "${diagnostics_response}" ||
+    fail "${name} diagnostics response is missing runtime check"
+  grep -Fq '"Database"' "${diagnostics_response}" ||
+    fail "${name} diagnostics response is missing database check"
+  grep -Fq '"arp-scan"' "${diagnostics_response}" ||
+    fail "${name} diagnostics response is missing arp-scan check"
+  grep -Fq '"Interface"' "${diagnostics_response}" ||
+    fail "${name} diagnostics response is missing interface check"
+  grep -Fq '"Scanner"' "${diagnostics_response}" ||
+    fail "${name} diagnostics response is missing scanner check"
+}
+
 assert_secret_redaction() {
   local name="$1"
   local config_response
@@ -150,6 +184,7 @@ assert_secret_redaction "${first_container}"
 assert_no_external_runtime_assets "${first_container}"
 assert_runtime_files_exist "${first_container}"
 assert_no_arp_scan "${first_container}"
+assert_phase32_runtime_diagnostics "${first_container}"
 first_config_hash="$(docker exec "${first_container}" sha256sum /data/WatchYourLAN/config_v2.yaml | awk '{print $1}')"
 stop_cleanly "${first_container}"
 docker rm "${first_container}" >/dev/null
@@ -162,6 +197,7 @@ assert_secret_redaction "${second_container}"
 assert_no_external_runtime_assets "${second_container}"
 assert_runtime_files_exist "${second_container}"
 assert_no_arp_scan "${second_container}"
+assert_phase32_runtime_diagnostics "${second_container}"
 second_config_hash="$(docker exec "${second_container}" sha256sum /data/WatchYourLAN/config_v2.yaml | awk '{print $1}')"
 [ "${first_config_hash}" = "${second_config_hash}" ] || fail "config_v2.yaml did not persist across container recreation"
 stop_cleanly "${second_container}"
