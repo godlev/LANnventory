@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -55,6 +56,95 @@ func getConfig(c *gin.Context) {
 // @Router       /health [get]
 func getHealth(c *gin.Context) {
 	c.String(http.StatusOK, "OK")
+}
+
+type scannerErrorResponse struct {
+	Source  string `json:"source"`
+	Command string `json:"command"`
+	Kind    string `json:"kind"`
+	Message string `json:"message"`
+	Output  string `json:"output,omitempty"`
+}
+
+type scannerDatabaseResponse struct {
+	Status  string `json:"status"`
+	Backend string `json:"backend,omitempty"`
+	Error   string `json:"error,omitempty"`
+}
+
+type scannerStatusResponse struct {
+	Status               string                   `json:"status"`
+	Scanning             bool                     `json:"scanning"`
+	LastScanStartedAt    *time.Time               `json:"lastScanStartedAt"`
+	LastScanAt           *time.Time               `json:"lastScanAt"`
+	LastSuccessfulScanAt *time.Time               `json:"lastSuccessfulScanAt"`
+	DurationMs           int64                    `json:"durationMs"`
+	DevicesFound         int                      `json:"devicesFound"`
+	Interfaces           []string                 `json:"interfaces"`
+	LastError            *scannerErrorResponse    `json:"lastError"`
+	NextScanAt           *time.Time               `json:"nextScanAt"`
+	ServerTime           time.Time                `json:"serverTime"`
+	Database             scannerDatabaseResponse  `json:"database"`
+}
+
+var (
+	scannerStateSnapshot  = routines.GetScannerState
+	databaseHealthSnapshot = gdb.GetDatabaseHealth
+	scannerStatusNow      = func() time.Time { return time.Now().UTC() }
+)
+
+func getScannerStatus(c *gin.Context) {
+	state := scannerStateSnapshot()
+	dbHealth := databaseHealthSnapshot()
+
+	status := state.Status
+	if status == "" {
+		status = routines.ScannerStatusProblem
+	}
+
+	dbStatus := "problem"
+	if dbHealth.Connected {
+		dbStatus = "connected"
+	}
+
+	var lastError *scannerErrorResponse
+	if len(state.LastErrors) > 0 {
+		item := state.LastErrors[len(state.LastErrors)-1]
+		lastError = &scannerErrorResponse{
+			Source:  item.Source,
+			Command: item.Command,
+			Kind:    string(item.Kind),
+			Message: item.Message,
+			Output:  item.Output,
+		}
+	}
+
+	c.IndentedJSON(http.StatusOK, scannerStatusResponse{
+		Status:               string(status),
+		Scanning:             status == routines.ScannerStatusScanning,
+		LastScanStartedAt:    scannerTimePointer(state.LastScanStartedAt),
+		LastScanAt:           scannerTimePointer(state.LastScanAt),
+		LastSuccessfulScanAt: scannerTimePointer(state.LastSuccessfulScanAt),
+		DurationMs:           state.Duration.Milliseconds(),
+		DevicesFound:         state.DevicesFound,
+		Interfaces:           append([]string(nil), state.Interfaces...),
+		LastError:            lastError,
+		NextScanAt:           scannerTimePointer(state.NextScanAt),
+		ServerTime:           scannerStatusNow(),
+		Database: scannerDatabaseResponse{
+			Status:  dbStatus,
+			Backend: dbHealth.Backend,
+			Error:   dbHealth.Error,
+		},
+	})
+}
+
+func scannerTimePointer(value time.Time) *time.Time {
+	if value.IsZero() {
+		return nil
+	}
+	copy := value
+	return &copy
 }
 
 // notifyTest godoc
