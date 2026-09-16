@@ -17,6 +17,7 @@ var commandRunner = runCommand
 type ScanErrorKind string
 
 const (
+	ScanErrorCanceled  ScanErrorKind = "canceled"
 	ScanErrorExecution ScanErrorKind = "execution"
 	ScanErrorTimeout   ScanErrorKind = "timeout"
 )
@@ -34,6 +35,7 @@ type ScanError struct {
 type ScanResult struct {
 	Hosts      []models.Host
 	Success    bool
+	Canceled   bool
 	Interfaces []string
 	Errors     []ScanError
 }
@@ -43,12 +45,12 @@ type commandResult struct {
 	Error  *ScanError
 }
 
-func scanIface(iface, scanArgs string) commandResult {
+func scanIface(ctx context.Context, iface, scanArgs string) commandResult {
 	args := []string{"-glNx"}
 	args = append(args, strings.Fields(scanArgs)...)
 	args = append(args, "-I", iface)
 
-	result := commandRunner("arp-scan", args...)
+	result := commandRunner(ctx, "arp-scan", args...)
 	if result.Error != nil {
 		scanErr := *result.Error
 		scanErr.Source = iface
@@ -58,13 +60,13 @@ func scanIface(iface, scanArgs string) commandResult {
 	return result
 }
 
-func scanStr(str string) commandResult {
+func scanStr(ctx context.Context, str string) commandResult {
 	args := strings.Fields(str)
 	if len(args) == 0 {
 		return commandResult{}
 	}
 
-	result := commandRunner("arp-scan", args...)
+	result := commandRunner(ctx, "arp-scan", args...)
 	if result.Error != nil {
 		scanErr := *result.Error
 		scanErr.Source = str
@@ -74,14 +76,25 @@ func scanStr(str string) commandResult {
 	return result
 }
 
-func runCommand(name string, args ...string) commandResult {
-	ctx, cancel := context.WithTimeout(context.Background(), scanCommandTimeout)
+func runCommand(parent context.Context, name string, args ...string) commandResult {
+	ctx, cancel := context.WithTimeout(parent, scanCommandTimeout)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, name, args...)
 
 	out, err := cmd.CombinedOutput()
 	slog.Debug(cmd.String())
+
+	if parent.Err() != nil {
+		return commandResult{
+			Error: &ScanError{
+				Command: cmd.String(),
+				Kind:    ScanErrorCanceled,
+				Message: "scan canceled",
+				Output:  strings.TrimSpace(string(out)),
+			},
+		}
+	}
 
 	if ctx.Err() == context.DeadlineExceeded {
 		message := "command timed out after " + scanCommandTimeout.String()
@@ -147,6 +160,11 @@ func parseOutput(text, iface string) []models.Host {
 
 // ScanDetailed scans all configured sources and returns structured execution metadata.
 func ScanDetailed(ifaces, args string, strs []string) ScanResult {
+	return ScanDetailedContext(context.Background(), ifaces, args, strs)
+}
+
+// ScanDetailedContext scans all configured sources and stops promptly when ctx is cancelled.
+func ScanDetailedContext(ctx context.Context, ifaces, args string, strs []string) ScanResult {
 	result := ScanResult{
 		Hosts:   []models.Host{},
 		Success: true,
@@ -154,13 +172,23 @@ func ScanDetailed(ifaces, args string, strs []string) ScanResult {
 
 	if ifaces != "" {
 		for _, iface := range strings.Fields(ifaces) {
+			if ctx.Err() != nil {
+				result.Success = false
+				result.Canceled = true
+				return result
+			}
+
 			result.Interfaces = appendUniqueInterface(result.Interfaces, iface)
 			slog.Debug("Scanning interface " + iface)
 
-			cmdResult := scanIface(iface, args)
+			cmdResult := scanIface(ctx, iface, args)
 			if cmdResult.Error != nil {
 				result.Success = false
 				result.Errors = append(result.Errors, *cmdResult.Error)
+				if cmdResult.Error.Kind == ScanErrorCanceled {
+					result.Canceled = true
+					return result
+				}
 				continue
 			}
 
@@ -174,6 +202,11 @@ func ScanDetailed(ifaces, args string, strs []string) ScanResult {
 		if scanString == "" {
 			continue
 		}
+		if ctx.Err() != nil {
+			result.Success = false
+			result.Canceled = true
+			return result
+		}
 
 		scanArgs := strings.Fields(scanString)
 		if iface := interfaceFromScanArgs(scanArgs); iface != "" {
@@ -181,10 +214,14 @@ func ScanDetailed(ifaces, args string, strs []string) ScanResult {
 		}
 
 		slog.Debug("Scanning string " + scanString)
-		cmdResult := scanStr(scanString)
+		cmdResult := scanStr(ctx, scanString)
 		if cmdResult.Error != nil {
 			result.Success = false
 			result.Errors = append(result.Errors, *cmdResult.Error)
+			if cmdResult.Error.Kind == ScanErrorCanceled {
+				result.Canceled = true
+				return result
+			}
 			continue
 		}
 

@@ -1,6 +1,7 @@
 package routines
 
 import (
+	"context"
 	"log/slog"
 	"sync"
 
@@ -8,32 +9,53 @@ import (
 )
 
 var (
-	quitScan      = make(chan bool)
 	scanRestartMu sync.Mutex
+	scanCancel    context.CancelFunc
+	scanDone      chan struct{}
 	startScanFunc = startScan
 )
 
-// ScanRestart - start or update routines
+// ScanRestart stops any existing scanner routine before starting a replacement.
 func ScanRestart() {
 	scanRestartMu.Lock()
 	defer scanRestartMu.Unlock()
 
-	close(quitScan)
+	stopActiveScanLocked()
 
 	slog.Info("Restarting scan routine")
 	setLogLevel()
 
-	quitScan = make(chan bool)
-	go startScanFunc(quitScan) // scan-routine.go
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	scanCancel = cancel
+	scanDone = done
+
+	go func() {
+		defer close(done)
+		startScanFunc(ctx)
+	}()
 }
 
-// ScanStop signals the active scan routine to stop.
+// ScanStop cancels the active scanner routine and waits for it to stop before returning.
 func ScanStop() {
 	scanRestartMu.Lock()
 	defer scanRestartMu.Unlock()
 
-	close(quitScan)
-	quitScan = make(chan bool)
+	stopActiveScanLocked()
+}
+
+func stopActiveScanLocked() {
+	if scanCancel == nil {
+		return
+	}
+
+	scanCancel()
+	if scanDone != nil {
+		<-scanDone
+	}
+
+	scanCancel = nil
+	scanDone = nil
 }
 
 func setLogLevel() {

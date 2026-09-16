@@ -1,6 +1,7 @@
 package arp
 
 import (
+	"context"
 	"os"
 	"sync"
 	"testing"
@@ -78,7 +79,7 @@ func TestRunCommandTimesOut(t *testing.T) {
 	})
 	t.Setenv("WYL_ARP_TEST_HELPER", "1")
 
-	result := runCommand(os.Args[0], "-test.run=TestHelperProcess", "--", "sleep")
+	result := runCommand(context.Background(), os.Args[0], "-test.run=TestHelperProcess", "--", "sleep")
 	if result.Error == nil {
 		t.Fatal("runCommand returned no error after timeout")
 	}
@@ -93,10 +94,53 @@ func TestRunCommandTimesOut(t *testing.T) {
 	}
 }
 
+func TestRunCommandCanBeCanceled(t *testing.T) {
+	t.Setenv("WYL_ARP_TEST_HELPER", "1")
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	result := runCommand(ctx, os.Args[0], "-test.run=TestHelperProcess", "--", "sleep")
+	if result.Error == nil {
+		t.Fatal("runCommand returned no error for canceled context")
+	}
+	if result.Error.Kind != ScanErrorCanceled {
+		t.Fatalf("error kind = %q, want %q", result.Error.Kind, ScanErrorCanceled)
+	}
+}
+
+func TestScanDetailedContextStopsAfterCancellation(t *testing.T) {
+	oldRunner := commandRunner
+	ctx, cancel := context.WithCancel(context.Background())
+	calls := 0
+	commandRunner = func(_ context.Context, _ string, _ ...string) commandResult {
+		calls++
+		cancel()
+		return commandResult{Error: &ScanError{Kind: ScanErrorCanceled, Message: "scan canceled"}}
+	}
+	t.Cleanup(func() {
+		commandRunner = oldRunner
+	})
+
+	result := ScanDetailedContext(ctx, "eth0 wifi0", "", nil)
+	if !result.Canceled {
+		t.Fatal("ScanDetailedContext returned Canceled=false")
+	}
+	if result.Success {
+		t.Fatal("ScanDetailedContext returned Success=true after cancellation")
+	}
+	if calls != 1 {
+		t.Fatalf("command runner calls = %d, want 1", calls)
+	}
+	if len(result.Errors) != 1 || result.Errors[0].Source != "eth0" {
+		t.Fatalf("Errors = %+v, want one eth0 cancellation", result.Errors)
+	}
+}
+
 func TestRunCommandCapturesFailureDetails(t *testing.T) {
 	t.Setenv("WYL_ARP_TEST_HELPER", "1")
 
-	result := runCommand(os.Args[0], "-test.run=TestHelperProcess", "--", "fail")
+	result := runCommand(context.Background(), os.Args[0], "-test.run=TestHelperProcess", "--", "fail")
 	if result.Error == nil {
 		t.Fatal("runCommand returned no error for failing command")
 	}
@@ -116,7 +160,7 @@ func TestRunCommandCapturesFailureDetails(t *testing.T) {
 
 func TestScanReturnsFalseWhenCommandFails(t *testing.T) {
 	oldRunner := commandRunner
-	commandRunner = func(string, ...string) commandResult {
+	commandRunner = func(context.Context, string, ...string) commandResult {
 		return commandResult{Error: &ScanError{Kind: ScanErrorExecution, Message: "test command failed"}}
 	}
 	t.Cleanup(func() {
@@ -134,7 +178,7 @@ func TestScanReturnsFalseWhenCommandFails(t *testing.T) {
 
 func TestScanDetailedReturnsStructuredFailure(t *testing.T) {
 	oldRunner := commandRunner
-	commandRunner = func(string, ...string) commandResult {
+	commandRunner = func(context.Context, string, ...string) commandResult {
 		return commandResult{
 			Error: &ScanError{
 				Kind:    ScanErrorExecution,
@@ -178,7 +222,7 @@ func TestScanDetailedReturnsStructuredFailure(t *testing.T) {
 
 func TestScanDetailedPreservesSuccessfulHostsOnPartialFailure(t *testing.T) {
 	oldRunner := commandRunner
-	commandRunner = func(_ string, args ...string) commandResult {
+	commandRunner = func(_ context.Context, _ string, args ...string) commandResult {
 		if ifaceFromArgs(args) == "wifi0" {
 			return commandResult{
 				Error: &ScanError{
@@ -210,7 +254,7 @@ func TestScanDetailedPreservesSuccessfulHostsOnPartialFailure(t *testing.T) {
 
 func TestScanDetailedTracksExplicitInterfaceFromArpString(t *testing.T) {
 	oldRunner := commandRunner
-	commandRunner = func(string, ...string) commandResult {
+	commandRunner = func(context.Context, string, ...string) commandResult {
 		return commandResult{}
 	}
 	t.Cleanup(func() {
@@ -228,7 +272,7 @@ func TestScanDetailedTracksExplicitInterfaceFromArpString(t *testing.T) {
 
 func TestScanReturnsTrueForSuccessfulEmptyResult(t *testing.T) {
 	oldRunner := commandRunner
-	commandRunner = func(string, ...string) commandResult {
+	commandRunner = func(context.Context, string, ...string) commandResult {
 		return commandResult{}
 	}
 	t.Cleanup(func() {
@@ -247,7 +291,7 @@ func TestScanReturnsTrueForSuccessfulEmptyResult(t *testing.T) {
 func TestScanWithNoSourcesDoesNotRunCommand(t *testing.T) {
 	oldRunner := commandRunner
 	called := false
-	commandRunner = func(string, ...string) commandResult {
+	commandRunner = func(context.Context, string, ...string) commandResult {
 		called = true
 		return commandResult{Error: &ScanError{Kind: ScanErrorExecution, Message: "test command failed"}}
 	}
@@ -270,7 +314,7 @@ func TestScanWithNoSourcesDoesNotRunCommand(t *testing.T) {
 func TestScanSplitsArpArgsAndIgnoresIfaceWhitespace(t *testing.T) {
 	oldRunner := commandRunner
 	var calls [][]string
-	commandRunner = func(_ string, args ...string) commandResult {
+	commandRunner = func(_ context.Context, _ string, args ...string) commandResult {
 		calls = append(calls, append([]string(nil), args...))
 		return commandResult{Output: "192.168.1.1\tAA:BB:CC:DD:EE:FF\tRouter Inc\n"}
 	}
@@ -314,7 +358,7 @@ func TestConcurrentScansKeepSeparateIfaceArgs(t *testing.T) {
 	var mu sync.Mutex
 	callsByIface := make(map[string][]string)
 
-	commandRunner = func(_ string, args ...string) commandResult {
+	commandRunner = func(_ context.Context, _ string, args ...string) commandResult {
 		iface := ifaceFromArgs(args)
 
 		mu.Lock()

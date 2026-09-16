@@ -1,6 +1,7 @@
 package routines
 
 import (
+	"context"
 	"log/slog"
 	"time"
 
@@ -14,13 +15,13 @@ import (
 	"github.com/godlev/LANnventory/internal/prometheus"
 )
 
-func startScan(quit chan bool) {
+func startScan(ctx context.Context) {
 	var lastDate, nowDate, plusDate time.Time
 	var foundHosts []models.Host
 
 	for {
 		select {
-		case <-quit:
+		case <-ctx.Done():
 			return
 		default:
 			config := conf.GetAppConfig()
@@ -28,18 +29,24 @@ func startScan(quit chan bool) {
 			plusDate = lastDate.Add(time.Duration(config.Timeout) * time.Second)
 
 			if nowDate.After(plusDate) {
+				scanResult := arp.ScanDetailedContext(ctx, config.Ifaces, config.ArpArgs, config.ArpStrs)
+				if ctx.Err() != nil || scanResult.Canceled {
+					return
+				}
 
-				scanResult := arp.ScanDetailed(config.Ifaces, config.ArpArgs, config.ArpStrs)
 				foundHosts = scanResult.Hosts
 				if !processScanResult(foundHosts, scanResult.Success) {
 					lastDate = time.Now()
-					continue
+				} else {
+					lastDate = time.Now()
 				}
-
-				lastDate = time.Now()
 			}
+		}
 
-			time.Sleep(time.Duration(1) * time.Minute)
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(time.Minute):
 		}
 	}
 }
