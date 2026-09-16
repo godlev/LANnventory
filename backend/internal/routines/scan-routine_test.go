@@ -188,6 +188,97 @@ func TestStartScanFailureStillSchedulesNextScan(t *testing.T) {
 	}
 }
 
+func TestNoScanSourceDoesNotMarkOnlineHostsOffline(t *testing.T) {
+	setupScanRoutineTest(t)
+
+	oldNow := scannerNow
+	oldScanNetwork := scanNetwork
+	oldProcess := processScanResultFunc
+	oldWait := waitForNextScan
+	oldState := GetScannerState()
+
+	started := time.Date(2026, 9, 16, 10, 30, 0, 0, time.UTC)
+	completed := started.Add(20 * time.Millisecond)
+	nowCalls := 0
+
+	conf.AppConfig.Ifaces = ""
+	conf.AppConfig.ArpArgs = "-r 1"
+	conf.AppConfig.ArpStrs = nil
+	conf.AppConfig.Timeout = 120
+
+	gdb.Update("now", models.Host{
+		Name:  "router",
+		Iface: "eth0",
+		IP:    "192.168.1.1",
+		Mac:   "AA:BB:CC:DD:EE:99",
+		Hw:    "Gateway Vendor",
+		Date:  "2026-09-16 10:00:00",
+		Known: 1,
+		Now:   1,
+	})
+	hosts := gdb.SelectByMAC("now", "AA:BB:CC:DD:EE:99")
+	if len(hosts) != 1 {
+		t.Fatalf("seeded hosts len = %d, want 1", len(hosts))
+	}
+
+	setScannerStateForTest(ScannerState{})
+	scannerNow = func() time.Time {
+		nowCalls++
+		if nowCalls == 1 {
+			return started
+		}
+		return completed
+	}
+	scanNetwork = arp.ScanDetailedContext
+	processScanResultFunc = processScanResult
+	waitForNextScan = func(context.Context, time.Time) bool {
+		return false
+	}
+
+	t.Cleanup(func() {
+		scannerNow = oldNow
+		scanNetwork = oldScanNetwork
+		processScanResultFunc = oldProcess
+		waitForNextScan = oldWait
+		setScannerStateForTest(oldState)
+	})
+
+	startScan(context.Background())
+
+	updated := gdb.SelectByID(hosts[0].ID)
+	if updated.Now != 1 {
+		t.Fatalf("Now after no-source scanner cycle = %d, want 1", updated.Now)
+	}
+
+	events, ok := gdb.SelectEvents(10, "")
+	if !ok {
+		t.Fatal("SelectEvents failed")
+	}
+	if len(events) != 0 {
+		t.Fatalf("events len after no-source scanner cycle = %d, want 0: %+v", len(events), events)
+	}
+
+	state := GetScannerState()
+	if state.Status != ScannerStatusProblem {
+		t.Fatalf("scanner Status = %q, want %q", state.Status, ScannerStatusProblem)
+	}
+	if state.DevicesFound != 0 {
+		t.Fatalf("DevicesFound = %d, want 0", state.DevicesFound)
+	}
+	if len(state.LastErrors) != 1 {
+		t.Fatalf("LastErrors len = %d, want 1", len(state.LastErrors))
+	}
+	if state.LastErrors[0].Kind != arp.ScanErrorConfiguration {
+		t.Fatalf("LastErrors[0].Kind = %q, want %q", state.LastErrors[0].Kind, arp.ScanErrorConfiguration)
+	}
+	if state.LastErrors[0].Source != "configuration" {
+		t.Fatalf("LastErrors[0].Source = %q, want configuration", state.LastErrors[0].Source)
+	}
+	if !state.NextScanAt.Equal(completed.Add(120 * time.Second)) {
+		t.Fatalf("NextScanAt = %v, want %v", state.NextScanAt, completed.Add(120*time.Second))
+	}
+}
+
 func TestWaitUntilNextScanStopsImmediatelyOnContextCancel(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
