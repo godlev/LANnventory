@@ -145,3 +145,43 @@ jobs:
 
       - name: Run safe container smoke test
         run: bash .github/scripts/container-smoke-test.sh lannventory:ci
+
+
+  promote-phase32:
+    if: github.ref == 'refs/heads/phase-32-frontend-build'
+    runs-on: ubuntu-22.04
+    needs:
+      - build-and-test
+      - docker-build
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout frontend build branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download generated frontend bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: phase32-frontend-bundle
+          path: backend/internal/web/public
+
+      - name: Prepare clean Phase 32.5 commit
+        run: |
+          git fetch origin phase-32-beta-hardening
+          git checkout origin/phase-32-beta-hardening -- .github/workflows/packaging-check.yml
+          git reset origin/phase-32-beta-hardening
+          git add \
+            frontend/src/components/Header.tsx \
+            frontend/src/components/Config/Diagnostics.tsx \
+            frontend/src/pages/Config.tsx \
+            frontend/src/functions/scannerApi.ts \
+            frontend/src/App.css \
+            frontend/dev/mock-api.mjs \
+            backend/internal/web/public
+          git diff --cached --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Phase 32.5: add scanner health and diagnostics UI"
+          git push --force origin HEAD:phase-32-frontend-ready
