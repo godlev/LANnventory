@@ -15,39 +15,67 @@ import (
 	"github.com/godlev/LANnventory/internal/prometheus"
 )
 
+var (
+	scannerNow = func() time.Time {
+		return time.Now().UTC()
+	}
+	scanNetwork           = arp.ScanDetailedContext
+	processScanResultFunc = processScanResult
+	waitForNextScan       = waitUntilNextScan
+)
+
 func startScan(ctx context.Context) {
-	var lastDate, nowDate, plusDate time.Time
-	var foundHosts []models.Host
-
 	for {
-		select {
-		case <-ctx.Done():
+		if ctx.Err() != nil {
 			return
-		default:
-			config := conf.GetAppConfig()
-			nowDate = time.Now()
-			plusDate = lastDate.Add(time.Duration(config.Timeout) * time.Second)
+		}
 
-			if nowDate.After(plusDate) {
-				scanResult := arp.ScanDetailedContext(ctx, config.Ifaces, config.ArpArgs, config.ArpStrs)
-				if ctx.Err() != nil || scanResult.Canceled {
-					return
-				}
+		config := conf.GetAppConfig()
+		started := scannerNow()
+		markScanStarted(started)
 
-				foundHosts = scanResult.Hosts
-				if !processScanResult(foundHosts, scanResult.Success) {
-					lastDate = time.Now()
-				} else {
-					lastDate = time.Now()
-				}
+		scanResult := scanNetwork(ctx, config.Ifaces, config.ArpArgs, config.ArpStrs)
+		if ctx.Err() != nil || scanResult.Canceled {
+			return
+		}
+
+		applied := processScanResultFunc(scanResult.Hosts, scanResult.Success)
+		completed := scannerNow()
+
+		interval := time.Duration(config.Timeout) * time.Second
+		if interval <= 0 {
+			interval = time.Second
+		}
+		next := completed.Add(interval)
+		markScanCompleted(scanResult, started, completed, next, applied)
+
+		if !waitForNextScan(ctx, next) {
+			return
+		}
+	}
+}
+
+func waitUntilNextScan(ctx context.Context, next time.Time) bool {
+	delay := time.Until(next)
+	if delay < 0 {
+		delay = 0
+	}
+
+	timer := time.NewTimer(delay)
+	defer func() {
+		if !timer.Stop() {
+			select {
+			case <-timer.C:
+			default:
 			}
 		}
+	}()
 
-		select {
-		case <-ctx.Done():
-			return
-		case <-time.After(time.Minute):
-		}
+	select {
+	case <-ctx.Done():
+		return false
+	case <-timer.C:
+		return true
 	}
 }
 

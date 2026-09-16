@@ -1,9 +1,12 @@
 package routines
 
 import (
+	"context"
 	"path/filepath"
 	"testing"
+	"time"
 
+	"github.com/godlev/LANnventory/internal/arp"
 	"github.com/godlev/LANnventory/internal/conf"
 	"github.com/godlev/LANnventory/internal/gdb"
 	"github.com/godlev/LANnventory/internal/models"
@@ -26,6 +29,172 @@ func setupScanRoutineTest(t *testing.T) {
 		}
 		conf.AppConfig = oldConfig
 	})
+}
+
+func TestStartScanPublishesHealthyStateAndExactNextSchedule(t *testing.T) {
+	oldConfig := conf.GetAppConfig()
+	oldNow := scannerNow
+	oldScanNetwork := scanNetwork
+	oldProcess := processScanResultFunc
+	oldWait := waitForNextScan
+	oldState := GetScannerState()
+
+	started := time.Date(2026, 9, 16, 9, 30, 0, 0, time.UTC)
+	completed := started.Add(2800 * time.Millisecond)
+	nowCalls := 0
+	var scheduled time.Time
+
+	conf.SetAppConfigForTest(models.Conf{
+		Ifaces:   "eth0",
+		Timeout:  37,
+		LogLevel: "info",
+	})
+	setScannerStateForTest(ScannerState{})
+	scannerNow = func() time.Time {
+		nowCalls++
+		if nowCalls == 1 {
+			return started
+		}
+		return completed
+	}
+	scanNetwork = func(context.Context, string, string, []string) arp.ScanResult {
+		state := GetScannerState()
+		if state.Status != ScannerStatusScanning {
+			t.Fatalf("Status during scan = %q, want %q", state.Status, ScannerStatusScanning)
+		}
+		return arp.ScanResult{
+			Success:    true,
+			Interfaces: []string{"eth0"},
+			Hosts: []models.Host{
+				{Mac: "AA:BB:CC:DD:EE:01"},
+				{Mac: "AA:BB:CC:DD:EE:02"},
+			},
+		}
+	}
+	processScanResultFunc = func([]models.Host, bool) bool {
+		return true
+	}
+	waitForNextScan = func(_ context.Context, next time.Time) bool {
+		scheduled = next
+		return false
+	}
+
+	t.Cleanup(func() {
+		conf.SetAppConfigForTest(oldConfig)
+		scannerNow = oldNow
+		scanNetwork = oldScanNetwork
+		processScanResultFunc = oldProcess
+		waitForNextScan = oldWait
+		setScannerStateForTest(oldState)
+	})
+
+	startScan(context.Background())
+
+	state := GetScannerState()
+	wantNext := completed.Add(37 * time.Second)
+	if state.Status != ScannerStatusHealthy {
+		t.Fatalf("Status = %q, want %q", state.Status, ScannerStatusHealthy)
+	}
+	if !state.LastScanStartedAt.Equal(started) {
+		t.Fatalf("LastScanStartedAt = %v, want %v", state.LastScanStartedAt, started)
+	}
+	if !state.LastScanAt.Equal(completed) || !state.LastSuccessfulScanAt.Equal(completed) {
+		t.Fatalf("successful scan timestamps = %+v", state)
+	}
+	if state.Duration != 2800*time.Millisecond {
+		t.Fatalf("Duration = %s, want 2.8s", state.Duration)
+	}
+	if state.DevicesFound != 2 {
+		t.Fatalf("DevicesFound = %d, want 2", state.DevicesFound)
+	}
+	if len(state.Interfaces) != 1 || state.Interfaces[0] != "eth0" {
+		t.Fatalf("Interfaces = %v, want [eth0]", state.Interfaces)
+	}
+	if !state.NextScanAt.Equal(wantNext) || !scheduled.Equal(wantNext) {
+		t.Fatalf("next scan state=%v scheduled=%v want=%v", state.NextScanAt, scheduled, wantNext)
+	}
+}
+
+func TestStartScanFailureStillSchedulesNextScan(t *testing.T) {
+	oldConfig := conf.GetAppConfig()
+	oldNow := scannerNow
+	oldScanNetwork := scanNetwork
+	oldProcess := processScanResultFunc
+	oldWait := waitForNextScan
+	oldState := GetScannerState()
+
+	lastSuccess := time.Date(2026, 9, 16, 8, 0, 0, 0, time.UTC)
+	started := time.Date(2026, 9, 16, 9, 0, 0, 0, time.UTC)
+	completed := started.Add(4 * time.Second)
+	nowCalls := 0
+
+	conf.SetAppConfigForTest(models.Conf{
+		Ifaces:   "eth0",
+		Timeout:  120,
+		LogLevel: "info",
+	})
+	setScannerStateForTest(ScannerState{
+		Status:               ScannerStatusHealthy,
+		LastSuccessfulScanAt: lastSuccess,
+	})
+	scannerNow = func() time.Time {
+		nowCalls++
+		if nowCalls == 1 {
+			return started
+		}
+		return completed
+	}
+	scanNetwork = func(context.Context, string, string, []string) arp.ScanResult {
+		return arp.ScanResult{
+			Success:    false,
+			Interfaces: []string{"eth0"},
+			Errors: []arp.ScanError{{
+				Source:  "eth0",
+				Kind:    arp.ScanErrorTimeout,
+				Message: "command timed out",
+			}},
+		}
+	}
+	processScanResultFunc = func([]models.Host, bool) bool {
+		return false
+	}
+	waitForNextScan = func(context.Context, time.Time) bool {
+		return false
+	}
+
+	t.Cleanup(func() {
+		conf.SetAppConfigForTest(oldConfig)
+		scannerNow = oldNow
+		scanNetwork = oldScanNetwork
+		processScanResultFunc = oldProcess
+		waitForNextScan = oldWait
+		setScannerStateForTest(oldState)
+	})
+
+	startScan(context.Background())
+
+	state := GetScannerState()
+	if state.Status != ScannerStatusProblem {
+		t.Fatalf("Status = %q, want %q", state.Status, ScannerStatusProblem)
+	}
+	if !state.LastSuccessfulScanAt.Equal(lastSuccess) {
+		t.Fatalf("LastSuccessfulScanAt = %v, want preserved %v", state.LastSuccessfulScanAt, lastSuccess)
+	}
+	if !state.NextScanAt.Equal(completed.Add(120 * time.Second)) {
+		t.Fatalf("NextScanAt = %v, want %v", state.NextScanAt, completed.Add(120*time.Second))
+	}
+	if len(state.LastErrors) != 1 || state.LastErrors[0].Kind != arp.ScanErrorTimeout {
+		t.Fatalf("LastErrors = %+v, want timeout", state.LastErrors)
+	}
+}
+
+func TestWaitUntilNextScanStopsImmediatelyOnContextCancel(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	if waitUntilNextScan(ctx, time.Now().Add(time.Hour)) {
+		t.Fatal("waitUntilNextScan returned true after context cancellation")
+	}
 }
 
 func TestCompareHostsPreservesDeviceType(t *testing.T) {

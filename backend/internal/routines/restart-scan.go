@@ -24,6 +24,7 @@ func ScanRestart() {
 
 	slog.Info("Restarting scan routine")
 	setLogLevel()
+	markScannerStarting()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
