@@ -226,7 +226,8 @@ func ScanDetailedContext(ctx context.Context, ifaces, args string, strs []string
 		}
 
 		scanArgs := strings.Fields(scanString)
-		if iface := interfaceFromScanArgs(scanArgs); iface != "" {
+		iface := interfaceForScanArgs(scanArgs)
+		if iface != "" {
 			result.Interfaces = appendUniqueInterface(result.Interfaces, iface)
 		}
 
@@ -243,7 +244,7 @@ func ScanDetailedContext(ctx context.Context, ifaces, args string, strs []string
 		}
 
 		slog.Debug("Found IPs: \n" + cmdResult.Output)
-		result.Hosts = append(result.Hosts, parseOutput(cmdResult.Output, scanArgs[len(scanArgs)-1])...)
+		result.Hosts = append(result.Hosts, parseOutput(cmdResult.Output, iface)...)
 	}
 
 	return result
@@ -265,6 +266,19 @@ func hasConfiguredScanSource(ifaces string, strs []string) bool {
 		}
 	}
 	return false
+}
+
+func interfaceForScanArgs(args []string) string {
+	if iface := interfaceFromScanArgs(args); iface != "" {
+		return iface
+	}
+	if len(args) == 0 {
+		return ""
+	}
+
+	// Preserve the upstream ARP_STRS convention: without an explicit -I/--interface,
+	// the final argument is used as the host interface label.
+	return args[len(args)-1]
 }
 
 func interfaceFromScanArgs(args []string) string {

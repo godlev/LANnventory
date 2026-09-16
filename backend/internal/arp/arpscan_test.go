@@ -3,6 +3,7 @@ package arp
 import (
 	"context"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -252,21 +253,55 @@ func TestScanDetailedPreservesSuccessfulHostsOnPartialFailure(t *testing.T) {
 	}
 }
 
-func TestScanDetailedTracksExplicitInterfaceFromArpString(t *testing.T) {
+func TestScanDetailedUsesExplicitInterfaceFromArpStringForHostsAndState(t *testing.T) {
 	oldRunner := commandRunner
 	commandRunner = func(context.Context, string, ...string) commandResult {
-		return commandResult{}
+		return commandResult{Output: "192.168.1.50\tAA:BB:CC:DD:EE:50\tVLAN Device\n"}
 	}
 	t.Cleanup(func() {
 		commandRunner = oldRunner
 	})
 
-	result := ScanDetailed("", "", []string{"--localnet --interface=lan0"})
+	result := ScanDetailed("", "", []string{"-gNx 192.168.1.0/24 -I lan0 -r 1"})
 	if !result.Success {
 		t.Fatal("ScanDetailed returned Success=false, want true")
 	}
 	if len(result.Interfaces) != 1 || result.Interfaces[0] != "lan0" {
 		t.Fatalf("Interfaces = %v, want [lan0]", result.Interfaces)
+	}
+	if len(result.Hosts) != 1 {
+		t.Fatalf("Hosts len = %d, want 1", len(result.Hosts))
+	}
+	if result.Hosts[0].Iface != "lan0" {
+		t.Fatalf("Host.Iface = %q, want lan0", result.Hosts[0].Iface)
+	}
+}
+
+func TestScanDetailedPreservesLegacyLastArgumentInterfaceFallback(t *testing.T) {
+	oldRunner := commandRunner
+	commandRunner = func(context.Context, string, ...string) commandResult {
+		return commandResult{Output: "192.168.1.51\tAA:BB:CC:DD:EE:51\tLegacy Device\n"}
+	}
+	t.Cleanup(func() {
+		commandRunner = oldRunner
+	})
+
+	result := ScanDetailed("", "", []string{"-gNx 192.168.1.0/24 legacy0"})
+	if !result.Success {
+		t.Fatal("ScanDetailed returned Success=false, want true")
+	}
+	if len(result.Interfaces) != 1 || result.Interfaces[0] != "legacy0" {
+		t.Fatalf("Interfaces = %v, want [legacy0]", result.Interfaces)
+	}
+	if len(result.Hosts) != 1 || result.Hosts[0].Iface != "legacy0" {
+		t.Fatalf("Hosts = %+v, want one host on legacy0", result.Hosts)
+	}
+}
+
+func TestInterfaceForScanArgsPrefersExplicitInterface(t *testing.T) {
+	args := strings.Fields("-gNx 10.0.107.0/24 -Q 107 -I eth0 -r 1")
+	if got := interfaceForScanArgs(args); got != "eth0" {
+		t.Fatalf("interfaceForScanArgs = %q, want eth0", got)
 	}
 }
 
