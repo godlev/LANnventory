@@ -2,6 +2,7 @@ import { createSignal, onMount, Show } from "solid-js"
 import About from "../components/Config/About"
 import Basic from "../components/Config/Basic"
 import DataExport from "../components/Config/DataExport"
+import Diagnostics from "../components/Config/Diagnostics"
 import Influx from "../components/Config/Influx"
 import Prometheus from "../components/Config/Prometheus"
 import Retention from "../components/Config/Retention"
@@ -57,6 +58,10 @@ function Config() {
 
               <section id="scanning" class="settings-section" aria-label="Scanning and database">
                 <Scan></Scan>
+              </section>
+
+              <section id="diagnostics" class="settings-section" aria-label="Scanner health and diagnostics">
+                <Diagnostics></Diagnostics>
               </section>
 
               <section id="data-retention" class="settings-section" aria-label="Data retention">

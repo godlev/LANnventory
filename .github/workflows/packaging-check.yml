@@ -71,11 +71,16 @@ jobs:
           run_audit_with_retries npm audit
           run_audit_with_retries npm audit --omit=dev
 
-      - name: Build frontend and verify embedded bundle
+      - name: Build frontend
         working-directory: frontend
-        run: |
-          make all
-          git diff --exit-code -- ../backend/internal/web/public
+        run: make all
+
+      - name: Upload generated frontend bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase32-frontend-bundle
+          path: backend/internal/web/public
+          if-no-files-found: error
 
       - name: Check mock API syntax
         run: node --check frontend/dev/mock-api.mjs

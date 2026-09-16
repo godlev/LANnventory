@@ -4438,3 +4438,178 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
 .host-port-column .host-stop-button {
     width: 100%;
 }
+
+
+/* Phase 32 scanner health and diagnostics */
+.wyl-scanner-item {
+    position: relative;
+}
+.wyl-scanner-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.38rem;
+    width: auto;
+    opacity: 1;
+}
+.wyl-scanner-toggle.is-healthy {
+    color: var(--bs-success) !important;
+}
+.wyl-scanner-toggle.is-scanning {
+    color: var(--wyl-link) !important;
+}
+.wyl-scanner-toggle.is-problem {
+    color: var(--bs-danger) !important;
+}
+.wyl-scanner-toggle.is-scanning i {
+    animation: wyl-scanner-spin 1.1s linear infinite;
+}
+.wyl-scanner-nav-label {
+    font-size: 0.72rem;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: 0.015em;
+    white-space: nowrap;
+}
+@keyframes wyl-scanner-spin {
+    to { transform: rotate(360deg); }
+}
+
+.diagnostics-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.65rem;
+}
+.diagnostics-summary-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.34rem;
+    padding: 0.18rem 0.46rem;
+    border: 1px solid var(--wyl-panel-border);
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 850;
+    line-height: 1.15;
+}
+.diagnostics-summary-badge.is-ok {
+    color: var(--bs-success);
+}
+.diagnostics-summary-badge.is-scanning {
+    color: var(--wyl-link);
+}
+.diagnostics-summary-badge.is-error {
+    color: var(--bs-danger);
+}
+.diagnostics-summary-badge.is-scanning i {
+    animation: wyl-scanner-spin 1.1s linear infinite;
+}
+.diagnostics-health-grid {
+    display: grid;
+    grid-template-columns: minmax(7.5rem, 0.8fr) minmax(0, 1.5fr);
+    gap: 0.4rem 0.75rem;
+    margin: 0;
+}
+.diagnostics-health-grid > div {
+    display: contents;
+}
+.diagnostics-health-grid dt {
+    color: var(--wyl-muted);
+    font-size: 0.7rem;
+    font-weight: 850;
+    text-align: right;
+    text-transform: uppercase;
+}
+.diagnostics-health-grid dd {
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
+    color: var(--bs-body-color);
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+.diagnostics-last-error {
+    margin-top: 0.8rem;
+    padding: 0.62rem 0.72rem;
+    border: 1px solid color-mix(in srgb, var(--bs-danger) 45%, var(--wyl-panel-border));
+    border-radius: 7px;
+    color: var(--bs-danger);
+    background: color-mix(in srgb, var(--bs-danger) 8%, transparent);
+    font-size: 0.77rem;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+.diagnostics-overall {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-bottom: 0.72rem;
+    font-size: 0.8rem;
+    font-weight: 800;
+}
+.diagnostics-overall.is-ok {
+    color: var(--bs-success);
+}
+.diagnostics-overall.is-error {
+    color: var(--bs-danger);
+}
+.diagnostics-check-list {
+    display: grid;
+    gap: 0.38rem;
+}
+.diagnostics-check {
+    display: grid;
+    grid-template-columns: 1.05rem minmax(0, 1fr);
+    gap: 0.48rem;
+    align-items: start;
+    padding: 0.48rem 0.55rem;
+    border: 1px solid var(--wyl-panel-border);
+    border-radius: 7px;
+    background: var(--wyl-table-row-bg);
+}
+.diagnostics-check.is-ok > i {
+    color: var(--bs-success);
+}
+.diagnostics-check.is-warning > i {
+    color: var(--bs-warning);
+}
+.diagnostics-check.is-error > i {
+    color: var(--bs-danger);
+}
+.diagnostics-check-body {
+    min-width: 0;
+}
+.diagnostics-check-title {
+    color: var(--wyl-heading);
+    font-size: 0.78rem;
+    font-weight: 850;
+    line-height: 1.2;
+}
+.diagnostics-check-details,
+.diagnostics-check-fix {
+    margin-top: 0.15rem;
+    overflow-wrap: anywhere;
+    color: var(--wyl-muted);
+    font-size: 0.75rem;
+    line-height: 1.32;
+}
+.diagnostics-check-fix {
+    color: var(--bs-body-color);
+}
+
+@media (max-width: 767.98px) {
+    .wyl-scanner-nav-label {
+        display: none;
+    }
+}
+@media (max-width: 575.98px) {
+    .diagnostics-health-grid {
+        grid-template-columns: 1fr;
+    }
+    .diagnostics-health-grid > div {
+        display: grid;
+        gap: 0.08rem;
+    }
+    .diagnostics-health-grid dt {
+        text-align: left;
+    }
+}
