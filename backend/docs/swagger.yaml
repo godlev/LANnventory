@@ -39,11 +39,70 @@ definitions:
       color:
         type: string
     type: object
+  api.hostPortScanRangeRequest:
+    properties:
+      endPort:
+        type: integer
+      startPort:
+        type: integer
+    type: object
   api.hostPortScanResponse:
     properties:
       open:
         type: boolean
       port:
+        type: integer
+    type: object
+  api.hostPortStateResponse:
+    properties:
+      firstSeen:
+        type: string
+      hostId:
+        type: integer
+      lastChanged:
+        type: string
+      lastScanned:
+        type: string
+      open:
+        type: boolean
+      port:
+        type: integer
+      protocol:
+        type: string
+      service:
+        type: string
+    type: object
+  api.portScanJobStatus:
+    properties:
+      cancelled:
+        type: boolean
+      completed:
+        type: boolean
+      currentPort:
+        type: integer
+      endPort:
+        type: integer
+      error:
+        type: string
+      finishedAt:
+        type: string
+      hostId:
+        type: integer
+      id:
+        type: string
+      openPorts:
+        items:
+          type: integer
+        type: array
+      running:
+        type: boolean
+      scanned:
+        type: integer
+      startPort:
+        type: integer
+      startedAt:
+        type: string
+      total:
         type: integer
     type: object
   api.retentionRequest:
@@ -385,6 +444,7 @@ paths:
         - tags-changed
         - pinned-changed
         - port-open
+        - port-closed
         in: query
         name: eventType
         type: string
@@ -1113,6 +1173,161 @@ paths:
               type: string
             type: object
       summary: Scan one port for a host
+      tags:
+      - network
+  /host/{id}/ports:
+    get:
+      description: Return ports previously observed open for a host, plus any later
+        closed transitions retained for history.
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/api.hostPortStateResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get persisted host port states
+      tags:
+      - network
+  /host/{id}/ports/scan:
+    get:
+      description: Return the currently running port scan for a host, if one exists.
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.portScanJobStatus'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get active host port scan
+      tags:
+      - network
+    post:
+      consumes:
+      - application/json
+      description: Start an asynchronous bounded-concurrency TCP port scan for a current
+        host.
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Port range
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.hostPortScanRangeRequest'
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            $ref: '#/definitions/api.portScanJobStatus'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Start host port range scan
+      tags:
+      - network
+  /host/{id}/ports/scan/{scanId}:
+    delete:
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Scan job ID
+        in: path
+        name: scanId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.portScanJobStatus'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Cancel host port scan
+      tags:
+      - network
+    get:
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Scan job ID
+        in: path
+        name: scanId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.portScanJobStatus'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get host port scan status
       tags:
       - network
   /host/{id}/type:

@@ -10,7 +10,7 @@ LANnventory is an independent project originally based on [WatchYourLAN by acebe
 
 Current repository: [godlev/LANnventory](https://github.com/godlev/LANnventory)
 
-Current beta release: `0.1.0-beta.3`
+Current beta release: `0.1.0-beta.3.1`
 
 The original WatchYourLAN scanning/backend foundation is preserved and credited. LANnventory adds a substantially expanded interface, persistent event model, device classification, configurable retention, migration hardening, safer configuration handling and other reliability improvements.
 
@@ -54,6 +54,20 @@ Source icon and screenshot assets live in `assets/`. Runtime UI icons are served
 - Explicit Host edit mode for editable properties.
 - Wake-on-LAN and port-scan actions remain available where supported.
 
+### Port intelligence
+
+Host port scanning is backend-managed and limited to the selected LANnventory device's current IP.
+
+- Scan any TCP range from 1 to 65535 with bounded backend concurrency.
+- Live progress, Stop support and active-scan recovery when reopening the Host page.
+- Persist known port state in the additive `host_ports` table.
+- Record `port-open` only when a port is first observed open or reopens after being closed.
+- Record `port-closed` only when a previously known open port is observed closed.
+- Repeated scans of an unchanged open port do not create duplicate Events.
+- Common TCP port numbers may show a local service hint; this is not active service fingerprinting.
+- HTTP/HTTPS-like ports can open in the browser; SSH, SMB and other non-web ports remain informational.
+- Logical backup format 4 includes persisted host port state.
+
 ### Presence
 
 Presence is sampled online/offline visibility over time.
@@ -82,6 +96,8 @@ Current event types:
 - `notes-changed`
 - `tags-changed`
 - `pinned-changed`
+- `port-open`
+- `port-closed`
 
 Events features include:
 
@@ -127,6 +143,7 @@ LANnventory deliberately separates sampled Presence history from Events.
 | Presence samples | Controlled by `TRIM_HIST` |
 | `online` / `offline` Events | Controlled by `CONNECTIVITY_RETENTION` |
 | Device-change Events, including metadata-change Events | Retained while the device record exists |
+| Network-diagnostic `port-open` / `port-closed` Events | Retained while the device record exists |
 
 If `CONNECTIVITY_RETENTION` is absent from an older configuration, LANnventory falls back to the existing `TRIM_HIST` value for backward compatibility.
 
@@ -137,7 +154,7 @@ Retention can be configured from **Settings → Data retention** without restart
 Recent release-readiness work includes:
 
 - Non-destructive migration tests against a legacy WatchYourLAN SQLite schema.
-- Additive migration for Device Type, Events, inventory metadata and lifecycle storage.
+- Additive migration for Device Type, Events, inventory metadata, lifecycle storage and persisted host port state.
 - Idempotent database reopen/migration validation.
 - Failed scans do not create false offline state changes or false offline Events.
 - Repeated scans do not create duplicate transition Events.
@@ -354,7 +371,7 @@ For an existing SQLite WatchYourLAN installation:
 6. Let LANnventory run its additive startup migration.
 7. Confirm Hosts, Known state and Presence history are visible before discarding the backup.
 
-The current migration tests cover legacy SQLite tables and verify existing rows are preserved while `DEVICE_TYPE`, `events`, `host_metadata` and `host_lifecycle` are added.
+The current migration tests cover legacy SQLite tables and verify existing rows are preserved while `DEVICE_TYPE`, `events`, `host_metadata`, `host_lifecycle` and `host_ports` are added.
 
 For upstream Docker users, the compatible volume target remains:
 

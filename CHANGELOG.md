@@ -3,6 +3,21 @@ All notable changes to this project will be documented in this file.
 
 ## LANnventory Releases
 
+## [Unreleased]
+
+### Added
+- Backend-managed bounded-concurrency TCP range scanning with progress, cancellation and active-job recovery after Host page navigation.
+- Persistent `host_ports` state with first-seen, last-scanned and last-changed timestamps.
+- `port-closed` Events and a Network diagnostics Event filter alongside existing `port-open` Events.
+- Common TCP service hints for known ports without aggressive service fingerprinting.
+- Logical backup format 4 with persisted host port state.
+
+### Changed
+- Host port scans now use one backend scan job instead of one browser HTTP request per port.
+- Repeated scans no longer create duplicate `port-open` Events when a known port remains open; Events are emitted on meaningful open/closed transitions.
+- Cancelled in-flight TCP probes are not persisted as false closed results.
+- Only web-like open ports are rendered as browser links; non-HTTP services remain informational chips.
+
 ## [v0.1.0-beta.3.1] - 2026-09-16
 
 ### Added

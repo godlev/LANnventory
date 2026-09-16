@@ -15,7 +15,8 @@ export type ActivityEventType =
   | "notes-changed"
   | "tags-changed"
   | "pinned-changed"
-  | "port-open";
+  | "port-open"
+  | "port-closed";
 
 type ActivityQuery = {
   category?: ActivityCategory;
@@ -62,6 +63,19 @@ const apiFetch = async (url: string, init?: RequestInit): Promise<Response> => {
 
 const apiJSON = async <T>(url: string, init?: RequestInit): Promise<T> => {
   return await (await apiFetch(url, init)).json();
+};
+
+const apiOptionalJSON = async <T>(url: string, init?: RequestInit): Promise<T | undefined> => {
+  const response = await fetch(url, init);
+  if (response.status === 404) {
+    return undefined;
+  }
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(detail || response.statusText || "API request failed");
+  }
+
+  return await response.json();
 };
 
 const getAttachmentFilename = (response: Response, fallback: string): string => {
@@ -283,6 +297,60 @@ export const apiPortScan = async (ip:string, port:number) => {
 export type HostPortScanResult = {
   port: number;
   open: boolean;
+};
+
+export type HostPortState = {
+  hostId: number;
+  port: number;
+  protocol: string;
+  open: boolean;
+  service: string;
+  firstSeen: string;
+  lastScanned: string;
+  lastChanged: string;
+};
+
+export type HostPortScanJob = {
+  id: string;
+  hostId: number;
+  startPort: number;
+  endPort: number;
+  currentPort: number;
+  scanned: number;
+  total: number;
+  running: boolean;
+  completed: boolean;
+  cancelled: boolean;
+  openPorts: number[];
+  startedAt: string;
+  finishedAt: string;
+  error: string;
+};
+
+export const apiGetHostPorts = async (id: number): Promise<HostPortState[]> => {
+  return await apiJSON<HostPortState[]>(apiPath + "/api/host/" + id + "/ports");
+};
+
+export const apiStartHostPortScan = async (id: number, startPort: number, endPort: number): Promise<HostPortScanJob> => {
+  return await apiJSON<HostPortScanJob>(apiPath + "/api/host/" + id + "/ports/scan", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ startPort, endPort }),
+  });
+};
+
+export const apiGetActiveHostPortScan = async (id: number): Promise<HostPortScanJob | undefined> => {
+  return await apiOptionalJSON<HostPortScanJob>(apiPath + "/api/host/" + id + "/ports/scan");
+};
+
+export const apiGetHostPortScan = async (id: number, scanId: string): Promise<HostPortScanJob> => {
+  return await apiJSON<HostPortScanJob>(apiPath + "/api/host/" + id + "/ports/scan/" + encodeURIComponent(scanId));
+};
+
+export const apiCancelHostPortScan = async (id: number, scanId: string): Promise<HostPortScanJob> => {
+  return await apiJSON<HostPortScanJob>(apiPath + "/api/host/" + id + "/ports/scan/" + encodeURIComponent(scanId), {
+    method: "DELETE",
+  });
 };
 
 export const apiScanHostPort = async (id:number, port:number): Promise<HostPortScanResult> => {

@@ -41,7 +41,9 @@ type EventFilterKey =
   | "notes-changed"
   | "tags-changed"
   | "pinned-changed"
-  | "port-open";
+  | "network-diagnostics"
+  | "port-open"
+  | "port-closed";
 
 type GroupByKey = "device" | "event" | "category" | "device-type" | "ip" | "iface" | "day";
 type DeviceDisplayMode = "name-icon" | "name" | "icon";
@@ -96,7 +98,7 @@ const connectivityEventTypes: ActivityEventType[] = ["online", "offline"];
 const recognitionEventTypes: ActivityEventType[] = ["known", "unknown"];
 const metadataEventTypes: ActivityEventType[] = ["owner-changed", "location-changed", "notes-changed", "tags-changed", "pinned-changed"];
 const deviceChangeEventTypes: ActivityEventType[] = ["discovered", ...recognitionEventTypes, "device-type-changed", ...metadataEventTypes];
-const networkDiagnosticEventTypes: ActivityEventType[] = ["port-open"];
+const networkDiagnosticEventTypes: ActivityEventType[] = ["port-open", "port-closed"];
 const eventTypeOrder: ActivityEventType[] = [...connectivityEventTypes, ...deviceChangeEventTypes, ...networkDiagnosticEventTypes];
 const deviceDropdownId = "activity-device-filter";
 const eventTypeDropdownId = "activity-event-type-filter";
@@ -132,7 +134,9 @@ const eventFilterOptions: EventFilterOption[] = [
   { key: "notes-changed", label: "Notes updated", eventTypes: ["notes-changed"] },
   { key: "tags-changed", label: "Tags changed", eventTypes: ["tags-changed"] },
   { key: "pinned-changed", label: "Pinned changed", eventTypes: ["pinned-changed"] },
+  { key: "network-diagnostics", label: "Network diagnostics", eventTypes: networkDiagnosticEventTypes },
   { key: "port-open", label: "Open port discovered", eventTypes: ["port-open"] },
+  { key: "port-closed", label: "Port closed", eventTypes: ["port-closed"] },
 ];
 
 const groupByOptions: { key: GroupByKey; label: string }[] = [
@@ -320,7 +324,7 @@ function Activity() {
       ? hours + " " + (hours === 1 ? "hour" : "hours")
       : "the configured retention window";
 
-    return "Connectivity events retained for " + retention + ". Device changes, including metadata changes, retained while the device exists.";
+    return "Connectivity events retained for " + retention + ". Device changes and network diagnostics are retained while the device exists.";
   };
 
   const loadEvents = async (reset: boolean) => {

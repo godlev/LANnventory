@@ -28,6 +28,8 @@ export function activityIcon(eventType: string): string {
       return "bi-pin-angle-fill";
     case "port-open":
       return "bi-ethernet";
+    case "port-closed":
+      return "bi-plug-fill";
     case "discovered":
     default:
       return "bi-plus-circle-fill";
@@ -51,6 +53,7 @@ export function activityTone(eventType: string): ActivityTone {
     case "tags-changed":
     case "pinned-changed":
     case "port-open":
+    case "port-closed":
       return "type";
     case "discovered":
     default:
@@ -83,6 +86,8 @@ export function activityDescription(event: HostEvent): string {
       return event.NewValue === "true" ? "Device pinned" : "Device unpinned";
     case "port-open":
       return "Open port " + event.NewValue + " detected";
+    case "port-closed":
+      return "Port " + event.NewValue + " closed";
     case "discovered":
     default:
       return "New device detected";
@@ -132,6 +137,7 @@ export function activityCategoryLabel(eventType: string): string {
     case "offline":
       return "Connectivity";
     case "port-open":
+    case "port-closed":
       return "Network diagnostics";
     default:
       return "Device changes";
@@ -162,6 +168,8 @@ export function activityEventLabel(eventType: string): string {
       return "Pinned changed";
     case "port-open":
       return "Open port discovered";
+    case "port-closed":
+      return "Port closed";
     case "discovered":
     default:
       return "New device detected";
