@@ -30,6 +30,8 @@ type ConfirmedIdentityGroupMember struct {
 type HostIdentityGroupResponse struct {
 	Mac       string                         `json:"mac"`
 	Confirmed bool                           `json:"confirmed"`
+	FirstSeen string                         `json:"firstSeen"`
+	LastSeen  string                         `json:"lastSeen"`
 	Members   []ConfirmedIdentityGroupMember `json:"members"`
 }
 
@@ -157,11 +159,28 @@ func getHostIdentityGroup(c *gin.Context) {
 		return members[i].Mac < members[j].Mac
 	})
 
+	groupFirstSeen, groupLastSeen := identityGroupLifecycleBounds(members)
 	c.IndentedJSON(http.StatusOK, HostIdentityGroupResponse{
 		Mac:       targetMAC,
 		Confirmed: len(members) > 1,
+		FirstSeen: groupFirstSeen,
+		LastSeen:  groupLastSeen,
 		Members:   members,
 	})
+}
+
+func identityGroupLifecycleBounds(members []ConfirmedIdentityGroupMember) (string, string) {
+	firstSeen := ""
+	lastSeen := ""
+	for _, member := range members {
+		if member.FirstSeen != "" && (firstSeen == "" || member.FirstSeen < firstSeen) {
+			firstSeen = member.FirstSeen
+		}
+		if member.LastSeen != "" && (lastSeen == "" || member.LastSeen > lastSeen) {
+			lastSeen = member.LastSeen
+		}
+	}
+	return firstSeen, lastSeen
 }
 
 func containsString(values []string, target string) bool {
