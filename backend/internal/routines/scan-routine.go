@@ -95,6 +95,7 @@ func processScanResult(foundHosts []models.Host, scanOK bool) bool {
 	if err := gdb.RecordHostAddressObservations(foundHosts); err != nil {
 		slog.Error("Failed to record host address observations", "err", err)
 	}
+	refreshDiscoveryEvidenceScopes(foundHosts)
 	recordScannerDiscoveryEvidence(foundHosts)
 
 	foundHostsMap := buildCompatibilityHostMap(foundHosts)
