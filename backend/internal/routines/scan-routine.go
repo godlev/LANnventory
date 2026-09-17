@@ -3,6 +3,7 @@ package routines
 import (
 	"context"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/godlev/LANnventory/internal/arp"
@@ -21,6 +22,7 @@ var (
 		return time.Now().UTC()
 	}
 	scanNetwork           = arp.ScanDetailedContext
+	lookupDNS             = check.DNS
 	processScanResultFunc = processScanResult
 	waitForNextScan       = waitUntilNextScan
 )
@@ -89,6 +91,7 @@ func processScanResult(foundHosts []models.Host, scanOK bool) bool {
 	if err := gdb.RecordHostAddressObservations(foundHosts); err != nil {
 		slog.Error("Failed to record host address observations", "err", err)
 	}
+	recordScannerDiscoveryEvidence(foundHosts)
 
 	foundHostsMap := make(map[string]models.Host)
 	for _, fHost := range foundHosts {
@@ -153,8 +156,8 @@ func compareHosts(foundHostsMap map[string]models.Host) {
 	}
 
 	for _, fHost := range foundHostsMap {
-
-		fHost.Name, fHost.DNS = check.DNS(fHost)
+		fHost.Name, fHost.DNS = lookupDNS(fHost)
+		recordReverseDNSEvidence(fHost)
 		notify.Unknown(fHost) // Log and Shoutrrr
 
 		gdb.Update("now", fHost)
@@ -163,6 +166,42 @@ func compareHosts(foundHostsMap map[string]models.Host) {
 		if len(hosts) > 0 {
 			gdb.RecordHostEvent(hosts[0], models.EventDiscovered, "", "")
 		}
+	}
+}
+
+func recordScannerDiscoveryEvidence(hosts []models.Host) {
+	for _, host := range hosts {
+		vendor := strings.TrimSpace(host.Hw)
+		if vendor == "" {
+			continue
+		}
+		if err := gdb.RecordHostDiscoveryEvidence(
+			host.Mac,
+			host.IP,
+			models.DiscoverySourceScanner,
+			models.DiscoveryKindVendor,
+			[]string{vendor},
+			host.Date,
+		); err != nil {
+			slog.Error("Failed to record scanner discovery evidence", "mac", host.Mac, "ip", host.IP, "err", err)
+		}
+	}
+}
+
+func recordReverseDNSEvidence(host models.Host) {
+	values := strings.Fields(host.DNS)
+	if len(values) == 0 {
+		return
+	}
+	if err := gdb.RecordHostDiscoveryEvidence(
+		host.Mac,
+		host.IP,
+		models.DiscoverySourceReverseDNS,
+		models.DiscoveryKindHostname,
+		values,
+		host.Date,
+	); err != nil {
+		slog.Error("Failed to record reverse-DNS discovery evidence", "mac", host.Mac, "ip", host.IP, "err", err)
 	}
 }
 
