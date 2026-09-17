@@ -7,18 +7,21 @@ import (
 )
 
 type hostJSONBase struct {
-	ID         int
-	Name       string
-	DNS        string
-	Iface      string
-	IP         string
-	Mac        string
-	MacType    identity.MACType
-	Hw         string
-	Date       string
-	Known      int
-	Now        int
-	DeviceType string
+	ID                      int
+	Name                    string
+	DNS                     string
+	Iface                   string
+	IP                      string
+	Mac                     string
+	MacType                 identity.MACType
+	MacAssessment           identity.MACAssessmentCode
+	MacAssessmentConfidence identity.MACAssessmentConfidence
+	MacAssessmentReason     string
+	Hw                      string
+	Date                    string
+	Known                   int
+	Now                     int
+	DeviceType              string
 }
 
 type hostJSONWithMetadata struct {
@@ -34,19 +37,23 @@ type hostJSONWithMetadata struct {
 }
 
 func (host Host) MarshalJSON() ([]byte, error) {
+	assessment := identity.AssessMAC(host.Mac, host.DeviceType)
 	base := hostJSONBase{
-		ID:         host.ID,
-		Name:       host.Name,
-		DNS:        host.DNS,
-		Iface:      host.Iface,
-		IP:         host.IP,
-		Mac:        host.Mac,
-		MacType:    identity.ClassifyMAC(host.Mac),
-		Hw:         host.Hw,
-		Date:       host.Date,
-		Known:      host.Known,
-		Now:        host.Now,
-		DeviceType: host.DeviceType,
+		ID:                      host.ID,
+		Name:                    host.Name,
+		DNS:                     host.DNS,
+		Iface:                   host.Iface,
+		IP:                      host.IP,
+		Mac:                     host.Mac,
+		MacType:                 identity.ClassifyMAC(host.Mac),
+		MacAssessment:           assessment.Code,
+		MacAssessmentConfidence: assessment.Confidence,
+		MacAssessmentReason:     assessment.Reason,
+		Hw:                      host.Hw,
+		Date:                    host.Date,
+		Known:                   host.Known,
+		Now:                     host.Now,
+		DeviceType:              host.DeviceType,
 	}
 
 	if !host.MetadataLoaded {
