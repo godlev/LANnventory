@@ -4,14 +4,14 @@ import "testing"
 
 func TestCandidatesRejectSharedVendorOrAddressAlone(t *testing.T) {
 	target := IdentityObservation{
-		Mac: "00:11:22:33:44:55",
+		Mac:       "00:11:22:33:44:55",
 		Addresses: []AddressObservation{{Address: "10.4.1.20"}},
-		Evidence: []EvidenceObservation{{Kind: "vendor", Value: "Acme"}},
+		Evidence:  []EvidenceObservation{{Kind: "vendor", Value: "Acme"}},
 	}
 	others := []IdentityObservation{{
-		Mac: "00:11:22:33:44:66",
+		Mac:       "00:11:22:33:44:66",
 		Addresses: []AddressObservation{{Address: "10.4.1.20"}},
-		Evidence: []EvidenceObservation{{Kind: "vendor", Value: "Acme"}},
+		Evidence:  []EvidenceObservation{{Kind: "vendor", Value: "Acme"}},
 	}}
 
 	if got := Candidates(target, others); len(got) != 0 {
@@ -21,11 +21,11 @@ func TestCandidatesRejectSharedVendorOrAddressAlone(t *testing.T) {
 
 func TestCandidatesUseSharedCurrentHostname(t *testing.T) {
 	target := IdentityObservation{
-		Mac: "02:11:22:33:44:55",
+		Mac:      "02:11:22:33:44:55",
 		Evidence: []EvidenceObservation{{Kind: "hostname", Value: "Phone.local.", Active: true}},
 	}
 	others := []IdentityObservation{{
-		Mac: "06:11:22:33:44:66",
+		Mac:      "06:11:22:33:44:66",
 		Evidence: []EvidenceObservation{{Kind: "hostname", Value: "phone.local", Active: true}},
 	}}
 
@@ -84,13 +84,13 @@ func TestCandidatesAllowWeakAddressHandoffOnlyWithLocalMAC(t *testing.T) {
 
 func TestCandidatesPenalizeConcurrentActivity(t *testing.T) {
 	target := IdentityObservation{
-		Mac:    "02:11:22:33:44:55",
-		Active: true,
+		Mac:      "02:11:22:33:44:55",
+		Active:   true,
 		Evidence: []EvidenceObservation{{Kind: "hostname", Value: "device.local", Active: true}},
 	}
 	others := []IdentityObservation{{
-		Mac:    "06:11:22:33:44:66",
-		Active: true,
+		Mac:      "06:11:22:33:44:66",
+		Active:   true,
 		Evidence: []EvidenceObservation{{Kind: "hostname", Value: "device.local", Active: true}},
 	}}
 
@@ -114,7 +114,7 @@ func TestCandidatesPenalizeConcurrentActivity(t *testing.T) {
 
 func TestCandidatesDeterministicOrder(t *testing.T) {
 	target := IdentityObservation{
-		Mac: "02:11:22:33:44:55",
+		Mac:      "02:11:22:33:44:55",
 		Evidence: []EvidenceObservation{{Kind: "hostname", Value: "same.local", Active: true}},
 	}
 	others := []IdentityObservation{

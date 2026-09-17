@@ -20,6 +20,15 @@ definitions:
       mac:
         type: string
     type: object
+  api.CorrelationReason:
+    properties:
+      code:
+        type: string
+      detail:
+        type: string
+      weight:
+        type: integer
+    type: object
   api.DiscoveryEvidenceObservation:
     properties:
       active:
@@ -55,6 +64,38 @@ definitions:
         items:
           $ref: '#/definitions/api.AddressMACObservation'
         type: array
+    type: object
+  api.HostIdentityCandidate:
+    properties:
+      active:
+        type: boolean
+      confidence:
+        type: string
+      deviceType:
+        type: string
+      exists:
+        type: boolean
+      hostId:
+        type: integer
+      mac:
+        type: string
+      name:
+        type: string
+      reasons:
+        items:
+          $ref: '#/definitions/api.CorrelationReason'
+        type: array
+      score:
+        type: integer
+    type: object
+  api.HostIdentityCandidatesResponse:
+    properties:
+      candidates:
+        items:
+          $ref: '#/definitions/api.HostIdentityCandidate'
+        type: array
+      mac:
+        type: string
     type: object
   api.HostIdentityResponse:
     properties:
@@ -1140,6 +1181,39 @@ paths:
               type: string
             type: object
       summary: Get host identity observations
+      tags:
+      - hosts
+  /host/{id}/identity/candidates:
+    get:
+      description: Return read-only, explainable suggestions for MAC identities that
+        may represent the same physical device. This endpoint never merges or mutates
+        identities.
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.HostIdentityCandidatesResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get host identity correlation candidates
       tags:
       - hosts
   /host/{id}/metadata:

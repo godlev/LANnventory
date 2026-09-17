@@ -1146,6 +1146,53 @@
                 }
             }
         },
+        "/host/{id}/identity/candidates": {
+            "get": {
+                "description": "Return read-only, explainable suggestions for MAC identities that may represent the same physical device. This endpoint never merges or mutates identities.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Get host identity correlation candidates",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.HostIdentityCandidatesResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/host/{id}/metadata": {
             "patch": {
                 "description": "Partially update manually managed inventory metadata. Tags are trimmed, empty tags are removed, duplicates are removed case-insensitively, and user order is preserved. Actual changes are recorded as Device change events.",
@@ -1769,6 +1816,20 @@
                 }
             }
         },
+        "api.CorrelationReason": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "detail": {
+                    "type": "string"
+                },
+                "weight": {
+                    "type": "integer"
+                }
+            }
+        },
         "api.DiscoveryEvidenceObservation": {
             "type": "object",
             "properties": {
@@ -1821,6 +1882,55 @@
                     "items": {
                         "$ref": "#/definitions/api.AddressMACObservation"
                     }
+                }
+            }
+        },
+        "api.HostIdentityCandidate": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean"
+                },
+                "confidence": {
+                    "type": "string"
+                },
+                "deviceType": {
+                    "type": "string"
+                },
+                "exists": {
+                    "type": "boolean"
+                },
+                "hostId": {
+                    "type": "integer"
+                },
+                "mac": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "reasons": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.CorrelationReason"
+                    }
+                },
+                "score": {
+                    "type": "integer"
+                }
+            }
+        },
+        "api.HostIdentityCandidatesResponse": {
+            "type": "object",
+            "properties": {
+                "candidates": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.HostIdentityCandidate"
+                    }
+                },
+                "mac": {
+                    "type": "string"
                 }
             }
         },
