@@ -86,29 +86,19 @@ func scanHostPort(c *gin.Context) {
 	}
 
 	observedAt := time.Now().Format(models.HostEventDateLayout)
-	_, persisted, stateChanged, err := gdb.RecordServiceObservation(models.Service{
+	if _, _, _, err := gdb.RecordHostServiceObservation(host, models.Service{
 		Mac:            host.Mac,
 		Address:        host.IP,
 		Protocol:       string(models.ServiceProtocolTCP),
 		Port:           portNumber,
 		State:          string(result.State),
 		LastScanSource: "manual",
-	}, observedAt)
-	if err != nil {
+	}, observedAt); err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to record service scan result"})
 		return
 	}
 
 	open := result.State == portscan.ProbeOpen
-	// Keep the legacy event readable during the Phase 34 migration, but only emit
-	// it on a newly-open transition. Phase 34.3 replaces this with service-opened.
-	if open && persisted && stateChanged {
-		if err := gdb.AddEvent(models.NewHostEvent(host, models.EventPortOpen, "", port)); err != nil {
-			c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to record port scan event"})
-			return
-		}
-	}
-
 	c.IndentedJSON(http.StatusOK, hostPortScanResponse{Port: portNumber, Open: open})
 }
 
