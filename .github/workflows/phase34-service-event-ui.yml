@@ -1,0 +1,130 @@
+name: Phase34 service event UI integration
+
+on:
+  push:
+    branches:
+      - phase34-service-inventory
+    paths:
+      - .github/workflows/phase34-service-event-ui.yml
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase34-service-inventory
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - name: Apply exact source updates
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path_name, old, new):
+              path = Path(path_name)
+              text = path.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{path_name}: expected one exact match, found {count}')
+              path.write_text(text.replace(old, new, 1))
+
+          replace_once(
+              'frontend/src/functions/api.ts',
+              '''  | "pinned-changed"\n  | "port-open";''',
+              '''  | "pinned-changed"\n  | "service-opened"\n  | "service-closed"\n  | "port-open";''',
+          )
+
+          replace_once(
+              'frontend/src/functions/activity.ts',
+              '''    case "port-open":\n      return "bi-ethernet";''',
+              '''    case "service-opened":\n    case "service-closed":\n    case "port-open":\n      return "bi-ethernet";''',
+          )
+          replace_once(
+              'frontend/src/functions/activity.ts',
+              '''    case "pinned-changed":\n    case "port-open":\n      return "type";''',
+              '''    case "pinned-changed":\n    case "service-opened":\n    case "service-closed":\n    case "port-open":\n      return "type";''',
+          )
+          replace_once(
+              'frontend/src/functions/activity.ts',
+              '''    case "pinned-changed":\n      return event.NewValue === "true" ? "Device pinned" : "Device unpinned";\n    case "port-open":\n      return "Open port " + event.NewValue + " detected";''',
+              '''    case "pinned-changed":\n      return event.NewValue === "true" ? "Device pinned" : "Device unpinned";\n    case "service-opened":\n      return serviceEndpointLabel(event.NewValue) + (event.OldValue === "closed" ? " returned" : " opened");\n    case "service-closed":\n      return serviceEndpointLabel(event.NewValue) + " closed";\n    case "port-open":\n      return "Open port " + event.NewValue + " detected";''',
+          )
+          replace_once(
+              'frontend/src/functions/activity.ts',
+              '''    case "pinned-changed":\n      return "Pinned: " + booleanEventValue(event.OldValue) + " → " + booleanEventValue(event.NewValue);\n    case "discovered":''',
+              '''    case "pinned-changed":\n      return "Pinned: " + booleanEventValue(event.OldValue) + " → " + booleanEventValue(event.NewValue);\n    case "service-opened":\n      return serviceEventDetails(event, "open");\n    case "service-closed":\n      return serviceEventDetails(event, "closed");\n    case "discovered":''',
+          )
+          replace_once(
+              'frontend/src/functions/activity.ts',
+              '''    case "port-open":\n      return "Network diagnostics";''',
+              '''    case "service-opened":\n    case "service-closed":\n    case "port-open":\n      return "Network diagnostics";''',
+          )
+          replace_once(
+              'frontend/src/functions/activity.ts',
+              '''    case "pinned-changed":\n      return "Pinned changed";\n    case "port-open":\n      return "Open port discovered";''',
+              '''    case "pinned-changed":\n      return "Pinned changed";\n    case "service-opened":\n      return "Service opened";\n    case "service-closed":\n      return "Service closed";\n    case "port-open":\n      return "Open port discovered (legacy)";''',
+          )
+          replace_once(
+              'frontend/src/functions/activity.ts',
+              '''function compactNetworkDetail(event: HostEvent): string {''',
+              '''function serviceEndpointLabel(value: string | null | undefined): string {\n  const endpoint = (value ?? "").trim();\n  if (endpoint === "") {\n    return "Service";\n  }\n  return endpoint.replace(/^tcp\\//i, "TCP/");\n}\n\nfunction serviceEventDetails(event: HostEvent, nextState: "open" | "closed"): string {\n  const endpoint = serviceEndpointLabel(event.NewValue);\n  const address = event.IP ? " on " + event.IP : "";\n  const previous = (event.OldValue ?? "").trim();\n  if (previous !== "") {\n    return endpoint + address + " · " + previous + " → " + nextState;\n  }\n  return endpoint + address;\n}\n\nfunction compactNetworkDetail(event: HostEvent): string {''',
+          )
+
+          replace_once(
+              'frontend/src/pages/Activity.tsx',
+              '''  | "pinned-changed"\n  | "port-open";''',
+              '''  | "pinned-changed"\n  | "network-diagnostics"\n  | "service-opened"\n  | "service-closed"\n  | "port-open";''',
+          )
+          replace_once(
+              'frontend/src/pages/Activity.tsx',
+              '''const networkDiagnosticEventTypes: ActivityEventType[] = ["port-open"];''',
+              '''const networkDiagnosticEventTypes: ActivityEventType[] = ["service-opened", "service-closed", "port-open"];''',
+          )
+          replace_once(
+              'frontend/src/pages/Activity.tsx',
+              '''  { key: "pinned-changed", label: "Pinned changed", eventTypes: ["pinned-changed"] },\n  { key: "port-open", label: "Open port discovered", eventTypes: ["port-open"] },''',
+              '''  { key: "pinned-changed", label: "Pinned changed", eventTypes: ["pinned-changed"] },\n  { key: "network-diagnostics", label: "Network diagnostics", eventTypes: networkDiagnosticEventTypes },\n  { key: "service-opened", label: "Service opened", eventTypes: ["service-opened"] },\n  { key: "service-closed", label: "Service closed", eventTypes: ["service-closed"] },\n  { key: "port-open", label: "Open port discovered (legacy)", eventTypes: ["port-open"] },''',
+          )
+
+          replace_once(
+              'backend/internal/api/api-activity.go',
+              '''// @Param        eventType  query     string  false  "Repeatable event type filter" Enums(discovered, online, offline, known, unknown, device-type-changed, owner-changed, location-changed, notes-changed, tags-changed, pinned-changed, port-open)''',
+              '''// @Param        eventType  query     string  false  "Repeatable event type filter" Enums(discovered, online, offline, known, unknown, device-type-changed, owner-changed, location-changed, notes-changed, tags-changed, pinned-changed, port-open, service-opened, service-closed)''',
+          )
+          replace_once(
+              'backend/internal/api/api-network.go',
+              '''// @Description  Scan a TCP port using the host's current IP. When the port is open, persist an activity event for that host.''',
+              '''// @Description  Scan a TCP port using the host's current IP. Definitive results update persistent service inventory and emit lifecycle activity only on state transitions.''',
+          )
+          PY
+      - name: Build frontend and refresh embedded bundle
+        working-directory: frontend
+        run: |
+          npm ci
+          make all
+      - name: Refresh Swagger docs
+        working-directory: backend
+        run: go run github.com/swaggo/swag/cmd/swag@v1.16.6 init -g main.go --dir cmd/LANnventory,internal/api,internal/models
+      - name: Verify source changes
+        run: |
+          node --check frontend/dev/mock-api.mjs
+          cd backend && go test ./internal/api ./internal/models ./internal/gdb ./internal/portscan
+      - name: Commit service event integration
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add frontend/src/functions/api.ts frontend/src/functions/activity.ts frontend/src/pages/Activity.tsx backend/internal/api/api-activity.go backend/internal/api/api-network.go backend/docs backend/internal/web/public
+          git diff --cached --check
+          git commit -m 'phase34: integrate service lifecycle events in activity UI'
+          git push origin HEAD:phase34-service-inventory
