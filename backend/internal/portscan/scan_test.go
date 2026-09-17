@@ -1,12 +1,13 @@
 package portscan
 
 import (
+	"context"
 	"net"
 	"testing"
 	"time"
 )
 
-func TestIsOpenDetectsLocalIPv4Listener(t *testing.T) {
+func TestProbeDetectsLocalIPv4Listener(t *testing.T) {
 	listener, err := net.Listen("tcp4", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("net.Listen: %v", err)
@@ -27,6 +28,10 @@ func TestIsOpenDetectsLocalIPv4Listener(t *testing.T) {
 		t.Fatalf("SplitHostPort: %v", err)
 	}
 
+	result := Probe(context.Background(), host, port)
+	if result.State != ProbeOpen {
+		t.Fatalf("Probe(%q, %q) state = %q err=%v, want open", host, port, result.State, result.Err)
+	}
 	if !IsOpen(host, port) {
 		t.Fatalf("IsOpen(%q, %q) = false, want true", host, port)
 	}
@@ -38,7 +43,7 @@ func TestIsOpenDetectsLocalIPv4Listener(t *testing.T) {
 	}
 }
 
-func TestIsOpenReturnsFalseForClosedIPv4Port(t *testing.T) {
+func TestProbeReturnsClosedForRefusedIPv4Port(t *testing.T) {
 	listener, err := net.Listen("tcp4", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("net.Listen: %v", err)
@@ -54,8 +59,29 @@ func TestIsOpenReturnsFalseForClosedIPv4Port(t *testing.T) {
 		t.Fatalf("listener.Close: %v", err)
 	}
 
+	result := Probe(context.Background(), host, port)
+	if result.State != ProbeClosed {
+		t.Fatalf("Probe(%q, %q) state = %q err=%v, want closed", host, port, result.State, result.Err)
+	}
 	if IsOpen(host, port) {
 		t.Fatalf("IsOpen(%q, %q) = true, want false", host, port)
+	}
+}
+
+func TestProbeReturnsCanceledWhenContextAlreadyCanceled(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	result := Probe(ctx, "127.0.0.1", "443")
+	if result.State != ProbeCanceled {
+		t.Fatalf("Probe state = %q err=%v, want canceled", result.State, result.Err)
+	}
+}
+
+func TestProbeDoesNotTreatResolutionFailureAsClosed(t *testing.T) {
+	result := Probe(context.Background(), "not a valid host name", "443")
+	if result.State != ProbeIndeterminate {
+		t.Fatalf("Probe state = %q err=%v, want indeterminate", result.State, result.Err)
 	}
 }
 
