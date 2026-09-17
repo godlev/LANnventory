@@ -20,6 +20,29 @@ definitions:
       mac:
         type: string
     type: object
+  api.ConfirmedIdentityGroupMember:
+    properties:
+      active:
+        type: boolean
+      addresses:
+        items:
+          type: string
+        type: array
+      deviceType:
+        type: string
+      exists:
+        type: boolean
+      firstSeen:
+        type: string
+      hostId:
+        type: integer
+      lastSeen:
+        type: string
+      mac:
+        type: string
+      name:
+        type: string
+    type: object
   api.CorrelationReason:
     properties:
       code:
@@ -105,6 +128,17 @@ definitions:
         type: array
       mac:
         type: string
+    type: object
+  api.HostIdentityGroupResponse:
+    properties:
+      confirmed:
+        type: boolean
+      mac:
+        type: string
+      members:
+        items:
+          $ref: '#/definitions/api.ConfirmedIdentityGroupMember'
+        type: array
     type: object
   api.HostIdentityResponse:
     properties:
@@ -1374,6 +1408,39 @@ paths:
               type: string
             type: object
       summary: Set an identity correlation decision
+      tags:
+      - hosts
+  /host/{id}/identity/group:
+    get:
+      description: Return the transitive group of MAC identities explicitly confirmed
+        by the user as the same physical device. The projection is read only and does
+        not rewrite Hosts, Events, Presence, or historical observations.
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.HostIdentityGroupResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get confirmed logical identity group
       tags:
       - hosts
   /host/{id}/metadata:

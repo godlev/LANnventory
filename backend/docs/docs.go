@@ -1380,6 +1380,53 @@ const docTemplate = `{
                 }
             }
         },
+        "/host/{id}/identity/group": {
+            "get": {
+                "description": "Return the transitive group of MAC identities explicitly confirmed by the user as the same physical device. The projection is read only and does not rewrite Hosts, Events, Presence, or historical observations.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Get confirmed logical identity group",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.HostIdentityGroupResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/host/{id}/metadata": {
             "patch": {
                 "description": "Partially update manually managed inventory metadata. Tags are trimmed, empty tags are removed, duplicates are removed case-insensitively, and user order is preserved. Actual changes are recorded as Device change events.",
@@ -2003,6 +2050,41 @@ const docTemplate = `{
                 }
             }
         },
+        "api.ConfirmedIdentityGroupMember": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean"
+                },
+                "addresses": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "deviceType": {
+                    "type": "string"
+                },
+                "exists": {
+                    "type": "boolean"
+                },
+                "firstSeen": {
+                    "type": "string"
+                },
+                "hostId": {
+                    "type": "integer"
+                },
+                "lastSeen": {
+                    "type": "string"
+                },
+                "mac": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
         "api.CorrelationReason": {
             "type": "object",
             "properties": {
@@ -2132,6 +2214,23 @@ const docTemplate = `{
                 },
                 "mac": {
                     "type": "string"
+                }
+            }
+        },
+        "api.HostIdentityGroupResponse": {
+            "type": "object",
+            "properties": {
+                "confirmed": {
+                    "type": "boolean"
+                },
+                "mac": {
+                    "type": "string"
+                },
+                "members": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.ConfirmedIdentityGroupMember"
+                    }
                 }
             }
         },
