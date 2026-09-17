@@ -11,18 +11,25 @@ import (
 	"github.com/godlev/LANnventory/internal/models"
 )
 
+// CorrelationReason is one explainable positive or negative candidate signal.
+type CorrelationReason struct {
+	Code   string `json:"code"`
+	Detail string `json:"detail"`
+	Weight int    `json:"weight"`
+}
+
 // HostIdentityCandidate is a read-only suggestion that two MAC identities may
 // belong to the same physical device. It never implies an automatic merge.
 type HostIdentityCandidate struct {
-	Mac        string               `json:"mac"`
-	HostID     int                  `json:"hostId"`
-	Name       string               `json:"name"`
-	DeviceType string               `json:"deviceType"`
-	Exists     bool                 `json:"exists"`
-	Active     bool                 `json:"active"`
-	Score      int                  `json:"score"`
-	Confidence correlation.Confidence `json:"confidence"`
-	Reasons    []correlation.Reason `json:"reasons"`
+	Mac        string              `json:"mac"`
+	HostID     int                 `json:"hostId"`
+	Name       string              `json:"name"`
+	DeviceType string              `json:"deviceType"`
+	Exists     bool                `json:"exists"`
+	Active     bool                `json:"active"`
+	Score      int                 `json:"score"`
+	Confidence string              `json:"confidence"`
+	Reasons    []CorrelationReason `json:"reasons"`
 }
 
 // HostIdentityCandidatesResponse returns explainable correlation suggestions.
@@ -87,8 +94,8 @@ func getHostIdentityCandidates(c *gin.Context) {
 		item := HostIdentityCandidate{
 			Mac:        candidate.Mac,
 			Score:      candidate.Score,
-			Confidence: candidate.Confidence,
-			Reasons:    candidate.Reasons,
+			Confidence: string(candidate.Confidence),
+			Reasons:    correlationReasons(candidate.Reasons),
 		}
 		if current, exists := currentByMAC[candidate.Mac]; exists {
 			item.HostID = current.ID
@@ -104,6 +111,18 @@ func getHostIdentityCandidates(c *gin.Context) {
 		Mac:        targetMAC,
 		Candidates: candidates,
 	})
+}
+
+func correlationReasons(reasons []correlation.Reason) []CorrelationReason {
+	result := make([]CorrelationReason, 0, len(reasons))
+	for _, reason := range reasons {
+		result = append(result, CorrelationReason{
+			Code:   reason.Code,
+			Detail: reason.Detail,
+			Weight: reason.Weight,
+		})
+	}
+	return result
 }
 
 func buildCorrelationObservations(currentHosts []models.Host, addressRows []models.HostAddress, evidenceRows []models.HostDiscoveryEvidence) map[string]correlation.IdentityObservation {
