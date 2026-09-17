@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/godlev/LANnventory/internal/correlation"
 	"github.com/godlev/LANnventory/internal/identity"
 	"github.com/godlev/LANnventory/internal/models"
 	"gorm.io/gorm"
@@ -37,6 +38,27 @@ func SetIdentityCorrelationDecision(macA, macB, decision, changedAt string) (mod
 
 	var result models.IdentityCorrelationDecision
 	err = activeDB.Transaction(func(txDB *gorm.DB) error {
+		var all []models.IdentityCorrelationDecision
+		if err := txDB.Table(identityCorrelationDecisionsTable).Find(&all).Error; err != nil {
+			return err
+		}
+
+		graph := make([]correlation.DecisionPair, 0, len(all)+1)
+		for _, row := range all {
+			if row.MacA == left && row.MacB == right {
+				continue
+			}
+			graph = append(graph, correlation.DecisionPair{
+				MacA:     row.MacA,
+				MacB:     row.MacB,
+				Decision: row.Decision,
+			})
+		}
+		graph = append(graph, correlation.DecisionPair{MacA: left, MacB: right, Decision: decision})
+		if err := correlation.ValidateDecisionGraph(graph); err != nil {
+			return err
+		}
+
 		var existing models.IdentityCorrelationDecision
 		err := txDB.Table(identityCorrelationDecisionsTable).
 			Where("\"MAC_A\" = ? AND \"MAC_B\" = ?", left, right).
