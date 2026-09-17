@@ -65,7 +65,16 @@ async function correlationFetch(url: string, init?: RequestInit): Promise<Respon
   const response = await fetch(url, init);
   if (!response.ok) {
     const detail = await response.text();
-    throw new Error(detail || response.statusText || "Correlation request failed");
+    let message = detail || response.statusText || "Correlation request failed";
+    try {
+      const parsed = JSON.parse(detail) as { error?: unknown };
+      if (typeof parsed.error === "string" && parsed.error.trim() !== "") {
+        message = parsed.error;
+      }
+    } catch {
+      // Preserve the plain-text error when the response is not JSON.
+    }
+    throw new Error(message);
   }
   return response;
 }
