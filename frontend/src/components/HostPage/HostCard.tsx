@@ -3,6 +3,7 @@ import { apiDelHost, apiGetInventoryOptions, apiPatchHost, apiSetHostMetadata, a
 import { Host } from "../../functions/exports";
 import { formatLastSeen } from "../../functions/dateFormat";
 import { deviceDisplayName } from "../../functions/deviceIdentity";
+import { macTypeLabel } from "../../functions/macIdentity";
 import { deviceTypeTitle, getDeviceTypeOption, normalizeDeviceType, type DeviceTypeValue } from "../../functions/deviceTypes";
 import { updateHostInView } from "../../functions/hostView";
 import DeviceTypePicker from "../DeviceTypePicker";
@@ -565,6 +566,29 @@ function HostCard(_props: HostCardProps) {
 
               <div class="host-field-label">MAC</div>
               <div class="host-field-value">{_props.host.Mac}</div>
+
+              <div class="host-field-label">MAC type</div>
+              <div class="host-field-value">
+                <span class="host-lifecycle-value">
+                  <span>{macTypeLabel(_props.host.MacType)}</span>
+                  <Show when={_props.host.MacType === "locally-administered"}>
+                    <ActionTooltip
+                      title="Locally administered MAC"
+                      detail="This MAC may be randomized, virtual, or manually assigned."
+                    >
+                      <span
+                        class="host-lifecycle-approx"
+                        title="Locally administered MAC"
+                        aria-label="This MAC may be randomized, virtual, or manually assigned."
+                        role="img"
+                        tabIndex={0}
+                      >
+                        <i class="bi bi-info-circle" aria-hidden="true"></i>
+                      </span>
+                    </ActionTooltip>
+                  </Show>
+                </span>
+              </div>
 
               <div class="host-field-label">Interface</div>
               <div class="host-field-value">{_props.host.Iface || <span class="device-cell-muted">Unknown</span>}</div>
