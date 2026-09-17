@@ -50,6 +50,45 @@ export type InventoryOptions = {
   locations: string[];
 };
 
+export type AddressMACObservation = {
+  mac: string;
+  firstSeen: string;
+  lastSeen: string;
+  active: boolean;
+};
+
+export type HostIdentityAddress = {
+  address: string;
+  family: string;
+  iface: string;
+  firstSeen: string;
+  lastSeen: string;
+  active: boolean;
+  macHistory: AddressMACObservation[];
+};
+
+export type DiscoveryEvidenceObservation = {
+  address: string;
+  source: string;
+  kind: string;
+  value: string;
+  firstSeen: string;
+  lastSeen: string;
+  active: boolean;
+};
+
+export type HostIdentity = {
+  mac: string;
+  addresses: HostIdentityAddress[];
+  evidence: DiscoveryEvidenceObservation[];
+  dataSources: string[];
+};
+
+export type AddressIdentity = {
+  address: string;
+  macHistory: AddressMACObservation[];
+};
+
 const apiFetch = async (url: string, init?: RequestInit): Promise<Response> => {
   const response = await fetch(url, init);
   if (!response.ok) {
@@ -263,6 +302,17 @@ export const apiGetHost = async (id:string) => {
   const res = await apiJSON<Host>(url);
 
   return res;
+};
+
+export const apiGetHostIdentity = async (id: number | string): Promise<HostIdentity> => {
+  const url = apiPath+'/api/host/'+encodeURIComponent(String(id))+'/identity';
+  return await apiJSON<HostIdentity>(url);
+};
+
+export const apiGetAddressIdentity = async (address: string): Promise<AddressIdentity> => {
+  const params = new URLSearchParams({ address });
+  const url = apiPath+'/api/identity/address?'+params.toString();
+  return await apiJSON<AddressIdentity>(url);
 };
 
 export const apiDelHost = async (id:number) => {
