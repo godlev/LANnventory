@@ -97,14 +97,7 @@ func processScanResult(foundHosts []models.Host, scanOK bool) bool {
 	}
 	recordScannerDiscoveryEvidence(foundHosts)
 
-	foundHostsMap := make(map[string]models.Host)
-	for _, fHost := range foundHosts {
-		key := identity.MACKey(fHost.Mac)
-		if canonical, err := identity.NormalizeMAC(fHost.Mac); err == nil {
-			fHost.Mac = canonical
-		}
-		foundHostsMap[key] = fHost
-	}
+	foundHostsMap := buildCompatibilityHostMap(foundHosts)
 
 	// Core host state, lifecycle and connectivity events are committed before
 	// best-effort enrichment. Discovery failures must never change the success
