@@ -1,8 +1,10 @@
 package models
 
 const (
-	DiscoverySourceScanner    = "scanner"
-	DiscoverySourceReverseDNS = "reverse-dns"
+	DiscoverySourceScanner        = "scanner"
+	DiscoverySourceReverseDNS     = "reverse-dns"
+	DiscoverySourceSystemResolver = "system-resolver"
+	DiscoverySourceMDNS           = "mdns"
 
 	DiscoveryKindVendor   = "vendor"
 	DiscoveryKindHostname = "hostname"
