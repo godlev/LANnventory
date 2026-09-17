@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/godlev/LANnventory/internal/correlation"
 	"github.com/godlev/LANnventory/internal/gdb"
 	"github.com/godlev/LANnventory/internal/models"
 )
@@ -73,7 +72,7 @@ func TestHostIdentityCandidatesIncludeRetainedHistoricalMAC(t *testing.T) {
 	if candidate.Exists || candidate.HostID != 0 {
 		t.Fatalf("historical candidate should not require current host row: %+v", candidate)
 	}
-	if candidate.Confidence != correlation.ConfidenceMedium {
+	if candidate.Confidence != "medium" {
 		t.Fatalf("candidate confidence = %q score=%d, want medium", candidate.Confidence, candidate.Score)
 	}
 }
