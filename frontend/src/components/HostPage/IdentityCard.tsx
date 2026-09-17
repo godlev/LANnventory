@@ -9,6 +9,7 @@ import {
 } from "../../functions/api";
 import { formatLastSeen } from "../../functions/dateFormat";
 import type { Host } from "../../functions/exports";
+import CorrelationPanel from "./CorrelationPanel";
 
 type IdentityCardProps = {
   host: Host;
@@ -125,6 +126,8 @@ function IdentityCard(props: IdentityCardProps) {
                 </Show>
               </div>
             </div>
+
+            <CorrelationPanel host={props.host}></CorrelationPanel>
           </Show>
         </Show>
       </div>
