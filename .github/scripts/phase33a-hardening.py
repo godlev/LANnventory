@@ -1,0 +1,308 @@
+from pathlib import Path
+
+scan_path = Path("backend/internal/routines/scan-routine.go")
+text = scan_path.read_text()
+old_map = '''\tfoundHostsMap := make(map[string]models.Host)\n\tfor _, fHost := range foundHosts {\n\t\tkey := identity.MACKey(fHost.Mac)\n\t\tif canonical, err := identity.NormalizeMAC(fHost.Mac); err == nil {\n\t\t\tfHost.Mac = canonical\n\t\t}\n\t\tfoundHostsMap[key] = fHost\n\t}\n'''
+new_map = '''\tfoundHostsMap := buildCompatibilityHostMap(foundHosts)\n'''
+if old_map not in text:
+    raise SystemExit("foundHostsMap pattern not found")
+text = text.replace(old_map, new_map, 1)
+scan_path.write_text(text)
+
+helper_path = Path("backend/internal/routines/identity_compatibility.go")
+helper_path.write_text(r'''package routines
+
+import (
+    "bytes"
+    "net"
+    "sort"
+    "strings"
+
+    "github.com/godlev/LANnventory/internal/gdb"
+    "github.com/godlev/LANnventory/internal/identity"
+    "github.com/godlev/LANnventory/internal/models"
+)
+
+// buildCompatibilityHostMap collapses scanner observations to the legacy one-row-per-MAC
+// Host model without discarding the complete address observations recorded before it.
+// The selected compatibility IP is stable across scanner output ordering.
+func buildCompatibilityHostMap(foundHosts []models.Host) map[string]models.Host {
+    currentIPByMAC := make(map[string]string)
+    if currentHosts, ok := gdb.Select("now"); ok {
+        for _, host := range currentHosts {
+            currentIPByMAC[identity.MACKey(host.Mac)] = host.IP
+        }
+    }
+
+    grouped := make(map[string][]models.Host)
+    for _, host := range foundHosts {
+        key := identity.MACKey(host.Mac)
+        if canonical, err := identity.NormalizeMAC(host.Mac); err == nil {
+            host.Mac = canonical
+        }
+        grouped[key] = append(grouped[key], host)
+    }
+
+    selected := make(map[string]models.Host, len(grouped))
+    for key, candidates := range grouped {
+        selected[key] = selectCompatibilityHost(candidates, currentIPByMAC[key])
+    }
+    return selected
+}
+
+func selectCompatibilityHost(candidates []models.Host, currentIP string) models.Host {
+    if len(candidates) == 0 {
+        return models.Host{}
+    }
+
+    ordered := append([]models.Host(nil), candidates...)
+    sort.SliceStable(ordered, func(i, j int) bool {
+        return compatibilityHostLess(ordered[i], ordered[j], currentIP)
+    })
+
+    selected := ordered[0]
+    // Presence/lifecycle timestamps describe the MAC observation, not only the
+    // selected compatibility address. Keep the newest observation time from the group.
+    for _, candidate := range candidates {
+        if candidate.Date > selected.Date {
+            selected.Date = candidate.Date
+        }
+    }
+    return selected
+}
+
+func compatibilityHostLess(left, right models.Host, currentIP string) bool {
+    currentAddress, _, _, currentValid := compatibilityIPAddress(currentIP)
+    leftAddress, leftBytes, leftFamily, leftValid := compatibilityIPAddress(left.IP)
+    rightAddress, rightBytes, rightFamily, rightValid := compatibilityIPAddress(right.IP)
+
+    leftCurrent := currentValid && leftValid && leftAddress == currentAddress
+    rightCurrent := currentValid && rightValid && rightAddress == currentAddress
+    if leftCurrent != rightCurrent {
+        return leftCurrent
+    }
+    if leftValid != rightValid {
+        return leftValid
+    }
+    if leftFamily != rightFamily {
+        return leftFamily < rightFamily
+    }
+    if leftValid && !bytes.Equal(leftBytes, rightBytes) {
+        return bytes.Compare(leftBytes, rightBytes) < 0
+    }
+    if !leftValid && leftAddress != rightAddress {
+        return leftAddress < rightAddress
+    }
+
+    leftIface := strings.TrimSpace(left.Iface)
+    rightIface := strings.TrimSpace(right.Iface)
+    if leftIface != rightIface {
+        return leftIface < rightIface
+    }
+    if left.Date != right.Date {
+        return left.Date > right.Date
+    }
+    return strings.TrimSpace(left.Hw) < strings.TrimSpace(right.Hw)
+}
+
+// compatibilityIPAddress returns a canonical address plus bytes suitable for
+// deterministic numeric ordering. family is 0 for IPv4, 1 for IPv6, 2 invalid.
+func compatibilityIPAddress(value string) (address string, raw []byte, family int, valid bool) {
+    trimmed := strings.TrimSpace(value)
+    ip := net.ParseIP(trimmed)
+    if ip == nil {
+        return trimmed, nil, 2, false
+    }
+    if ipv4 := ip.To4(); ipv4 != nil {
+        return ipv4.String(), append([]byte(nil), ipv4...), 0, true
+    }
+    ipv6 := ip.To16()
+    if ipv6 == nil {
+        return trimmed, nil, 2, false
+    }
+    return ip.String(), append([]byte(nil), ipv6...), 1, true
+}
+''')
+
+Path("backend/internal/routines/identity_hardening_test.go").write_text(r'''package routines
+
+import (
+    "testing"
+
+    "github.com/godlev/LANnventory/internal/gdb"
+    "github.com/godlev/LANnventory/internal/models"
+)
+
+func TestMultiIPCompatibilityKeepsCurrentIPAndManagedInventory(t *testing.T) {
+    setupScanRoutineTest(t)
+    mac := "AA:BB:CC:DD:EE:90"
+
+    gdb.Update("now", models.Host{
+        Name:       "Living Room TV",
+        Iface:      "eth0",
+        IP:         "192.168.1.20",
+        Mac:        mac,
+        Hw:         "Original Vendor",
+        Date:       "2026-09-17 15:00:00",
+        Known:      1,
+        Now:        1,
+        DeviceType: "tv",
+    })
+
+    observations := []models.Host{
+        {Iface: "wifi0", IP: "192.168.1.21", Mac: mac, Hw: "Scanner Vendor", Date: "2026-09-17 15:05:02", Now: 1},
+        {Iface: "eth0", IP: "192.168.1.20", Mac: mac, Hw: "Scanner Vendor", Date: "2026-09-17 15:05:01", Now: 1},
+    }
+    if !processScanResult(observations, true) {
+        t.Fatal("successful multi-IP scan was not applied")
+    }
+
+    hosts := gdb.SelectByMAC("now", mac)
+    if len(hosts) != 1 {
+        t.Fatalf("current host count = %d, want 1: %+v", len(hosts), hosts)
+    }
+    if hosts[0].IP != "192.168.1.20" {
+        t.Fatalf("compatibility IP = %q, want preserved current 192.168.1.20", hosts[0].IP)
+    }
+    if hosts[0].Date != "2026-09-17 15:05:02" {
+        t.Fatalf("compatibility Date = %q, want newest MAC observation", hosts[0].Date)
+    }
+    if hosts[0].Name != "Living Room TV" || hosts[0].DeviceType != "tv" || hosts[0].Known != 1 {
+        t.Fatalf("managed inventory changed during multi-IP scan: %+v", hosts[0])
+    }
+
+    addresses, err := gdb.SelectHostAddressesByMAC(mac)
+    if err != nil {
+        t.Fatalf("SelectHostAddressesByMAC: %v", err)
+    }
+    if len(addresses) != 2 || !addresses[0].Active || !addresses[1].Active {
+        t.Fatalf("address observations = %+v, want two active addresses", addresses)
+    }
+
+    lifecycle, ok, err := gdb.SelectHostLifecycleByMAC(mac)
+    if err != nil || !ok {
+        t.Fatalf("SelectHostLifecycleByMAC ok=%v err=%v", ok, err)
+    }
+    if lifecycle.LastSeen != "2026-09-17 15:05:02" {
+        t.Fatalf("LastSeen = %q, want newest observation", lifecycle.LastSeen)
+    }
+
+    events, ok := gdb.SelectEvents(10, "")
+    if !ok {
+        t.Fatal("SelectEvents failed")
+    }
+    if len(events) != 0 {
+        t.Fatalf("stable online multi-IP scan created events: %+v", events)
+    }
+
+    history, ok := gdb.Select("history")
+    if !ok {
+        t.Fatal("Select history failed")
+    }
+    if len(history) != 1 || history[0].Mac != mac || history[0].IP != "192.168.1.20" {
+        t.Fatalf("presence history = %+v, want one compatibility row for the MAC", history)
+    }
+
+    // Reverse scanner order on the next scan. Primary IP must not flap.
+    observations[0], observations[1] = observations[1], observations[0]
+    observations[0].Date = "2026-09-17 15:10:01"
+    observations[1].Date = "2026-09-17 15:10:02"
+    processScanResult(observations, true)
+    hosts = gdb.SelectByMAC("now", mac)
+    if len(hosts) != 1 || hosts[0].IP != "192.168.1.20" || hosts[0].Date != "2026-09-17 15:10:02" {
+        t.Fatalf("compatibility identity changed with scanner order: %+v", hosts)
+    }
+}
+
+func TestMultiIPCompatibilityFallbackIsDeterministicAndIPv4First(t *testing.T) {
+    setupScanRoutineTest(t)
+    mac := "AA:BB:CC:DD:EE:91"
+
+    gdb.Update("now", models.Host{
+        Name: "multi-ip", Iface: "eth0", IP: "192.168.1.99", Mac: mac,
+        Date: "2026-09-17 16:00:00", Known: 1, Now: 1,
+    })
+
+    processScanResult([]models.Host{
+        {Iface: "eth0", IP: "2001:db8::1", Mac: mac, Date: "2026-09-17 16:05:00", Now: 1},
+        {Iface: "eth0", IP: "192.168.1.10", Mac: mac, Date: "2026-09-17 16:05:00", Now: 1},
+        {Iface: "eth0", IP: "192.168.1.2", Mac: mac, Date: "2026-09-17 16:05:00", Now: 1},
+    }, true)
+
+    hosts := gdb.SelectByMAC("now", mac)
+    if len(hosts) != 1 || hosts[0].IP != "192.168.1.2" {
+        t.Fatalf("fallback compatibility IP = %+v, want numeric-lowest IPv4 192.168.1.2", hosts)
+    }
+}
+''')
+
+Path("backend/internal/gdb/identity_delete_hardening_test.go").write_text(r'''package gdb
+
+import (
+    "testing"
+
+    "github.com/godlev/LANnventory/internal/models"
+)
+
+func TestDeleteCurrentHostRetainsIdentityObservationHistory(t *testing.T) {
+    startSelectTestDB(t)
+    mac := "AA:BB:CC:DD:EE:A0"
+    address := "10.4.1.80"
+
+    if err := UpdateWithError("now", models.Host{
+        Name: "temporary-device", Iface: "eth0", IP: address, Mac: mac,
+        Date: "2026-09-17 17:00:00", Known: 1, Now: 1, DeviceType: "iot",
+    }); err != nil {
+        t.Fatalf("seed current host: %v", err)
+    }
+    hosts := SelectByMAC("now", mac)
+    if len(hosts) != 1 {
+        t.Fatalf("seeded hosts = %+v", hosts)
+    }
+    host := hosts[0]
+
+    if err := RecordHostAddressObservations([]models.Host{
+        {Mac: mac, IP: address, Iface: "eth0", Date: "2026-09-17 17:00:00", Now: 1},
+    }); err != nil {
+        t.Fatalf("RecordHostAddressObservations: %v", err)
+    }
+    if err := RecordHostDiscoveryEvidence(mac, address, models.DiscoverySourceMDNS, models.DiscoveryKindHostname, []string{"device.local"}, "2026-09-17 17:00:00"); err != nil {
+        t.Fatalf("RecordHostDiscoveryEvidence: %v", err)
+    }
+
+    connectivity := models.NewHostEvent(host, models.EventOnline, "", "")
+    connectivity.Date = "2026-09-17 17:00:00"
+    if err := AddEvent(connectivity); err != nil {
+        t.Fatalf("AddEvent online: %v", err)
+    }
+    deviceChange := models.NewHostEvent(host, models.EventDeviceTypeChanged, "", "iot")
+    deviceChange.Date = "2026-09-17 17:01:00"
+    if err := AddEvent(deviceChange); err != nil {
+        t.Fatalf("AddEvent device type: %v", err)
+    }
+
+    if err := DeleteCurrentHostWithMetadata(host); err != nil {
+        t.Fatalf("DeleteCurrentHostWithMetadata: %v", err)
+    }
+    if remaining := SelectByMAC("now", mac); len(remaining) != 0 {
+        t.Fatalf("deleted current host still present: %+v", remaining)
+    }
+
+    addresses, err := SelectHostAddressesByMAC(mac)
+    if err != nil || len(addresses) != 1 || addresses[0].Address != address {
+        t.Fatalf("retained address history = %+v err=%v", addresses, err)
+    }
+    evidence, err := SelectHostDiscoveryEvidenceByMAC(mac)
+    if err != nil || len(evidence) != 1 || evidence[0].Value != "device.local" {
+        t.Fatalf("retained discovery evidence = %+v err=%v", evidence, err)
+    }
+
+    events, ok := SelectEvents(10, "")
+    if !ok {
+        t.Fatal("SelectEvents failed")
+    }
+    if len(events) != 1 || events[0].EventType != string(models.EventOnline) || events[0].Mac != mac {
+        t.Fatalf("delete event retention = %+v, want only immutable connectivity observation", events)
+    }
+}
+''')
