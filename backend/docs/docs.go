@@ -1455,7 +1455,7 @@ const docTemplate = `{
         },
         "/update/channel": {
             "post": {
-                "description": "Persists the Stable or Beta update channel and immediately refreshes update status.",
+                "description": "Persists the Stable or Beta update channel without triggering a release check.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1501,22 +1501,13 @@ const docTemplate = `{
                                 "type": "string"
                             }
                         }
-                    },
-                    "502": {
-                        "description": "Bad Gateway",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
                     }
                 }
             }
         },
         "/update/settings": {
             "post": {
-                "description": "Persists release channel, automatic check/install preferences, and automatic check interval, then immediately refreshes update status.",
+                "description": "Persists release channel, automatic check/install preferences, and automatic check interval without triggering a release check.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1562,22 +1553,13 @@ const docTemplate = `{
                                 "type": "string"
                             }
                         }
-                    },
-                    "502": {
-                        "description": "Bad Gateway",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
                     }
                 }
             }
         },
         "/update/status": {
             "get": {
-                "description": "Checks the selected release channel for a newer LANnventory release. Cached release metadata is used unless refresh is true.",
+                "description": "Returns cached release metadata without contacting GitHub. Set refresh=true only for an explicit manual update check.",
                 "produces": [
                     "application/json"
                 ],
@@ -1588,13 +1570,13 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "boolean",
-                        "description": "Refresh cached release metadata",
+                        "description": "Explicitly refresh release metadata",
                         "name": "refresh",
                         "in": "query"
                     },
                     {
                         "type": "boolean",
-                        "description": "Use cached release metadata only and never contact GitHub",
+                        "description": "Deprecated compatibility flag; cached-only is the default",
                         "name": "cached",
                         "in": "query"
                     }

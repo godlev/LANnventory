@@ -1326,8 +1326,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Persists the Stable or Beta update channel and immediately refreshes
-        update status.
+      description: Persists the Stable or Beta update channel without triggering a
+        release check.
       parameters:
       - description: Update channel
         in: body
@@ -1354,12 +1354,6 @@ paths:
             additionalProperties:
               type: string
             type: object
-        "502":
-          description: Bad Gateway
-          schema:
-            additionalProperties:
-              type: string
-            type: object
       summary: Set update channel
       tags:
       - updates
@@ -1368,7 +1362,7 @@ paths:
       consumes:
       - application/json
       description: Persists release channel, automatic check/install preferences,
-        and automatic check interval, then immediately refreshes update status.
+        and automatic check interval without triggering a release check.
       parameters:
       - description: Update settings
         in: body
@@ -1395,25 +1389,19 @@ paths:
             additionalProperties:
               type: string
             type: object
-        "502":
-          description: Bad Gateway
-          schema:
-            additionalProperties:
-              type: string
-            type: object
       summary: Set update settings
       tags:
       - updates
   /update/status:
     get:
-      description: Checks the selected release channel for a newer LANnventory release.
-        Cached release metadata is used unless refresh is true.
+      description: Returns cached release metadata without contacting GitHub. Set
+        refresh=true only for an explicit manual update check.
       parameters:
-      - description: Refresh cached release metadata
+      - description: Explicitly refresh release metadata
         in: query
         name: refresh
         type: boolean
-      - description: Use cached release metadata only and never contact GitHub
+      - description: Deprecated compatibility flag; cached-only is the default
         in: query
         name: cached
         type: boolean
