@@ -18,6 +18,7 @@ func TestHostAddressMigrationCreatesSeparateTableOnly(t *testing.T) {
 				t.Fatalf("%s unexpectedly has host-address column %s", table, column)
 			}
 		}
+	}
 }
 
 func TestRecordHostAddressObservationsTracksMultipleAddressesAndActivity(t *testing.T) {
