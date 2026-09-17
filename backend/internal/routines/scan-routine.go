@@ -162,7 +162,7 @@ func compareHosts(foundHostsMap map[string]models.Host) {
 	}
 
 	for _, fHost := range foundHostsMap {
-		fHost.Name, fHost.DNS = lookupDNS(fHost)
+		_, fHost.DNS = lookupDNS(fHost)
 		recordReverseDNSEvidence(fHost)
 		notify.Unknown(fHost) // Log and Shoutrrr
 
