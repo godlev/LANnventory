@@ -1,0 +1,42 @@
+name: Phase 33 Swagger sync
+
+on:
+  push:
+    branches:
+      - phase-33-device-identity
+    paths:
+      - .github/workflows/phase33-sync-swagger.yml
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Regenerate Swagger docs
+        working-directory: backend
+        run: go run github.com/swaggo/swag/cmd/swag@v1.16.6 init -g main.go --dir cmd/LANnventory,internal/api,internal/models
+
+      - name: Commit generated docs
+        run: |
+          git add backend/docs
+          if git diff --cached --quiet; then
+            echo "Swagger docs are already synchronized."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Phase 33A.2: sync Swagger docs"
+          git push origin HEAD:phase-33-device-identity
