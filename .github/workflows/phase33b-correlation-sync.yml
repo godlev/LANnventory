@@ -1,0 +1,59 @@
+name: Phase33B Correlation Sync
+
+on:
+  push:
+    branches:
+      - phase-33-device-identity
+    paths:
+      - .github/workflows/phase33b-correlation-sync.yml
+
+permissions:
+  contents: write
+
+jobs:
+  validate-sync:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: phase-33-device-identity
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Format Phase 33B Go files
+        run: |
+          gofmt -w backend/internal/correlation/correlation.go
+          gofmt -w backend/internal/correlation/correlation_test.go
+          gofmt -w backend/internal/gdb/identity_observations.go
+          gofmt -w backend/internal/api/api-correlation.go
+          gofmt -w backend/internal/api/api_correlation_test.go
+          gofmt -w backend/internal/api/routes.go
+
+      - name: Test backend
+        working-directory: backend
+        run: go test ./...
+
+      - name: Race test backend
+        working-directory: backend
+        run: go test -race ./...
+
+      - name: Regenerate Swagger
+        working-directory: backend
+        run: go run github.com/swaggo/swag/cmd/swag@v1.16.6 init -g main.go --dir cmd/LANnventory,internal/api,internal/models
+
+      - name: Commit synchronized files
+        run: |
+          if git diff --quiet; then
+            echo "No generated or formatting changes to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/internal/correlation backend/internal/gdb/identity_observations.go backend/internal/api/api-correlation.go backend/internal/api/api_correlation_test.go backend/internal/api/routes.go backend/docs
+          git commit -m "Phase 33B.1: sync correlation API generated files"
+          git push origin HEAD:phase-33-device-identity
