@@ -75,3 +75,5 @@ jobs:
           git add backend/internal/correlation/decision_graph.go backend/internal/correlation/decision_graph_test.go backend/internal/gdb/identity_correlation_decisions.go backend/internal/gdb/identity_correlation_decisions_test.go backend/internal/api/api-correlation-decisions.go backend/internal/api/api_correlation_conflict_test.go backend/internal/api/api-correlation-group.go backend/internal/api/api_correlation_group_test.go backend/internal/api/routes.go backend/docs backend/internal/web/public
           git commit -m "Phase 33B.5: sync confirmed identity group generated files"
           git push origin HEAD:phase-33-device-identity
+
+      # This temporary workflow is removed after the clean Packaging Check passes.
