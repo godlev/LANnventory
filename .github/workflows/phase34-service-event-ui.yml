@@ -62,8 +62,8 @@ jobs:
           )
           replace_once(
               'frontend/src/functions/activity.ts',
-              '''    case "pinned-changed":\n      return "Pinned: " + booleanEventValue(event.OldValue) + " → " + booleanEventValue(event.NewValue);\n    case "discovered":''',
-              '''    case "pinned-changed":\n      return "Pinned: " + booleanEventValue(event.OldValue) + " → " + booleanEventValue(event.NewValue);\n    case "service-opened":\n      return serviceEventDetails(event, "open");\n    case "service-closed":\n      return serviceEventDetails(event, "closed");\n    case "discovered":''',
+              '''    case "pinned-changed":\n      return "Pinned: " + booleanEventValue(event.OldValue) + " \\u2192 " + booleanEventValue(event.NewValue);\n    case "discovered":''',
+              '''    case "pinned-changed":\n      return "Pinned: " + booleanEventValue(event.OldValue) + " \\u2192 " + booleanEventValue(event.NewValue);\n    case "service-opened":\n      return serviceEventDetails(event, "open");\n    case "service-closed":\n      return serviceEventDetails(event, "closed");\n    case "discovered":''',
           )
           replace_once(
               'frontend/src/functions/activity.ts',
@@ -78,7 +78,7 @@ jobs:
           replace_once(
               'frontend/src/functions/activity.ts',
               '''function compactNetworkDetail(event: HostEvent): string {''',
-              '''function serviceEndpointLabel(value: string | null | undefined): string {\n  const endpoint = (value ?? "").trim();\n  if (endpoint === "") {\n    return "Service";\n  }\n  return endpoint.replace(/^tcp\\//i, "TCP/");\n}\n\nfunction serviceEventDetails(event: HostEvent, nextState: "open" | "closed"): string {\n  const endpoint = serviceEndpointLabel(event.NewValue);\n  const address = event.IP ? " on " + event.IP : "";\n  const previous = (event.OldValue ?? "").trim();\n  if (previous !== "") {\n    return endpoint + address + " · " + previous + " → " + nextState;\n  }\n  return endpoint + address;\n}\n\nfunction compactNetworkDetail(event: HostEvent): string {''',
+              '''function serviceEndpointLabel(value: string | null | undefined): string {\n  const endpoint = (value ?? "").trim();\n  if (endpoint === "") {\n    return "Service";\n  }\n  return endpoint.replace(/^tcp\\//i, "TCP/");\n}\n\nfunction serviceEventDetails(event: HostEvent, nextState: "open" | "closed"): string {\n  const endpoint = serviceEndpointLabel(event.NewValue);\n  const address = event.IP ? " on " + event.IP : "";\n  const previous = (event.OldValue ?? "").trim();\n  if (previous !== "") {\n    return endpoint + address + " · " + previous + " \\u2192 " + nextState;\n  }\n  return endpoint + address;\n}\n\nfunction compactNetworkDetail(event: HostEvent): string {''',
           )
 
           replace_once(
