@@ -107,4 +107,7 @@ func TestHostIdentityGroupReturnsSingletonWithoutConfirmedRelationships(t *testi
 	if response.Confirmed || len(response.Members) != 1 || response.Members[0].Mac != mac {
 		t.Fatalf("singleton group = %+v", response)
 	}
+	if response.Members[0].FirstSeen != "" || response.Members[0].LastSeen != "" {
+		t.Fatalf("singleton group fabricated lifecycle timestamps from Host.Date: %+v", response.Members[0])
+	}
 }
