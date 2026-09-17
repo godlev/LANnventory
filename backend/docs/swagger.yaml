@@ -97,6 +97,15 @@ definitions:
       mac:
         type: string
     type: object
+  api.HostIdentityDecisionsResponse:
+    properties:
+      decisions:
+        items:
+          $ref: '#/definitions/api.IdentityCorrelationDecisionResponse'
+        type: array
+      mac:
+        type: string
+    type: object
   api.HostIdentityResponse:
     properties:
       addresses:
@@ -148,9 +157,35 @@ definitions:
           type: string
         type: array
     type: object
+  api.IdentityCorrelationDecisionResponse:
+    properties:
+      active:
+        type: boolean
+      createdAt:
+        type: string
+      decision:
+        type: string
+      deviceType:
+        type: string
+      exists:
+        type: boolean
+      hostId:
+        type: integer
+      mac:
+        type: string
+      name:
+        type: string
+      updatedAt:
+        type: string
+    type: object
   api.colorRequest:
     properties:
       color:
+        type: string
+    type: object
+  api.correlationDecisionRequest:
+    properties:
+      decision:
         type: string
     type: object
   api.hostPortScanResponse:
@@ -1214,6 +1249,125 @@ paths:
               type: string
             type: object
       summary: Get host identity correlation candidates
+      tags:
+      - hosts
+  /host/{id}/identity/decisions:
+    get:
+      description: Return user-confirmed or user-rejected MAC relationships for a
+        host. Decisions do not merge host observations, events, presence, or lifecycle
+        history.
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.HostIdentityDecisionsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get explicit identity correlation decisions
+      tags:
+      - hosts
+  /host/{id}/identity/decisions/{mac}:
+    delete:
+      description: Remove the user's explicit confirm/reject decision for a MAC pair
+        without modifying either identity or its historical observations.
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Other MAC
+        in: path
+        name: mac
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Clear an identity correlation decision
+      tags:
+      - hosts
+    put:
+      consumes:
+      - application/json
+      description: Confirm or reject that another observed MAC identity belongs to
+        the same physical device. This records user intent only and never merges historical
+        observations.
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Other observed MAC
+        in: path
+        name: mac
+        required: true
+        type: string
+      - description: Correlation decision
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.correlationDecisionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.IdentityCorrelationDecisionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Set an identity correlation decision
       tags:
       - hosts
   /host/{id}/metadata:
