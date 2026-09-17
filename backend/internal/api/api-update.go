@@ -105,24 +105,24 @@ func notifyUpdateSchedulerConfigChanged() {
 
 // getUpdateStatus godoc
 // @Summary      Get update status
-// @Description  Checks the selected release channel for a newer LANnventory release. Cached release metadata is used unless refresh is true.
+// @Description  Returns cached release metadata without contacting GitHub. Set refresh=true only for an explicit manual update check.
 // @Tags         updates
 // @Produce      json
-// @Param        refresh  query     bool  false  "Refresh cached release metadata"
-// @Param        cached   query     bool  false  "Use cached release metadata only and never contact GitHub"
+// @Param        refresh  query     bool  false  "Explicitly refresh release metadata"
+// @Param        cached   query     bool  false  "Deprecated compatibility flag; cached-only is the default"
 // @Success      200      {object}  updateStatusResponse
 // @Failure      502      {object}  map[string]string
 // @Router       /update/status [get]
 func getUpdateStatus(c *gin.Context) {
 	config := conf.GetAppConfig()
-	if c.Query("cached") == "1" || strings.EqualFold(c.Query("cached"), "true") {
+	refresh := c.Query("refresh") == "1" || strings.EqualFold(c.Query("refresh"), "true")
+	if !refresh {
 		status := updateService.CheckCached(config.Version, config.UpdateChannel)
 		c.IndentedJSON(http.StatusOK, withUpdateSettings(status, config))
 		return
 	}
 
-	refresh := c.Query("refresh") == "1" || strings.EqualFold(c.Query("refresh"), "true")
-	status, err := updateService.Check(c.Request.Context(), config.Version, config.UpdateChannel, refresh)
+	status, err := updateService.Check(c.Request.Context(), config.Version, config.UpdateChannel, true)
 	if err != nil {
 		c.IndentedJSON(http.StatusBadGateway, gin.H{"error": "update check failed", "detail": err.Error()})
 		return
@@ -132,7 +132,7 @@ func getUpdateStatus(c *gin.Context) {
 
 // saveUpdateChannel godoc
 // @Summary      Set update channel
-// @Description  Persists the Stable or Beta update channel and immediately refreshes update status.
+// @Description  Persists the Stable or Beta update channel without triggering a release check.
 // @Tags         updates
 // @Accept       json
 // @Produce      json
@@ -140,7 +140,6 @@ func getUpdateStatus(c *gin.Context) {
 // @Success      200      {object}  updateStatusResponse
 // @Failure      400      {object}  map[string]string
 // @Failure      500      {object}  map[string]string
-// @Failure      502      {object}  map[string]string
 // @Router       /update/channel [post]
 func saveUpdateChannel(c *gin.Context) {
 	var req updateChannelRequest
@@ -165,17 +164,13 @@ func saveUpdateChannel(c *gin.Context) {
 	}
 	notifyUpdateSchedulerConfigChanged()
 
-	status, err := updateService.Check(c.Request.Context(), nextConfig.Version, channel, true)
-	if err != nil {
-		c.IndentedJSON(http.StatusBadGateway, gin.H{"error": "channel saved but update check failed", "detail": err.Error()})
-		return
-	}
+	status := updateService.CheckCached(nextConfig.Version, channel)
 	c.IndentedJSON(http.StatusOK, withUpdateSettings(status, nextConfig))
 }
 
 // saveUpdateSettings godoc
 // @Summary      Set update settings
-// @Description  Persists release channel, automatic check/install preferences, and automatic check interval, then immediately refreshes update status.
+// @Description  Persists release channel, automatic check/install preferences, and automatic check interval without triggering a release check.
 // @Tags         updates
 // @Accept       json
 // @Produce      json
@@ -183,7 +178,6 @@ func saveUpdateChannel(c *gin.Context) {
 // @Success      200      {object}  updateStatusResponse
 // @Failure      400      {object}  map[string]string
 // @Failure      500      {object}  map[string]string
-// @Failure      502      {object}  map[string]string
 // @Router       /update/settings [post]
 func saveUpdateSettings(c *gin.Context) {
 	var req updateSettingsRequest
@@ -216,11 +210,7 @@ func saveUpdateSettings(c *gin.Context) {
 	}
 	notifyUpdateSchedulerConfigChanged()
 
-	status, err := updateService.Check(c.Request.Context(), nextConfig.Version, channel, true)
-	if err != nil {
-		c.IndentedJSON(http.StatusBadGateway, gin.H{"error": "settings saved but update check failed", "detail": err.Error()})
-		return
-	}
+	status := updateService.CheckCached(nextConfig.Version, channel)
 	c.IndentedJSON(http.StatusOK, withUpdateSettings(status, nextConfig))
 }
 

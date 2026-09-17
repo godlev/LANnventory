@@ -131,7 +131,19 @@ func migrate(candidate *gorm.DB) error {
 	if err := candidate.Table(hostLifecycleTable).AutoMigrate(&models.HostLifecycle{}); err != nil {
 		return err
 	}
-	return backfillHostLifecycle(candidate)
+	if err := candidate.Table(hostAddressesTable).AutoMigrate(&models.HostAddress{}); err != nil {
+		return err
+	}
+	if err := candidate.Table(hostDiscoveryEvidenceTable).AutoMigrate(&models.HostDiscoveryEvidence{}); err != nil {
+		return err
+	}
+	if err := candidate.Table(identityCorrelationDecisionsTable).AutoMigrate(&models.IdentityCorrelationDecision{}); err != nil {
+		return err
+	}
+	if err := backfillHostLifecycle(candidate); err != nil {
+		return err
+	}
+	return backfillHostAddresses(candidate)
 }
 
 func closeDB(target *gorm.DB) error {

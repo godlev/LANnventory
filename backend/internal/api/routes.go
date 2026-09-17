@@ -21,12 +21,19 @@ func Routes(router *gin.Engine) {
 		r0.GET("/inventory/options", getInventoryOptions)
 		r0.GET("/edit/:id/:name/*known", editHost) // api-hosts.go
 		r0.GET("/host/:id/activity", getHostActivity)
+		r0.GET("/host/:id/identity", getHostIdentity)
+		r0.GET("/host/:id/identity/candidates", getHostIdentityCandidates)
+		r0.GET("/host/:id/identity/decisions", getHostIdentityDecisions)
+		r0.GET("/host/:id/identity/group", getHostIdentityGroup)
+		r0.PUT("/host/:id/identity/decisions/:mac", setHostIdentityDecision)
+		r0.DELETE("/host/:id/identity/decisions/:mac", deleteHostIdentityDecision)
 		r0.GET("/host/:id", getHost) // api-hosts.go
 		r0.PATCH("/host/:id", setHostInventory)
 		r0.PATCH("/host/:id/type", setHostDeviceType)
 		r0.PATCH("/host/:id/metadata", setHostMetadata)
 		r0.GET("/host/del/:id", delHost)  // api-hosts.go
 		r0.GET("/host/add/:mac", addHost) // api-hosts.go
+		r0.GET("/identity/address", getAddressIdentity)
 
 		r0.GET("/config", getConfig)        // api-system.go
 		r0.GET("/health", getHealth)        // api-system.go
@@ -45,9 +52,9 @@ func Routes(router *gin.Engine) {
 		r0.GET("/history/:mac", getHistoryByMAC)        // api-history.go
 		r0.GET("/history/:mac/:date", getHistoryByDate) // api-history.go
 
-		r0.GET("/port/:addr/:port", getPortState)         // api-network.go
+		r0.GET("/port/:addr/:port", getPortState)          // api-network.go
 		r0.POST("/host/:id/port/:port/scan", scanHostPort) // api-network.go
-		r0.GET("/wol/:mac", sendWOL)                      // api-network.go
+		r0.GET("/wol/:mac", sendWOL)                       // api-network.go
 
 		r0.POST("/config/", saveConfigHandler)                // config.go
 		r0.POST("/config/color", saveColorHandler)            // config.go

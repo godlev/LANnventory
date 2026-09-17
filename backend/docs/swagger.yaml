@@ -1,5 +1,166 @@
 basePath: /api/
 definitions:
+  api.AddressIdentityResponse:
+    properties:
+      address:
+        type: string
+      macHistory:
+        items:
+          $ref: '#/definitions/api.AddressMACObservation'
+        type: array
+    type: object
+  api.AddressMACObservation:
+    properties:
+      active:
+        type: boolean
+      firstSeen:
+        type: string
+      lastSeen:
+        type: string
+      mac:
+        type: string
+    type: object
+  api.ConfirmedIdentityGroupMember:
+    properties:
+      active:
+        type: boolean
+      addresses:
+        items:
+          type: string
+        type: array
+      deviceType:
+        type: string
+      exists:
+        type: boolean
+      firstSeen:
+        type: string
+      hostId:
+        type: integer
+      lastSeen:
+        type: string
+      mac:
+        type: string
+      name:
+        type: string
+    type: object
+  api.CorrelationReason:
+    properties:
+      code:
+        type: string
+      detail:
+        type: string
+      weight:
+        type: integer
+    type: object
+  api.DiscoveryEvidenceObservation:
+    properties:
+      active:
+        type: boolean
+      address:
+        type: string
+      firstSeen:
+        type: string
+      kind:
+        type: string
+      lastSeen:
+        type: string
+      source:
+        type: string
+      value:
+        type: string
+    type: object
+  api.HostIdentityAddress:
+    properties:
+      active:
+        type: boolean
+      address:
+        type: string
+      family:
+        type: string
+      firstSeen:
+        type: string
+      iface:
+        type: string
+      lastSeen:
+        type: string
+      macHistory:
+        items:
+          $ref: '#/definitions/api.AddressMACObservation'
+        type: array
+    type: object
+  api.HostIdentityCandidate:
+    properties:
+      active:
+        type: boolean
+      confidence:
+        type: string
+      deviceType:
+        type: string
+      exists:
+        type: boolean
+      hostId:
+        type: integer
+      mac:
+        type: string
+      name:
+        type: string
+      reasons:
+        items:
+          $ref: '#/definitions/api.CorrelationReason'
+        type: array
+      score:
+        type: integer
+    type: object
+  api.HostIdentityCandidatesResponse:
+    properties:
+      candidates:
+        items:
+          $ref: '#/definitions/api.HostIdentityCandidate'
+        type: array
+      mac:
+        type: string
+    type: object
+  api.HostIdentityDecisionsResponse:
+    properties:
+      decisions:
+        items:
+          $ref: '#/definitions/api.IdentityCorrelationDecisionResponse'
+        type: array
+      mac:
+        type: string
+    type: object
+  api.HostIdentityGroupResponse:
+    properties:
+      confirmed:
+        type: boolean
+      firstSeen:
+        type: string
+      lastSeen:
+        type: string
+      mac:
+        type: string
+      members:
+        items:
+          $ref: '#/definitions/api.ConfirmedIdentityGroupMember'
+        type: array
+    type: object
+  api.HostIdentityResponse:
+    properties:
+      addresses:
+        items:
+          $ref: '#/definitions/api.HostIdentityAddress'
+        type: array
+      dataSources:
+        items:
+          type: string
+        type: array
+      evidence:
+        items:
+          $ref: '#/definitions/api.DiscoveryEvidenceObservation'
+        type: array
+      mac:
+        type: string
+    type: object
   api.HostInventoryPatchRequest:
     properties:
       deviceType:
@@ -34,9 +195,35 @@ definitions:
           type: string
         type: array
     type: object
+  api.IdentityCorrelationDecisionResponse:
+    properties:
+      active:
+        type: boolean
+      createdAt:
+        type: string
+      decision:
+        type: string
+      deviceType:
+        type: string
+      exists:
+        type: boolean
+      hostId:
+        type: integer
+      mac:
+        type: string
+      name:
+        type: string
+      updatedAt:
+        type: string
+    type: object
   api.colorRequest:
     properties:
       color:
+        type: string
+    type: object
+  api.correlationDecisionRequest:
+    properties:
+      decision:
         type: string
     type: object
   api.hostPortScanResponse:
@@ -1036,6 +1223,230 @@ paths:
       summary: Get recent activity for one host
       tags:
       - activity
+  /host/{id}/identity:
+    get:
+      description: Return retained addresses, reverse address-to-MAC history, discovery
+        evidence, and discovery sources for a host without changing user-managed inventory
+        fields.
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.HostIdentityResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get host identity observations
+      tags:
+      - hosts
+  /host/{id}/identity/candidates:
+    get:
+      description: Return read-only, explainable suggestions for MAC identities that
+        may represent the same physical device. This endpoint never merges or mutates
+        identities.
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.HostIdentityCandidatesResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get host identity correlation candidates
+      tags:
+      - hosts
+  /host/{id}/identity/decisions:
+    get:
+      description: Return user-confirmed or user-rejected MAC relationships for a
+        host. Decisions do not merge host observations, events, presence, or lifecycle
+        history.
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.HostIdentityDecisionsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get explicit identity correlation decisions
+      tags:
+      - hosts
+  /host/{id}/identity/decisions/{mac}:
+    delete:
+      description: Remove the user's explicit confirm/reject decision for a MAC pair
+        without modifying either identity or its historical observations.
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Other MAC
+        in: path
+        name: mac
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Clear an identity correlation decision
+      tags:
+      - hosts
+    put:
+      consumes:
+      - application/json
+      description: Confirm or reject that another observed MAC identity belongs to
+        the same physical device. This records user intent only and never merges historical
+        observations. Contradictory confirmed/rejected relationship graphs are rejected.
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Other observed MAC
+        in: path
+        name: mac
+        required: true
+        type: string
+      - description: Correlation decision
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.correlationDecisionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.IdentityCorrelationDecisionResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Set an identity correlation decision
+      tags:
+      - hosts
+  /host/{id}/identity/group:
+    get:
+      description: Return the transitive group of MAC identities explicitly confirmed
+        by the user as the same physical device. The projection is read only and does
+        not rewrite Hosts, Events, Presence, or historical observations.
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.HostIdentityGroupResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get confirmed logical identity group
+      tags:
+      - hosts
   /host/{id}/metadata:
     patch:
       consumes:
@@ -1194,6 +1605,38 @@ paths:
       summary: Delete host
       tags:
       - hosts
+  /identity/address:
+    get:
+      description: Return every retained MAC identity observed using one IP address,
+        including first/last seen timestamps.
+      parameters:
+      - description: IPv4 or IPv6 address
+        in: query
+        name: address
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.AddressIdentityResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get address identity observations
+      tags:
+      - hosts
   /inventory/options:
     get:
       description: Retrieve distinct owner and location values from current host metadata
@@ -1326,8 +1769,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Persists the Stable or Beta update channel and immediately refreshes
-        update status.
+      description: Persists the Stable or Beta update channel without triggering a
+        release check.
       parameters:
       - description: Update channel
         in: body
@@ -1354,12 +1797,6 @@ paths:
             additionalProperties:
               type: string
             type: object
-        "502":
-          description: Bad Gateway
-          schema:
-            additionalProperties:
-              type: string
-            type: object
       summary: Set update channel
       tags:
       - updates
@@ -1368,7 +1805,7 @@ paths:
       consumes:
       - application/json
       description: Persists release channel, automatic check/install preferences,
-        and automatic check interval, then immediately refreshes update status.
+        and automatic check interval without triggering a release check.
       parameters:
       - description: Update settings
         in: body
@@ -1395,25 +1832,19 @@ paths:
             additionalProperties:
               type: string
             type: object
-        "502":
-          description: Bad Gateway
-          schema:
-            additionalProperties:
-              type: string
-            type: object
       summary: Set update settings
       tags:
       - updates
   /update/status:
     get:
-      description: Checks the selected release channel for a newer LANnventory release.
-        Cached release metadata is used unless refresh is true.
+      description: Returns cached release metadata without contacting GitHub. Set
+        refresh=true only for an explicit manual update check.
       parameters:
-      - description: Refresh cached release metadata
+      - description: Explicitly refresh release metadata
         in: query
         name: refresh
         type: boolean
-      - description: Use cached release metadata only and never contact GitHub
+      - description: Deprecated compatibility flag; cached-only is the default
         in: query
         name: cached
         type: boolean

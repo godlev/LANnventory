@@ -117,23 +117,46 @@ function SummaryCards() {
               aria-hidden="true"
               title={card.primary.percent + "% " + card.primary.label + ", " + card.secondary.percent + "% " + card.secondary.label}
             >
-              <span
-                class={"overview-split-bar-segment overview-split-bar-" + card.primary.tone}
-                style={{ width: card.primary.percent + "%" }}
-              ></span>
-              <span
-                class={"overview-split-bar-segment overview-split-bar-" + card.secondary.tone}
-                style={{ width: card.secondary.percent + "%" }}
-              ></span>
-              <span class="overview-split-bar-labels">
-                <span>{card.primary.percent}%</span>
-                <span>{card.secondary.percent}%</span>
-              </span>
+              <SplitBarSegment item={card.primary}></SplitBarSegment>
+              <SplitBarSegment item={card.secondary}></SplitBarSegment>
             </div>
           </div>
         </article>
       )}
     </section>
+  );
+}
+
+function SplitBarSegment(props: { item: SplitSummaryItem }) {
+  const hasShare = () => props.item.percent > 0;
+
+  return (
+    <span
+      class={"overview-split-bar-segment overview-split-bar-" + props.item.tone}
+      style={{
+        display: "flex",
+        "align-items": "center",
+        "justify-content": "center",
+        "flex-grow": String(props.item.percent),
+        "flex-basis": "0",
+        "min-width": hasShare() ? "2.5rem" : "0",
+        overflow: "hidden",
+      }}
+    >
+      {hasShare() && (
+        <span
+          style={{
+            color: "rgba(255, 255, 255, 0.96)",
+            "font-size": "0.63rem",
+            "font-weight": "900",
+            "line-height": "1",
+            "white-space": "nowrap",
+          }}
+        >
+          {props.item.percent}%
+        </span>
+      )}
+    </span>
   );
 }
 

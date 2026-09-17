@@ -1106,6 +1106,327 @@ const docTemplate = `{
                 }
             }
         },
+        "/host/{id}/identity": {
+            "get": {
+                "description": "Return retained addresses, reverse address-to-MAC history, discovery evidence, and discovery sources for a host without changing user-managed inventory fields.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Get host identity observations",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.HostIdentityResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/host/{id}/identity/candidates": {
+            "get": {
+                "description": "Return read-only, explainable suggestions for MAC identities that may represent the same physical device. This endpoint never merges or mutates identities.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Get host identity correlation candidates",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.HostIdentityCandidatesResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/host/{id}/identity/decisions": {
+            "get": {
+                "description": "Return user-confirmed or user-rejected MAC relationships for a host. Decisions do not merge host observations, events, presence, or lifecycle history.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Get explicit identity correlation decisions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.HostIdentityDecisionsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/host/{id}/identity/decisions/{mac}": {
+            "put": {
+                "description": "Confirm or reject that another observed MAC identity belongs to the same physical device. This records user intent only and never merges historical observations. Contradictory confirmed/rejected relationship graphs are rejected.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Set an identity correlation decision",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Other observed MAC",
+                        "name": "mac",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Correlation decision",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.correlationDecisionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.IdentityCorrelationDecisionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Remove the user's explicit confirm/reject decision for a MAC pair without modifying either identity or its historical observations.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Clear an identity correlation decision",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Other MAC",
+                        "name": "mac",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/host/{id}/identity/group": {
+            "get": {
+                "description": "Return the transitive group of MAC identities explicitly confirmed by the user as the same physical device. The projection is read only and does not rewrite Hosts, Events, Presence, or historical observations.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Get confirmed logical identity group",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.HostIdentityGroupResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/host/{id}/metadata": {
             "patch": {
                 "description": "Partially update manually managed inventory metadata. Tags are trimmed, empty tags are removed, duplicates are removed case-insensitively, and user order is preserved. Actual changes are recorded as Device change events.",
@@ -1255,6 +1576,53 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/models.Host"
+                        }
+                    }
+                }
+            }
+        },
+        "/identity/address": {
+            "get": {
+                "description": "Return every retained MAC identity observed using one IP address, including first/last seen timestamps.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Get address identity observations",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "IPv4 or IPv6 address",
+                        "name": "address",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.AddressIdentityResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     }
                 }
@@ -1455,7 +1823,7 @@ const docTemplate = `{
         },
         "/update/channel": {
             "post": {
-                "description": "Persists the Stable or Beta update channel and immediately refreshes update status.",
+                "description": "Persists the Stable or Beta update channel without triggering a release check.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1501,22 +1869,13 @@ const docTemplate = `{
                                 "type": "string"
                             }
                         }
-                    },
-                    "502": {
-                        "description": "Bad Gateway",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
                     }
                 }
             }
         },
         "/update/settings": {
             "post": {
-                "description": "Persists release channel, automatic check/install preferences, and automatic check interval, then immediately refreshes update status.",
+                "description": "Persists release channel, automatic check/install preferences, and automatic check interval without triggering a release check.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1562,22 +1921,13 @@ const docTemplate = `{
                                 "type": "string"
                             }
                         }
-                    },
-                    "502": {
-                        "description": "Bad Gateway",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
                     }
                 }
             }
         },
         "/update/status": {
             "get": {
-                "description": "Checks the selected release channel for a newer LANnventory release. Cached release metadata is used unless refresh is true.",
+                "description": "Returns cached release metadata without contacting GitHub. Set refresh=true only for an explicit manual update check.",
                 "produces": [
                     "application/json"
                 ],
@@ -1588,13 +1938,13 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "boolean",
-                        "description": "Refresh cached release metadata",
+                        "description": "Explicitly refresh release metadata",
                         "name": "refresh",
                         "in": "query"
                     },
                     {
                         "type": "boolean",
-                        "description": "Use cached release metadata only and never contact GitHub",
+                        "description": "Deprecated compatibility flag; cached-only is the default",
                         "name": "cached",
                         "in": "query"
                     }
@@ -1669,6 +2019,253 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "api.AddressIdentityResponse": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "macHistory": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.AddressMACObservation"
+                    }
+                }
+            }
+        },
+        "api.AddressMACObservation": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean"
+                },
+                "firstSeen": {
+                    "type": "string"
+                },
+                "lastSeen": {
+                    "type": "string"
+                },
+                "mac": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.ConfirmedIdentityGroupMember": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean"
+                },
+                "addresses": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "deviceType": {
+                    "type": "string"
+                },
+                "exists": {
+                    "type": "boolean"
+                },
+                "firstSeen": {
+                    "type": "string"
+                },
+                "hostId": {
+                    "type": "integer"
+                },
+                "lastSeen": {
+                    "type": "string"
+                },
+                "mac": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.CorrelationReason": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "detail": {
+                    "type": "string"
+                },
+                "weight": {
+                    "type": "integer"
+                }
+            }
+        },
+        "api.DiscoveryEvidenceObservation": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean"
+                },
+                "address": {
+                    "type": "string"
+                },
+                "firstSeen": {
+                    "type": "string"
+                },
+                "kind": {
+                    "type": "string"
+                },
+                "lastSeen": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.HostIdentityAddress": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean"
+                },
+                "address": {
+                    "type": "string"
+                },
+                "family": {
+                    "type": "string"
+                },
+                "firstSeen": {
+                    "type": "string"
+                },
+                "iface": {
+                    "type": "string"
+                },
+                "lastSeen": {
+                    "type": "string"
+                },
+                "macHistory": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.AddressMACObservation"
+                    }
+                }
+            }
+        },
+        "api.HostIdentityCandidate": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean"
+                },
+                "confidence": {
+                    "type": "string"
+                },
+                "deviceType": {
+                    "type": "string"
+                },
+                "exists": {
+                    "type": "boolean"
+                },
+                "hostId": {
+                    "type": "integer"
+                },
+                "mac": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "reasons": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.CorrelationReason"
+                    }
+                },
+                "score": {
+                    "type": "integer"
+                }
+            }
+        },
+        "api.HostIdentityCandidatesResponse": {
+            "type": "object",
+            "properties": {
+                "candidates": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.HostIdentityCandidate"
+                    }
+                },
+                "mac": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.HostIdentityDecisionsResponse": {
+            "type": "object",
+            "properties": {
+                "decisions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.IdentityCorrelationDecisionResponse"
+                    }
+                },
+                "mac": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.HostIdentityGroupResponse": {
+            "type": "object",
+            "properties": {
+                "confirmed": {
+                    "type": "boolean"
+                },
+                "firstSeen": {
+                    "type": "string"
+                },
+                "lastSeen": {
+                    "type": "string"
+                },
+                "mac": {
+                    "type": "string"
+                },
+                "members": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.ConfirmedIdentityGroupMember"
+                    }
+                }
+            }
+        },
+        "api.HostIdentityResponse": {
+            "type": "object",
+            "properties": {
+                "addresses": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.HostIdentityAddress"
+                    }
+                },
+                "dataSources": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "evidence": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.DiscoveryEvidenceObservation"
+                    }
+                },
+                "mac": {
+                    "type": "string"
+                }
+            }
+        },
         "api.HostInventoryPatchRequest": {
             "type": "object",
             "properties": {
@@ -1721,10 +2318,50 @@ const docTemplate = `{
                 }
             }
         },
+        "api.IdentityCorrelationDecisionResponse": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "decision": {
+                    "type": "string"
+                },
+                "deviceType": {
+                    "type": "string"
+                },
+                "exists": {
+                    "type": "boolean"
+                },
+                "hostId": {
+                    "type": "integer"
+                },
+                "mac": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
         "api.colorRequest": {
             "type": "object",
             "properties": {
                 "color": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.correlationDecisionRequest": {
+            "type": "object",
+            "properties": {
+                "decision": {
                     "type": "string"
                 }
             }

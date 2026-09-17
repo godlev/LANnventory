@@ -5,6 +5,7 @@ import { apiGetHost } from "../functions/api";
 import { deviceDisplayName } from "../functions/deviceIdentity";
 
 import HostCard from "../components/HostPage/HostCard";
+import IdentityCard from "../components/HostPage/IdentityCard";
 import Ping from "../components/HostPage/Ping";
 import HostActivityCard from "../components/HostPage/HostActivityCard";
 import HistCard from "../components/HostPage/HistCard";
@@ -129,6 +130,11 @@ function HostPage() {
         </div>
         <div class="col-12 col-md-4 col-lg-3 col-xl-2 host-port-column">
           <Ping host={currentHost()}></Ping>
+        </div>
+      </div>
+      <div class="row g-3 mx-0 mt-1 host-page-row">
+        <div class="col-md">
+          <IdentityCard host={currentHost()}></IdentityCard>
         </div>
       </div>
       <div class="row g-3 mx-0 mt-1 host-page-row">

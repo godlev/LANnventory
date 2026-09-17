@@ -2,7 +2,7 @@ import { createEffect, createMemo, createSignal, For, onCleanup, Show } from "so
 import { apiDelHost, apiGetInventoryOptions, apiPatchHost, apiSetHostMetadata, apiWOL } from "../../functions/api";
 import { Host } from "../../functions/exports";
 import { formatLastSeen } from "../../functions/dateFormat";
-import { deviceDisplayName } from "../../functions/deviceIdentity";
+import { macAssessmentLabel, macConfidenceLabel, macTypeLabel } from "../../functions/macIdentity";
 import { deviceTypeTitle, getDeviceTypeOption, normalizeDeviceType, type DeviceTypeValue } from "../../functions/deviceTypes";
 import { updateHostInView } from "../../functions/hostView";
 import DeviceTypePicker from "../DeviceTypePicker";
@@ -115,7 +115,7 @@ function HostCard(_props: HostCardProps) {
   const formattedLastSeen = () => formatLastSeen(lastSeenRaw());
   const currentDeviceType = () => getDeviceTypeOption(_props.editMode ? draft().DeviceType : _props.host.DeviceType);
   const hostDeviceTypeTitle = () => deviceTypeTitle(_props.editMode ? draft().DeviceType : _props.host.DeviceType);
-  const displayName = () => deviceDisplayName({ ..._props.host, Name: _props.editMode ? draft().Name : _props.host.Name });
+  const inventoryName = () => (_props.editMode ? draft().Name : _props.host.Name).trim();
   const editDirty = () => !hostDraftEquals(draft(), baseline());
   const canSave = () => _props.editMode && !saving() && editDirty() && _props.host.ID > 0;
   const pinTitle = () => _props.host.Pinned ? "Remove from Home pins" : "Pin on Home";
@@ -439,7 +439,14 @@ function HostCard(_props: HostCardProps) {
             <div class="host-property-grid host-property-grid-section">
               <div class="host-field-label">Name</div>
               <div class="host-field-value">
-                <Show when={_props.editMode} fallback={<span>{displayName()}</span>}>
+                <Show
+                  when={_props.editMode}
+                  fallback={
+                    <Show when={inventoryName()} fallback={<span class="device-cell-muted">Not set</span>}>
+                      <span>{inventoryName()}</span>
+                    </Show>
+                  }
+                >
                   <input
                     id="host-name-input"
                     type="text"
@@ -565,6 +572,57 @@ function HostCard(_props: HostCardProps) {
 
               <div class="host-field-label">MAC</div>
               <div class="host-field-value">{_props.host.Mac}</div>
+
+              <div class="host-field-label">MAC type</div>
+              <div class="host-field-value">
+                <span class="host-lifecycle-value">
+                  <span>{macTypeLabel(_props.host.MacType)}</span>
+                  <Show when={_props.host.MacType === "locally-administered"}>
+                    <ActionTooltip
+                      title="Locally administered MAC"
+                      detail="This MAC may be randomized, virtual, or manually assigned."
+                    >
+                      <span
+                        class="host-lifecycle-approx"
+                        title="Locally administered MAC"
+                        aria-label="This MAC may be randomized, virtual, or manually assigned."
+                        role="img"
+                        tabIndex={0}
+                      >
+                        <i class="bi bi-info-circle" aria-hidden="true"></i>
+                      </span>
+                    </ActionTooltip>
+                  </Show>
+                </span>
+              </div>
+
+              <Show when={_props.host.MacType === "locally-administered"}>
+                <div class="host-field-label">MAC assessment</div>
+                <div class="host-field-value">
+                  <span class="host-lifecycle-value">
+                    <span>{macAssessmentLabel(_props.host.MacAssessment)}</span>
+                    <Show when={macConfidenceLabel(_props.host.MacAssessmentConfidence)}>
+                      <span class="badge rounded-pill text-bg-secondary">
+                        {macConfidenceLabel(_props.host.MacAssessmentConfidence)}
+                      </span>
+                    </Show>
+                    <ActionTooltip
+                      title="MAC assessment"
+                      detail={_props.host.MacAssessmentReason || "A locally administered MAC does not by itself prove privacy randomization."}
+                    >
+                      <span
+                        class="host-lifecycle-approx"
+                        title="MAC assessment"
+                        aria-label={_props.host.MacAssessmentReason || "MAC assessment details"}
+                        role="img"
+                        tabIndex={0}
+                      >
+                        <i class="bi bi-info-circle" aria-hidden="true"></i>
+                      </span>
+                    </ActionTooltip>
+                  </span>
+                </div>
+              </Show>
 
               <div class="host-field-label">Interface</div>
               <div class="host-field-value">{_props.host.Iface || <span class="device-cell-muted">Unknown</span>}</div>
