@@ -9,7 +9,6 @@ import (
 	"github.com/godlev/LANnventory/internal/correlation"
 	"github.com/godlev/LANnventory/internal/gdb"
 	"github.com/godlev/LANnventory/internal/identity"
-	"github.com/godlev/LANnventory/internal/models"
 )
 
 // ConfirmedIdentityGroupMember is one MAC identity in the user-confirmed
@@ -170,5 +169,3 @@ func containsString(values []string, target string) bool {
 	}
 	return false
 }
-
-var _ models.Host
