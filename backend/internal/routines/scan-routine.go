@@ -86,6 +86,10 @@ func processScanResult(foundHosts []models.Host, scanOK bool) bool {
 		return false
 	}
 
+	if err := gdb.RecordHostAddressObservations(foundHosts); err != nil {
+		slog.Error("Failed to record host address observations", "err", err)
+	}
+
 	foundHostsMap := make(map[string]models.Host)
 	for _, fHost := range foundHosts {
 		key := identity.MACKey(fHost.Mac)
