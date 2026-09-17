@@ -4,11 +4,15 @@ import {
   apiClearHostIdentityDecision,
   apiGetHostIdentityCandidates,
   apiGetHostIdentityDecisions,
+  apiGetHostIdentityGroup,
   apiSetHostIdentityDecision,
+  type ConfirmedIdentityGroupMember,
   type CorrelationDecision,
   type HostIdentityCandidate,
+  type HostIdentityGroup,
   type IdentityCorrelationDecision,
 } from "../../functions/correlationApi";
+import { formatLastSeen } from "../../functions/dateFormat";
 import type { Host } from "../../functions/exports";
 
 type CorrelationPanelProps = {
@@ -21,9 +25,16 @@ type CorrelationRow = {
   decision?: IdentityCorrelationDecision;
 };
 
+const emptyGroup: HostIdentityGroup = {
+  mac: "",
+  confirmed: false,
+  members: [],
+};
+
 function CorrelationPanel(props: CorrelationPanelProps) {
   const [candidates, setCandidates] = createSignal<HostIdentityCandidate[]>([]);
   const [decisions, setDecisions] = createSignal<IdentityCorrelationDecision[]>([]);
+  const [group, setGroup] = createSignal<HostIdentityGroup>(emptyGroup);
   const [loading, setLoading] = createSignal(false);
   const [loadError, setLoadError] = createSignal("");
   const [actionMAC, setActionMAC] = createSignal("");
@@ -34,22 +45,29 @@ function CorrelationPanel(props: CorrelationPanelProps) {
     setLoading(true);
     setLoadError("");
     try {
-      const [candidateResult, decisionResult] = await Promise.all([
+      const [candidateResult, decisionResult, groupResult] = await Promise.all([
         apiGetHostIdentityCandidates(id),
         apiGetHostIdentityDecisions(id),
+        apiGetHostIdentityGroup(id),
       ]);
       if (activeRequest !== requestID) {
         return;
       }
       setCandidates(candidateResult.candidates ?? []);
       setDecisions(decisionResult.decisions ?? []);
+      setGroup({
+        mac: groupResult.mac ?? "",
+        confirmed: groupResult.confirmed === true,
+        members: groupResult.members ?? [],
+      });
     } catch {
       if (activeRequest !== requestID) {
         return;
       }
       setCandidates([]);
       setDecisions([]);
-      setLoadError("Identity correlation suggestions could not be loaded.");
+      setGroup(emptyGroup);
+      setLoadError("Identity correlation information could not be loaded.");
     } finally {
       if (activeRequest === requestID) {
         setLoading(false);
@@ -62,6 +80,7 @@ function CorrelationPanel(props: CorrelationPanelProps) {
     if (id <= 0) {
       setCandidates([]);
       setDecisions([]);
+      setGroup(emptyGroup);
       setLoadError("");
       setLoading(false);
       return;
@@ -106,8 +125,8 @@ function CorrelationPanel(props: CorrelationPanelProps) {
       await apiSetHostIdentityDecision(props.host.ID, mac, decision);
       const activeRequest = ++requestID;
       await load(props.host.ID, activeRequest);
-    } catch {
-      setActionError("The identity decision could not be saved.");
+    } catch (error) {
+      setActionError(errorMessage(error, "The identity decision could not be saved."));
     } finally {
       setActionMAC("");
     }
@@ -123,8 +142,8 @@ function CorrelationPanel(props: CorrelationPanelProps) {
       await apiClearHostIdentityDecision(props.host.ID, mac);
       const activeRequest = ++requestID;
       await load(props.host.ID, activeRequest);
-    } catch {
-      setActionError("The identity decision could not be cleared.");
+    } catch (error) {
+      setActionError(errorMessage(error, "The identity decision could not be cleared."));
     } finally {
       setActionMAC("");
     }
@@ -132,37 +151,112 @@ function CorrelationPanel(props: CorrelationPanelProps) {
 
   return (
     <div class="mt-4 pt-3 border-top">
-      <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
-        <div>
-          <h6 class="mb-1">Possible same device</h6>
-          <div class="small device-cell-muted">
-            Suggestions are evidence-based. Nothing is merged automatically; your decision only records the relationship.
-          </div>
-        </div>
-        <span class="host-detail-section-badge">Suggestion · User confirmed</span>
-      </div>
-
       <Show when={actionError()}>
-        <div class="host-inline-error mb-2" role="alert">{actionError()}</div>
+        <div class="host-inline-error mb-3" role="alert">{actionError()}</div>
       </Show>
 
-      <Show when={!loading()} fallback={<div class="device-cell-muted">Loading correlation suggestions…</div>}>
+      <Show when={!loading()} fallback={<div class="device-cell-muted">Loading identity correlation…</div>}>
         <Show when={!loadError()} fallback={<div class="host-inline-error" role="alert">{loadError()}</div>}>
-          <Show
-            when={rows().length > 0}
-            fallback={<div class="device-cell-muted">No same-device candidates or explicit decisions yet.</div>}
-          >
-            <For each={rows()}>{(row) =>
-              <CorrelationRowView
-                row={row}
-                busy={actionMAC() === row.mac}
-                anyBusy={actionMAC() !== ""}
-                onDecision={setDecision}
-                onClear={clearDecision}
-              ></CorrelationRowView>
-            }</For>
+          <Show when={group().confirmed && group().members.length > 1}>
+            <div class="mb-4">
+              <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
+                <div>
+                  <h6 class="mb-1">Confirmed identity group</h6>
+                  <div class="small device-cell-muted">
+                    These MAC identities are grouped only because you explicitly confirmed the relationship. Original observations stay separate.
+                  </div>
+                </div>
+                <span class="host-detail-section-badge">User confirmed · Read only projection</span>
+              </div>
+              <div class="row g-2">
+                <For each={group().members}>{(member) =>
+                  <div class="col-12 col-xl-6">
+                    <ConfirmedGroupMember member={member} currentMac={group().mac || props.host.Mac}></ConfirmedGroupMember>
+                  </div>
+                }</For>
+              </div>
+            </div>
           </Show>
+
+          <div class={group().confirmed && group().members.length > 1 ? "pt-3 border-top" : ""}>
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
+              <div>
+                <h6 class="mb-1">Possible same device</h6>
+                <div class="small device-cell-muted">
+                  Suggestions are evidence-based. Nothing is merged automatically; your decision only records the relationship.
+                </div>
+              </div>
+              <span class="host-detail-section-badge">Suggestion · User decision</span>
+            </div>
+
+            <Show
+              when={rows().length > 0}
+              fallback={<div class="device-cell-muted">No same-device candidates or explicit decisions yet.</div>}
+            >
+              <For each={rows()}>{(row) =>
+                <CorrelationRowView
+                  row={row}
+                  busy={actionMAC() === row.mac}
+                  anyBusy={actionMAC() !== ""}
+                  onDecision={setDecision}
+                  onClear={clearDecision}
+                ></CorrelationRowView>
+              }</For>
+            </Show>
+          </div>
         </Show>
+      </Show>
+    </div>
+  );
+}
+
+function ConfirmedGroupMember(props: { member: ConfirmedIdentityGroupMember; currentMac: string }) {
+  const current = () => normalizeMAC(props.member.mac) === normalizeMAC(props.currentMac);
+  const label = () => props.member.name || props.member.deviceType || "";
+
+  return (
+    <div class={"border rounded p-2 h-100" + (current() ? " border-success" : "")}>
+      <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+        <div>
+          <div class="d-flex flex-wrap align-items-center gap-2">
+            <Show
+              when={props.member.exists && props.member.hostId > 0}
+              fallback={<span class="font-monospace">{props.member.mac}</span>}
+            >
+              <a class="font-monospace" href={"/host/" + props.member.hostId}>{props.member.mac}</a>
+            </Show>
+            <Show when={label()}><strong>{label()}</strong></Show>
+          </div>
+          <div class="d-flex flex-wrap gap-1 mt-1">
+            <Show when={current()}><span class="badge text-bg-success">Viewed identity</span></Show>
+            <Show when={props.member.exists}>
+              <span class={props.member.active ? "badge text-bg-success" : "badge text-bg-secondary"}>
+                {props.member.active ? "Current host · online" : "Current host · offline"}
+              </span>
+            </Show>
+            <Show when={!props.member.exists}><span class="badge text-bg-secondary">Historical MAC</span></Show>
+          </div>
+        </div>
+      </div>
+
+      <Show when={props.member.addresses.length > 0}>
+        <div class="small mt-2">
+          <span class="device-cell-muted">Addresses: </span>
+          <For each={props.member.addresses}>{(address, index) =>
+            <>
+              <Show when={index() > 0}>, </Show>
+              <span class="font-monospace">{address}</span>
+            </>
+          }</For>
+        </div>
+      </Show>
+
+      <Show when={props.member.firstSeen || props.member.lastSeen}>
+        <div class="small device-cell-muted mt-1">
+          <Show when={props.member.firstSeen}>First seen {formatIdentityTime(props.member.firstSeen)}</Show>
+          <Show when={props.member.firstSeen && props.member.lastSeen}> · </Show>
+          <Show when={props.member.lastSeen}>Last seen {formatIdentityTime(props.member.lastSeen)}</Show>
+        </div>
       </Show>
     </div>
   );
@@ -260,6 +354,17 @@ function CorrelationRowView(props: {
       </Show>
     </div>
   );
+}
+
+function errorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message.trim() !== "") {
+    return error.message;
+  }
+  return fallback;
+}
+
+function formatIdentityTime(value: string) {
+  return value ? formatLastSeen(value) : "Unknown";
 }
 
 function normalizeMAC(value: string) {
