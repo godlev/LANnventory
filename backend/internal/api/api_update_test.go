@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/godlev/LANnventory/internal/conf"
@@ -89,10 +90,79 @@ func TestSaveUpdateChannelPreservesAutomaticSettings(t *testing.T) {
 	}
 }
 
+func TestGetUpdateStatusOnlyRefreshContactsReleaseSource(t *testing.T) {
+	router := setupConfigRouter(t)
+	conf.SetVersion("0.1.0-beta.2")
+	calls := stubCountingUpdateService(t, `[{"tag_name":"v0.1.0-beta.3","prerelease":true,"draft":false,"assets":[]}]`)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/update/status", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("cached status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	if got := calls.Load(); got != 0 {
+		t.Fatalf("passive status contacted release source %d times, want 0", got)
+	}
+
+	req = httptest.NewRequest(http.MethodGet, "/api/update/status?refresh=1", nil)
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("refreshed status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	if got := calls.Load(); got != 1 {
+		t.Fatalf("explicit refresh contacted release source %d times, want 1", got)
+	}
+}
+
+func TestSaveUpdateSettingsDoesNotContactReleaseSource(t *testing.T) {
+	router := setupConfigRouter(t)
+	conf.SetVersion("0.1.0-beta.2")
+	calls := stubCountingUpdateService(t, `[{"tag_name":"v0.1.0-beta.3","prerelease":true,"draft":false,"assets":[]}]`)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/update/settings", strings.NewReader(`{"channel":"beta","automaticCheck":true,"automatic":false,"intervalHours":24}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	if got := calls.Load(); got != 0 {
+		t.Fatalf("saving update settings contacted release source %d times, want 0", got)
+	}
+}
+
+func TestSaveUpdateChannelDoesNotContactReleaseSource(t *testing.T) {
+	router := setupConfigRouter(t)
+	conf.SetVersion("0.1.0-beta.2")
+	calls := stubCountingUpdateService(t, `[{"tag_name":"v0.1.0","prerelease":false,"draft":false,"assets":[]}]`)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/update/channel", strings.NewReader(`{"channel":"stable"}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	if got := calls.Load(); got != 0 {
+		t.Fatalf("saving update channel contacted release source %d times, want 0", got)
+	}
+}
+
 func stubUpdateService(t *testing.T, body string) {
 	t.Helper()
+	_ = stubCountingUpdateService(t, body)
+}
 
+func stubCountingUpdateService(t *testing.T, body string) *atomic.Int32 {
+	t.Helper()
+
+	var calls atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
 		w.Header().Set("content-type", "application/json")
 		_, _ = w.Write([]byte(body))
 	}))
@@ -102,6 +172,7 @@ func stubUpdateService(t *testing.T, body string) {
 		updateService = oldService
 		server.Close()
 	})
+	return &calls
 }
 
 func TestUpdateHealthURL(t *testing.T) {
