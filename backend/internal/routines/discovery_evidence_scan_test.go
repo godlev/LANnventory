@@ -32,7 +32,7 @@ func TestProcessScanResultRecordsScannerEvidenceForAllMACAddresses(t *testing.T)
 	}
 }
 
-func TestNewHostPersistsReverseDNSEvidenceWithoutMixingInventoryProvenance(t *testing.T) {
+func TestNewHostKeepsInventoryNameSeparateFromReverseDNSEvidence(t *testing.T) {
 	setupScanRoutineTest(t)
 	oldLookupDNS := lookupDNS
 	lookupDNS = func(models.Host) (string, string) {
@@ -46,8 +46,8 @@ func TestNewHostPersistsReverseDNSEvidenceWithoutMixingInventoryProvenance(t *te
 	}, true)
 
 	hosts := gdb.SelectByMAC("now", mac)
-	if len(hosts) != 1 || hosts[0].Name != "BRAVIA-4K" || hosts[0].DNS != "bravia.home Sony-TV.local" {
-		t.Fatalf("new-host compatibility fields = %+v", hosts)
+	if len(hosts) != 1 || hosts[0].Name != "" || hosts[0].DNS != "bravia.home Sony-TV.local" {
+		t.Fatalf("new-host inventory/discovery fields = %+v", hosts)
 	}
 
 	rows, err := gdb.SelectHostDiscoveryEvidenceByMAC(mac)
