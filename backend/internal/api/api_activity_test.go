@@ -2,202 +2,175 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strconv"
-	"strings"
 	"testing"
 	"time"
-
-	"github.com/gin-gonic/gin"
 
 	"github.com/godlev/LANnventory/internal/gdb"
 	"github.com/godlev/LANnventory/internal/models"
 )
 
-func TestActivityEndpointReturnsNewestEventsFirst(t *testing.T) {
+func TestActivityEndpointReturnsEmptyTable(t *testing.T) {
 	router := setupTestRouter(t)
-	host := seedHost(t, models.Host{
-		Name:       "router",
-		IP:         "192.168.1.1",
-		Mac:        "AA:BB:CC:DD:EE:01",
-		Iface:      "eth0",
-		DeviceType: "router",
-	})
 
-	seedActivityEvent(t, host, models.EventOnline, "2026-08-24 10:00:00")
-	seedActivityEvent(t, host, models.EventOffline, "2026-08-24 10:05:00")
-
-	rec := getPath(router, "/api/activity?limit=10")
+	rec := getPath(router, "/api/activity")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
 	}
 
-	events := decodeActivityEvents(t, rec)
-	if len(events) != 2 {
-		t.Fatalf("events len = %d, want 2: %+v", len(events), events)
+	var events []models.HostEvent
+	if err := json.Unmarshal(rec.Body.Bytes(), &events); err != nil {
+		t.Fatalf("json.Unmarshal: %v", err)
 	}
-	if events[0].EventType != string(models.EventOffline) || events[1].EventType != string(models.EventOnline) {
-		t.Fatalf("events order = %+v, want offline then online", events)
+	if len(events) != 0 {
+		t.Fatalf("events len = %d, want 0", len(events))
 	}
 }
 
-func TestActivityEndpointReturnsDeterministicOrderForEqualDates(t *testing.T) {
+func TestActivityEndpointReportsDatabaseFailure(t *testing.T) {
+	router := setupTestRouter(t)
+	if err := gdb.Close(); err != nil {
+		t.Fatalf("gdb.Close: %v", err)
+	}
+
+	rec := getPath(router, "/api/activity")
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusInternalServerError, rec.Body.String())
+	}
+}
+
+func TestActivityEndpointDefaultAndExplicitLimit(t *testing.T) {
 	router := setupTestRouter(t)
 	host := seedHost(t, models.Host{Name: "router", Mac: "AA:BB:CC:DD:EE:01"})
 
-	first := seedActivityEvent(t, host, models.EventOnline, "2026-08-24 10:00:00")
-	second := seedActivityEvent(t, host, models.EventOffline, "2026-08-24 10:00:00")
+	for i := 0; i < 25; i++ {
+		event := models.NewHostEvent(host, models.EventOnline, "", "")
+		event.Date = fmt.Sprintf("2026-08-24 10:%02d:00", i)
+		if err := gdb.AddEvent(event); err != nil {
+			t.Fatalf("AddEvent %d: %v", i, err)
+		}
+	}
 
-	rec := getPath(router, "/api/activity?limit=10")
+	rec := getPath(router, "/api/activity")
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+		t.Fatalf("default status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
 	}
-	events := decodeActivityEvents(t, rec)
-	if len(events) != 2 {
-		t.Fatalf("events len = %d, want 2: %+v", len(events), events)
+	if events := decodeActivityEvents(t, rec); len(events) != 20 {
+		t.Fatalf("default events len = %d, want 20", len(events))
 	}
-	if events[0].ID != second.ID || events[1].ID != first.ID {
-		t.Fatalf("equal-date order IDs = [%d %d], want [%d %d]", events[0].ID, events[1].ID, second.ID, first.ID)
+
+	rec = getPath(router, "/api/activity?limit=2")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("explicit status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	if events := decodeActivityEvents(t, rec); len(events) != 2 {
+		t.Fatalf("explicit events len = %d, want 2", len(events))
+	}
+
+	rec = getPath(router, "/api/activity?limit=20")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("compatible status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	if events := decodeActivityEvents(t, rec); len(events) != 20 {
+		t.Fatalf("compatible events len = %d, want 20", len(events))
 	}
 }
 
 func TestActivityEndpointRejectsInvalidLimit(t *testing.T) {
 	router := setupTestRouter(t)
 
-	for _, limit := range []string{"0", "101", "abc"} {
-		rec := getPath(router, "/api/activity?limit="+limit)
-		if rec.Code != http.StatusBadRequest {
-			t.Fatalf("limit %q status = %d, want %d", limit, rec.Code, http.StatusBadRequest)
-		}
-	}
-}
-
-func TestActivityEndpointSupportsLegacyOffsetPagination(t *testing.T) {
-	router := setupTestRouter(t)
-	host := seedHost(t, models.Host{Name: "router", Mac: "AA:BB:CC:DD:EE:01"})
-	for i := 0; i < 5; i++ {
-		seedActivityEvent(t, host, models.EventOnline, "2026-08-24 10:0"+strconv.Itoa(i)+":00")
+	tests := []string{
+		"/api/activity?limit=abc",
+		"/api/activity?limit=0",
+		"/api/activity?limit=-1",
+		"/api/activity?limit=101",
+		"/api/host/1/activity?limit=abc",
+		"/api/host/1/activity?limit=0",
+		"/api/host/1/activity?limit=-1",
+		"/api/host/1/activity?limit=101",
 	}
 
-	rec := getPath(router, "/api/activity?limit=2&offset=2")
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
-	}
-	events := decodeActivityEvents(t, rec)
-	if len(events) != 2 || events[0].Date != "2026-08-24 10:02:00" || events[1].Date != "2026-08-24 10:01:00" {
-		t.Fatalf("offset events = %+v, want 10:02 then 10:01", events)
-	}
-}
-
-func TestActivityEndpointSupportsCursorPagination(t *testing.T) {
-	router := setupTestRouter(t)
-	host := seedHost(t, models.Host{Name: "router", Mac: "AA:BB:CC:DD:EE:01"})
-
-	seedActivityEvent(t, host, models.EventOnline, "2026-08-24 10:00:00")
-	middleFirst := seedActivityEvent(t, host, models.EventKnown, "2026-08-24 10:05:00")
-	middleSecond := seedActivityEvent(t, host, models.EventUnknown, "2026-08-24 10:05:00")
-	seedActivityEvent(t, host, models.EventOffline, "2026-08-24 10:10:00")
-
-	firstRec := getPath(router, "/api/activity?limit=2")
-	if firstRec.Code != http.StatusOK {
-		t.Fatalf("first page status = %d, want %d; body: %s", firstRec.Code, http.StatusOK, firstRec.Body.String())
-	}
-	firstPage := decodeActivityEvents(t, firstRec)
-	if len(firstPage) != 2 || firstPage[0].EventType != string(models.EventOffline) || firstPage[1].ID != middleSecond.ID {
-		t.Fatalf("first page = %+v, want offline then newest equal-date event", firstPage)
-	}
-
-	cursor := firstPage[len(firstPage)-1]
-	secondPath := "/api/activity?limit=2&beforeDate=" + url.QueryEscape(cursor.Date) + "&beforeId=" + strconv.Itoa(cursor.ID)
-	secondRec := getPath(router, secondPath)
-	if secondRec.Code != http.StatusOK {
-		t.Fatalf("second page status = %d, want %d; body: %s", secondRec.Code, http.StatusOK, secondRec.Body.String())
-	}
-	secondPage := decodeActivityEvents(t, secondRec)
-	if len(secondPage) != 2 || secondPage[0].ID != middleFirst.ID || secondPage[1].EventType != string(models.EventOnline) {
-		t.Fatalf("second page = %+v, want older equal-date event then online", secondPage)
-	}
-}
-
-func TestActivityEndpointRejectsInvalidCursor(t *testing.T) {
-	router := setupTestRouter(t)
-
-	paths := []string{
-		"/api/activity?beforeDate=2026-08-24+10%3A00%3A00",
-		"/api/activity?beforeId=1",
-		"/api/activity?beforeDate=bad&beforeId=1",
-		"/api/activity?beforeDate=2026-08-24+10%3A00%3A00&beforeId=0",
-		"/api/activity?beforeDate=2026-08-24+10%3A00%3A00&beforeId=1&offset=1",
-	}
-
-	for _, path := range paths {
-		rec := getPath(router, path)
-		if rec.Code != http.StatusBadRequest {
-			t.Fatalf("path %q status = %d, want %d; body: %s", path, rec.Code, http.StatusBadRequest, rec.Body.String())
-		}
-	}
-}
-
-func TestActivityEndpointAcceptsExplicitZeroOffsetWithCursor(t *testing.T) {
-	router := setupTestRouter(t)
-	host := seedHost(t, models.Host{Name: "router", Mac: "AA:BB:CC:DD:EE:01"})
-	event := seedActivityEvent(t, host, models.EventOnline, "2026-08-24 10:00:00")
-
-	path := "/api/activity?limit=10&offset=0&beforeDate=" + url.QueryEscape(event.Date) + "&beforeId=" + strconv.Itoa(event.ID)
-	rec := getPath(router, path)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
-	}
-}
-
-func TestActivityEndpointFiltersByCategory(t *testing.T) {
-	router := setupTestRouter(t)
-	host := seedHost(t, models.Host{Name: "router", Mac: "AA:BB:CC:DD:EE:01"})
-	seedActivityEventTypes(t, host)
-
-	tests := []struct {
-		category string
-		want     map[string]bool
-	}{
-		{
-			category: "connectivity",
-			want: map[string]bool{
-				string(models.EventOnline):  true,
-				string(models.EventOffline): true,
-			},
-		},
-		{
-			category: "changes",
-			want: eventTypeSet(models.DeviceChangeEventTypes),
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.category, func(t *testing.T) {
-			rec := getPath(router, "/api/activity?category="+test.category+"&limit=100")
-			if rec.Code != http.StatusOK {
-				t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
-			}
-			events := decodeActivityEvents(t, rec)
-			if len(events) != len(test.want) {
-				t.Fatalf("category %s events len = %d, want %d: %+v", test.category, len(events), len(test.want), events)
-			}
-			for _, event := range events {
-				if !test.want[event.EventType] {
-					t.Fatalf("category %s returned unexpected type %q", test.category, event.EventType)
-				}
+	for _, path := range tests {
+		t.Run(path, func(t *testing.T) {
+			rec := getPath(router, path)
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
 			}
 		})
 	}
 }
 
-func TestActivityEndpointRejectsInvalidCategory(t *testing.T) {
+func TestActivityEndpointCategoryOmittedAndAllReturnEveryEventType(t *testing.T) {
 	router := setupTestRouter(t)
-	rec := getPath(router, "/api/activity?category=network")
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	host := seedHost(t, models.Host{Name: "router", Mac: "AA:BB:CC:DD:EE:01"})
+	seedActivityEventTypes(t, host)
+
+	for _, path := range []string{"/api/activity?limit=20", "/api/activity?category=all&limit=20"} {
+		t.Run(path, func(t *testing.T) {
+			rec := getPath(router, path)
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+			}
+			events := decodeActivityEvents(t, rec)
+			if len(events) != len(models.HostEventTypeValues) {
+				t.Fatalf("events len = %d, want %d: %+v", len(events), len(models.HostEventTypeValues), events)
+			}
+		})
+	}
+}
+
+func TestActivityEndpointFiltersByCategory(t *testing.T) {
+	router := setupTestRouter(t)
+	host := seedHost(t, models.Host{Name: "NAS", Mac: "AA:BB:CC:DD:EE:20"})
+	seedActivityEventTypes(t, host)
+
+	tests := []struct {
+		path string
+		want map[models.HostEventType]bool
+	}{
+		{
+			path: "/api/activity?category=connectivity&limit=10",
+			want: map[models.HostEventType]bool{
+				models.EventOnline:  true,
+				models.EventOffline: true,
+			},
+		},
+		{
+			path: "/api/activity?category=changes&limit=20",
+			want: map[models.HostEventType]bool{
+				models.EventDiscovered:        true,
+				models.EventKnown:             true,
+				models.EventUnknown:           true,
+				models.EventDeviceTypeChanged: true,
+				models.EventOwnerChanged:      true,
+				models.EventLocationChanged:   true,
+				models.EventNotesChanged:      true,
+				models.EventTagsChanged:       true,
+				models.EventPinnedChanged:     true,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.path, func(t *testing.T) {
+			rec := getPath(router, tt.path)
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+			}
+			events := decodeActivityEvents(t, rec)
+			if len(events) != len(tt.want) {
+				t.Fatalf("events len = %d, want %d: %+v", len(events), len(tt.want), events)
+			}
+			for _, event := range events {
+				if !tt.want[models.HostEventType(event.EventType)] {
+					t.Fatalf("unexpected event type %q in %s: %+v", event.EventType, tt.path, events)
+				}
+			}
+		})
 	}
 }
 
@@ -206,102 +179,543 @@ func TestActivityEndpointFiltersByEventType(t *testing.T) {
 	host := seedHost(t, models.Host{Name: "router", Mac: "AA:BB:CC:DD:EE:01"})
 	seedActivityEventTypes(t, host)
 
-	rec := getPath(router, "/api/activity?eventType=online&eventType=pinned-changed&limit=100")
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	tests := []struct {
+		path string
+		want map[models.HostEventType]bool
+	}{
+		{
+			path: "/api/activity?eventType=online&limit=10",
+			want: map[models.HostEventType]bool{
+				models.EventOnline: true,
+			},
+		},
+		{
+			path: "/api/activity?eventType=known&eventType=unknown&limit=10",
+			want: map[models.HostEventType]bool{
+				models.EventKnown:   true,
+				models.EventUnknown: true,
+			},
+		},
+		{
+			path: "/api/activity?eventType=owner-changed&eventType=tags-changed&limit=10",
+			want: map[models.HostEventType]bool{
+				models.EventOwnerChanged: true,
+				models.EventTagsChanged:  true,
+			},
+		},
 	}
-	events := decodeActivityEvents(t, rec)
-	if len(events) != 2 {
-		t.Fatalf("events len = %d, want 2: %+v", len(events), events)
-	}
-	if events[0].EventType != string(models.EventPinnedChanged) || events[1].EventType != string(models.EventOnline) {
-		t.Fatalf("events order/types = %+v", events)
+
+	for _, tt := range tests {
+		t.Run(tt.path, func(t *testing.T) {
+			rec := getPath(router, tt.path)
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+			}
+			events := decodeActivityEvents(t, rec)
+			if len(events) != len(tt.want) {
+				t.Fatalf("events len = %d, want %d: %+v", len(events), len(tt.want), events)
+			}
+			for _, event := range events {
+				if !tt.want[models.HostEventType(event.EventType)] {
+					t.Fatalf("unexpected event type %q in %s: %+v", event.EventType, tt.path, events)
+				}
+			}
+		})
 	}
 }
 
 func TestActivityEndpointRejectsInvalidEventType(t *testing.T) {
 	router := setupTestRouter(t)
-	rec := getPath(router, "/api/activity?eventType=bad")
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+
+	for _, path := range []string{
+		"/api/activity?eventType=",
+		"/api/activity?eventType=ONLINE",
+		"/api/activity?eventType=other",
+	} {
+		t.Run(path, func(t *testing.T) {
+			rec := getPath(router, path)
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+			}
+		})
 	}
 }
 
-func TestActivityEndpointCombinesCategoryAndEventTypes(t *testing.T) {
+func TestActivityEndpointRejectsInvalidCategory(t *testing.T) {
 	router := setupTestRouter(t)
-	host := seedHost(t, models.Host{Name: "router", Mac: "AA:BB:CC:DD:EE:01"})
+
+	for _, path := range []string{
+		"/api/activity?category=",
+		"/api/activity?category=online,offline",
+		"/api/activity?category=ONLINE",
+		"/api/activity?category=other",
+	} {
+		t.Run(path, func(t *testing.T) {
+			rec := getPath(router, path)
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+			}
+		})
+	}
+}
+
+func TestActivityEndpointIntersectsCategoryAndEventType(t *testing.T) {
+	router := setupTestRouter(t)
+	host := seedHost(t, models.Host{Name: "NAS", Mac: "AA:BB:CC:DD:EE:20"})
 	seedActivityEventTypes(t, host)
 
-	rec := getPath(router, "/api/activity?category=connectivity&eventType=online&eventType=pinned-changed&limit=100")
+	rec := getPath(router, "/api/activity?category=connectivity&eventType=online&eventType=known&limit=10")
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+		t.Fatalf("intersection status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
 	}
 	events := decodeActivityEvents(t, rec)
 	if len(events) != 1 || events[0].EventType != string(models.EventOnline) {
-		t.Fatalf("events = %+v, want only online", events)
+		t.Fatalf("intersection events = %+v, want only online", events)
+	}
+
+	rec = getPath(router, "/api/activity?category=connectivity&eventType=known&limit=10")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("empty intersection status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	if events = decodeActivityEvents(t, rec); len(events) != 0 {
+		t.Fatalf("empty intersection events = %+v, want none", events)
 	}
 }
 
-func TestActivityEndpointReturnsEmptyForDisjointCategoryAndEventTypes(t *testing.T) {
+func TestActivityEndpointOffsetDefaultAndExplicit(t *testing.T) {
 	router := setupTestRouter(t)
-	host := seedHost(t, models.Host{Name: "router", Mac: "AA:BB:CC:DD:EE:01"})
-	seedActivityEventTypes(t, host)
+	host := seedHost(t, models.Host{Name: "phone", Mac: "AA:BB:CC:DD:EE:83"})
 
-	rec := getPath(router, "/api/activity?category=connectivity&eventType=pinned-changed&limit=100")
+	for i := 0; i < 5; i++ {
+		event := models.NewHostEvent(host, models.EventOnline, "", "")
+		event.Date = fmt.Sprintf("2026-08-24 10:%02d:00", i)
+		if err := gdb.AddEvent(event); err != nil {
+			t.Fatalf("AddEvent %d: %v", i, err)
+		}
+	}
+
+	rec := getPath(router, "/api/activity?limit=2")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("default offset status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	defaultEvents := decodeActivityEvents(t, rec)
+
+	rec = getPath(router, "/api/activity?limit=2&offset=0")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("explicit offset status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	offsetZeroEvents := decodeActivityEvents(t, rec)
+
+	if len(defaultEvents) != len(offsetZeroEvents) || defaultEvents[0].Date != offsetZeroEvents[0].Date || defaultEvents[1].Date != offsetZeroEvents[1].Date {
+		t.Fatalf("offset default events = %+v, want same as offset 0 %+v", defaultEvents, offsetZeroEvents)
+	}
+
+	rec = getPath(router, "/api/activity?limit=2&offset=2")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("offset status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	offsetEvents := decodeActivityEvents(t, rec)
+	if len(offsetEvents) != 2 || offsetEvents[0].Date != "2026-08-24 10:02:00" || offsetEvents[1].Date != "2026-08-24 10:01:00" {
+		t.Fatalf("offset events = %+v, want third and fourth newest", offsetEvents)
+	}
+}
+
+func TestActivityEndpointPaginatesWithEventTypeFilter(t *testing.T) {
+	router := setupTestRouter(t)
+	host := seedHost(t, models.Host{Name: "desktop", Mac: "AA:BB:CC:DD:EE:42"})
+
+	for i := 0; i < 6; i++ {
+		event := models.NewHostEvent(host, models.EventOnline, "", "")
+		event.Date = fmt.Sprintf("2026-08-24 10:%02d:00", i)
+		if err := gdb.AddEvent(event); err != nil {
+			t.Fatalf("AddEvent online %d: %v", i, err)
+		}
+		change := models.NewHostEvent(host, models.EventKnown, "", "")
+		change.Date = fmt.Sprintf("2026-08-24 09:%02d:00", i)
+		if err := gdb.AddEvent(change); err != nil {
+			t.Fatalf("AddEvent known %d: %v", i, err)
+		}
+	}
+
+	rec := getPath(router, "/api/activity?eventType=online&limit=2&offset=2")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
 	}
 	events := decodeActivityEvents(t, rec)
-	if len(events) != 0 {
-		t.Fatalf("events = %+v, want empty result", events)
-	}
-}
-
-func TestActivityEndpointFiltersByDevice(t *testing.T) {
-	router := setupTestRouter(t)
-	routerHost := seedHost(t, models.Host{Name: "router", Mac: "AA:BB:CC:DD:EE:01"})
-	nasHost := seedHost(t, models.Host{Name: "NAS", Mac: "AA:BB:CC:DD:EE:20"})
-
-	seedActivityEvent(t, routerHost, models.EventOnline, "2026-08-24 10:00:00")
-	seedActivityEvent(t, nasHost, models.EventOffline, "2026-08-24 10:05:00")
-
-	rec := getPath(router, "/api/activity?mac="+url.QueryEscape(nasHost.Mac)+"&limit=10")
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
-	}
-	events := decodeActivityEvents(t, rec)
-	if len(events) != 1 || events[0].Mac != nasHost.Mac {
-		t.Fatalf("events = %+v, want only NAS event", events)
-	}
-}
-
-func TestActivityEndpointFiltersByMultipleDevices(t *testing.T) {
-	router := setupTestRouter(t)
-	routerHost := seedHost(t, models.Host{Name: "router", Mac: "AA:BB:CC:DD:EE:01"})
-	nasHost := seedHost(t, models.Host{Name: "NAS", Mac: "AA:BB:CC:DD:EE:20"})
-	phoneHost := seedHost(t, models.Host{Name: "phone", Mac: "AA:BB:CC:DD:EE:83"})
-
-	seedActivityEvent(t, routerHost, models.EventOnline, "2026-08-24 10:00:00")
-	seedActivityEvent(t, nasHost, models.EventOffline, "2026-08-24 10:05:00")
-	seedActivityEvent(t, phoneHost, models.EventKnown, "2026-08-24 10:10:00")
-
-	query := "/api/activity?limit=10&mac=" + url.QueryEscape(routerHost.Mac) + "&mac=" + url.QueryEscape(phoneHost.Mac)
-	rec := getPath(router, query)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("multi-mac status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
-	}
-	events := decodeActivityEvents(t, rec)
-	if len(events) != 2 {
-		t.Fatalf("multi-mac events len = %d, want 2: %+v", len(events), events)
+	if len(events) != 2 || events[0].Date != "2026-08-24 10:03:00" || events[1].Date != "2026-08-24 10:02:00" {
+		t.Fatalf("filtered page events = %+v, want third and fourth newest online events", events)
 	}
 	for _, event := range events {
-		if event.Mac != routerHost.Mac && event.Mac != phoneHost.Mac {
-			t.Fatalf("unexpected mac in multi-mac results: %+v", events)
+		if event.EventType != string(models.EventOnline) {
+			t.Fatalf("non-online event in filtered page: %+v", events)
 		}
 	}
 }
 
-func TestActivityEndpointSupportsRepeatedMacFilters(t *testing.T) {
+func TestActivityEndpointCursorPaginatesSameTimestampWithIDTieBreak(t *testing.T) {
+	router := setupTestRouter(t)
+	host := seedHost(t, models.Host{Name: "NAS", Mac: "AA:BB:CC:DD:EE:20"})
+
+	seedLabeledActivityEvent(t, host, models.EventOnline, "2026-08-31 22:00:00", "first-same-date")
+	seedLabeledActivityEvent(t, host, models.EventOffline, "2026-08-31 22:00:00", "second-same-date")
+	seedLabeledActivityEvent(t, host, models.EventKnown, "2026-08-31 22:00:00", "third-same-date")
+	seedLabeledActivityEvent(t, host, models.EventUnknown, "2026-08-31 21:59:59", "older")
+
+	rec := getPath(router, "/api/activity?limit=2")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("first page status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	firstPage := decodeActivityEvents(t, rec)
+	assertActivityEventMarkers(t, firstPage, []string{"third-same-date", "second-same-date"})
+
+	rec = getPath(router, "/api/activity?limit=2&"+activityCursorQuery(firstPage[len(firstPage)-1]))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("cursor page status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	assertActivityEventMarkers(t, decodeActivityEvents(t, rec), []string{"first-same-date", "older"})
+}
+
+func TestActivityEndpointCursorIsStableAfterNewerInsert(t *testing.T) {
+	router := setupTestRouter(t)
+	host := seedHost(t, models.Host{Name: "router", Mac: "AA:BB:CC:DD:EE:01"})
+
+	for i := 1; i <= 6; i++ {
+		seedLabeledActivityEvent(t, host, models.EventOnline, fmt.Sprintf("2026-08-31 10:%02d:00", i), fmt.Sprintf("E%02d", i))
+	}
+
+	rec := getPath(router, "/api/activity?limit=3")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("first page status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	firstPage := decodeActivityEvents(t, rec)
+	assertActivityEventMarkers(t, firstPage, []string{"E06", "E05", "E04"})
+
+	seedLabeledActivityEvent(t, host, models.EventOffline, "2026-08-31 11:00:00", "NEW")
+
+	rec = getPath(router, "/api/activity?limit=3&"+activityCursorQuery(firstPage[len(firstPage)-1]))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("cursor page status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	secondPage := decodeActivityEvents(t, rec)
+	assertActivityEventMarkers(t, secondPage, []string{"E03", "E02", "E01"})
+	assertNoActivityEventIDOverlap(t, firstPage, secondPage)
+
+	rec = getPath(router, "/api/activity?limit=3")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("fresh first page status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	assertActivityEventMarkers(t, decodeActivityEvents(t, rec), []string{"NEW", "E06", "E05"})
+}
+
+func TestActivityEndpointCursorAppliesAfterFilters(t *testing.T) {
+	router := setupTestRouter(t)
+	routerHost := seedHost(t, models.Host{Name: "router", Mac: "AA:BB:CC:DD:EE:01"})
+	nasHost := seedHost(t, models.Host{Name: "NAS", Mac: "AA:BB:CC:DD:EE:20"})
+
+	seedLabeledActivityEvent(t, nasHost, models.EventOnline, "2026-08-31 10:06:00", "N06")
+	seedLabeledActivityEvent(t, routerHost, models.EventOnline, "2026-08-31 10:05:00", "R05")
+	seedLabeledActivityEvent(t, routerHost, models.EventOffline, "2026-08-31 10:04:00", "R04")
+	seedLabeledActivityEvent(t, routerHost, models.EventKnown, "2026-08-31 10:03:00", "R03")
+	seedLabeledActivityEvent(t, routerHost, models.EventOnline, "2026-08-31 10:02:00", "R02")
+	seedLabeledActivityEvent(t, nasHost, models.EventOffline, "2026-08-31 10:01:00", "N01")
+	seedLabeledActivityEvent(t, routerHost, models.EventDeviceTypeChanged, "2026-08-31 10:00:00", "R00")
+
+	tests := []struct {
+		name       string
+		query      string
+		wantFirst  []string
+		wantSecond []string
+	}{
+		{
+			name:       "repeated MAC",
+			query:      "limit=2&mac=" + url.QueryEscape(routerHost.Mac) + "&mac=" + url.QueryEscape(routerHost.Mac),
+			wantFirst:  []string{"R05", "R04"},
+			wantSecond: []string{"R03", "R02"},
+		},
+		{
+			name:       "one event type",
+			query:      "limit=2&eventType=online",
+			wantFirst:  []string{"N06", "R05"},
+			wantSecond: []string{"R02"},
+		},
+		{
+			name:       "multiple event types",
+			query:      "limit=3&eventType=online&eventType=offline",
+			wantFirst:  []string{"N06", "R05", "R04"},
+			wantSecond: []string{"R02", "N01"},
+		},
+		{
+			name:       "category",
+			query:      "limit=3&category=connectivity",
+			wantFirst:  []string{"N06", "R05", "R04"},
+			wantSecond: []string{"R02", "N01"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rec := getPath(router, "/api/activity?"+tt.query)
+			if rec.Code != http.StatusOK {
+				t.Fatalf("first page status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+			}
+			firstPage := decodeActivityEvents(t, rec)
+			assertActivityEventMarkers(t, firstPage, tt.wantFirst)
+
+			rec = getPath(router, "/api/activity?"+tt.query+"&"+activityCursorQuery(firstPage[len(firstPage)-1]))
+			if rec.Code != http.StatusOK {
+				t.Fatalf("cursor page status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+			}
+			secondPage := decodeActivityEvents(t, rec)
+			assertActivityEventMarkers(t, secondPage, tt.wantSecond)
+			assertNoActivityEventIDOverlap(t, firstPage, secondPage)
+		})
+	}
+}
+
+func TestActivityEndpointRejectsInvalidOffset(t *testing.T) {
+	router := setupTestRouter(t)
+
+	for _, path := range []string{
+		"/api/activity?offset=abc",
+		"/api/activity?offset=-1",
+	} {
+		t.Run(path, func(t *testing.T) {
+			rec := getPath(router, path)
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+			}
+		})
+	}
+}
+
+func TestActivityEndpointRejectsInvalidCursor(t *testing.T) {
+	router := setupTestRouter(t)
+	validDate := url.QueryEscape("2026-08-31 22:00:00")
+
+	for _, path := range []string{
+		"/api/activity?beforeDate=" + validDate,
+		"/api/activity?beforeId=1",
+		"/api/activity?beforeDate=" + validDate + "&beforeId=0",
+		"/api/activity?beforeDate=" + validDate + "&beforeId=-1",
+		"/api/activity?beforeDate=" + validDate + "&beforeId=abc",
+		"/api/activity?beforeDate=" + url.QueryEscape("2026-08-31T22:00:00") + "&beforeId=1",
+		"/api/activity?beforeDate=" + validDate + "&beforeId=1&offset=1",
+	} {
+		t.Run(path, func(t *testing.T) {
+			rec := getPath(router, path)
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+			}
+		})
+	}
+}
+
+func TestActivityEndpointAllowsCursorWithZeroOffset(t *testing.T) {
+	router := setupTestRouter(t)
+	host := seedHost(t, models.Host{Name: "router", Mac: "AA:BB:CC:DD:EE:01"})
+
+	seedLabeledActivityEvent(t, host, models.EventOnline, "2026-08-31 22:00:00", "newer")
+	seedLabeledActivityEvent(t, host, models.EventOffline, "2026-08-31 21:59:59", "older")
+
+	rec := getPath(router, "/api/activity?limit=1")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("first page status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	firstPage := decodeActivityEvents(t, rec)
+
+	rec = getPath(router, "/api/activity?limit=1&offset=0&"+activityCursorQuery(firstPage[0]))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("cursor page status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	assertActivityEventMarkers(t, decodeActivityEvents(t, rec), []string{"older"})
+}
+
+func TestActivityEndpointCombinesCategoryOffsetAndLimit(t *testing.T) {
+	router := setupTestRouter(t)
+	host := seedHost(t, models.Host{Name: "router", Mac: "AA:BB:CC:DD:EE:01"})
+
+	events := []struct {
+		eventType models.HostEventType
+		date      string
+	}{
+		{models.EventKnown, "2026-08-24 10:00:00"},
+		{models.EventOnline, "2026-08-24 10:01:00"},
+		{models.EventDeviceTypeChanged, "2026-08-24 10:02:00"},
+		{models.EventOffline, "2026-08-24 10:03:00"},
+		{models.EventUnknown, "2026-08-24 10:04:00"},
+		{models.EventDiscovered, "2026-08-24 10:05:00"},
+	}
+	for _, item := range events {
+		event := models.NewHostEvent(host, item.eventType, "", "")
+		event.Date = item.date
+		if err := gdb.AddEvent(event); err != nil {
+			t.Fatalf("AddEvent: %v", err)
+		}
+	}
+
+	rec := getPath(router, "/api/activity?category=changes&limit=2&offset=1")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	got := decodeActivityEvents(t, rec)
+	want := []models.HostEventType{models.EventUnknown, models.EventDeviceTypeChanged}
+	if len(got) != len(want) {
+		t.Fatalf("events len = %d, want %d: %+v", len(got), len(want), got)
+	}
+	for i, eventType := range want {
+		if got[i].EventType != string(eventType) {
+			t.Fatalf("events[%d].EventType = %q, want %q; events: %+v", i, got[i].EventType, eventType, got)
+		}
+	}
+}
+
+func TestActivityEndpointNewestFirstByDateAndID(t *testing.T) {
+	router := setupTestRouter(t)
+	host := seedHost(t, models.Host{Name: "NAS", Mac: "AA:BB:CC:DD:EE:20"})
+
+	first := models.NewHostEvent(host, models.EventDiscovered, "", "")
+	first.Date = "2026-08-24 10:00:00"
+	second := models.NewHostEvent(host, models.EventKnown, "", "")
+	second.Date = "2026-08-24 10:00:00"
+	third := models.NewHostEvent(host, models.EventOffline, "", "")
+	third.Date = "2026-08-24 10:05:00"
+
+	for _, event := range []models.HostEvent{first, second, third} {
+		if err := gdb.AddEvent(event); err != nil {
+			t.Fatalf("AddEvent: %v", err)
+		}
+	}
+
+	rec := getPath(router, "/api/activity")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	events := decodeActivityEvents(t, rec)
+	if len(events) != 3 {
+		t.Fatalf("events len = %d, want 3", len(events))
+	}
+	want := []models.HostEventType{models.EventOffline, models.EventKnown, models.EventDiscovered}
+	for i, eventType := range want {
+		if events[i].EventType != string(eventType) {
+			t.Fatalf("events[%d].EventType = %q, want %q; events: %+v", i, events[i].EventType, eventType, events)
+		}
+	}
+}
+
+func TestActivityEndpointAddsUTCDisplayDateWithoutChangingCursorDate(t *testing.T) {
+	router := setupTestRouter(t)
+	withTestLocalTime(t, time.UTC)
+	host := seedHost(t, models.Host{Name: "UTC server", Mac: "AA:BB:CC:DD:EE:01"})
+
+	seedActivityEvent(t, host, models.EventOnline, "2026-09-03 18:18:43")
+
+	rec := getPath(router, "/api/activity")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	events := decodeActivityEvents(t, rec)
+	if len(events) != 1 {
+		t.Fatalf("events len = %d, want 1: %+v", len(events), events)
+	}
+	if events[0].Date != "2026-09-03 18:18:43" {
+		t.Fatalf("Date = %q, want unchanged cursor Date", events[0].Date)
+	}
+	if events[0].DateUTC != "2026-09-03T18:18:43Z" {
+		t.Fatalf("DateUTC = %q, want UTC display timestamp", events[0].DateUTC)
+	}
+
+	stored, ok := gdb.SelectEventsFiltered(gdb.EventQuery{Limit: 1})
+	if !ok {
+		t.Fatal("SelectEventsFiltered failed")
+	}
+	if len(stored) != 1 || stored[0].Date != "2026-09-03 18:18:43" || stored[0].DateUTC != "" {
+		t.Fatalf("stored event = %+v, want unmodified Date and no transient DateUTC", stored)
+	}
+}
+
+func TestActivityEndpointDateUTCUsesNonUTCServerTimezone(t *testing.T) {
+	router := setupTestRouter(t)
+	withTestLocalTime(t, time.FixedZone("Europe/Sofia", 3*60*60))
+	host := seedHost(t, models.Host{Name: "Sofia server", Mac: "AA:BB:CC:DD:EE:02"})
+
+	seedActivityEvent(t, host, models.EventOnline, "2026-09-03 21:18:43")
+
+	rec := getPath(router, "/api/activity")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	events := decodeActivityEvents(t, rec)
+	if len(events) != 1 {
+		t.Fatalf("events len = %d, want 1: %+v", len(events), events)
+	}
+	if events[0].Date != "2026-09-03 21:18:43" {
+		t.Fatalf("Date = %q, want unchanged server-local Date", events[0].Date)
+	}
+	if events[0].DateUTC != "2026-09-03T18:18:43Z" {
+		t.Fatalf("DateUTC = %q, want UTC display timestamp", events[0].DateUTC)
+	}
+}
+
+func TestHostActivityEndpointAddsUTCDisplayDate(t *testing.T) {
+	router := setupTestRouter(t)
+	withTestLocalTime(t, time.UTC)
+	host := seedHost(t, models.Host{Name: "Host detail", Mac: "AA:BB:CC:DD:EE:03"})
+
+	seedActivityEvent(t, host, models.EventOffline, "2026-09-03 18:18:43")
+
+	rec := getPath(router, "/api/host/"+itoa(host.ID)+"/activity")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	events := decodeActivityEvents(t, rec)
+	if len(events) != 1 {
+		t.Fatalf("events len = %d, want 1: %+v", len(events), events)
+	}
+	if events[0].DateUTC != "2026-09-03T18:18:43Z" {
+		t.Fatalf("DateUTC = %q, want UTC display timestamp", events[0].DateUTC)
+	}
+}
+
+func TestActivityEndpointFiltersByMacAndHostID(t *testing.T) {
+	router := setupTestRouter(t)
+	routerHost := seedHost(t, models.Host{Name: "router", Mac: "AA:BB:CC:DD:EE:01"})
+	nasHost := seedHost(t, models.Host{Name: "NAS", Mac: "AA:BB:CC:DD:EE:20"})
+
+	routerEvent := models.NewHostEvent(routerHost, models.EventOnline, "", "")
+	routerEvent.Date = "2026-08-24 10:00:00"
+	nasEvent := models.NewHostEvent(nasHost, models.EventOffline, "", "")
+	nasEvent.Date = "2026-08-24 10:05:00"
+
+	for _, event := range []models.HostEvent{routerEvent, nasEvent} {
+		if err := gdb.AddEvent(event); err != nil {
+			t.Fatalf("AddEvent: %v", err)
+		}
+	}
+
+	rec := getPath(router, "/api/activity?mac="+routerHost.Mac)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("mac filter status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	events := decodeActivityEvents(t, rec)
+	if len(events) != 1 || events[0].Mac != routerHost.Mac {
+		t.Fatalf("mac filter events = %+v, want only router event", events)
+	}
+
+	rec = getPath(router, "/api/host/"+itoa(nasHost.ID)+"/activity")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("host filter status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	events = decodeActivityEvents(t, rec)
+	if len(events) != 1 || events[0].HostID != nasHost.ID {
+		t.Fatalf("host filter events = %+v, want only NAS event", events)
+	}
+}
+
+func TestActivityEndpointFiltersByMultipleMacs(t *testing.T) {
 	router := setupTestRouter(t)
 	routerHost := seedHost(t, models.Host{Name: "router", Mac: "AA:BB:CC:DD:EE:01"})
 	nasHost := seedHost(t, models.Host{Name: "NAS", Mac: "AA:BB:CC:DD:EE:20"})
@@ -371,9 +785,8 @@ func TestActivityStatsEndpointReturnsTotals(t *testing.T) {
 		t.Fatalf("stats status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
 	}
 	stats := decodeActivityStats(t, rec)
-	wantTotal := int64(len(models.HostEventTypeValues) + 2)
-	if stats.Total != wantTotal || stats.Online != 2 || stats.Offline != 2 || stats.Discovered != 1 || stats.Known != 1 || stats.Unknown != 1 || stats.DeviceTypeChanged != 1 || stats.MetadataChanged != 5 {
-		t.Fatalf("stats = %+v, want totals for all %d seeded event types plus two NAS connectivity events", stats, len(models.HostEventTypeValues))
+	if stats.Total != 14 || stats.Online != 2 || stats.Offline != 2 || stats.Discovered != 1 || stats.Known != 1 || stats.Unknown != 1 || stats.DeviceTypeChanged != 1 || stats.MetadataChanged != 5 {
+		t.Fatalf("stats = %+v, want totals for all seeded events", stats)
 	}
 }
 
@@ -405,142 +818,42 @@ func TestActivityDevicesEndpointIncludesCurrentAndDeletedEventDevices(t *testing
 		DeviceType: "router",
 	})
 	quietHost := seedHost(t, models.Host{
-		Name:       "quiet",
-		IP:         "192.168.1.2",
-		Mac:        "AA:BB:CC:DD:EE:02",
-		DeviceType: "server",
+		Name:       "quiet NAS",
+		IP:         "192.168.1.20",
+		Mac:        "AA:BB:CC:DD:EE:20",
+		DeviceType: "nas",
 	})
-	deletedHost := seedHost(t, models.Host{
-		Name:       "old-camera",
-		IP:         "192.168.1.90",
-		Mac:        "AA:BB:CC:DD:EE:90",
-		DeviceType: "camera",
-	})
-	seedActivityEvent(t, currentHost, models.EventOnline, "2026-08-24 10:00:00")
-	seedActivityEvent(t, deletedHost, models.EventDiscovered, "2026-08-24 09:00:00")
-	if err := gdb.DeleteCurrentHostWithMetadata(deletedHost); err != nil {
-		t.Fatalf("DeleteCurrentHostWithMetadata: %v", err)
+	deletedHost := models.Host{
+		ID:         99,
+		Name:       "deleted tablet",
+		IP:         "192.168.1.70",
+		Mac:        "AA:BB:CC:DD:EE:70",
+		DeviceType: "tablet",
 	}
+
+	seedActivityEvent(t, currentHost, models.EventOnline, "2026-08-24 10:00:00")
+	seedActivityEvent(t, deletedHost, models.EventOffline, "2026-08-24 11:00:00")
 
 	rec := getPath(router, "/api/activity/devices")
 	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+		t.Fatalf("devices status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
 	}
 	devices := decodeActivityDevices(t, rec)
-	if len(devices) != 3 {
-		t.Fatalf("devices len = %d, want 3: %+v", len(devices), devices)
-	}
 
 	byMac := make(map[string]models.ActivityDeviceOption, len(devices))
 	for _, device := range devices {
 		byMac[device.Mac] = device
 	}
-	if got := byMac[currentHost.Mac]; !got.Exists || got.HostID != currentHost.ID || got.Name != currentHost.Name {
-		t.Fatalf("current device = %+v, want existing current host", got)
-	}
-	if got := byMac[quietHost.Mac]; !got.Exists || got.HostID != quietHost.ID || got.Name != quietHost.Name {
-		t.Fatalf("quiet current device = %+v, want current host without events", got)
-	}
-	if got := byMac[deletedHost.Mac]; got.Exists || got.HostID != deletedHost.ID || got.Name != deletedHost.Name || got.DeviceType != deletedHost.DeviceType {
-		t.Fatalf("deleted device = %+v, want retained event snapshot", got)
-	}
-}
 
-func TestHostActivityEndpointUsesHostSnapshot(t *testing.T) {
-	router := setupTestRouter(t)
-	host := seedHost(t, models.Host{
-		Name:       "camera",
-		IP:         "192.168.1.50",
-		Mac:        "AA:BB:CC:DD:EE:50",
-		Iface:      "eth0",
-		DeviceType: "camera",
-	})
-	seedActivityEvent(t, host, models.EventOnline, "2026-08-24 10:00:00")
-
-	rec := getPath(router, "/api/host/"+strconv.Itoa(host.ID)+"/activity?limit=10")
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	if device, ok := byMac[currentHost.Mac]; !ok || !device.Exists || device.HostID != currentHost.ID || device.IP != currentHost.IP || device.DeviceType != "router" {
+		t.Fatalf("current host option = %+v, ok=%v; devices=%+v", device, ok, devices)
 	}
-	events := decodeActivityEvents(t, rec)
-	if len(events) != 1 || events[0].HostID != host.ID || events[0].Mac != host.Mac || events[0].Name != host.Name || events[0].IP != host.IP || events[0].DeviceType != host.DeviceType {
-		t.Fatalf("host event = %+v", events)
+	if device, ok := byMac[quietHost.Mac]; !ok || !device.Exists || device.HostID != quietHost.ID || device.IP != quietHost.IP || device.DeviceType != "nas" {
+		t.Fatalf("quiet current host option = %+v, ok=%v; devices=%+v", device, ok, devices)
 	}
-}
-
-func TestActivityDisplayTimePreservesStoredDate(t *testing.T) {
-	router := setupTestRouter(t)
-	host := seedHost(t, models.Host{Name: "router", Mac: "AA:BB:CC:DD:EE:01"})
-	storedDate := "2026-09-03 18:18:43"
-	seedActivityEvent(t, host, models.EventOnline, storedDate)
-
-	rec := getPath(router, "/api/activity?limit=10")
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	if device, ok := byMac[deletedHost.Mac]; !ok || device.Exists || device.HostID != deletedHost.ID || device.IP != deletedHost.IP || device.DeviceType != "tablet" {
+		t.Fatalf("deleted event host option = %+v, ok=%v; devices=%+v", device, ok, devices)
 	}
-	events := decodeActivityEvents(t, rec)
-	if len(events) != 1 {
-		t.Fatalf("events len = %d, want 1: %+v", len(events), events)
-	}
-	if events[0].Date != storedDate {
-		t.Fatalf("stored Date = %q, want %q", events[0].Date, storedDate)
-	}
-	if events[0].DateUTC == "" {
-		t.Fatal("DateUTC should be populated for display")
-	}
-}
-
-func TestActivityStatsEndpointRejectsDatabaseFailure(t *testing.T) {
-	router := setupTestRouter(t)
-	if err := gdb.Close(); err != nil {
-		t.Fatalf("Close: %v", err)
-	}
-
-	rec := getPath(router, "/api/activity/stats")
-	if rec.Code != http.StatusInternalServerError {
-		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusInternalServerError, rec.Body.String())
-	}
-}
-
-func TestActivityDevicesEndpointRejectsDatabaseFailure(t *testing.T) {
-	router := setupTestRouter(t)
-	if err := gdb.Close(); err != nil {
-		t.Fatalf("Close: %v", err)
-	}
-
-	rec := getPath(router, "/api/activity/devices")
-	if rec.Code != http.StatusInternalServerError {
-		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusInternalServerError, rec.Body.String())
-	}
-}
-
-func seedActivityEventTypes(t *testing.T, host models.Host) {
-	t.Helper()
-
-	for index, eventType := range models.HostEventTypeValues {
-		seedActivityEvent(t, host, eventType, "2026-08-24 10:"+twoDigit(index)+":00")
-	}
-}
-
-func seedActivityEvent(t *testing.T, host models.Host, eventType models.HostEventType, date string) models.HostEvent {
-	t.Helper()
-
-	event := models.NewHostEvent(host, eventType, "", "")
-	event.Date = date
-	if err := gdb.AddEvent(event); err != nil {
-		t.Fatalf("AddEvent(%s): %v", eventType, err)
-	}
-
-	events, ok := gdb.SelectEventsByHostID(host.ID, 100)
-	if !ok {
-		t.Fatalf("SelectEventsByHostID failed after AddEvent(%s)", eventType)
-	}
-	for _, stored := range events {
-		if stored.EventType == string(eventType) && stored.Date == date {
-			return stored
-		}
-	}
-	t.Fatalf("stored event %s at %s not found", eventType, date)
-	return models.HostEvent{}
 }
 
 func decodeActivityEvents(t *testing.T, rec *httptest.ResponseRecorder) []models.HostEvent {
@@ -548,7 +861,7 @@ func decodeActivityEvents(t *testing.T, rec *httptest.ResponseRecorder) []models
 
 	var events []models.HostEvent
 	if err := json.Unmarshal(rec.Body.Bytes(), &events); err != nil {
-		t.Fatalf("json.Unmarshal events: %v; body: %s", err, rec.Body.String())
+		t.Fatalf("json.Unmarshal: %v", err)
 	}
 	return events
 }
@@ -558,7 +871,7 @@ func decodeActivityStats(t *testing.T, rec *httptest.ResponseRecorder) models.Ac
 
 	var stats models.ActivityStats
 	if err := json.Unmarshal(rec.Body.Bytes(), &stats); err != nil {
-		t.Fatalf("json.Unmarshal stats: %v; body: %s", err, rec.Body.String())
+		t.Fatalf("json.Unmarshal stats: %v", err)
 	}
 	return stats
 }
@@ -568,184 +881,76 @@ func decodeActivityDevices(t *testing.T, rec *httptest.ResponseRecorder) []model
 
 	var devices []models.ActivityDeviceOption
 	if err := json.Unmarshal(rec.Body.Bytes(), &devices); err != nil {
-		t.Fatalf("json.Unmarshal devices: %v; body: %s", err, rec.Body.String())
+		t.Fatalf("json.Unmarshal devices: %v", err)
 	}
 	return devices
 }
 
-func getPath(router *gin.Engine, path string) *httptest.ResponseRecorder {
-	req := httptest.NewRequest(http.MethodGet, path, nil)
-	rec := httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
-	return rec
-}
+func seedActivityEventTypes(t *testing.T, host models.Host) {
+	t.Helper()
 
-func eventTypeSet(eventTypes []models.HostEventType) map[string]bool {
-	result := make(map[string]bool, len(eventTypes))
-	for _, eventType := range eventTypes {
-		result[string(eventType)] = true
-	}
-	return result
-}
-
-func twoDigit(value int) string {
-	if value < 10 {
-		return "0" + strconv.Itoa(value)
-	}
-	return strconv.Itoa(value)
-}
-
-func TestParseActivityLimitDefaultsAndBounds(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	tests := []struct {
-		name    string
-		query   string
-		want    int
-		wantErr bool
-	}{
-		{name: "default", want: defaultActivityLimit},
-		{name: "lower bound", query: "?limit=1", want: 1},
-		{name: "upper bound", query: "?limit=100", want: 100},
-		{name: "zero", query: "?limit=0", wantErr: true},
-		{name: "above max", query: "?limit=101", wantErr: true},
-		{name: "invalid", query: "?limit=nope", wantErr: true},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
-			ctx.Request = httptest.NewRequest(http.MethodGet, "/api/activity"+test.query, nil)
-			got, err := parseActivityLimit(ctx)
-			if test.wantErr {
-				if err == nil {
-					t.Fatalf("parseActivityLimit(%q) returned nil error", test.query)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("parseActivityLimit(%q): %v", test.query, err)
-			}
-			if got != test.want {
-				t.Fatalf("parseActivityLimit(%q) = %d, want %d", test.query, got, test.want)
-			}
-		})
+	for i, eventType := range models.HostEventTypeValues {
+		seedActivityEvent(t, host, eventType, fmt.Sprintf("2026-08-24 10:%02d:00", i))
 	}
 }
 
-func TestParseActivityOffsetDefaultsAndBounds(t *testing.T) {
-	gin.SetMode(gin.TestMode)
+func seedActivityEvent(t *testing.T, host models.Host, eventType models.HostEventType, date string) {
+	t.Helper()
 
-	tests := []struct {
-		name    string
-		query   string
-		want    int
-		wantErr bool
-	}{
-		{name: "default", want: defaultActivityOffset},
-		{name: "zero", query: "?offset=0", want: 0},
-		{name: "positive", query: "?offset=25", want: 25},
-		{name: "negative", query: "?offset=-1", wantErr: true},
-		{name: "invalid", query: "?offset=nope", wantErr: true},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
-			ctx.Request = httptest.NewRequest(http.MethodGet, "/api/activity"+test.query, nil)
-			got, err := parseActivityOffset(ctx)
-			if test.wantErr {
-				if err == nil {
-					t.Fatalf("parseActivityOffset(%q) returned nil error", test.query)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("parseActivityOffset(%q): %v", test.query, err)
-			}
-			if got != test.want {
-				t.Fatalf("parseActivityOffset(%q) = %d, want %d", test.query, got, test.want)
-			}
-		})
+	event := models.NewHostEvent(host, eventType, "", "")
+	event.Date = date
+	if err := gdb.AddEvent(event); err != nil {
+		t.Fatalf("AddEvent %s: %v", eventType, err)
 	}
 }
 
-func TestParseActivityCursorValidation(t *testing.T) {
-	gin.SetMode(gin.TestMode)
+func seedLabeledActivityEvent(t *testing.T, host models.Host, eventType models.HostEventType, date string, marker string) {
+	t.Helper()
 
-	tests := []struct {
-		name    string
-		query   string
-		offset  int
-		want    activityCursor
-		wantErr bool
-	}{
-		{name: "missing cursor", want: activityCursor{}},
-		{name: "complete cursor", query: "?beforeDate=2026-08-24+10%3A00%3A00&beforeId=7", want: activityCursor{BeforeDate: "2026-08-24 10:00:00", BeforeID: 7}},
-		{name: "date only", query: "?beforeDate=2026-08-24+10%3A00%3A00", wantErr: true},
-		{name: "id only", query: "?beforeId=7", wantErr: true},
-		{name: "invalid date", query: "?beforeDate=not-a-date&beforeId=7", wantErr: true},
-		{name: "zero id", query: "?beforeDate=2026-08-24+10%3A00%3A00&beforeId=0", wantErr: true},
-		{name: "negative id", query: "?beforeDate=2026-08-24+10%3A00%3A00&beforeId=-1", wantErr: true},
-		{name: "offset conflict", query: "?beforeDate=2026-08-24+10%3A00%3A00&beforeId=7", offset: 1, wantErr: true},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
-			ctx.Request = httptest.NewRequest(http.MethodGet, "/api/activity"+test.query, nil)
-			got, err := parseActivityCursor(ctx, test.offset)
-			if test.wantErr {
-				if err == nil {
-					t.Fatalf("parseActivityCursor(%q) returned nil error", test.query)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("parseActivityCursor(%q): %v", test.query, err)
-			}
-			if got != test.want {
-				t.Fatalf("parseActivityCursor(%q) = %+v, want %+v", test.query, got, test.want)
-			}
-		})
+	event := models.NewHostEvent(host, eventType, marker, "")
+	event.Date = date
+	if err := gdb.AddEvent(event); err != nil {
+		t.Fatalf("AddEvent %s %s: %v", eventType, marker, err)
 	}
 }
 
-func TestCombineActivityEventTypes(t *testing.T) {
-	all := combineActivityEventTypes
+func activityCursorQuery(event models.HostEvent) string {
+	return "beforeDate=" + url.QueryEscape(event.Date) + "&beforeId=" + strconv.Itoa(event.ID)
+}
 
-	tests := []struct {
-		name          string
-		categoryTypes []models.HostEventType
-		requestTypes  []models.HostEventType
-		want          []models.HostEventType
-		wantEmpty     bool
-	}{
-		{name: "all category no request", want: nil},
-		{name: "all category explicit request", requestTypes: []models.HostEventType{models.EventOnline, models.EventKnown}, want: []models.HostEventType{models.EventOnline, models.EventKnown}},
-		{name: "specific category no request", categoryTypes: models.ConnectivityEventTypes, want: models.ConnectivityEventTypes},
-		{name: "intersection preserves request order", categoryTypes: models.ConnectivityEventTypes, requestTypes: []models.HostEventType{models.EventOffline, models.EventPinnedChanged, models.EventOnline}, want: []models.HostEventType{models.EventOffline, models.EventOnline}},
-		{name: "disjoint", categoryTypes: models.ConnectivityEventTypes, requestTypes: []models.HostEventType{models.EventPinnedChanged}, wantEmpty: true},
-		{name: "deduplicates", categoryTypes: models.ConnectivityEventTypes, requestTypes: []models.HostEventType{models.EventOnline, models.EventOnline}, want: []models.HostEventType{models.EventOnline}},
+func assertActivityEventMarkers(t *testing.T, events []models.HostEvent, want []string) {
+	t.Helper()
+
+	if len(events) != len(want) {
+		t.Fatalf("events len = %d, want %d: %+v", len(events), len(want), events)
 	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			got, empty := all(test.categoryTypes, test.requestTypes)
-			if empty != test.wantEmpty {
-				t.Fatalf("empty = %v, want %v", empty, test.wantEmpty)
-			}
-			if strings.Join(hostEventTypesToStrings(got), ",") != strings.Join(hostEventTypesToStrings(test.want), ",") {
-				t.Fatalf("types = %+v, want %+v", got, test.want)
-			}
-		})
+	for i, marker := range want {
+		if events[i].OldValue != marker {
+			t.Fatalf("events[%d].OldValue = %q, want %q; events: %+v", i, events[i].OldValue, marker, events)
+		}
 	}
 }
 
-func hostEventTypesToStrings(types []models.HostEventType) []string {
-	values := make([]string, 0, len(types))
-	for _, eventType := range types {
-		values = append(values, string(eventType))
+func assertNoActivityEventIDOverlap(t *testing.T, left []models.HostEvent, right []models.HostEvent) {
+	t.Helper()
+
+	seen := make(map[int]struct{}, len(left))
+	for _, event := range left {
+		seen[event.ID] = struct{}{}
 	}
-	return values
+	for _, event := range right {
+		if _, ok := seen[event.ID]; ok {
+			t.Fatalf("event ID %d appeared in both pages; left=%+v right=%+v", event.ID, left, right)
+		}
+	}
+}
+
+func withTestLocalTime(t *testing.T, location *time.Location) {
+	t.Helper()
+
+	previous := time.Local
+	time.Local = location
+	t.Cleanup(func() {
+		time.Local = previous
+	})
 }
