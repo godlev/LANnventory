@@ -2,6 +2,7 @@ package gdb
 
 import (
 	"errors"
+	"fmt"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -10,12 +11,10 @@ import (
 )
 
 // RecordServiceObservation applies one definitive open/closed observation to the
-// durable service summary. Closed observations for never-seen services are ignored
-// so broad scans do not create an inventory row for every closed port.
+// durable service summary without emitting a host activity event. It is used by
+// lower-level callers and tests; host-aware scan paths should use RecordHostServiceObservation.
 func RecordServiceObservation(service models.Service, observedAt string) (stored models.Service, persisted bool, stateChanged bool, err error) {
-	service.LastChecked = observedAt
-	service.StateChangedAt = observedAt
-	normalized, err := normalizeService(service)
+	normalized, err := normalizeObservedService(service, observedAt)
 	if err != nil {
 		return models.Service{}, false, false, err
 	}
@@ -27,53 +26,103 @@ func RecordServiceObservation(service models.Service, observedAt string) (stored
 	defer release()
 
 	err = activeDB.Transaction(func(txDB *gorm.DB) error {
-		existing, ok, selectErr := selectServiceByIdentityForUpdate(txDB, normalized.Mac, normalized.Address, normalized.Protocol, normalized.Port)
-		if selectErr != nil {
-			return selectErr
-		}
-
-		if !ok {
-			if normalized.State == string(models.ServiceStateClosed) {
-				return nil
-			}
-			normalized.FirstDetected = observedAt
-			normalized.LastDetected = observedAt
-			normalized.LastChecked = observedAt
-			normalized.StateChangedAt = observedAt
-			if err := txDB.Table(servicesTable).Create(&normalized).Error; err != nil {
-				return err
-			}
-			stored = normalized
-			persisted = true
-			stateChanged = true
-			return nil
-		}
-
-		stateChanged = existing.State != normalized.State
-		existing.State = normalized.State
-		existing.LastChecked = observedAt
-		existing.LastScanSource = normalized.LastScanSource
-		if normalized.ServiceHint != "" {
-			existing.ServiceHint = normalized.ServiceHint
-		}
-		if normalized.State == string(models.ServiceStateOpen) {
-			if existing.FirstDetected == "" {
-				existing.FirstDetected = observedAt
-			}
-			existing.LastDetected = observedAt
-		}
-		if stateChanged {
-			existing.StateChangedAt = observedAt
-		}
-
-		if err := txDB.Table(servicesTable).Save(&existing).Error; err != nil {
-			return err
-		}
-		stored = existing
-		persisted = true
-		return nil
+		var previousState string
+		stored, persisted, stateChanged, previousState, err = recordServiceObservationTx(txDB, normalized, observedAt)
+		_ = previousState
+		return err
 	})
 	return stored, persisted, stateChanged, err
+}
+
+// RecordHostServiceObservation atomically applies a definitive service state and,
+// only when the state changes, records service-opened/service-closed activity.
+func RecordHostServiceObservation(host models.Host, service models.Service, observedAt string) (stored models.Service, persisted bool, stateChanged bool, err error) {
+	normalized, err := normalizeObservedService(service, observedAt)
+	if err != nil {
+		return models.Service{}, false, false, err
+	}
+
+	activeDB, release, err := acquireDB()
+	if err != nil {
+		return models.Service{}, false, false, err
+	}
+	defer release()
+
+	err = activeDB.Transaction(func(txDB *gorm.DB) error {
+		var previousState string
+		stored, persisted, stateChanged, previousState, err = recordServiceObservationTx(txDB, normalized, observedAt)
+		if err != nil || !persisted || !stateChanged {
+			return err
+		}
+
+		eventType := models.EventServiceOpened
+		if normalized.State == string(models.ServiceStateClosed) {
+			eventType = models.EventServiceClosed
+		}
+
+		eventHost := host
+		eventHost.Mac = normalized.Mac
+		eventHost.IP = normalized.Address
+		event := models.NewHostEvent(
+			eventHost,
+			eventType,
+			previousState,
+			fmt.Sprintf("%s/%d", normalized.Protocol, normalized.Port),
+		)
+		event.Date = observedAt
+		return addEventTx(txDB, event)
+	})
+	return stored, persisted, stateChanged, err
+}
+
+func normalizeObservedService(service models.Service, observedAt string) (models.Service, error) {
+	service.LastChecked = observedAt
+	service.StateChangedAt = observedAt
+	return normalizeService(service)
+}
+
+func recordServiceObservationTx(txDB *gorm.DB, normalized models.Service, observedAt string) (stored models.Service, persisted bool, stateChanged bool, previousState string, err error) {
+	existing, ok, err := selectServiceByIdentityForUpdate(txDB, normalized.Mac, normalized.Address, normalized.Protocol, normalized.Port)
+	if err != nil {
+		return models.Service{}, false, false, "", err
+	}
+
+	if !ok {
+		if normalized.State == string(models.ServiceStateClosed) {
+			return models.Service{}, false, false, "", nil
+		}
+		normalized.FirstDetected = observedAt
+		normalized.LastDetected = observedAt
+		normalized.LastChecked = observedAt
+		normalized.StateChangedAt = observedAt
+		if err := txDB.Table(servicesTable).Create(&normalized).Error; err != nil {
+			return models.Service{}, false, false, "", err
+		}
+		return normalized, true, true, "", nil
+	}
+
+	previousState = existing.State
+	stateChanged = existing.State != normalized.State
+	existing.State = normalized.State
+	existing.LastChecked = observedAt
+	existing.LastScanSource = normalized.LastScanSource
+	if normalized.ServiceHint != "" {
+		existing.ServiceHint = normalized.ServiceHint
+	}
+	if normalized.State == string(models.ServiceStateOpen) {
+		if existing.FirstDetected == "" {
+			existing.FirstDetected = observedAt
+		}
+		existing.LastDetected = observedAt
+	}
+	if stateChanged {
+		existing.StateChangedAt = observedAt
+	}
+
+	if err := txDB.Table(servicesTable).Save(&existing).Error; err != nil {
+		return models.Service{}, false, false, previousState, err
+	}
+	return existing, true, stateChanged, previousState, nil
 }
 
 func selectServiceByIdentityForUpdate(activeDB *gorm.DB, mac, address, protocol string, port int) (service models.Service, ok bool, err error) {
