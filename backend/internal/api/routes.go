@@ -22,6 +22,7 @@ func Routes(router *gin.Engine) {
 		r0.GET("/edit/:id/:name/*known", editHost) // api-hosts.go
 		r0.GET("/host/:id/activity", getHostActivity)
 		r0.GET("/host/:id/identity", getHostIdentity)
+		r0.GET("/host/:id/identity/candidates", getHostIdentityCandidates)
 		r0.GET("/host/:id", getHost) // api-hosts.go
 		r0.PATCH("/host/:id", setHostInventory)
 		r0.PATCH("/host/:id/type", setHostDeviceType)
