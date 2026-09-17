@@ -20,8 +20,9 @@ var portIsOpen = portscan.IsOpen
 var portProbe = portscan.Probe
 
 type hostPortScanResponse struct {
-	Port int  `json:"port"`
-	Open bool `json:"open"`
+	Port  int    `json:"port"`
+	Open  bool   `json:"open"`
+	State string `json:"state"`
 }
 
 // getPortState godoc
@@ -49,7 +50,7 @@ func getPortState(c *gin.Context) {
 
 // scanHostPort godoc
 // @Summary      Scan one port for a host
-// @Description  Scan a TCP port using the host's current IP. Definitive results update persistent service inventory and emit lifecycle activity only on state transitions.
+// @Description  Scan a TCP port using the host's current IP. Definitive results update persistent service inventory and emit lifecycle activity only on state transitions. Indeterminate transport failures are returned without changing persisted service state.
 // @Tags         network
 // @Produce      json
 // @Param        id    path      int  true  "Host ID"
@@ -81,7 +82,11 @@ func scanHostPort(c *gin.Context) {
 		return
 	}
 	if result.State == portscan.ProbeIndeterminate {
-		c.IndentedJSON(http.StatusServiceUnavailable, gin.H{"error": "port scan could not determine service state"})
+		c.IndentedJSON(http.StatusOK, hostPortScanResponse{
+			Port:  portNumber,
+			Open:  false,
+			State: string(portscan.ProbeIndeterminate),
+		})
 		return
 	}
 
@@ -99,7 +104,11 @@ func scanHostPort(c *gin.Context) {
 	}
 
 	open := result.State == portscan.ProbeOpen
-	c.IndentedJSON(http.StatusOK, hostPortScanResponse{Port: portNumber, Open: open})
+	c.IndentedJSON(http.StatusOK, hostPortScanResponse{
+		Port:  portNumber,
+		Open:  open,
+		State: string(result.State),
+	})
 }
 
 // sendWOL godoc
