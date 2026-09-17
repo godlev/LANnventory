@@ -58,6 +58,8 @@ export type ConfirmedIdentityGroupMember = {
 export type HostIdentityGroup = {
   mac: string;
   confirmed: boolean;
+  firstSeen: string;
+  lastSeen: string;
   members: ConfirmedIdentityGroupMember[];
 };
 
