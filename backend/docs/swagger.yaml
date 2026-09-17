@@ -1,5 +1,78 @@
 basePath: /api/
 definitions:
+  api.AddressIdentityResponse:
+    properties:
+      address:
+        type: string
+      macHistory:
+        items:
+          $ref: '#/definitions/api.AddressMACObservation'
+        type: array
+    type: object
+  api.AddressMACObservation:
+    properties:
+      active:
+        type: boolean
+      firstSeen:
+        type: string
+      lastSeen:
+        type: string
+      mac:
+        type: string
+    type: object
+  api.DiscoveryEvidenceObservation:
+    properties:
+      active:
+        type: boolean
+      address:
+        type: string
+      firstSeen:
+        type: string
+      kind:
+        type: string
+      lastSeen:
+        type: string
+      source:
+        type: string
+      value:
+        type: string
+    type: object
+  api.HostIdentityAddress:
+    properties:
+      active:
+        type: boolean
+      address:
+        type: string
+      family:
+        type: string
+      firstSeen:
+        type: string
+      iface:
+        type: string
+      lastSeen:
+        type: string
+      macHistory:
+        items:
+          $ref: '#/definitions/api.AddressMACObservation'
+        type: array
+    type: object
+  api.HostIdentityResponse:
+    properties:
+      addresses:
+        items:
+          $ref: '#/definitions/api.HostIdentityAddress'
+        type: array
+      dataSources:
+        items:
+          type: string
+        type: array
+      evidence:
+        items:
+          $ref: '#/definitions/api.DiscoveryEvidenceObservation'
+        type: array
+      mac:
+        type: string
+    type: object
   api.HostInventoryPatchRequest:
     properties:
       deviceType:
@@ -1036,6 +1109,39 @@ paths:
       summary: Get recent activity for one host
       tags:
       - activity
+  /host/{id}/identity:
+    get:
+      description: Return retained addresses, reverse address-to-MAC history, discovery
+        evidence, and discovery sources for a host without changing user-managed inventory
+        fields.
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.HostIdentityResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get host identity observations
+      tags:
+      - hosts
   /host/{id}/metadata:
     patch:
       consumes:
@@ -1192,6 +1298,38 @@ paths:
           schema:
             type: string
       summary: Delete host
+      tags:
+      - hosts
+  /identity/address:
+    get:
+      description: Return every retained MAC identity observed using one IP address,
+        including first/last seen timestamps.
+      parameters:
+      - description: IPv4 or IPv6 address
+        in: query
+        name: address
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.AddressIdentityResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get address identity observations
       tags:
       - hosts
   /inventory/options:

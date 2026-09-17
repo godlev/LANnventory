@@ -2,7 +2,6 @@ import { createEffect, createMemo, createSignal, For, onCleanup, Show } from "so
 import { apiDelHost, apiGetInventoryOptions, apiPatchHost, apiSetHostMetadata, apiWOL } from "../../functions/api";
 import { Host } from "../../functions/exports";
 import { formatLastSeen } from "../../functions/dateFormat";
-import { deviceDisplayName } from "../../functions/deviceIdentity";
 import { macTypeLabel } from "../../functions/macIdentity";
 import { deviceTypeTitle, getDeviceTypeOption, normalizeDeviceType, type DeviceTypeValue } from "../../functions/deviceTypes";
 import { updateHostInView } from "../../functions/hostView";
@@ -116,7 +115,7 @@ function HostCard(_props: HostCardProps) {
   const formattedLastSeen = () => formatLastSeen(lastSeenRaw());
   const currentDeviceType = () => getDeviceTypeOption(_props.editMode ? draft().DeviceType : _props.host.DeviceType);
   const hostDeviceTypeTitle = () => deviceTypeTitle(_props.editMode ? draft().DeviceType : _props.host.DeviceType);
-  const displayName = () => deviceDisplayName({ ..._props.host, Name: _props.editMode ? draft().Name : _props.host.Name });
+  const inventoryName = () => (_props.editMode ? draft().Name : _props.host.Name).trim();
   const editDirty = () => !hostDraftEquals(draft(), baseline());
   const canSave = () => _props.editMode && !saving() && editDirty() && _props.host.ID > 0;
   const pinTitle = () => _props.host.Pinned ? "Remove from Home pins" : "Pin on Home";
@@ -440,7 +439,14 @@ function HostCard(_props: HostCardProps) {
             <div class="host-property-grid host-property-grid-section">
               <div class="host-field-label">Name</div>
               <div class="host-field-value">
-                <Show when={_props.editMode} fallback={<span>{displayName()}</span>}>
+                <Show
+                  when={_props.editMode}
+                  fallback={
+                    <Show when={inventoryName()} fallback={<span class="device-cell-muted">Not set</span>}>
+                      <span>{inventoryName()}</span>
+                    </Show>
+                  }
+                >
                   <input
                     id="host-name-input"
                     type="text"

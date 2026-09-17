@@ -1099,6 +1099,53 @@
                 }
             }
         },
+        "/host/{id}/identity": {
+            "get": {
+                "description": "Return retained addresses, reverse address-to-MAC history, discovery evidence, and discovery sources for a host without changing user-managed inventory fields.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Get host identity observations",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.HostIdentityResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/host/{id}/metadata": {
             "patch": {
                 "description": "Partially update manually managed inventory metadata. Tags are trimmed, empty tags are removed, duplicates are removed case-insensitively, and user order is preserved. Actual changes are recorded as Device change events.",
@@ -1248,6 +1295,53 @@
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/models.Host"
+                        }
+                    }
+                }
+            }
+        },
+        "/identity/address": {
+            "get": {
+                "description": "Return every retained MAC identity observed using one IP address, including first/last seen timestamps.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Get address identity observations",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "IPv4 or IPv6 address",
+                        "name": "address",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.AddressIdentityResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     }
                 }
@@ -1644,6 +1738,118 @@
         }
     },
     "definitions": {
+        "api.AddressIdentityResponse": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "macHistory": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.AddressMACObservation"
+                    }
+                }
+            }
+        },
+        "api.AddressMACObservation": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean"
+                },
+                "firstSeen": {
+                    "type": "string"
+                },
+                "lastSeen": {
+                    "type": "string"
+                },
+                "mac": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.DiscoveryEvidenceObservation": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean"
+                },
+                "address": {
+                    "type": "string"
+                },
+                "firstSeen": {
+                    "type": "string"
+                },
+                "kind": {
+                    "type": "string"
+                },
+                "lastSeen": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.HostIdentityAddress": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean"
+                },
+                "address": {
+                    "type": "string"
+                },
+                "family": {
+                    "type": "string"
+                },
+                "firstSeen": {
+                    "type": "string"
+                },
+                "iface": {
+                    "type": "string"
+                },
+                "lastSeen": {
+                    "type": "string"
+                },
+                "macHistory": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.AddressMACObservation"
+                    }
+                }
+            }
+        },
+        "api.HostIdentityResponse": {
+            "type": "object",
+            "properties": {
+                "addresses": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.HostIdentityAddress"
+                    }
+                },
+                "dataSources": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "evidence": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.DiscoveryEvidenceObservation"
+                    }
+                },
+                "mac": {
+                    "type": "string"
+                }
+            }
+        },
         "api.HostInventoryPatchRequest": {
             "type": "object",
             "properties": {
