@@ -181,3 +181,53 @@ func Connect() {
 
 	check.IfError(closeDB(oldDB))
 }
+
+func connect(config models.Conf, gormConf *gorm.Config, allowPostgresFallback bool) (*gorm.DB, error) {
+	var pgFail bool
+	var err error
+	var candidate *gorm.DB
+
+	if config.UseDB == "postgres" {
+		candidate, err = gorm.Open(postgres.Open(config.PGConnect), gormConf)
+
+		if err != nil {
+			if !allowPostgresFallback {
+				slog.Error("PostgreSQL connection error", "err", redactDatabaseError(err))
+				return nil, err
+			}
+			pgFail = true
+
+			slog.Error("PostgreSQL connection error", "err", redactDatabaseError(err))
+			slog.Warn("Falling back to SQLite")
+		} else {
+			slog.Info("Connected to DB: PostgreSQL")
+		}
+	}
+
+	if pgFail || config.UseDB != "postgres" {
+
+		candidate, err = gorm.Open(sqlite.Open(config.DBPath), gormConf)
+
+		if err != nil {
+			return nil, err
+		}
+		slog.Info("Connected to DB: SQLite")
+		candidate.Exec("PRAGMA journal_mode = wal;")
+		candidate.Exec("PRAGMA busy_timeout = 5000;")
+	}
+
+	return candidate, nil
+}
+
+func redactDatabaseError(err error) string {
+	return redactPostgresURL(err.Error())
+}
+
+func redactPostgresURL(value string) string {
+	if value == "" {
+		return ""
+	}
+
+	value = postgresURLPasswordPattern.ReplaceAllString(value, "${1}<redacted>@")
+	return postgresKeywordPasswordPattern.ReplaceAllString(value, "${1}<redacted>")
+}
