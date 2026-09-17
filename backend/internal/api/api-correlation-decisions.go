@@ -1,12 +1,14 @@
 package api
 
 import (
+	"errors"
 	"log/slog"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/godlev/LANnventory/internal/correlation"
 	"github.com/godlev/LANnventory/internal/gdb"
 	"github.com/godlev/LANnventory/internal/identity"
 	"github.com/godlev/LANnventory/internal/models"
@@ -101,7 +103,7 @@ func getHostIdentityDecisions(c *gin.Context) {
 
 // setHostIdentityDecision godoc
 // @Summary      Set an identity correlation decision
-// @Description  Confirm or reject that another observed MAC identity belongs to the same physical device. This records user intent only and never merges historical observations.
+// @Description  Confirm or reject that another observed MAC identity belongs to the same physical device. This records user intent only and never merges historical observations. Contradictory confirmed/rejected relationship graphs are rejected.
 // @Tags         hosts
 // @Accept       json
 // @Produce      json
@@ -111,6 +113,7 @@ func getHostIdentityDecisions(c *gin.Context) {
 // @Success      200      {object}  IdentityCorrelationDecisionResponse
 // @Failure      400      {object}  map[string]string
 // @Failure      404      {object}  map[string]string
+// @Failure      409      {object}  map[string]string
 // @Failure      500      {object}  map[string]string
 // @Router       /host/{id}/identity/decisions/{mac} [put]
 func setHostIdentityDecision(c *gin.Context) {
@@ -148,6 +151,10 @@ func setHostIdentityDecision(c *gin.Context) {
 
 	changedAt := correlationDecisionNow().Format("2006-01-02 15:04:05")
 	row, err := gdb.SetIdentityCorrelationDecision(targetMAC, otherMAC, decision, changedAt)
+	if errors.Is(err, correlation.ErrDecisionConflict) {
+		c.IndentedJSON(http.StatusConflict, gin.H{"error": "identity decision conflicts with existing confirmed/rejected relationships"})
+		return
+	}
 	if err != nil {
 		slog.Error("Failed to persist identity correlation decision", "mac", targetMAC, "otherMac", otherMAC, "decision", decision, "err", err)
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to persist identity correlation decision"})
