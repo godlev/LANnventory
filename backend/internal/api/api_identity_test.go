@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"testing"
 
 	"github.com/godlev/LANnventory/internal/gdb"
@@ -50,7 +51,7 @@ func TestHostIdentityExposesAddressHistoryAndCrossMACReuse(t *testing.T) {
 		t.Fatalf("record mDNS evidence: %v", err)
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "/api/host/"+itoa(hosts[0].ID)+"/identity", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/host/"+strconv.Itoa(hosts[0].ID)+"/identity", nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
@@ -149,19 +150,4 @@ func TestIdentityEndpointsRejectInvalidInput(t *testing.T) {
 			t.Fatalf("%s status = %d, want 400; body: %s", path, rec.Code, rec.Body.String())
 		}
 	}
-}
-
-func itoa(value int) string {
-	if value == 0 {
-		return "0"
-	}
-	const digits = "0123456789"
-	var buffer [20]byte
-	index := len(buffer)
-	for value > 0 {
-		index--
-		buffer[index] = digits[value%10]
-		value /= 10
-	}
-	return string(buffer[index:])
 }
