@@ -5,9 +5,14 @@ const (
 	DiscoverySourceReverseDNS     = "reverse-dns"
 	DiscoverySourceSystemResolver = "system-resolver"
 	DiscoverySourceMDNS           = "mdns"
+	DiscoverySourceSSDP           = "ssdp"
 
-	DiscoveryKindVendor   = "vendor"
-	DiscoveryKindHostname = "hostname"
+	DiscoveryKindVendor       = "vendor"
+	DiscoveryKindHostname     = "hostname"
+	DiscoveryKindFriendlyName = "friendly-name"
+	DiscoveryKindManufacturer = "manufacturer"
+	DiscoveryKindModel        = "model"
+	DiscoveryKindModelNumber  = "model-number"
 )
 
 // HostDiscoveryEvidence stores discovered identity data together with its provenance.
