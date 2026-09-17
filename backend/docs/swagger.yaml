@@ -572,6 +572,8 @@ paths:
         - tags-changed
         - pinned-changed
         - port-open
+        - service-opened
+        - service-closed
         in: query
         name: eventType
         type: string
@@ -1491,8 +1493,9 @@ paths:
       - hosts
   /host/{id}/port/{port}/scan:
     post:
-      description: Scan a TCP port using the host's current IP. When the port is open,
-        persist an activity event for that host.
+      description: Scan a TCP port using the host's current IP. Definitive results
+        update persistent service inventory and emit lifecycle activity only on state
+        transitions.
       parameters:
       - description: Host ID
         in: path

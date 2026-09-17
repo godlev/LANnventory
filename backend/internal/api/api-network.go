@@ -49,7 +49,7 @@ func getPortState(c *gin.Context) {
 
 // scanHostPort godoc
 // @Summary      Scan one port for a host
-// @Description  Scan a TCP port using the host's current IP. When the port is open, persist an activity event for that host.
+// @Description  Scan a TCP port using the host's current IP. Definitive results update persistent service inventory and emit lifecycle activity only on state transitions.
 // @Tags         network
 // @Produce      json
 // @Param        id    path      int  true  "Host ID"

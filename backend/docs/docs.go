@@ -84,7 +84,9 @@ const docTemplate = `{
                             "notes-changed",
                             "tags-changed",
                             "pinned-changed",
-                            "port-open"
+                            "port-open",
+                            "service-opened",
+                            "service-closed"
                         ],
                         "type": "string",
                         "description": "Repeatable event type filter",
@@ -1488,7 +1490,7 @@ const docTemplate = `{
         },
         "/host/{id}/port/{port}/scan": {
             "post": {
-                "description": "Scan a TCP port using the host's current IP. When the port is open, persist an activity event for that host.",
+                "description": "Scan a TCP port using the host's current IP. Definitive results update persistent service inventory and emit lifecycle activity only on state transitions.",
                 "produces": [
                     "application/json"
                 ],

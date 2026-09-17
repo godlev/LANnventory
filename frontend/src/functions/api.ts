@@ -15,6 +15,8 @@ export type ActivityEventType =
   | "notes-changed"
   | "tags-changed"
   | "pinned-changed"
+  | "service-opened"
+  | "service-closed"
   | "port-open";
 
 type ActivityQuery = {
