@@ -1,7 +1,6 @@
 package api
 
 import (
-	"errors"
 	"log/slog"
 	"net"
 	"net/http"
@@ -131,10 +130,6 @@ func getAddressIdentity(c *gin.Context) {
 
 	rows, err := gdb.SelectHostAddressesByAddress(address)
 	if err != nil {
-		if strings.Contains(strings.ToLower(err.Error()), "invalid ip") {
-			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid IP address"})
-			return
-		}
 		slog.Error("Failed to load address identity", "address", address, "err", err)
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to load address identity"})
 		return
@@ -194,5 +189,3 @@ func canonicalIdentityAddress(value string) (string, bool) {
 	}
 	return ip.String(), true
 }
-
-var _ = errors.Is
