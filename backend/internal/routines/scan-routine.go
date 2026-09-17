@@ -3,6 +3,7 @@ package routines
 import (
 	"context"
 	"log/slog"
+	"net"
 	"strings"
 	"time"
 
@@ -25,6 +26,7 @@ var (
 	scanNetwork            = arp.ScanDetailedContext
 	lookupDNS              = check.DNS
 	localHostnameDiscovery = discovery.LocalHostnames
+	ssdpDiscovery          = discovery.DiscoverSSDP
 	processScanResultFunc  = processScanResult
 	waitForNextScan        = waitUntilNextScan
 )
@@ -105,10 +107,11 @@ func processScanResult(foundHosts []models.Host, scanOK bool) bool {
 	}
 
 	// Core host state, lifecycle and connectivity events are committed before
-	// best-effort hostname enrichment. Discovery failures must never change the
-	// success semantics of an otherwise successful ARP scan.
+	// best-effort enrichment. Discovery failures must never change the success
+	// semantics of an otherwise successful ARP scan.
 	compareHosts(foundHostsMap)
 	recordLocalHostnameDiscoveryEvidence(foundHosts)
+	recordSSDPDiscoveryEvidence(foundHosts)
 	return true
 }
 
@@ -126,14 +129,11 @@ func compareHosts(foundHostsMap map[string]models.Host) {
 
 		fHost, exists := foundHostsMap[aHostKey]
 		if exists {
-
 			aHost.Iface = fHost.Iface
 			aHost.IP = fHost.IP
 			aHost.Date = fHost.Date
 			aHost.Now = 1
-
 			delete(foundHostsMap, aHostKey)
-
 		} else {
 			aHost.Now = 0
 		}
@@ -216,6 +216,66 @@ func recordLocalHostnameDiscoveryEvidence(hosts []models.Host) {
 			}
 		}
 	}
+}
+
+func recordSSDPDiscoveryEvidence(hosts []models.Host) {
+	targetByAddress := make(map[string]models.Host, len(hosts))
+	ambiguous := make(map[string]bool)
+	addresses := make([]string, 0, len(hosts))
+
+	for _, host := range hosts {
+		if strings.TrimSpace(host.Date) == "" {
+			continue
+		}
+		address, ok := canonicalObservedIP(host.IP)
+		if !ok {
+			continue
+		}
+		if existing, exists := targetByAddress[address]; exists {
+			if identity.MACKey(existing.Mac) != identity.MACKey(host.Mac) {
+				ambiguous[address] = true
+			}
+			continue
+		}
+		targetByAddress[address] = host
+		addresses = append(addresses, address)
+	}
+
+	if len(addresses) == 0 {
+		return
+	}
+
+	for _, observation := range ssdpDiscovery(context.Background(), addresses) {
+		address, ok := canonicalObservedIP(observation.Address)
+		if !ok || ambiguous[address] {
+			continue
+		}
+		host, exists := targetByAddress[address]
+		if !exists || len(observation.Values) == 0 {
+			continue
+		}
+		if err := gdb.RecordHostDiscoveryEvidence(
+			host.Mac,
+			address,
+			models.DiscoverySourceSSDP,
+			observation.Kind,
+			observation.Values,
+			host.Date,
+		); err != nil {
+			slog.Error("Failed to record SSDP discovery evidence", "mac", host.Mac, "ip", address, "kind", observation.Kind, "err", err)
+		}
+	}
+}
+
+func canonicalObservedIP(value string) (string, bool) {
+	ip := net.ParseIP(strings.TrimSpace(value))
+	if ip == nil {
+		return "", false
+	}
+	if ipv4 := ip.To4(); ipv4 != nil {
+		return ipv4.String(), true
+	}
+	return ip.String(), true
 }
 
 func recordReverseDNSEvidence(host models.Host) {
