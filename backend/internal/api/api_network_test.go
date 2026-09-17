@@ -38,7 +38,7 @@ func TestPortEndpointRejectsInvalidPort(t *testing.T) {
 	}
 }
 
-func TestHostPortScanPersistsOpenServiceAndLegacyTransitionEvent(t *testing.T) {
+func TestHostPortScanPersistsOpenServiceAndTransitionEvent(t *testing.T) {
 	router := setupTestRouter(t)
 	host := seedHost(t, models.Host{
 		Name:       "router",
@@ -95,8 +95,72 @@ func TestHostPortScanPersistsOpenServiceAndLegacyTransitionEvent(t *testing.T) {
 	if len(events) != 1 {
 		t.Fatalf("events len = %d, want one transition event after repeated open scans: %+v", len(events), events)
 	}
-	if events[0].EventType != string(models.EventPortOpen) || events[0].NewValue != "443" {
-		t.Fatalf("event = %+v, want port-open NewValue=443", events[0])
+	if events[0].EventType != string(models.EventServiceOpened) || events[0].NewValue != "tcp/443" || events[0].OldValue != "" || events[0].IP != host.IP {
+		t.Fatalf("event = %+v, want service-opened tcp/443 on scanned address", events[0])
+	}
+}
+
+func TestHostPortScanRecordsClosedAndReopenedTransitions(t *testing.T) {
+	router := setupTestRouter(t)
+	host := seedHost(t, models.Host{
+		Name:  "server",
+		IP:    "192.168.1.10",
+		Mac:   "AA:BB:CC:DD:EE:93",
+		Iface: "eth0",
+		Known: 1,
+		Now:   1,
+	})
+
+	states := []portscan.ProbeState{
+		portscan.ProbeOpen,
+		portscan.ProbeClosed,
+		portscan.ProbeClosed,
+		portscan.ProbeOpen,
+	}
+	probeIndex := 0
+	originalPortProbe := portProbe
+	portProbe = func(_ context.Context, addr, port string) portscan.Result {
+		state := states[probeIndex]
+		probeIndex++
+		return portscan.Result{State: state}
+	}
+	t.Cleanup(func() {
+		portProbe = originalPortProbe
+	})
+
+	path := "/api/host/" + strconv.Itoa(host.ID) + "/port/22/scan"
+	for attempt := range states {
+		req := httptest.NewRequest(http.MethodPost, path, nil)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("attempt %d status = %d, want %d; body: %s", attempt+1, rec.Code, http.StatusOK, rec.Body.String())
+		}
+	}
+
+	service, ok, err := gdb.SelectServiceByIdentity(host.Mac, host.IP, "tcp", 22)
+	if err != nil || !ok {
+		t.Fatalf("SelectServiceByIdentity ok=%v err=%v", ok, err)
+	}
+	if service.State != "open" {
+		t.Fatalf("final service state = %+v, want reopened", service)
+	}
+
+	events, ok := gdb.SelectEventsByHostID(host.ID, 10)
+	if !ok {
+		t.Fatal("SelectEventsByHostID failed")
+	}
+	if len(events) != 3 {
+		t.Fatalf("events len = %d, want open/closed/reopen only: %+v", len(events), events)
+	}
+	if events[0].EventType != string(models.EventServiceOpened) || events[0].OldValue != "closed" || events[0].NewValue != "tcp/22" {
+		t.Fatalf("latest event = %+v, want reopened transition", events[0])
+	}
+	if events[1].EventType != string(models.EventServiceClosed) || events[1].OldValue != "open" || events[1].NewValue != "tcp/22" {
+		t.Fatalf("middle event = %+v, want closed transition", events[1])
+	}
+	if events[2].EventType != string(models.EventServiceOpened) || events[2].OldValue != "" || events[2].NewValue != "tcp/22" {
+		t.Fatalf("first event = %+v, want initial opened transition", events[2])
 	}
 }
 
