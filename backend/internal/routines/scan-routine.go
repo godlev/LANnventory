@@ -9,6 +9,7 @@ import (
 	"github.com/godlev/LANnventory/internal/check"
 	"github.com/godlev/LANnventory/internal/conf"
 	"github.com/godlev/LANnventory/internal/gdb"
+	"github.com/godlev/LANnventory/internal/identity"
 	"github.com/godlev/LANnventory/internal/influx"
 	"github.com/godlev/LANnventory/internal/models"
 	"github.com/godlev/LANnventory/internal/notify"
@@ -87,7 +88,11 @@ func processScanResult(foundHosts []models.Host, scanOK bool) bool {
 
 	foundHostsMap := make(map[string]models.Host)
 	for _, fHost := range foundHosts {
-		foundHostsMap[fHost.Mac] = fHost
+		key := identity.MACKey(fHost.Mac)
+		if canonical, err := identity.NormalizeMAC(fHost.Mac); err == nil {
+			fHost.Mac = canonical
+		}
+		foundHostsMap[key] = fHost
 	}
 
 	compareHosts(foundHostsMap)
@@ -104,8 +109,9 @@ func compareHosts(foundHostsMap map[string]models.Host) {
 
 	for _, aHost := range allHosts {
 		previousNow := aHost.Now
+		aHostKey := identity.MACKey(aHost.Mac)
 
-		fHost, exists := foundHostsMap[aHost.Mac]
+		fHost, exists := foundHostsMap[aHostKey]
 		if exists {
 
 			aHost.Iface = fHost.Iface
@@ -113,7 +119,7 @@ func compareHosts(foundHostsMap map[string]models.Host) {
 			aHost.Date = fHost.Date
 			aHost.Now = 1
 
-			delete(foundHostsMap, aHost.Mac)
+			delete(foundHostsMap, aHostKey)
 
 		} else {
 			aHost.Now = 0

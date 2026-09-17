@@ -1,6 +1,10 @@
 package models
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"github.com/godlev/LANnventory/internal/identity"
+)
 
 type hostJSONBase struct {
 	ID         int
@@ -9,6 +13,7 @@ type hostJSONBase struct {
 	Iface      string
 	IP         string
 	Mac        string
+	MacType    identity.MACType
 	Hw         string
 	Date       string
 	Known      int
@@ -36,6 +41,7 @@ func (host Host) MarshalJSON() ([]byte, error) {
 		Iface:      host.Iface,
 		IP:         host.IP,
 		Mac:        host.Mac,
+		MacType:    identity.ClassifyMAC(host.Mac),
 		Hw:         host.Hw,
 		Date:       host.Date,
 		Known:      host.Known,
