@@ -9,6 +9,7 @@ import (
 	"github.com/godlev/LANnventory/internal/arp"
 	"github.com/godlev/LANnventory/internal/check"
 	"github.com/godlev/LANnventory/internal/conf"
+	"github.com/godlev/LANnventory/internal/discovery"
 	"github.com/godlev/LANnventory/internal/gdb"
 	"github.com/godlev/LANnventory/internal/identity"
 	"github.com/godlev/LANnventory/internal/influx"
@@ -21,10 +22,11 @@ var (
 	scannerNow = func() time.Time {
 		return time.Now().UTC()
 	}
-	scanNetwork           = arp.ScanDetailedContext
-	lookupDNS             = check.DNS
-	processScanResultFunc = processScanResult
-	waitForNextScan       = waitUntilNextScan
+	scanNetwork            = arp.ScanDetailedContext
+	lookupDNS              = check.DNS
+	localHostnameDiscovery = discovery.LocalHostnames
+	processScanResultFunc  = processScanResult
+	waitForNextScan        = waitUntilNextScan
 )
 
 func startScan(ctx context.Context) {
@@ -102,7 +104,11 @@ func processScanResult(foundHosts []models.Host, scanOK bool) bool {
 		foundHostsMap[key] = fHost
 	}
 
+	// Core host state, lifecycle and connectivity events are committed before
+	// best-effort hostname enrichment. Discovery failures must never change the
+	// success semantics of an otherwise successful ARP scan.
 	compareHosts(foundHostsMap)
+	recordLocalHostnameDiscoveryEvidence(foundHosts)
 	return true
 }
 
@@ -184,6 +190,30 @@ func recordScannerDiscoveryEvidence(hosts []models.Host) {
 			host.Date,
 		); err != nil {
 			slog.Error("Failed to record scanner discovery evidence", "mac", host.Mac, "ip", host.IP, "err", err)
+		}
+	}
+}
+
+func recordLocalHostnameDiscoveryEvidence(hosts []models.Host) {
+	for _, host := range hosts {
+		if strings.TrimSpace(host.Date) == "" {
+			continue
+		}
+		observations := localHostnameDiscovery(context.Background(), host.IP)
+		for _, observation := range observations {
+			if len(observation.Values) == 0 {
+				continue
+			}
+			if err := gdb.RecordHostDiscoveryEvidence(
+				host.Mac,
+				host.IP,
+				observation.Source,
+				models.DiscoveryKindHostname,
+				observation.Values,
+				host.Date,
+			); err != nil {
+				slog.Error("Failed to record local hostname discovery evidence", "mac", host.Mac, "ip", host.IP, "source", observation.Source, "err", err)
+			}
 		}
 	}
 }
