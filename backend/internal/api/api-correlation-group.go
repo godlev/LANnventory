@@ -135,8 +135,11 @@ func getHostIdentityGroup(c *gin.Context) {
 				member.Addresses = append(member.Addresses, current.IP)
 				sort.Strings(member.Addresses)
 			}
-			if member.LastSeen == "" {
-				member.LastSeen = current.Date
+			if current.FirstSeen != "" && (member.FirstSeen == "" || current.FirstSeen < member.FirstSeen) {
+				member.FirstSeen = current.FirstSeen
+			}
+			if current.LastSeen != "" && (member.LastSeen == "" || current.LastSeen > member.LastSeen) {
+				member.LastSeen = current.LastSeen
 			}
 		}
 		members = append(members, member)
