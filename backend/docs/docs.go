@@ -2223,6 +2223,12 @@ const docTemplate = `{
                 "confirmed": {
                     "type": "boolean"
                 },
+                "firstSeen": {
+                    "type": "string"
+                },
+                "lastSeen": {
+                    "type": "string"
+                },
                 "mac": {
                     "type": "string"
                 },

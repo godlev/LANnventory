@@ -133,6 +133,10 @@ definitions:
     properties:
       confirmed:
         type: boolean
+      firstSeen:
+        type: string
+      lastSeen:
+        type: string
       mac:
         type: string
       members:
