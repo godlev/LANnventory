@@ -1,5 +1,6 @@
 name: Phase33B Correlation Sync
 
+# Temporary one-shot validation/sync helper for Phase 33B.1.
 on:
   push:
     branches:
