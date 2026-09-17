@@ -1,8 +1,10 @@
 package gdb
 
 import (
+	"errors"
 	"testing"
 
+	"github.com/godlev/LANnventory/internal/correlation"
 	"github.com/godlev/LANnventory/internal/models"
 )
 
@@ -70,6 +72,43 @@ func TestIdentityCorrelationDecisionValidationAndDelete(t *testing.T) {
 	}
 	if _, found, err := SelectIdentityCorrelationDecision(macA, macB); err != nil || found {
 		t.Fatalf("decision should be deleted, found=%v err=%v", found, err)
+	}
+}
+
+func TestIdentityCorrelationDecisionRejectsTransitiveConflict(t *testing.T) {
+	startSelectTestDB(t)
+	macA := "02:AA:BB:CC:DD:61"
+	macB := "06:AA:BB:CC:DD:62"
+	macC := "0A:AA:BB:CC:DD:63"
+
+	if _, err := SetIdentityCorrelationDecision(macA, macB, models.IdentityCorrelationConfirmed, "2026-09-17 18:20:00"); err != nil {
+		t.Fatalf("confirm A/B: %v", err)
+	}
+	if _, err := SetIdentityCorrelationDecision(macB, macC, models.IdentityCorrelationConfirmed, "2026-09-17 18:21:00"); err != nil {
+		t.Fatalf("confirm B/C: %v", err)
+	}
+	if _, err := SetIdentityCorrelationDecision(macA, macC, models.IdentityCorrelationRejected, "2026-09-17 18:22:00"); !errors.Is(err, correlation.ErrDecisionConflict) {
+		t.Fatalf("reject A/C error = %v, want ErrDecisionConflict", err)
+	}
+	if _, found, err := SelectIdentityCorrelationDecision(macA, macC); err != nil || found {
+		t.Fatalf("conflicting A/C decision should not persist, found=%v err=%v", found, err)
+	}
+}
+
+func TestIdentityCorrelationDecisionRejectsMergeAcrossRejectedBoundary(t *testing.T) {
+	startSelectTestDB(t)
+	macA := "02:AA:BB:CC:DD:71"
+	macB := "06:AA:BB:CC:DD:72"
+	macC := "0A:AA:BB:CC:DD:73"
+
+	if _, err := SetIdentityCorrelationDecision(macA, macB, models.IdentityCorrelationRejected, "2026-09-17 18:30:00"); err != nil {
+		t.Fatalf("reject A/B: %v", err)
+	}
+	if _, err := SetIdentityCorrelationDecision(macB, macC, models.IdentityCorrelationConfirmed, "2026-09-17 18:31:00"); err != nil {
+		t.Fatalf("confirm B/C: %v", err)
+	}
+	if _, err := SetIdentityCorrelationDecision(macA, macC, models.IdentityCorrelationConfirmed, "2026-09-17 18:32:00"); !errors.Is(err, correlation.ErrDecisionConflict) {
+		t.Fatalf("confirm A/C error = %v, want ErrDecisionConflict", err)
 	}
 }
 
