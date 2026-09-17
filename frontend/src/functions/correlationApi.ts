@@ -43,6 +43,24 @@ export type HostIdentityDecisions = {
   decisions: IdentityCorrelationDecision[];
 };
 
+export type ConfirmedIdentityGroupMember = {
+  mac: string;
+  hostId: number;
+  name: string;
+  deviceType: string;
+  exists: boolean;
+  active: boolean;
+  addresses: string[];
+  firstSeen: string;
+  lastSeen: string;
+};
+
+export type HostIdentityGroup = {
+  mac: string;
+  confirmed: boolean;
+  members: ConfirmedIdentityGroupMember[];
+};
+
 async function correlationFetch(url: string, init?: RequestInit): Promise<Response> {
   const response = await fetch(url, init);
   if (!response.ok) {
@@ -60,6 +78,11 @@ export async function apiGetHostIdentityCandidates(id: number | string): Promise
 export async function apiGetHostIdentityDecisions(id: number | string): Promise<HostIdentityDecisions> {
   const url = apiPath + "/api/host/" + encodeURIComponent(String(id)) + "/identity/decisions";
   return await (await correlationFetch(url)).json() as HostIdentityDecisions;
+}
+
+export async function apiGetHostIdentityGroup(id: number | string): Promise<HostIdentityGroup> {
+  const url = apiPath + "/api/host/" + encodeURIComponent(String(id)) + "/identity/group";
+  return await (await correlationFetch(url)).json() as HostIdentityGroup;
 }
 
 export async function apiSetHostIdentityDecision(
