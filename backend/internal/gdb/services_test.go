@@ -34,7 +34,7 @@ func TestServiceInventoryMigrationAndRoundTrip(t *testing.T) {
 
 	first, err := UpsertService(models.Service{
 		Mac:            "aa-bb-cc-dd-ee-34",
-		Address:        "192.168.001.034",
+		Address:        "192.168.1.34",
 		Protocol:       "TCP",
 		Port:           443,
 		State:          "OPEN",
@@ -92,6 +92,41 @@ func TestServiceInventoryMigrationAndRoundTrip(t *testing.T) {
 	}
 	if selected.State != "closed" {
 		t.Fatalf("selected service = %+v, want closed", selected)
+	}
+}
+
+func TestServiceInventoryCanonicalizesIPv6Address(t *testing.T) {
+	oldConfig := conf.GetAppConfig()
+	conf.SetAppConfigForTest(models.Conf{
+		UseDB:  "sqlite",
+		DBPath: filepath.Join(t.TempDir(), "services-ipv6.db"),
+	})
+	t.Cleanup(func() {
+		if err := Close(); err != nil {
+			t.Errorf("Close: %v", err)
+		}
+		conf.SetAppConfigForTest(oldConfig)
+	})
+
+	if err := StartErr(); err != nil {
+		t.Fatalf("StartErr: %v", err)
+	}
+
+	service, err := UpsertService(models.Service{
+		Mac:           "AA:BB:CC:DD:EE:37",
+		Address:       "2001:0db8:0:0:0:0:0:1",
+		Protocol:      "tcp",
+		Port:          443,
+		State:         "open",
+		FirstDetected: "2026-09-18 10:00:00",
+		LastDetected:  "2026-09-18 10:00:00",
+		LastChecked:   "2026-09-18 10:00:00",
+	})
+	if err != nil {
+		t.Fatalf("UpsertService IPv6: %v", err)
+	}
+	if service.Address != "2001:db8::1" || service.AddressFamily != "ipv6" {
+		t.Fatalf("IPv6 service = %+v", service)
 	}
 }
 
