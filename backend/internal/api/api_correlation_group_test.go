@@ -62,6 +62,9 @@ func TestHostIdentityGroupReturnsTransitiveConfirmedMembers(t *testing.T) {
 	if response.Mac != macA || !response.Confirmed || len(response.Members) != 3 {
 		t.Fatalf("group response = %+v", response)
 	}
+	if response.FirstSeen != "2026-09-17 19:00:00" || response.LastSeen != "2026-09-17 20:00:00" {
+		t.Fatalf("group lifecycle = %q -> %q, want 2026-09-17 19:00:00 -> 2026-09-17 20:00:00", response.FirstSeen, response.LastSeen)
+	}
 	if response.Members[0].Mac != macA {
 		t.Fatalf("viewed MAC should be first, members = %+v", response.Members)
 	}
@@ -106,6 +109,9 @@ func TestHostIdentityGroupReturnsSingletonWithoutConfirmedRelationships(t *testi
 	}
 	if response.Confirmed || len(response.Members) != 1 || response.Members[0].Mac != mac {
 		t.Fatalf("singleton group = %+v", response)
+	}
+	if response.FirstSeen != "" || response.LastSeen != "" {
+		t.Fatalf("singleton group fabricated aggregate lifecycle timestamps: %+v", response)
 	}
 	if response.Members[0].FirstSeen != "" || response.Members[0].LastSeen != "" {
 		t.Fatalf("singleton group fabricated lifecycle timestamps from Host.Date: %+v", response.Members[0])
