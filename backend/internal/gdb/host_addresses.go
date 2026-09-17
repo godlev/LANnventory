@@ -229,13 +229,15 @@ func backfillHostAddresses(activeDB *gorm.DB) error {
 			}
 			key := mac + "\x00" + address
 			if existing, found := existingByKey[key]; found {
+				mergeAddressTimeBounds(&existing, row.FirstSeen, row.LastSeen)
+				existing.Family = family
 				if current, currentFound := currentByKey[key]; currentFound {
-					existing.Active = current.Now == 1
-					existing.Iface = current.Iface
-					if err := txDB.Table(hostAddressesTable).Save(&existing).Error; err != nil {
-						return err
-					}
+					mergeCurrentHostAddressObservation(&existing, current)
 				}
+				if err := txDB.Table(hostAddressesTable).Save(&existing).Error; err != nil {
+					return err
+				}
+				existingByKey[key] = existing
 				continue
 			}
 
@@ -247,8 +249,7 @@ func backfillHostAddresses(activeDB *gorm.DB) error {
 				LastSeen:  row.LastSeen,
 			}
 			if current, found := currentByKey[key]; found {
-				observation.Active = current.Now == 1
-				observation.Iface = current.Iface
+				mergeCurrentHostAddressObservation(&observation, current)
 			}
 			if err := txDB.Table(hostAddressesTable).Create(&observation).Error; err != nil {
 				return err
@@ -258,11 +259,11 @@ func backfillHostAddresses(activeDB *gorm.DB) error {
 
 		for key, current := range currentByKey {
 			if existing, found := existingByKey[key]; found {
-				existing.Active = current.Now == 1
-				existing.Iface = current.Iface
+				mergeCurrentHostAddressObservation(&existing, current)
 				if err := txDB.Table(hostAddressesTable).Save(&existing).Error; err != nil {
 					return err
 				}
+				existingByKey[key] = existing
 				continue
 			}
 			mac, err := identity.NormalizeMAC(current.Mac)
@@ -274,18 +275,31 @@ func backfillHostAddresses(activeDB *gorm.DB) error {
 				continue
 			}
 			observation := models.HostAddress{
-				Mac:       mac,
-				Address:   address,
-				Family:    family,
-				Iface:     current.Iface,
-				FirstSeen: current.Date,
-				LastSeen:  current.Date,
-				Active:    current.Now == 1,
+				Mac:     mac,
+				Address: address,
+				Family:  family,
 			}
+			mergeCurrentHostAddressObservation(&observation, current)
 			if err := txDB.Table(hostAddressesTable).Create(&observation).Error; err != nil {
 				return err
 			}
+			existingByKey[key] = observation
 		}
 		return nil
 	})
+}
+
+func mergeCurrentHostAddressObservation(observation *models.HostAddress, current models.Host) {
+	mergeAddressTimeBounds(observation, current.Date, current.Date)
+	observation.Active = current.Now == 1
+	observation.Iface = current.Iface
+}
+
+func mergeAddressTimeBounds(observation *models.HostAddress, firstSeen, lastSeen string) {
+	if firstSeen != "" && (observation.FirstSeen == "" || firstSeen < observation.FirstSeen) {
+		observation.FirstSeen = firstSeen
+	}
+	if lastSeen != "" && (observation.LastSeen == "" || lastSeen > observation.LastSeen) {
+		observation.LastSeen = lastSeen
+	}
 }
