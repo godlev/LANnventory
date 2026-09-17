@@ -8,12 +8,12 @@ import "strings"
 type MACAssessmentCode string
 
 const (
-	MACAssessmentGloballyAdministered    MACAssessmentCode = "globally-administered"
-	MACAssessmentLocallyAdministered     MACAssessmentCode = "locally-administered"
-	MACAssessmentExpectedVirtual         MACAssessmentCode = "expected-virtual"
-	MACAssessmentPossiblePrivateRandom   MACAssessmentCode = "possible-private-randomized"
-	MACAssessmentGroupAddress            MACAssessmentCode = "group-address"
-	MACAssessmentInvalid                 MACAssessmentCode = "invalid"
+	MACAssessmentGloballyAdministered  MACAssessmentCode = "globally-administered"
+	MACAssessmentLocallyAdministered   MACAssessmentCode = "locally-administered"
+	MACAssessmentExpectedVirtual       MACAssessmentCode = "expected-virtual"
+	MACAssessmentPossiblePrivateRandom MACAssessmentCode = "possible-private-randomized"
+	MACAssessmentGroupAddress          MACAssessmentCode = "group-address"
+	MACAssessmentInvalid               MACAssessmentCode = "invalid"
 )
 
 // MACAssessmentConfidence describes confidence in the interpretation, not in

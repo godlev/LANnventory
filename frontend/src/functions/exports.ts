@@ -1,6 +1,6 @@
 import { createSignal } from "solid-js";
 import { createStore } from "solid-js/store";
-import type { MACType } from "./macIdentity";
+import type { MACAssessmentCode, MACAssessmentConfidence, MACType } from "./macIdentity";
 
 export interface Host {
 	ID:    number;
@@ -10,6 +10,9 @@ export interface Host {
 	IP:    string;
 	Mac:   string;
 	MacType: MACType;
+	MacAssessment: MACAssessmentCode;
+	MacAssessmentConfidence: MACAssessmentConfidence;
+	MacAssessmentReason: string;
 	Hw:    string;
 	Date:  string;
 	Known: number;
@@ -122,6 +125,9 @@ export const emptyHost:Host = {
 	IP:    "",
 	Mac:   "",
 	MacType: "invalid",
+	MacAssessment: "invalid",
+	MacAssessmentConfidence: "none",
+	MacAssessmentReason: "",
 	Hw:    "",
 	Date:  "",
 	Known: 0,

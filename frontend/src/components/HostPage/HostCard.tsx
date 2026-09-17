@@ -2,7 +2,7 @@ import { createEffect, createMemo, createSignal, For, onCleanup, Show } from "so
 import { apiDelHost, apiGetInventoryOptions, apiPatchHost, apiSetHostMetadata, apiWOL } from "../../functions/api";
 import { Host } from "../../functions/exports";
 import { formatLastSeen } from "../../functions/dateFormat";
-import { macTypeLabel } from "../../functions/macIdentity";
+import { macAssessmentLabel, macConfidenceLabel, macTypeLabel } from "../../functions/macIdentity";
 import { deviceTypeTitle, getDeviceTypeOption, normalizeDeviceType, type DeviceTypeValue } from "../../functions/deviceTypes";
 import { updateHostInView } from "../../functions/hostView";
 import DeviceTypePicker from "../DeviceTypePicker";
@@ -595,6 +595,34 @@ function HostCard(_props: HostCardProps) {
                   </Show>
                 </span>
               </div>
+
+              <Show when={_props.host.MacType === "locally-administered"}>
+                <div class="host-field-label">MAC assessment</div>
+                <div class="host-field-value">
+                  <span class="host-lifecycle-value">
+                    <span>{macAssessmentLabel(_props.host.MacAssessment)}</span>
+                    <Show when={macConfidenceLabel(_props.host.MacAssessmentConfidence)}>
+                      <span class="badge rounded-pill text-bg-secondary">
+                        {macConfidenceLabel(_props.host.MacAssessmentConfidence)}
+                      </span>
+                    </Show>
+                    <ActionTooltip
+                      title="MAC assessment"
+                      detail={_props.host.MacAssessmentReason || "A locally administered MAC does not by itself prove privacy randomization."}
+                    >
+                      <span
+                        class="host-lifecycle-approx"
+                        title="MAC assessment"
+                        aria-label={_props.host.MacAssessmentReason || "MAC assessment details"}
+                        role="img"
+                        tabIndex={0}
+                      >
+                        <i class="bi bi-info-circle" aria-hidden="true"></i>
+                      </span>
+                    </ActionTooltip>
+                  </span>
+                </div>
+              </Show>
 
               <div class="host-field-label">Interface</div>
               <div class="host-field-value">{_props.host.Iface || <span class="device-cell-muted">Unknown</span>}</div>
