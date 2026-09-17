@@ -28,6 +28,8 @@ type CorrelationRow = {
 const emptyGroup: HostIdentityGroup = {
   mac: "",
   confirmed: false,
+  firstSeen: "",
+  lastSeen: "",
   members: [],
 };
 
@@ -58,6 +60,8 @@ function CorrelationPanel(props: CorrelationPanelProps) {
       setGroup({
         mac: groupResult.mac ?? "",
         confirmed: groupResult.confirmed === true,
+        firstSeen: groupResult.firstSeen ?? "",
+        lastSeen: groupResult.lastSeen ?? "",
         members: groupResult.members ?? [],
       });
     } catch {
@@ -165,6 +169,13 @@ function CorrelationPanel(props: CorrelationPanelProps) {
                   <div class="small device-cell-muted">
                     These MAC identities are grouped only because you explicitly confirmed the relationship. Original observations stay separate.
                   </div>
+                  <Show when={group().firstSeen || group().lastSeen}>
+                    <div class="small device-cell-muted mt-1">
+                      <Show when={group().firstSeen}>Group first seen {formatIdentityTime(group().firstSeen)}</Show>
+                      <Show when={group().firstSeen && group().lastSeen}> · </Show>
+                      <Show when={group().lastSeen}>Last seen {formatIdentityTime(group().lastSeen)}</Show>
+                    </div>
+                  </Show>
                 </div>
                 <span class="host-detail-section-badge">User confirmed · Read only projection</span>
               </div>
