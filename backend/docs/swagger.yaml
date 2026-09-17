@@ -1324,7 +1324,7 @@ paths:
       - application/json
       description: Confirm or reject that another observed MAC identity belongs to
         the same physical device. This records user intent only and never merges historical
-        observations.
+        observations. Contradictory confirmed/rejected relationship graphs are rejected.
       parameters:
       - description: Host ID
         in: path
@@ -1357,6 +1357,12 @@ paths:
             type: object
         "404":
           description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
           schema:
             additionalProperties:
               type: string

@@ -1249,7 +1249,7 @@ const docTemplate = `{
         },
         "/host/{id}/identity/decisions/{mac}": {
             "put": {
-                "description": "Confirm or reject that another observed MAC identity belongs to the same physical device. This records user intent only and never merges historical observations.",
+                "description": "Confirm or reject that another observed MAC identity belongs to the same physical device. This records user intent only and never merges historical observations. Contradictory confirmed/rejected relationship graphs are rejected.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1303,6 +1303,15 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
