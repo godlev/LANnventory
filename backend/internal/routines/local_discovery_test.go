@@ -11,9 +11,12 @@ import (
 )
 
 // Keep routines tests deterministic and independent from the runner's DNS/NSS/
-// Avahi environment. Individual tests opt in by replacing the hook explicitly.
+// Avahi and SSDP environment. Individual tests opt in by replacing hooks.
 func TestMain(m *testing.M) {
 	localHostnameDiscovery = func(context.Context, string) []discovery.HostnameObservation {
+		return nil
+	}
+	ssdpDiscovery = func(context.Context, []string) []discovery.SSDPObservation {
 		return nil
 	}
 	os.Exit(m.Run())
