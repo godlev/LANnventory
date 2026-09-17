@@ -9,7 +9,7 @@ export interface Host {
 	Iface: string;
 	IP:    string;
 	Mac:   string;
-	MacType?: MACType;
+	MacType: MACType;
 	Hw:    string;
 	Date:  string;
 	Known: number;
@@ -121,6 +121,7 @@ export const emptyHost:Host = {
 	Iface: "",
 	IP:    "",
 	Mac:   "",
+	MacType: "invalid",
 	Hw:    "",
 	Date:  "",
 	Known: 0,
