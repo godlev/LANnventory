@@ -1,6 +1,8 @@
 package gdb
 
 import (
+	"errors"
+
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
@@ -79,7 +81,7 @@ func selectServiceByIdentityForUpdate(activeDB *gorm.DB, mac, address, protocol 
 		Clauses(clause.Locking{Strength: "UPDATE"}).
 		Where("\"MAC\" = ? AND \"ADDRESS\" = ? AND \"PROTOCOL\" = ? AND \"PORT\" = ?", mac, address, protocol, port).
 		First(&service).Error
-	if err == gorm.ErrRecordNotFound {
+	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return service, false, nil
 	}
 	if err != nil {
