@@ -33,12 +33,24 @@ type HostIdentityAddress struct {
 	MacHistory []AddressMACObservation `json:"macHistory"`
 }
 
+// DiscoveryEvidenceObservation is read-only discovered identity data with its
+// provenance. It is deliberately distinct from manually managed inventory.
+type DiscoveryEvidenceObservation struct {
+	Address   string `json:"address"`
+	Source    string `json:"source"`
+	Kind      string `json:"kind"`
+	Value     string `json:"value"`
+	FirstSeen string `json:"firstSeen"`
+	LastSeen  string `json:"lastSeen"`
+	Active    bool   `json:"active"`
+}
+
 // HostIdentityResponse keeps user-managed inventory separate from discovered
 // identity evidence while exposing the retained MAC <-> IP observation graph.
 type HostIdentityResponse struct {
 	Mac         string                         `json:"mac"`
 	Addresses   []HostIdentityAddress          `json:"addresses"`
-	Evidence    []models.HostDiscoveryEvidence `json:"evidence"`
+	Evidence    []DiscoveryEvidenceObservation `json:"evidence"`
 	DataSources []string                       `json:"dataSources"`
 }
 
@@ -106,7 +118,7 @@ func getHostIdentity(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, HostIdentityResponse{
 		Mac:         canonicalMAC,
 		Addresses:   identityAddresses,
-		Evidence:    evidence,
+		Evidence:    discoveryEvidenceObservations(evidence),
 		DataSources: discoverySources(evidence),
 	})
 }
@@ -158,6 +170,22 @@ func addressMACHistory(rows []models.HostAddress) []AddressMACObservation {
 			FirstSeen: row.FirstSeen,
 			LastSeen:  row.LastSeen,
 			Active:    row.Active,
+		})
+	}
+	return result
+}
+
+func discoveryEvidenceObservations(evidence []models.HostDiscoveryEvidence) []DiscoveryEvidenceObservation {
+	result := make([]DiscoveryEvidenceObservation, 0, len(evidence))
+	for _, item := range evidence {
+		result = append(result, DiscoveryEvidenceObservation{
+			Address:   item.Address,
+			Source:    item.Source,
+			Kind:      item.Kind,
+			Value:     item.Value,
+			FirstSeen: item.FirstSeen,
+			LastSeen:  item.LastSeen,
+			Active:    item.Active,
 		})
 	}
 	return result
