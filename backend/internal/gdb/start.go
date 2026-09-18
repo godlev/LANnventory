@@ -128,6 +128,9 @@ func migrate(candidate *gorm.DB) error {
 	if err := candidate.Table("host_metadata").AutoMigrate(&models.HostMetadata{}); err != nil {
 		return err
 	}
+	if err := candidate.Table(deviceProfilesTable).AutoMigrate(&models.DeviceProfile{}); err != nil {
+		return err
+	}
 	if err := candidate.Table(hostLifecycleTable).AutoMigrate(&models.HostLifecycle{}); err != nil {
 		return err
 	}
