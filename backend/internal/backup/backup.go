@@ -12,7 +12,7 @@ import (
 
 const (
 	Format        = "lannventory-backup"
-	FormatVersion = 3
+	FormatVersion = 4
 )
 
 // Document is the stable, versioned logical backup format.
@@ -30,8 +30,9 @@ type Data struct {
 	CurrentHosts  []Host          `json:"currentHosts"`
 	History       []Host          `json:"history"`
 	Events        []Event         `json:"events"`
-	HostMetadata  []HostMetadata  `json:"hostMetadata"`
-	HostLifecycle []HostLifecycle `json:"hostLifecycle"`
+	HostMetadata   []HostMetadata   `json:"hostMetadata"`
+	HostLifecycle  []HostLifecycle  `json:"hostLifecycle"`
+	DeviceProfiles []DeviceProfile  `json:"deviceProfiles"`
 }
 
 // Host mirrors the currently persisted host columns in the now/history tables.
@@ -73,6 +74,15 @@ type HostMetadata struct {
 	Notes    string   `json:"notes"`
 	Tags     []string `json:"tags"`
 	Pinned   bool     `json:"pinned"`
+}
+
+// DeviceProfile is the portable managed device-profile backup representation.
+type DeviceProfile struct {
+	Mac               string `json:"mac"`
+	Manufacturer      string `json:"manufacturer"`
+	Model             string `json:"model"`
+	ManagementAddress string `json:"managementAddress"`
+	UpdatedAt         string `json:"updatedAt"`
 }
 
 // HostLifecycle is the portable lifecycle backup representation.
@@ -128,13 +138,14 @@ func NewDocument(data Data, appVersion string, createdAt time.Time) Document {
 	}
 }
 
-func DataFromModels(currentHosts, history []models.Host, events []models.HostEvent, hostMetadata []models.HostMetadata, hostLifecycle []models.HostLifecycle) Data {
+func DataFromModels(currentHosts, history []models.Host, events []models.HostEvent, hostMetadata []models.HostMetadata, hostLifecycle []models.HostLifecycle, deviceProfiles []models.DeviceProfile) Data {
 	data := Data{
 		CurrentHosts:  make([]Host, 0, len(currentHosts)),
 		History:       make([]Host, 0, len(history)),
 		Events:        make([]Event, 0, len(events)),
-		HostMetadata:  make([]HostMetadata, 0, len(hostMetadata)),
-		HostLifecycle: make([]HostLifecycle, 0, len(hostLifecycle)),
+		HostMetadata:   make([]HostMetadata, 0, len(hostMetadata)),
+		HostLifecycle:  make([]HostLifecycle, 0, len(hostLifecycle)),
+		DeviceProfiles: make([]DeviceProfile, 0, len(deviceProfiles)),
 	}
 
 	for _, host := range currentHosts {
@@ -151,6 +162,9 @@ func DataFromModels(currentHosts, history []models.Host, events []models.HostEve
 	}
 	for _, lifecycle := range hostLifecycle {
 		data.HostLifecycle = append(data.HostLifecycle, HostLifecycleFromModel(lifecycle))
+	}
+	for _, profile := range deviceProfiles {
+		data.DeviceProfiles = append(data.DeviceProfiles, DeviceProfileFromModel(profile))
 	}
 
 	return data
@@ -196,6 +210,16 @@ func HostMetadataFromModel(metadata models.HostMetadata) HostMetadata {
 		Notes:    metadata.Notes,
 		Tags:     models.DecodeMetadataTags(metadata.TagsJSON),
 		Pinned:   metadata.Pinned,
+	}
+}
+
+func DeviceProfileFromModel(profile models.DeviceProfile) DeviceProfile {
+	return DeviceProfile{
+		Mac:               profile.Mac,
+		Manufacturer:      profile.Manufacturer,
+		Model:             profile.Model,
+		ManagementAddress: profile.ManagementAddress,
+		UpdatedAt:         profile.UpdatedAt,
 	}
 }
 
@@ -273,6 +297,9 @@ func normalizeData(data Data) Data {
 	}
 	if data.HostLifecycle == nil {
 		data.HostLifecycle = []HostLifecycle{}
+	}
+	if data.DeviceProfiles == nil {
+		data.DeviceProfiles = []DeviceProfile{}
 	}
 
 	return data
