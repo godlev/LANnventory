@@ -85,6 +85,34 @@ type DeviceProfile struct {
 	UpdatedAt         string `json:"updatedAt"`
 }
 
+// NetworkDeviceProfile is the portable managed network specialization.
+type NetworkDeviceProfile struct {
+	Mac                 string `json:"mac"`
+	ManagementMode      string `json:"managementMode"`
+	PhysicalPortCount   int    `json:"physicalPortCount"`
+	PortCapabilityNotes string `json:"portCapabilityNotes"`
+	UpdatedAt           string `json:"updatedAt"`
+}
+
+// SystemDeviceProfile is the portable managed system specialization.
+type SystemDeviceProfile struct {
+	Mac             string `json:"mac"`
+	Role            string `json:"role"`
+	OperatingSystem string `json:"operatingSystem"`
+	Version         string `json:"version"`
+	UpdatedAt       string `json:"updatedAt"`
+}
+
+// HypervisorProfile is the portable managed hypervisor specialization.
+type HypervisorProfile struct {
+	Mac         string `json:"mac"`
+	Platform    string `json:"platform"`
+	Version     string `json:"version"`
+	NodeName    string `json:"nodeName"`
+	ClusterName string `json:"clusterName"`
+	UpdatedAt   string `json:"updatedAt"`
+}
+
 // HostLifecycle is the portable lifecycle backup representation.
 type HostLifecycle struct {
 	Mac                string `json:"mac"`
@@ -138,14 +166,17 @@ func NewDocument(data Data, appVersion string, createdAt time.Time) Document {
 	}
 }
 
-func DataFromModels(currentHosts, history []models.Host, events []models.HostEvent, hostMetadata []models.HostMetadata, hostLifecycle []models.HostLifecycle, deviceProfiles []models.DeviceProfile) Data {
+func DataFromModels(currentHosts, history []models.Host, events []models.HostEvent, hostMetadata []models.HostMetadata, hostLifecycle []models.HostLifecycle, deviceProfiles []models.DeviceProfile, networkProfiles []models.NetworkDeviceProfile, systemProfiles []models.SystemDeviceProfile, hypervisorProfiles []models.HypervisorProfile) Data {
 	data := Data{
 		CurrentHosts:   make([]Host, 0, len(currentHosts)),
 		History:        make([]Host, 0, len(history)),
 		Events:         make([]Event, 0, len(events)),
 		HostMetadata:   make([]HostMetadata, 0, len(hostMetadata)),
 		HostLifecycle:  make([]HostLifecycle, 0, len(hostLifecycle)),
-		DeviceProfiles: make([]DeviceProfile, 0, len(deviceProfiles)),
+		DeviceProfiles:        make([]DeviceProfile, 0, len(deviceProfiles)),
+		NetworkDeviceProfiles: make([]NetworkDeviceProfile, 0, len(networkProfiles)),
+		SystemDeviceProfiles:  make([]SystemDeviceProfile, 0, len(systemProfiles)),
+		HypervisorProfiles:    make([]HypervisorProfile, 0, len(hypervisorProfiles)),
 	}
 
 	for _, host := range currentHosts {
@@ -165,6 +196,15 @@ func DataFromModels(currentHosts, history []models.Host, events []models.HostEve
 	}
 	for _, profile := range deviceProfiles {
 		data.DeviceProfiles = append(data.DeviceProfiles, DeviceProfileFromModel(profile))
+	}
+	for _, profile := range networkProfiles {
+		data.NetworkDeviceProfiles = append(data.NetworkDeviceProfiles, NetworkDeviceProfileFromModel(profile))
+	}
+	for _, profile := range systemProfiles {
+		data.SystemDeviceProfiles = append(data.SystemDeviceProfiles, SystemDeviceProfileFromModel(profile))
+	}
+	for _, profile := range hypervisorProfiles {
+		data.HypervisorProfiles = append(data.HypervisorProfiles, HypervisorProfileFromModel(profile))
 	}
 
 	return data
@@ -220,6 +260,37 @@ func DeviceProfileFromModel(profile models.DeviceProfile) DeviceProfile {
 		Model:             profile.Model,
 		ManagementAddress: profile.ManagementAddress,
 		UpdatedAt:         profile.UpdatedAt,
+	}
+}
+
+func NetworkDeviceProfileFromModel(profile models.NetworkDeviceProfile) NetworkDeviceProfile {
+	return NetworkDeviceProfile{
+		Mac:                 profile.Mac,
+		ManagementMode:      profile.ManagementMode,
+		PhysicalPortCount:   profile.PhysicalPortCount,
+		PortCapabilityNotes: profile.PortCapabilityNotes,
+		UpdatedAt:           profile.UpdatedAt,
+	}
+}
+
+func SystemDeviceProfileFromModel(profile models.SystemDeviceProfile) SystemDeviceProfile {
+	return SystemDeviceProfile{
+		Mac:             profile.Mac,
+		Role:            profile.Role,
+		OperatingSystem: profile.OperatingSystem,
+		Version:         profile.Version,
+		UpdatedAt:       profile.UpdatedAt,
+	}
+}
+
+func HypervisorProfileFromModel(profile models.HypervisorProfile) HypervisorProfile {
+	return HypervisorProfile{
+		Mac:         profile.Mac,
+		Platform:    profile.Platform,
+		Version:     profile.Version,
+		NodeName:    profile.NodeName,
+		ClusterName: profile.ClusterName,
+		UpdatedAt:   profile.UpdatedAt,
 	}
 }
 
@@ -300,6 +371,15 @@ func normalizeData(data Data) Data {
 	}
 	if data.DeviceProfiles == nil {
 		data.DeviceProfiles = []DeviceProfile{}
+	}
+	if data.NetworkDeviceProfiles == nil {
+		data.NetworkDeviceProfiles = []NetworkDeviceProfile{}
+	}
+	if data.SystemDeviceProfiles == nil {
+		data.SystemDeviceProfiles = []SystemDeviceProfile{}
+	}
+	if data.HypervisorProfiles == nil {
+		data.HypervisorProfiles = []HypervisorProfile{}
 	}
 
 	return data
