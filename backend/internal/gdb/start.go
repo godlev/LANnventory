@@ -131,6 +131,15 @@ func migrate(candidate *gorm.DB) error {
 	if err := candidate.Table(deviceProfilesTable).AutoMigrate(&models.DeviceProfile{}); err != nil {
 		return err
 	}
+	if err := candidate.Table(networkDeviceProfilesTable).AutoMigrate(&models.NetworkDeviceProfile{}); err != nil {
+		return err
+	}
+	if err := candidate.Table(systemDeviceProfilesTable).AutoMigrate(&models.SystemDeviceProfile{}); err != nil {
+		return err
+	}
+	if err := candidate.Table(hypervisorProfilesTable).AutoMigrate(&models.HypervisorProfile{}); err != nil {
+		return err
+	}
 	if err := candidate.Table(hostLifecycleTable).AutoMigrate(&models.HostLifecycle{}); err != nil {
 		return err
 	}
