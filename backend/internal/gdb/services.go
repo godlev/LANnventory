@@ -239,6 +239,43 @@ func UpdateServiceScanRuntime(mac, nextScanAt, lastAttemptAt, lastError string, 
 	return nil
 }
 
+// UpdateServiceScanRuntimeIfCurrent updates scheduler-owned fields only when
+// the user-controlled configuration still matches the snapshot that was scanned.
+// A false updated result is a normal stale-run outcome, not an error.
+func UpdateServiceScanRuntimeIfCurrent(expected models.ServiceScanSettings, nextScanAt, lastAttemptAt, lastError string, successful bool) (bool, error) {
+	canonical, err := identity.NormalizeMAC(strings.TrimSpace(expected.Mac))
+	if err != nil {
+		return false, errInvalidServiceIdentity
+	}
+	if !expected.Enabled {
+		return false, nil
+	}
+
+	updates := map[string]any{
+		"NEXT_SCAN_AT":    strings.TrimSpace(nextScanAt),
+		"LAST_ATTEMPT_AT": strings.TrimSpace(lastAttemptAt),
+		"LAST_ERROR":      strings.TrimSpace(lastError),
+	}
+	if successful {
+		updates["LAST_SUCCESSFUL_AT"] = strings.TrimSpace(lastAttemptAt)
+	}
+
+	activeDB, release, err := acquireDB()
+	if err != nil {
+		return false, err
+	}
+	defer release()
+
+	result := activeDB.Table(serviceScanSettingsTable).
+		Where("\"MAC\" = ? AND \"ENABLED\" = ? AND \"INTERVAL_MINUTES\" = ? AND \"PORTS_JSON\" = ?",
+			canonical, true, expected.IntervalMinutes, strings.TrimSpace(expected.PortsJSON)).
+		Updates(updates)
+	if result.Error != nil {
+		return false, result.Error
+	}
+	return result.RowsAffected > 0, nil
+}
+
 func selectServiceByIdentity(activeDB *gorm.DB, mac, address, protocol string, port int) (service models.Service, ok bool, err error) {
 	err = activeDB.Table(servicesTable).
 		Where("\"MAC\" = ? AND \"ADDRESS\" = ? AND \"PROTOCOL\" = ? AND \"PORT\" = ?", mac, address, protocol, port).

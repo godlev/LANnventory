@@ -210,3 +210,80 @@ func startServiceScanTestDB(t *testing.T) {
 		t.Fatalf("gdb.StartErr: %v", err)
 	}
 }
+
+func TestScheduledServiceScanDiscardsResultsWhenUserDisablesDuringProbe(t *testing.T) {
+	startServiceScanTestDB(t)
+
+	host := models.Host{
+		Name:  "server",
+		IP:    "192.168.1.92",
+		Mac:   "AA:BB:CC:DD:EE:D2",
+		Iface: "eth0",
+		Date:  "2026-09-18 10:00:00",
+		Known: 1,
+		Now:   1,
+	}
+	gdb.Update("now", host)
+	rows := gdb.SelectByMAC("now", host.Mac)
+	if len(rows) != 1 {
+		t.Fatalf("current host rows = %+v", rows)
+	}
+	host.ID = rows[0].ID
+	if err := gdb.RecordHostAddressObservations([]models.Host{host}); err != nil {
+		t.Fatalf("RecordHostAddressObservations: %v", err)
+	}
+
+	if _, err := gdb.UpsertServiceScanSettings(models.ServiceScanSettings{
+		Mac:             host.Mac,
+		Enabled:         true,
+		IntervalMinutes: 60,
+		PortsJSON:       "[443]",
+		NextScanAt:      "2026-09-18 10:30:00",
+	}); err != nil {
+		t.Fatalf("UpsertServiceScanSettings enabled: %v", err)
+	}
+
+	originalScanPorts := scheduledScanPorts
+	scheduledScanPorts = func(_ context.Context, target string, ports []int, workers int) []portscan.PortResult {
+		current, found, err := gdb.SelectServiceScanSettingsByMAC(host.Mac)
+		if err != nil || !found {
+			t.Fatalf("Select settings during probe found=%v err=%v", found, err)
+		}
+		current.Enabled = false
+		current.IntervalMinutes = 120
+		current.PortsJSON = "[]"
+		current.NextScanAt = ""
+		if _, err := gdb.UpsertServiceScanSettings(current); err != nil {
+			t.Fatalf("disable settings during probe: %v", err)
+		}
+
+		return []portscan.PortResult{
+			{Port: 443, Result: portscan.Result{State: portscan.ProbeOpen}},
+		}
+	}
+	t.Cleanup(func() {
+		scheduledScanPorts = originalScanPorts
+	})
+
+	now := time.Date(2026, 9, 18, 11, 0, 0, 0, time.Local)
+	if attempted := runDueServiceScansAt(context.Background(), now); attempted != 1 {
+		t.Fatalf("attempted = %d, want 1", attempted)
+	}
+
+	if _, found, err := gdb.SelectServiceByIdentity(host.Mac, host.IP, "tcp", 443); err != nil || found {
+		t.Fatalf("stale scheduled result persisted found=%v err=%v", found, err)
+	}
+
+	settings, found, err := gdb.SelectServiceScanSettingsByMAC(host.Mac)
+	if err != nil || !found {
+		t.Fatalf("Select disabled settings found=%v err=%v", found, err)
+	}
+	if settings.Enabled ||
+		settings.IntervalMinutes != 120 ||
+		settings.PortsJSON != "[]" ||
+		settings.NextScanAt != "" ||
+		settings.LastAttemptAt != "" ||
+		settings.LastSuccessfulAt != "" {
+		t.Fatalf("stale scheduler overwrote disabled settings: %+v", settings)
+	}
+}

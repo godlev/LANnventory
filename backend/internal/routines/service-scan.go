@@ -113,7 +113,7 @@ func runDueServiceScansAt(ctx context.Context, now time.Time) int {
 }
 
 func runScheduledServiceScan(ctx context.Context, settings models.ServiceScanSettings, now time.Time) {
-	if ctx.Err() != nil {
+	if ctx.Err() != nil || !scheduledServiceScanSettingsCurrent(settings) {
 		return
 	}
 
@@ -122,23 +122,23 @@ func runScheduledServiceScan(ctx context.Context, settings models.ServiceScanSet
 
 	ports, err := servicescan.DecodePortsJSON(settings.PortsJSON)
 	if err != nil || len(ports) == 0 {
-		updateScheduledServiceScanRuntime(settings.Mac, nextAt, attemptAt, "scheduled scan has invalid or empty port configuration", false)
+		updateScheduledServiceScanRuntime(settings, nextAt, attemptAt, "scheduled scan has invalid or empty port configuration", false)
 		return
 	}
 
 	host, ok := currentHostForScheduledServiceScan(settings.Mac)
 	if !ok {
-		updateScheduledServiceScanRuntime(settings.Mac, nextAt, attemptAt, "host is no longer present in current inventory", false)
+		updateScheduledServiceScanRuntime(settings, nextAt, attemptAt, "host is no longer present in current inventory", false)
 		return
 	}
 
 	addresses, err := activeAddressesForScheduledServiceScan(host)
 	if err != nil {
-		updateScheduledServiceScanRuntime(settings.Mac, nextAt, attemptAt, "failed to load active host addresses", false)
+		updateScheduledServiceScanRuntime(settings, nextAt, attemptAt, "failed to load active host addresses", false)
 		return
 	}
 	if len(addresses) == 0 {
-		updateScheduledServiceScanRuntime(settings.Mac, nextAt, attemptAt, "host has no active addresses", false)
+		updateScheduledServiceScanRuntime(settings, nextAt, attemptAt, "host has no active addresses", false)
 		return
 	}
 
@@ -152,6 +152,10 @@ func runScheduledServiceScan(ctx context.Context, settings models.ServiceScanSet
 		}
 
 		results := scheduledScanPorts(ctx, scheduledProbeTarget(address), ports, serviceScanWorkers)
+		if ctx.Err() != nil || !scheduledServiceScanSettingsCurrent(settings) {
+			return
+		}
+
 		eventHost := host
 		eventHost.IP = address.Address
 		if strings.TrimSpace(address.Iface) != "" {
@@ -194,7 +198,7 @@ func runScheduledServiceScan(ctx context.Context, settings models.ServiceScanSet
 	}
 
 	if totalProbes == 0 {
-		updateScheduledServiceScanRuntime(settings.Mac, nextAt, attemptAt, "scheduled scan produced no probe results", false)
+		updateScheduledServiceScanRuntime(settings, nextAt, attemptAt, "scheduled scan produced no probe results", false)
 		return
 	}
 
@@ -207,7 +211,7 @@ func runScheduledServiceScan(ctx context.Context, settings models.ServiceScanSet
 	}
 
 	successful := len(errors) == 0
-	updateScheduledServiceScanRuntime(settings.Mac, nextAt, attemptAt, strings.Join(errors, "; "), successful)
+	updateScheduledServiceScanRuntime(settings, nextAt, attemptAt, strings.Join(errors, "; "), successful)
 }
 
 func currentHostForScheduledServiceScan(mac string) (models.Host, bool) {
@@ -255,8 +259,26 @@ func scheduledProbeTarget(address models.HostAddress) string {
 	return strings.TrimSpace(address.Address)
 }
 
-func updateScheduledServiceScanRuntime(mac, nextAt, attemptAt, lastError string, successful bool) {
-	if err := gdb.UpdateServiceScanRuntime(mac, nextAt, attemptAt, lastError, successful); err != nil {
-		slog.Error("Failed to update scheduled service scan runtime", "mac", mac, "err", err)
+func scheduledServiceScanSettingsCurrent(expected models.ServiceScanSettings) bool {
+	current, found, err := gdb.SelectServiceScanSettingsByMAC(expected.Mac)
+	if err != nil {
+		slog.Error("Failed to verify scheduled service scan settings", "mac", expected.Mac, "err", err)
+		return false
+	}
+	if !found || !current.Enabled {
+		return false
+	}
+	return current.IntervalMinutes == expected.IntervalMinutes &&
+		strings.TrimSpace(current.PortsJSON) == strings.TrimSpace(expected.PortsJSON)
+}
+
+func updateScheduledServiceScanRuntime(settings models.ServiceScanSettings, nextAt, attemptAt, lastError string, successful bool) {
+	updated, err := gdb.UpdateServiceScanRuntimeIfCurrent(settings, nextAt, attemptAt, lastError, successful)
+	if err != nil {
+		slog.Error("Failed to update scheduled service scan runtime", "mac", settings.Mac, "err", err)
+		return
+	}
+	if !updated {
+		slog.Debug("Skipped stale scheduled service scan runtime update", "mac", settings.Mac)
 	}
 }
