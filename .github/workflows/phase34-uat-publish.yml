@@ -79,8 +79,9 @@ jobs:
 
           package_version="$(dpkg-deb -f "$deb" Version)"
           package_arch="$(dpkg-deb -f "$deb" Architecture)"
-          printf 'Package: %s\\nVersion: %s\\nArchitecture: %s\\n' "$deb" "$package_version" "$package_arch"
-          test "$package_version" = "${UAT_VERSION}"
+          debian_expected_version="${UAT_VERSION/-/~}"
+          printf 'Package: %s\\nVersion: %s\\nArchitecture: %s\\nExpected Debian version: %s\\n' "$deb" "$package_version" "$package_arch" "$debian_expected_version"
+          test "$package_version" = "$debian_expected_version"
           test "$package_arch" = "amd64"
 
           checksum_line="$(grep -E "^[0-9a-fA-F]{64}[[:space:]]+[*]?${deb}$" checksums.txt)"
