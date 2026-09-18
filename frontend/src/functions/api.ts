@@ -1,5 +1,5 @@
 import { isDeviceTypeValue, type DeviceTypeValue } from "./deviceTypes";
-import type { ActivityDeviceOption, ActivityStats, Conf, DeviceProfile, Host, HostEvent, Service } from "./exports";
+import type { ActivityDeviceOption, ActivityStats, Conf, DeviceProfile, Host, HostEvent, HypervisorProfile, NetworkDeviceProfile, Service, SystemDeviceProfile } from "./exports";
 
 export const apiPath = '';
 export type ActivityCategory = "all" | "connectivity" | "changes";
@@ -93,12 +93,34 @@ export type AddressIdentity = {
 
 export type DeviceProfileResponse = {
   managed: DeviceProfile | null;
+  network: NetworkDeviceProfile | null;
+  system: SystemDeviceProfile | null;
+  hypervisor: HypervisorProfile | null;
 };
 
 export type DeviceProfilePayload = {
   manufacturer?: string;
   model?: string;
   managementAddress?: string;
+};
+
+export type NetworkDeviceProfilePayload = {
+  managementMode?: "" | "managed" | "unmanaged";
+  physicalPortCount?: number;
+  portCapabilityNotes?: string;
+};
+
+export type SystemDeviceProfilePayload = {
+  role?: string;
+  operatingSystem?: string;
+  version?: string;
+};
+
+export type HypervisorProfilePayload = {
+  platform?: "proxmox-ve" | "vmware-esxi" | "hyper-v" | "other";
+  version?: string;
+  nodeName?: string;
+  clusterName?: string;
 };
 
 const apiFetch = async (url: string, init?: RequestInit): Promise<Response> => {
@@ -331,6 +353,41 @@ export const apiPatchHostDeviceProfile = async (
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(payload),
   });
+};
+
+const patchHostProfileLayer = async <T>(
+  id: number | string,
+  layer: string,
+  payload: T,
+): Promise<DeviceProfileResponse> => {
+  const url = apiPath+'/api/host/'+encodeURIComponent(String(id))+'/profile/'+layer;
+  return await apiJSON<DeviceProfileResponse>(url, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+};
+
+export const apiPatchHostNetworkDeviceProfile = async (
+  id: number | string,
+  payload: NetworkDeviceProfilePayload,
+): Promise<DeviceProfileResponse> => patchHostProfileLayer(id, "network", payload);
+
+export const apiPatchHostSystemDeviceProfile = async (
+  id: number | string,
+  payload: SystemDeviceProfilePayload,
+): Promise<DeviceProfileResponse> => patchHostProfileLayer(id, "system", payload);
+
+export const apiPatchHostHypervisorProfile = async (
+  id: number | string,
+  payload: HypervisorProfilePayload,
+): Promise<DeviceProfileResponse> => patchHostProfileLayer(id, "hypervisor", payload);
+
+export const apiDeleteHostHypervisorProfile = async (
+  id: number | string,
+): Promise<DeviceProfileResponse> => {
+  const url = apiPath+'/api/host/'+encodeURIComponent(String(id))+'/profile/hypervisor';
+  return await apiJSON<DeviceProfileResponse>(url, { method: 'DELETE' });
 };
 
 export const apiGetHostServices = async (id: number | string): Promise<Service[]> => {
