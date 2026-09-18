@@ -17,6 +17,9 @@ func ExportData() (backup.Data, error) {
 	var hostMetadata []models.HostMetadata
 	var hostLifecycle []models.HostLifecycle
 	var deviceProfiles []models.DeviceProfile
+	var networkProfiles []models.NetworkDeviceProfile
+	var systemProfiles []models.SystemDeviceProfile
+	var hypervisorProfiles []models.HypervisorProfile
 
 	activeDB, release, err := acquireDB()
 	if err != nil {
@@ -45,6 +48,15 @@ func ExportData() (backup.Data, error) {
 		if err := txDB.Table(deviceProfilesTable).Order(clause.OrderByColumn{Column: clause.Column{Name: "MAC"}}).Find(&deviceProfiles).Error; err != nil {
 			return err
 		}
+		if err := txDB.Table(networkDeviceProfilesTable).Order(clause.OrderByColumn{Column: clause.Column{Name: "MAC"}}).Find(&networkProfiles).Error; err != nil {
+			return err
+		}
+		if err := txDB.Table(systemDeviceProfilesTable).Order(clause.OrderByColumn{Column: clause.Column{Name: "MAC"}}).Find(&systemProfiles).Error; err != nil {
+			return err
+		}
+		if err := txDB.Table(hypervisorProfilesTable).Order(clause.OrderByColumn{Column: clause.Column{Name: "MAC"}}).Find(&hypervisorProfiles).Error; err != nil {
+			return err
+		}
 
 		return nil
 	})
@@ -52,7 +64,7 @@ func ExportData() (backup.Data, error) {
 		return backup.Data{}, err
 	}
 
-	return backup.DataFromModels(currentHosts, history, events, hostMetadata, hostLifecycle, deviceProfiles), nil
+	return backup.DataFromModels(currentHosts, history, events, hostMetadata, hostLifecycle, deviceProfiles, networkProfiles, systemProfiles, hypervisorProfiles), nil
 }
 
 // ExportCurrentHosts returns enriched current inventory without reading history tables.
