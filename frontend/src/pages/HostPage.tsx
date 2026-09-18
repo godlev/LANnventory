@@ -7,6 +7,7 @@ import { deviceDisplayName } from "../functions/deviceIdentity";
 import HostCard from "../components/HostPage/HostCard";
 import IdentityCard from "../components/HostPage/IdentityCard";
 import Ping from "../components/HostPage/Ping";
+import ServicesCard from "../components/HostPage/ServicesCard";
 import HostActivityCard from "../components/HostPage/HostActivityCard";
 import HistCard from "../components/HostPage/HistCard";
 import { emptyHost, emptyPageContext, Host, setPageContext } from "../functions/exports";
@@ -16,6 +17,7 @@ function HostPage() {
   const [currentHost, setCurrentHost] = createSignal<Host>(emptyHost);
   const [loadError, setLoadError] = createSignal("");
   const [hasUnsavedHostChanges, setHasUnsavedHostChanges] = createSignal(false);
+  const [serviceRefreshKey, setServiceRefreshKey] = createSignal(0);
   const params = useParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -129,7 +131,15 @@ function HostPage() {
           ></HostCard>
         </div>
         <div class="col-12 col-md-4 col-lg-3 col-xl-2 host-port-column">
-          <Ping host={currentHost()}></Ping>
+          <Ping
+            host={currentHost()}
+            onScanComplete={() => setServiceRefreshKey((value) => value + 1)}
+          ></Ping>
+        </div>
+      </div>
+      <div class="row g-3 mx-0 mt-1 host-page-row">
+        <div class="col-md">
+          <ServicesCard host={currentHost()} refreshKey={serviceRefreshKey()}></ServicesCard>
         </div>
       </div>
       <div class="row g-3 mx-0 mt-1 host-page-row">

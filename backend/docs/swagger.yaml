@@ -232,6 +232,8 @@ definitions:
         type: boolean
       port:
         type: integer
+      state:
+        type: string
     type: object
   api.retentionRequest:
     properties:
@@ -239,6 +241,36 @@ definitions:
         type: integer
       presenceRetention:
         type: integer
+    type: object
+  api.serviceScanSettingsRequest:
+    properties:
+      enabled:
+        type: boolean
+      intervalMinutes:
+        type: integer
+      ports:
+        items:
+          type: integer
+        type: array
+    type: object
+  api.serviceScanSettingsResponse:
+    properties:
+      enabled:
+        type: boolean
+      intervalMinutes:
+        type: integer
+      lastAttemptAt:
+        type: string
+      lastError:
+        type: string
+      lastSuccessfulAt:
+        type: string
+      nextScanAt:
+        type: string
+      ports:
+        items:
+          type: integer
+        type: array
     type: object
   api.updateApplyRequest:
     properties:
@@ -498,6 +530,35 @@ definitions:
           type: string
         type: array
     type: object
+  models.Service:
+    properties:
+      address:
+        type: string
+      addressFamily:
+        type: string
+      firstDetected:
+        type: string
+      id:
+        type: integer
+      lastChecked:
+        type: string
+      lastDetected:
+        type: string
+      lastScanSource:
+        type: string
+      mac:
+        type: string
+      port:
+        type: integer
+      protocol:
+        type: string
+      serviceHint:
+        type: string
+      state:
+        type: string
+      stateChangedAt:
+        type: string
+    type: object
   models.Stat:
     properties:
       known:
@@ -572,6 +633,8 @@ paths:
         - tags-changed
         - pinned-changed
         - port-open
+        - service-opened
+        - service-closed
         in: query
         name: eventType
         type: string
@@ -1491,8 +1554,10 @@ paths:
       - hosts
   /host/{id}/port/{port}/scan:
     post:
-      description: Scan a TCP port using the host's current IP. When the port is open,
-        persist an activity event for that host.
+      description: Scan a TCP port using the host's current IP. Definitive results
+        update persistent service inventory and emit lifecycle activity only on state
+        transitions. Indeterminate transport failures are returned without changing
+        persisted service state.
       parameters:
       - description: Host ID
         in: path
@@ -1526,6 +1591,112 @@ paths:
       summary: Scan one port for a host
       tags:
       - network
+  /host/{id}/service-scan-settings:
+    get:
+      description: Return opt-in scheduled TCP service scan settings and runtime state
+        for a host.
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.serviceScanSettingsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get scheduled service scan settings
+      tags:
+      - hosts
+    put:
+      consumes:
+      - application/json
+      description: Enable or disable scheduled TCP service scanning for a host. Ports
+        are validated, de-duplicated and sorted. Enabling or changing settings schedules
+        the next scan immediately.
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Service scan settings
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.serviceScanSettingsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.serviceScanSettingsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Save scheduled service scan settings
+      tags:
+      - hosts
+  /host/{id}/services:
+    get:
+      description: Return durable service summary records for the host MAC across
+        retained IPv4 and IPv6 addresses.
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Service'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get retained services for a host
+      tags:
+      - hosts
   /host/{id}/type:
     patch:
       consumes:

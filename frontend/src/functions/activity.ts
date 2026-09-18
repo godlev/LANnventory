@@ -26,6 +26,8 @@ export function activityIcon(eventType: string): string {
       return "bi-tags-fill";
     case "pinned-changed":
       return "bi-pin-angle-fill";
+    case "service-opened":
+    case "service-closed":
     case "port-open":
       return "bi-ethernet";
     case "discovered":
@@ -50,6 +52,8 @@ export function activityTone(eventType: string): ActivityTone {
     case "notes-changed":
     case "tags-changed":
     case "pinned-changed":
+    case "service-opened":
+    case "service-closed":
     case "port-open":
       return "type";
     case "discovered":
@@ -81,6 +85,10 @@ export function activityDescription(event: HostEvent): string {
       return "Tags changed";
     case "pinned-changed":
       return event.NewValue === "true" ? "Device pinned" : "Device unpinned";
+    case "service-opened":
+      return serviceEndpointLabel(event.NewValue) + (event.OldValue === "closed" ? " returned" : " opened");
+    case "service-closed":
+      return serviceEndpointLabel(event.NewValue) + " closed";
     case "port-open":
       return "Open port " + event.NewValue + " detected";
     case "discovered":
@@ -103,6 +111,10 @@ export function activityDetails(event: HostEvent): string {
       return "Tags: " + tagsEventValue(event.OldValue) + " \u2192 " + tagsEventValue(event.NewValue);
     case "pinned-changed":
       return "Pinned: " + booleanEventValue(event.OldValue) + " \u2192 " + booleanEventValue(event.NewValue);
+    case "service-opened":
+      return serviceEventDetails(event, "open");
+    case "service-closed":
+      return serviceEventDetails(event, "closed");
     case "discovered":
     case "known":
     case "unknown":
@@ -131,6 +143,8 @@ export function activityCategoryLabel(eventType: string): string {
     case "online":
     case "offline":
       return "Connectivity";
+    case "service-opened":
+    case "service-closed":
     case "port-open":
       return "Network diagnostics";
     default:
@@ -160,8 +174,12 @@ export function activityEventLabel(eventType: string): string {
       return "Tags changed";
     case "pinned-changed":
       return "Pinned changed";
+    case "service-opened":
+      return "Service opened";
+    case "service-closed":
+      return "Service closed";
     case "port-open":
-      return "Open port discovered";
+      return "Open port discovered (legacy)";
     case "discovered":
     default:
       return "New device detected";
@@ -218,6 +236,24 @@ export function activityTimeTitle(event: HostEvent): string {
   }
 
   return formatExactActivityDate(date);
+}
+
+function serviceEndpointLabel(value: string | null | undefined): string {
+  const endpoint = (value ?? "").trim();
+  if (endpoint === "") {
+    return "Service";
+  }
+  return endpoint.replace(/^tcp\//i, "TCP/");
+}
+
+function serviceEventDetails(event: HostEvent, nextState: "open" | "closed"): string {
+  const endpoint = serviceEndpointLabel(event.NewValue);
+  const address = event.IP ? " on " + event.IP : "";
+  const previous = (event.OldValue ?? "").trim();
+  if (previous !== "") {
+    return endpoint + address + " · " + previous + " \u2192 " + nextState;
+  }
+  return endpoint + address;
 }
 
 function compactNetworkDetail(event: HostEvent): string {

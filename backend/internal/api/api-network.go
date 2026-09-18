@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/linde12/gowol"
@@ -16,10 +17,12 @@ import (
 )
 
 var portIsOpen = portscan.IsOpen
+var portProbe = portscan.Probe
 
 type hostPortScanResponse struct {
-	Port int  `json:"port"`
-	Open bool `json:"open"`
+	Port  int    `json:"port"`
+	Open  bool   `json:"open"`
+	State string `json:"state"`
 }
 
 // getPortState godoc
@@ -47,7 +50,7 @@ func getPortState(c *gin.Context) {
 
 // scanHostPort godoc
 // @Summary      Scan one port for a host
-// @Description  Scan a TCP port using the host's current IP. When the port is open, persist an activity event for that host.
+// @Description  Scan a TCP port using the host's current IP. Definitive results update persistent service inventory and emit lifecycle activity only on state transitions. Indeterminate transport failures are returned without changing persisted service state.
 // @Tags         network
 // @Produce      json
 // @Param        id    path      int  true  "Host ID"
@@ -74,15 +77,38 @@ func scanHostPort(c *gin.Context) {
 	}
 
 	port := strconv.Itoa(portNumber)
-	open := portIsOpen(host.IP, port)
-	if open {
-		if err := gdb.AddEvent(models.NewHostEvent(host, models.EventPortOpen, "", port)); err != nil {
-			c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to record port scan event"})
-			return
-		}
+	result := portProbe(c.Request.Context(), host.IP, port)
+	if result.State == portscan.ProbeCanceled {
+		return
+	}
+	if result.State == portscan.ProbeIndeterminate {
+		c.IndentedJSON(http.StatusOK, hostPortScanResponse{
+			Port:  portNumber,
+			Open:  false,
+			State: string(portscan.ProbeIndeterminate),
+		})
+		return
 	}
 
-	c.IndentedJSON(http.StatusOK, hostPortScanResponse{Port: portNumber, Open: open})
+	observedAt := time.Now().Format(models.HostEventDateLayout)
+	if _, _, _, err := gdb.RecordHostServiceObservation(host, models.Service{
+		Mac:            host.Mac,
+		Address:        host.IP,
+		Protocol:       string(models.ServiceProtocolTCP),
+		Port:           portNumber,
+		State:          string(result.State),
+		LastScanSource: "manual",
+	}, observedAt); err != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to record service scan result"})
+		return
+	}
+
+	open := result.State == portscan.ProbeOpen
+	c.IndentedJSON(http.StatusOK, hostPortScanResponse{
+		Port:  portNumber,
+		Open:  open,
+		State: string(result.State),
+	})
 }
 
 // sendWOL godoc

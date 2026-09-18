@@ -140,6 +140,15 @@ func migrate(candidate *gorm.DB) error {
 	if err := candidate.Table(identityCorrelationDecisionsTable).AutoMigrate(&models.IdentityCorrelationDecision{}); err != nil {
 		return err
 	}
+	if err := candidate.Table(servicesTable).AutoMigrate(&models.Service{}); err != nil {
+		return err
+	}
+	if err := candidate.Table(serviceScanSettingsTable).AutoMigrate(&models.ServiceScanSettings{}); err != nil {
+		return err
+	}
+	if err := backfillServiceHints(candidate); err != nil {
+		return err
+	}
 	if err := backfillHostLifecycle(candidate); err != nil {
 		return err
 	}

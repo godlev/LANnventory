@@ -45,7 +45,7 @@ var (
 // @Param        beforeDate query     string  false  "Cursor event date in YYYY-MM-DD HH:mm:ss format. Requires beforeId."
 // @Param        beforeId   query     int     false  "Cursor event ID, greater than 0. Requires beforeDate." minimum(1)
 // @Param        category   query     string  false  "Event category" Enums(all, connectivity, changes)
-// @Param        eventType  query     string  false  "Repeatable event type filter" Enums(discovered, online, offline, known, unknown, device-type-changed, owner-changed, location-changed, notes-changed, tags-changed, pinned-changed, port-open)
+// @Param        eventType  query     string  false  "Repeatable event type filter" Enums(discovered, online, offline, known, unknown, device-type-changed, owner-changed, location-changed, notes-changed, tags-changed, pinned-changed, port-open, service-opened, service-closed)
 // @Param        mac        query     string  false  "Repeatable MAC address filter"
 // @Success      200        {array}   models.HostEvent
 // @Failure      400        {object}  map[string]string  "Invalid query or cursor parameters"

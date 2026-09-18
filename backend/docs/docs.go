@@ -84,7 +84,9 @@ const docTemplate = `{
                             "notes-changed",
                             "tags-changed",
                             "pinned-changed",
-                            "port-open"
+                            "port-open",
+                            "service-opened",
+                            "service-closed"
                         ],
                         "type": "string",
                         "description": "Repeatable event type filter",
@@ -1488,7 +1490,7 @@ const docTemplate = `{
         },
         "/host/{id}/port/{port}/scan": {
             "post": {
-                "description": "Scan a TCP port using the host's current IP. When the port is open, persist an activity event for that host.",
+                "description": "Scan a TCP port using the host's current IP. Definitive results update persistent service inventory and emit lifecycle activity only on state transitions. Indeterminate transport failures are returned without changing persisted service state.",
                 "produces": [
                     "application/json"
                 ],
@@ -1517,6 +1519,160 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/api.hostPortScanResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/host/{id}/service-scan-settings": {
+            "get": {
+                "description": "Return opt-in scheduled TCP service scan settings and runtime state for a host.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Get scheduled service scan settings",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.serviceScanSettingsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Enable or disable scheduled TCP service scanning for a host. Ports are validated, de-duplicated and sorted. Enabling or changing settings schedules the next scan immediately.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Save scheduled service scan settings",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Service scan settings",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.serviceScanSettingsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.serviceScanSettingsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/host/{id}/services": {
+            "get": {
+                "description": "Return durable service summary records for the host MAC across retained IPv4 and IPv6 addresses.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Get retained services for a host",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Service"
+                            }
                         }
                     },
                     "400": {
@@ -2374,6 +2530,9 @@ const docTemplate = `{
                 },
                 "port": {
                     "type": "integer"
+                },
+                "state": {
+                    "type": "string"
                 }
             }
         },
@@ -2385,6 +2544,52 @@ const docTemplate = `{
                 },
                 "presenceRetention": {
                     "type": "integer"
+                }
+            }
+        },
+        "api.serviceScanSettingsRequest": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "intervalMinutes": {
+                    "type": "integer"
+                },
+                "ports": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "api.serviceScanSettingsResponse": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "intervalMinutes": {
+                    "type": "integer"
+                },
+                "lastAttemptAt": {
+                    "type": "string"
+                },
+                "lastError": {
+                    "type": "string"
+                },
+                "lastSuccessfulAt": {
+                    "type": "string"
+                },
+                "nextScanAt": {
+                    "type": "string"
+                },
+                "ports": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 }
             }
         },
@@ -2772,6 +2977,50 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "models.Service": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "addressFamily": {
+                    "type": "string"
+                },
+                "firstDetected": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "lastChecked": {
+                    "type": "string"
+                },
+                "lastDetected": {
+                    "type": "string"
+                },
+                "lastScanSource": {
+                    "type": "string"
+                },
+                "mac": {
+                    "type": "string"
+                },
+                "port": {
+                    "type": "integer"
+                },
+                "protocol": {
+                    "type": "string"
+                },
+                "serviceHint": {
+                    "type": "string"
+                },
+                "state": {
+                    "type": "string"
+                },
+                "stateChangedAt": {
+                    "type": "string"
                 }
             }
         },

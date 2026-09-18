@@ -1,7 +1,9 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -9,6 +11,7 @@ import (
 
 	"github.com/godlev/LANnventory/internal/gdb"
 	"github.com/godlev/LANnventory/internal/models"
+	"github.com/godlev/LANnventory/internal/portscan"
 )
 
 func TestPortEndpointRejectsInvalidPort(t *testing.T) {
@@ -35,8 +38,7 @@ func TestPortEndpointRejectsInvalidPort(t *testing.T) {
 	}
 }
 
-
-func TestHostPortScanRecordsOpenPortEvent(t *testing.T) {
+func TestHostPortScanPersistsOpenServiceAndTransitionEvent(t *testing.T) {
 	router := setupTestRouter(t)
 	host := seedHost(t, models.Host{
 		Name:       "router",
@@ -48,15 +50,195 @@ func TestHostPortScanRecordsOpenPortEvent(t *testing.T) {
 		Now:        1,
 	})
 
-	originalPortIsOpen := portIsOpen
-	portIsOpen = func(addr, port string) bool {
-		return addr == host.IP && port == "443"
+	originalPortProbe := portProbe
+	portProbe = func(_ context.Context, addr, port string) portscan.Result {
+		if addr == host.IP && port == "443" {
+			return portscan.Result{State: portscan.ProbeOpen}
+		}
+		return portscan.Result{State: portscan.ProbeClosed}
 	}
 	t.Cleanup(func() {
-		portIsOpen = originalPortIsOpen
+		portProbe = originalPortProbe
 	})
 
-	req := httptest.NewRequest(http.MethodPost, "/api/host/"+strconv.Itoa(host.ID)+"/port/443/scan", nil)
+	path := "/api/host/" + strconv.Itoa(host.ID) + "/port/443/scan"
+	for attempt := 0; attempt < 2; attempt++ {
+		req := httptest.NewRequest(http.MethodPost, path, nil)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("attempt %d status = %d, want %d; body: %s", attempt+1, rec.Code, http.StatusOK, rec.Body.String())
+		}
+
+		var result hostPortScanResponse
+		if err := json.Unmarshal(rec.Body.Bytes(), &result); err != nil {
+			t.Fatalf("json.Unmarshal: %v", err)
+		}
+		if !result.Open || result.Port != 443 {
+			t.Fatalf("result = %+v, want open port 443", result)
+		}
+	}
+
+	service, ok, err := gdb.SelectServiceByIdentity(host.Mac, host.IP, "tcp", 443)
+	if err != nil || !ok {
+		t.Fatalf("SelectServiceByIdentity ok=%v err=%v", ok, err)
+	}
+	if service.State != "open" || service.Address != host.IP || service.LastScanSource != "manual" || service.FirstDetected == "" || service.LastDetected == "" || service.LastChecked == "" {
+		t.Fatalf("persisted service = %+v", service)
+	}
+
+	events, ok := gdb.SelectEventsByHostID(host.ID, 10)
+	if !ok {
+		t.Fatal("SelectEventsByHostID failed")
+	}
+	if len(events) != 1 {
+		t.Fatalf("events len = %d, want one transition event after repeated open scans: %+v", len(events), events)
+	}
+	if events[0].EventType != string(models.EventServiceOpened) || events[0].NewValue != "tcp/443" || events[0].OldValue != "" || events[0].IP != host.IP {
+		t.Fatalf("event = %+v, want service-opened tcp/443 on scanned address", events[0])
+	}
+}
+
+func TestHostPortScanRecordsClosedAndReopenedTransitions(t *testing.T) {
+	router := setupTestRouter(t)
+	host := seedHost(t, models.Host{
+		Name:  "server",
+		IP:    "192.168.1.10",
+		Mac:   "AA:BB:CC:DD:EE:93",
+		Iface: "eth0",
+		Known: 1,
+		Now:   1,
+	})
+
+	states := []portscan.ProbeState{
+		portscan.ProbeOpen,
+		portscan.ProbeClosed,
+		portscan.ProbeClosed,
+		portscan.ProbeOpen,
+	}
+	probeIndex := 0
+	originalPortProbe := portProbe
+	portProbe = func(_ context.Context, addr, port string) portscan.Result {
+		state := states[probeIndex]
+		probeIndex++
+		return portscan.Result{State: state}
+	}
+	t.Cleanup(func() {
+		portProbe = originalPortProbe
+	})
+
+	path := "/api/host/" + strconv.Itoa(host.ID) + "/port/22/scan"
+	for attempt := range states {
+		req := httptest.NewRequest(http.MethodPost, path, nil)
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("attempt %d status = %d, want %d; body: %s", attempt+1, rec.Code, http.StatusOK, rec.Body.String())
+		}
+	}
+
+	service, ok, err := gdb.SelectServiceByIdentity(host.Mac, host.IP, "tcp", 22)
+	if err != nil || !ok {
+		t.Fatalf("SelectServiceByIdentity ok=%v err=%v", ok, err)
+	}
+	if service.State != "open" {
+		t.Fatalf("final service state = %+v, want reopened", service)
+	}
+
+	events, ok := gdb.SelectEventsByHostID(host.ID, 10)
+	if !ok {
+		t.Fatal("SelectEventsByHostID failed")
+	}
+	if len(events) != 3 {
+		t.Fatalf("events len = %d, want open/closed/reopen only: %+v", len(events), events)
+	}
+	if events[0].EventType != string(models.EventServiceOpened) || events[0].OldValue != "closed" || events[0].NewValue != "tcp/22" {
+		t.Fatalf("latest event = %+v, want reopened transition", events[0])
+	}
+	if events[1].EventType != string(models.EventServiceClosed) || events[1].OldValue != "open" || events[1].NewValue != "tcp/22" {
+		t.Fatalf("middle event = %+v, want closed transition", events[1])
+	}
+	if events[2].EventType != string(models.EventServiceOpened) || events[2].OldValue != "" || events[2].NewValue != "tcp/22" {
+		t.Fatalf("first event = %+v, want initial opened transition", events[2])
+	}
+}
+
+func TestHostPortScanDoesNotPersistNeverSeenClosedPort(t *testing.T) {
+	router := setupTestRouter(t)
+	host := seedHost(t, models.Host{
+		Name:  "desktop",
+		IP:    "192.168.1.20",
+		Mac:   "AA:BB:CC:DD:EE:91",
+		Iface: "eth0",
+		Known: 1,
+		Now:   1,
+	})
+
+	originalPortProbe := portProbe
+	portProbe = func(_ context.Context, addr, port string) portscan.Result {
+		return portscan.Result{State: portscan.ProbeClosed}
+	}
+	t.Cleanup(func() {
+		portProbe = originalPortProbe
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/api/host/"+strconv.Itoa(host.ID)+"/port/22/scan", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	services, err := gdb.SelectServicesByMAC(host.Mac)
+	if err != nil {
+		t.Fatalf("SelectServicesByMAC: %v", err)
+	}
+	if len(services) != 0 {
+		t.Fatalf("never-seen closed port unexpectedly persisted services: %+v", services)
+	}
+
+	events, ok := gdb.SelectEventsByHostID(host.ID, 10)
+	if !ok {
+		t.Fatal("SelectEventsByHostID failed")
+	}
+	if len(events) != 0 {
+		t.Fatalf("closed port unexpectedly recorded events: %+v", events)
+	}
+}
+
+func TestHostPortScanDoesNotChangeStateOnIndeterminateFailure(t *testing.T) {
+	router := setupTestRouter(t)
+	host := seedHost(t, models.Host{
+		Name:  "nas",
+		IP:    "192.168.1.30",
+		Mac:   "AA:BB:CC:DD:EE:92",
+		Iface: "eth0",
+		Known: 1,
+		Now:   1,
+	})
+
+	if _, _, _, err := gdb.RecordServiceObservation(models.Service{
+		Mac:            host.Mac,
+		Address:        host.IP,
+		Protocol:       "tcp",
+		Port:           445,
+		State:          "open",
+		LastScanSource: "manual",
+	}, "2026-09-18 10:00:00"); err != nil {
+		t.Fatalf("seed service observation: %v", err)
+	}
+
+	originalPortProbe := portProbe
+	portProbe = func(_ context.Context, addr, port string) portscan.Result {
+		return portscan.Result{State: portscan.ProbeIndeterminate, Err: errors.New("network unreachable")}
+	}
+	t.Cleanup(func() {
+		portProbe = originalPortProbe
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/api/host/"+strconv.Itoa(host.ID)+"/port/445/scan", nil)
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
@@ -68,52 +250,15 @@ func TestHostPortScanRecordsOpenPortEvent(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &result); err != nil {
 		t.Fatalf("json.Unmarshal: %v", err)
 	}
-	if !result.Open || result.Port != 443 {
-		t.Fatalf("result = %+v, want open port 443", result)
+	if result.Port != 445 || result.Open || result.State != string(portscan.ProbeIndeterminate) {
+		t.Fatalf("result = %+v, want indeterminate port 445", result)
 	}
 
-	events, ok := gdb.SelectEventsByHostID(host.ID, 10)
-	if !ok {
-		t.Fatal("SelectEventsByHostID failed")
+	service, ok, err := gdb.SelectServiceByIdentity(host.Mac, host.IP, "tcp", 445)
+	if err != nil || !ok {
+		t.Fatalf("SelectServiceByIdentity ok=%v err=%v", ok, err)
 	}
-	if len(events) != 1 {
-		t.Fatalf("events len = %d, want 1: %+v", len(events), events)
-	}
-	if events[0].EventType != string(models.EventPortOpen) || events[0].NewValue != "443" {
-		t.Fatalf("event = %+v, want port-open NewValue=443", events[0])
-	}
-}
-
-func TestHostPortScanDoesNotRecordClosedPort(t *testing.T) {
-	router := setupTestRouter(t)
-	host := seedHost(t, models.Host{
-		Name:  "desktop",
-		IP:    "192.168.1.20",
-		Mac:   "AA:BB:CC:DD:EE:91",
-		Iface: "eth0",
-		Known: 1,
-		Now:   1,
-	})
-
-	originalPortIsOpen := portIsOpen
-	portIsOpen = func(addr, port string) bool { return false }
-	t.Cleanup(func() {
-		portIsOpen = originalPortIsOpen
-	})
-
-	req := httptest.NewRequest(http.MethodPost, "/api/host/"+strconv.Itoa(host.ID)+"/port/22/scan", nil)
-	rec := httptest.NewRecorder()
-	router.ServeHTTP(rec, req)
-
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
-	}
-
-	events, ok := gdb.SelectEventsByHostID(host.ID, 10)
-	if !ok {
-		t.Fatal("SelectEventsByHostID failed")
-	}
-	if len(events) != 0 {
-		t.Fatalf("closed port unexpectedly recorded events: %+v", events)
+	if service.State != "open" || service.LastChecked != "2026-09-18 10:00:00" || service.LastDetected != "2026-09-18 10:00:00" {
+		t.Fatalf("indeterminate scan changed persisted state: %+v", service)
 	}
 }

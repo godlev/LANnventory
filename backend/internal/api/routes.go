@@ -21,6 +21,9 @@ func Routes(router *gin.Engine) {
 		r0.GET("/inventory/options", getInventoryOptions)
 		r0.GET("/edit/:id/:name/*known", editHost) // api-hosts.go
 		r0.GET("/host/:id/activity", getHostActivity)
+		r0.GET("/host/:id/services", getHostServices)
+		r0.GET("/host/:id/service-scan-settings", getHostServiceScanSettings)
+		r0.PUT("/host/:id/service-scan-settings", setHostServiceScanSettings)
 		r0.GET("/host/:id/identity", getHostIdentity)
 		r0.GET("/host/:id/identity/candidates", getHostIdentityCandidates)
 		r0.GET("/host/:id/identity/decisions", getHostIdentityDecisions)

@@ -34,13 +34,15 @@ const dirPath = "/data/WatchYourLAN"
 const nodePath = ""
 
 type appRuntime struct {
-	startConfig func(dirPath, nodePath string)
-	startDB     func() error
-	closeDB     func() error
-	scanRestart func()
-	scanStop    func()
-	historyTrim func(context.Context)
-	webGUI      func(context.Context) error
+	startConfig        func(dirPath, nodePath string)
+	startDB            func() error
+	closeDB            func() error
+	scanRestart        func()
+	scanStop           func()
+	serviceScanRestart func()
+	serviceScanStop    func()
+	historyTrim        func(context.Context)
+	webGUI             func(context.Context) error
 }
 
 func main() {
@@ -55,13 +57,15 @@ func main() {
 
 func defaultAppRuntime() appRuntime {
 	return appRuntime{
-		startConfig: conf.Start,
-		startDB:     gdb.StartErr,
-		closeDB:     gdb.Close,
-		scanRestart: routines.ScanRestart,
-		scanStop:    routines.ScanStop,
-		historyTrim: routines.HistoryTrimContext,
-		webGUI:      web.GuiContext,
+		startConfig:        conf.Start,
+		startDB:            gdb.StartErr,
+		closeDB:            gdb.Close,
+		scanRestart:        routines.ScanRestart,
+		scanStop:           routines.ScanStop,
+		serviceScanRestart: routines.ServiceScanRestart,
+		serviceScanStop:    routines.ServiceScanStop,
+		historyTrim:        routines.HistoryTrimContext,
+		webGUI:             web.GuiContext,
 	}
 }
 
@@ -97,6 +101,13 @@ func run(parentCtx context.Context, args []string, runtime appRuntime) error {
 
 	runtime.scanRestart()
 	defer runtime.scanStop()
+
+	if runtime.serviceScanRestart != nil {
+		runtime.serviceScanRestart()
+		if runtime.serviceScanStop != nil {
+			defer runtime.serviceScanStop()
+		}
+	}
 
 	runtime.historyTrim(ctx)
 

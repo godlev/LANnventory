@@ -1,5 +1,5 @@
 import { isDeviceTypeValue, type DeviceTypeValue } from "./deviceTypes";
-import type { ActivityDeviceOption, ActivityStats, Conf, Host, HostEvent } from "./exports";
+import type { ActivityDeviceOption, ActivityStats, Conf, Host, HostEvent, Service } from "./exports";
 
 export const apiPath = '';
 export type ActivityCategory = "all" | "connectivity" | "changes";
@@ -15,6 +15,8 @@ export type ActivityEventType =
   | "notes-changed"
   | "tags-changed"
   | "pinned-changed"
+  | "service-opened"
+  | "service-closed"
   | "port-open";
 
 type ActivityQuery = {
@@ -304,6 +306,28 @@ export const apiGetHost = async (id:string) => {
   return res;
 };
 
+export const apiGetHostServices = async (id: number | string): Promise<Service[]> => {
+  const url = apiPath+'/api/host/'+encodeURIComponent(String(id))+'/services';
+  return await apiJSON<Service[]>(url);
+};
+
+export const apiGetServiceScanSettings = async (id: number | string): Promise<ServiceScanSettings> => {
+  const url = apiPath+'/api/host/'+encodeURIComponent(String(id))+'/service-scan-settings';
+  return await apiJSON<ServiceScanSettings>(url);
+};
+
+export const apiSetServiceScanSettings = async (
+  id: number | string,
+  payload: ServiceScanSettingsPayload,
+): Promise<ServiceScanSettings> => {
+  const url = apiPath+'/api/host/'+encodeURIComponent(String(id))+'/service-scan-settings';
+  return await apiJSON<ServiceScanSettings>(url, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+};
+
 export const apiGetHostIdentity = async (id: number | string): Promise<HostIdentity> => {
   const url = apiPath+'/api/host/'+encodeURIComponent(String(id))+'/identity';
   return await apiJSON<HostIdentity>(url);
@@ -333,7 +357,20 @@ export const apiPortScan = async (ip:string, port:number) => {
 export type HostPortScanResult = {
   port: number;
   open: boolean;
+  state: "open" | "closed" | "indeterminate";
 };
+
+export type ServiceScanSettings = {
+  enabled: boolean;
+  intervalMinutes: number;
+  ports: number[];
+  nextScanAt: string;
+  lastAttemptAt: string;
+  lastSuccessfulAt: string;
+  lastError: string;
+};
+
+export type ServiceScanSettingsPayload = Pick<ServiceScanSettings, "enabled" | "intervalMinutes" | "ports">;
 
 export const apiScanHostPort = async (id:number, port:number): Promise<HostPortScanResult> => {
   const url = apiPath+'/api/host/'+id+'/port/'+port+'/scan';

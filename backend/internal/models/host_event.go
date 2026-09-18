@@ -20,6 +20,8 @@ const (
 	EventTagsChanged       HostEventType = "tags-changed"
 	EventPinnedChanged     HostEventType = "pinned-changed"
 	EventPortOpen          HostEventType = "port-open"
+	EventServiceOpened     HostEventType = "service-opened"
+	EventServiceClosed     HostEventType = "service-closed"
 )
 
 // HostEventTypeValues lists every activity event type accepted for persistence.
@@ -36,6 +38,8 @@ var HostEventTypeValues = []HostEventType{
 	EventTagsChanged,
 	EventPinnedChanged,
 	EventPortOpen,
+	EventServiceOpened,
+	EventServiceClosed,
 }
 
 var ConnectivityEventTypes = []HostEventType{
@@ -63,6 +67,11 @@ var DeviceChangeEventTypes = []HostEventType{
 	EventPinnedChanged,
 }
 
+var ServiceEventTypes = []HostEventType{
+	EventServiceOpened,
+	EventServiceClosed,
+}
+
 var HostBoundPersistentEventTypes = []HostEventType{
 	EventDiscovered,
 	EventKnown,
@@ -74,6 +83,8 @@ var HostBoundPersistentEventTypes = []HostEventType{
 	EventTagsChanged,
 	EventPinnedChanged,
 	EventPortOpen,
+	EventServiceOpened,
+	EventServiceClosed,
 }
 
 var validHostEventTypes = func() map[string]struct{} {
