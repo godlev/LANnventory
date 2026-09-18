@@ -125,22 +125,22 @@ jobs:
           release_path = Path("docs/releases") / f"{tag}.md"
           release_path.parent.mkdir(parents=True, exist_ok=True)
           release_path.write_text(f"""# LANnventory {tag}
-
-## Summary
-
-- Phase 34 turns manual TCP port checks into a persistent Services inventory with address-specific open/closed lifecycle tracking.
-- Adds opt-in scheduled TCP service scanning with bounded concurrency, IPv4/IPv6-aware targets, and persistent next/last scan status.
-- Failed, timed-out, unreachable, or cancelled probes never fabricate a service closure; stale in-flight scheduled scans are discarded when settings change.
-- Host Services UI now shows retained service state, lifecycle timestamps, scan source, scheduled-scan controls, and conservative port-based service hints.
-
-## UAT focus
-
-Validate the normal in-app updater path from v0.1.0-beta.5, then verify manual service scanning, persistent Services state, lifecycle Events, scheduled scanning, and restart persistence.
-
-## Release status
-
-Phase 34 UAT prerelease. Do not treat this build as the Phase 34 final merge or stable release.
-""")
+          
+          ## Summary
+          
+          - Phase 34 turns manual TCP port checks into a persistent Services inventory with address-specific open/closed lifecycle tracking.
+          - Adds opt-in scheduled TCP service scanning with bounded concurrency, IPv4/IPv6-aware targets, and persistent next/last scan status.
+          - Failed, timed-out, unreachable, or cancelled probes never fabricate a service closure; stale in-flight scheduled scans are discarded when settings change.
+          - Host Services UI now shows retained service state, lifecycle timestamps, scan source, scheduled-scan controls, and conservative port-based service hints.
+          
+          ## UAT focus
+          
+          Validate the normal in-app updater path from v0.1.0-beta.5, then verify manual service scanning, persistent Services state, lifecycle Events, scheduled scanning, and restart persistence.
+          
+          ## Release status
+          
+          Phase 34 UAT prerelease. Do not treat this build as the Phase 34 final merge or stable release.
+          """.replace("          ", ""))
           PY
 
           cat >> backend/internal/updater/updater_test.go <<'EOF'
