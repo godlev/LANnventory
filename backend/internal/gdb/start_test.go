@@ -257,6 +257,14 @@ func assertPackagingSchema(t *testing.T) {
 	if !db.Migrator().HasTable(hostLifecycleTable) {
 		t.Fatal("host_lifecycle table missing")
 	}
+	if !db.Migrator().HasTable(deviceProfilesTable) {
+		t.Fatal("device_profiles table missing")
+	}
+	for _, column := range []string{"MAC", "MANUFACTURER", "MODEL", "MANAGEMENT_ADDRESS", "UPDATED_AT"} {
+		if !db.Table(deviceProfilesTable).Migrator().HasColumn(&models.DeviceProfile{}, column) {
+			t.Fatalf("device_profiles missing %s column", column)
+		}
+	}
 	for _, column := range []string{"MAC", "FIRST_SEEN", "LAST_SEEN", "FIRST_SEEN_ESTIMATED"} {
 		if !db.Table(hostLifecycleTable).Migrator().HasColumn(&models.HostLifecycle{}, column) {
 			t.Fatalf("host_lifecycle table missing %s column", column)
@@ -339,6 +347,16 @@ func assertMigratedLegacyRows(t *testing.T) {
 	}
 	if !db.Migrator().HasTable(hostLifecycleTable) {
 		t.Fatal("host_lifecycle table missing after startup migration")
+	}
+	if !db.Migrator().HasTable(deviceProfilesTable) {
+		t.Fatal("device_profiles table missing after startup migration")
+	}
+	var profileCount int64
+	if err := db.Table(deviceProfilesTable).Count(&profileCount).Error; err != nil {
+		t.Fatalf("count migrated device profiles: %v", err)
+	}
+	if profileCount != 0 {
+		t.Fatalf("device_profiles rows = %d, want no invented profile rows", profileCount)
 	}
 
 	var hosts []models.Host
