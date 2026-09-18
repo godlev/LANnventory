@@ -28,6 +28,14 @@ export interface Host {
 	FirstSeenEstimated: boolean;
 };
 
+export interface DeviceProfile {
+	mac: string;
+	manufacturer: string;
+	model: string;
+	managementAddress: string;
+	updatedAt: string;
+};
+
 export interface Service {
 	id: number;
 	mac: string;
