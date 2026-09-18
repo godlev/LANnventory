@@ -710,7 +710,7 @@ const docTemplate = `{
         },
         "/export/backup": {
             "get": {
-                "description": "Export a versioned logical backup containing current hosts, host history, activity events, host metadata and host lifecycle. Configuration secrets are not included.",
+                "description": "Export a versioned logical backup containing current hosts, host history, activity events, host metadata, host lifecycle and managed device profiles. Configuration secrets are not included.",
                 "produces": [
                     "application/json"
                 ],

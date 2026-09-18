@@ -27,12 +27,12 @@ type Document struct {
 // Data contains persisted application data only. It intentionally excludes
 // configuration and secrets so exports are portable across database backends.
 type Data struct {
-	CurrentHosts  []Host          `json:"currentHosts"`
-	History       []Host          `json:"history"`
-	Events        []Event         `json:"events"`
-	HostMetadata   []HostMetadata   `json:"hostMetadata"`
-	HostLifecycle  []HostLifecycle  `json:"hostLifecycle"`
-	DeviceProfiles []DeviceProfile  `json:"deviceProfiles"`
+	CurrentHosts   []Host          `json:"currentHosts"`
+	History        []Host          `json:"history"`
+	Events         []Event         `json:"events"`
+	HostMetadata   []HostMetadata  `json:"hostMetadata"`
+	HostLifecycle  []HostLifecycle `json:"hostLifecycle"`
+	DeviceProfiles []DeviceProfile `json:"deviceProfiles"`
 }
 
 // Host mirrors the currently persisted host columns in the now/history tables.
@@ -140,9 +140,9 @@ func NewDocument(data Data, appVersion string, createdAt time.Time) Document {
 
 func DataFromModels(currentHosts, history []models.Host, events []models.HostEvent, hostMetadata []models.HostMetadata, hostLifecycle []models.HostLifecycle, deviceProfiles []models.DeviceProfile) Data {
 	data := Data{
-		CurrentHosts:  make([]Host, 0, len(currentHosts)),
-		History:       make([]Host, 0, len(history)),
-		Events:        make([]Event, 0, len(events)),
+		CurrentHosts:   make([]Host, 0, len(currentHosts)),
+		History:        make([]Host, 0, len(history)),
+		Events:         make([]Event, 0, len(events)),
 		HostMetadata:   make([]HostMetadata, 0, len(hostMetadata)),
 		HostLifecycle:  make([]HostLifecycle, 0, len(hostLifecycle)),
 		DeviceProfiles: make([]DeviceProfile, 0, len(deviceProfiles)),
