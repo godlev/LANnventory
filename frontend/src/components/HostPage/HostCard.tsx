@@ -563,14 +563,14 @@ function HostCard(_props: HostCardProps) {
             </div>
 
             <div class="host-property-grid host-property-grid-section">
-              <div class="host-field-label">IP</div>
+              <div class="host-field-label">Current IP</div>
               <div class="host-field-value">
                 <Show when={isOnline()} fallback={<span class="device-ip-offline">{_props.host.IP}</span>}>
                   <a href={"http://" + _props.host.IP} target="_blank" rel="noreferrer">{_props.host.IP}</a>
                 </Show>
               </div>
 
-              <div class="host-field-label">MAC</div>
+              <div class="host-field-label">Current MAC</div>
               <div class="host-field-value">{_props.host.Mac}</div>
 
               <div class="host-field-label">MAC type</div>
@@ -627,13 +627,13 @@ function HostCard(_props: HostCardProps) {
               <div class="host-field-label">Interface</div>
               <div class="host-field-value">{_props.host.Iface || <span class="device-cell-muted">Unknown</span>}</div>
 
-              <div class="host-field-label">Hardware</div>
+              <div class="host-field-label">Vendor</div>
               <div class="host-field-value">{_props.host.Hw || <span class="device-cell-muted">Unknown</span>}</div>
 
               <div class="host-field-label">DNS name</div>
               <div class="host-field-value">{_props.host.DNS || <span class="device-cell-muted">Unknown</span>}</div>
 
-              <div class="host-field-label">First seen</div>
+              <div class="host-field-label">This MAC first seen</div>
               <div class="host-field-value" title={firstSeenRaw()}>
                 <Show when={firstSeenRaw()} fallback={<span class="device-cell-muted">Not seen yet</span>}>
                   <span class="host-lifecycle-value">
@@ -658,7 +658,7 @@ function HostCard(_props: HostCardProps) {
                 </Show>
               </div>
 
-              <div class="host-field-label">Last seen</div>
+              <div class="host-field-label">This MAC last seen</div>
               <div class="host-field-value" title={lastSeenRaw()}>
                 <Show when={lastSeenRaw()} fallback={<span class="device-cell-muted">Not seen yet</span>}>
                   {formattedLastSeen()}

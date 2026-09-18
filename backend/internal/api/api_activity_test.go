@@ -955,3 +955,40 @@ func withTestLocalTime(t *testing.T, location *time.Location) {
 		time.Local = previous
 	})
 }
+
+func TestHostActivityEndpointPreservesHistoricalNetworkSnapshots(t *testing.T) {
+	router := setupTestRouter(t)
+	host := seedHost(t, models.Host{
+		Name:  "Snapshot host",
+		IP:    "10.4.1.115",
+		Mac:   "FC:67:1F:26:20:A5",
+		Iface: "eth0",
+	})
+
+	historical := models.NewHostEvent(host, models.EventOffline, "", "")
+	historical.Date = "2026-09-05 18:32:00"
+	historical.IP = "10.4.1.44"
+	historical.Mac = "28:C2:1F:A6:1B:8F"
+	if err := gdb.AddEvent(historical); err != nil {
+		t.Fatalf("AddEvent: %v", err)
+	}
+
+	rec := getPath(router, "/api/host/"+itoa(host.ID)+"/activity")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	events := decodeActivityEvents(t, rec)
+	if len(events) != 1 {
+		t.Fatalf("events len = %d, want 1: %+v", len(events), events)
+	}
+	if events[0].IP != historical.IP {
+		t.Fatalf("event IP = %q, want historical snapshot %q", events[0].IP, historical.IP)
+	}
+	if events[0].Mac != historical.Mac {
+		t.Fatalf("event MAC = %q, want historical snapshot %q", events[0].Mac, historical.Mac)
+	}
+	if events[0].IP == host.IP || events[0].Mac == host.Mac {
+		t.Fatalf("historical event was overwritten with current Host network identity: %+v", events[0])
+	}
+}
