@@ -335,3 +335,44 @@ func TestCheckCachedDoesNotContactReleaseServer(t *testing.T) {
 		t.Fatalf("cached status = %+v", status)
 	}
 }
+
+func TestPhase34FinalBetaReleaseSelection(t *testing.T) {
+	releases := []release{
+		{
+			TagName:     "v0.1.0-beta.6",
+			Prerelease:  true,
+			Draft:       false,
+			PublishedAt: "2026-09-18T00:00:00Z",
+			HTMLURL:     "https://github.com/godlev/LANnventory/releases/tag/v0.1.0-beta.6",
+		},
+		{TagName: "v0.1.0-beta.5.uat.1", Prerelease: true, Draft: false},
+		{TagName: "v0.1.0-beta.5", Prerelease: true, Draft: false},
+	}
+
+	for _, installed := range []string{"v0.1.0-beta.5", "v0.1.0-beta.5.uat.1"} {
+		status, selected, ok := buildStatus(installed, BetaChannel, releases, time.Time{}, false)
+		if !ok {
+			t.Fatalf("Beta channel did not select a release for installed %s", installed)
+		}
+		if selected.TagName != "v0.1.0-beta.6" {
+			t.Fatalf("installed %s selected %q, want v0.1.0-beta.6", installed, selected.TagName)
+		}
+		if !status.Available || status.LatestVersion != "0.1.0-beta.6" {
+			t.Fatalf("installed %s status = %+v, want available beta.6", installed, status)
+		}
+	}
+
+	stableStatus, selected, ok := buildStatus(
+		"v0.1.0-beta.5.uat.1",
+		StableChannel,
+		releases,
+		time.Time{},
+		false,
+	)
+	if ok || selected.TagName != "" {
+		t.Fatalf("Stable channel selected prerelease: selected=%+v ok=%v", selected, ok)
+	}
+	if stableStatus.Available || stableStatus.LatestVersion != "" {
+		t.Fatalf("Stable status exposed beta.6 prerelease: %+v", stableStatus)
+	}
+}
