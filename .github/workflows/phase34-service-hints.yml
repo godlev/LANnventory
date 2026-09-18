@@ -142,14 +142,14 @@ jobs:
 
           replace_once(
               'frontend/src/components/HostPage/ServicesCard.tsx',
-              '''                                    <Show when={service.serviceHint}>\n                                      <div class="small device-cell-muted">{service.serviceHint}</div>\n                                    </Show>''',
-              '''                                    <Show when={service.serviceHint}>\n                                      <div class="small device-cell-muted">Hint: {service.serviceHint}</div>\n                                    </Show>''',
+              '''<div class="small device-cell-muted">{service.serviceHint}</div>''',
+              '''<div class="small device-cell-muted">Hint: {service.serviceHint}</div>''',
           )
 
           replace_once(
               'frontend/src/components/HostPage/ServicesCard.tsx',
-              '''                    <div class="host-panel-subtitle">\n                      Retained TCP service state is tracked per exact device address.\n                    </div>''',
-              '''                    <div class="host-panel-subtitle">\n                      Retained TCP service state is tracked per exact device address. Service hints are port-based labels, not protocol fingerprinting.\n                    </div>''',
+              '''Retained TCP service state is tracked per exact device address.''',
+              '''Retained TCP service state is tracked per exact device address. Service hints are port-based labels, not protocol fingerprinting.''',
           )
           PY
 
