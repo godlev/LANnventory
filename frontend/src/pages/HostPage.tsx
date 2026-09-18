@@ -5,6 +5,7 @@ import { apiGetHost } from "../functions/api";
 import { deviceDisplayName } from "../functions/deviceIdentity";
 
 import HostCard from "../components/HostPage/HostCard";
+import DeviceProfileCard from "../components/HostPage/DeviceProfileCard";
 import IdentityCard from "../components/HostPage/IdentityCard";
 import Ping from "../components/HostPage/Ping";
 import ServicesCard from "../components/HostPage/ServicesCard";
@@ -135,6 +136,11 @@ function HostPage() {
             host={currentHost()}
             onScanComplete={() => setServiceRefreshKey((value) => value + 1)}
           ></Ping>
+        </div>
+      </div>
+      <div class="row g-3 mx-0 mt-1 host-page-row">
+        <div class="col-md">
+          <DeviceProfileCard host={currentHost()}></DeviceProfileCard>
         </div>
       </div>
       <div class="row g-3 mx-0 mt-1 host-page-row">
