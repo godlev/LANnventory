@@ -392,3 +392,59 @@ func TestPhase34UATReleaseSelectionFromBeta5(t *testing.T) {
 		t.Fatalf("future beta.6 should supersede UAT, got %+v ok=%v", future, ok)
 	}
 }
+
+func TestPhase34HostUXUATReleaseSelectionFromUAT1(t *testing.T) {
+	releases := []release{
+		{
+			TagName:     "v0.1.0-beta.5.uat.2",
+			Prerelease:  true,
+			Draft:       false,
+			PublishedAt: "2026-09-18T00:00:00Z",
+			HTMLURL:     "https://github.com/godlev/LANnventory/releases/tag/v0.1.0-beta.5.uat.2",
+		},
+		{
+			TagName:    "v0.1.0-beta.5.uat.1",
+			Prerelease: true,
+			Draft:      false,
+		},
+	}
+
+	betaStatus, selected, ok := buildStatus(
+		"v0.1.0-beta.5.uat.1",
+		BetaChannel,
+		releases,
+		time.Time{},
+		false,
+	)
+	if !ok {
+		t.Fatal("Beta channel did not select the Host UX UAT release")
+	}
+	if selected.TagName != "v0.1.0-beta.5.uat.2" {
+		t.Fatalf("Beta selected %q, want Host UX UAT", selected.TagName)
+	}
+	if !betaStatus.Available || betaStatus.LatestVersion != "0.1.0-beta.5.uat.2" {
+		t.Fatalf("Beta status = %+v, want available Host UX UAT", betaStatus)
+	}
+
+	stableStatus, selected, ok := buildStatus(
+		"v0.1.0-beta.5.uat.1",
+		StableChannel,
+		releases,
+		time.Time{},
+		false,
+	)
+	if ok || selected.TagName != "" {
+		t.Fatalf("Stable channel selected prerelease: selected=%+v ok=%v", selected, ok)
+	}
+	if stableStatus.Available || stableStatus.LatestVersion != "" {
+		t.Fatalf("Stable status exposed Host UX UAT prerelease: %+v", stableStatus)
+	}
+
+	future, ok := selectLatestRelease([]release{
+		{TagName: "v0.1.0-beta.6", Prerelease: true},
+		{TagName: "v0.1.0-beta.5.uat.2", Prerelease: true},
+	}, BetaChannel)
+	if !ok || future.TagName != "v0.1.0-beta.6" {
+		t.Fatalf("future beta.6 should supersede Host UX UAT, got %+v ok=%v", future, ok)
+	}
+}
