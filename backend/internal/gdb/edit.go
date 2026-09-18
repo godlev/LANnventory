@@ -97,6 +97,9 @@ func DeleteCurrentHostWithMetadata(host models.Host) error {
 		if err := deleteDeviceProfileByMAC(txDB, host.Mac); err != nil {
 			return err
 		}
+		if err := deleteTypedDeviceProfilesByMAC(txDB, host.Mac); err != nil {
+			return err
+		}
 		return deleteHostLifecycleByMAC(txDB, host.Mac)
 	})
 }
