@@ -8,6 +8,7 @@ import {
   type HostIdentityAddress,
 } from "../../functions/api";
 import { formatLastSeen } from "../../functions/dateFormat";
+import ActionTooltip from "../ActionTooltip";
 import type { Host } from "../../functions/exports";
 import CorrelationPanel from "./CorrelationPanel";
 
@@ -73,9 +74,9 @@ function IdentityCard(props: IdentityCardProps) {
     <div class="card wyl-panel host-panel">
       <div class="card-header host-panel-header">
         <div>
-          <div class="host-panel-title">Identity observations</div>
+          <div class="host-panel-title">Network identity history</div>
           <div class="host-panel-subtitle">
-            Discovered network identity is read only and never overwrites managed inventory.
+            Network observations only; managed Inventory stays unchanged. Shared IP history alone does not mean the same physical device.
           </div>
         </div>
         <span class="host-detail-section-badge">Discovered · Read only</span>
@@ -86,7 +87,7 @@ function IdentityCard(props: IdentityCardProps) {
           <Show when={!loadError()} fallback={<div class="host-inline-error" role="alert">{loadError()}</div>}>
             <div class="row g-3">
               <div class="col-12 col-xl-6">
-                <h6 class="mb-2">Addresses</h6>
+                <h6 class="mb-2">Address history</h6>
                 <Show
                   when={identity().addresses.length > 0}
                   fallback={<div class="device-cell-muted">No retained address observations yet.</div>}
@@ -98,7 +99,8 @@ function IdentityCard(props: IdentityCardProps) {
               </div>
 
               <div class="col-12 col-xl-6">
-                <h6 class="mb-2">Data sources</h6>
+                <h6 class="mb-1">How LANnventory identified this</h6>
+                <div class="small device-cell-muted mb-2">Scanner, Reverse DNS, mDNS and SSDP are discovery sources, not device properties.</div>
                 <Show
                   when={identity().dataSources.length > 0}
                   fallback={<div class="device-cell-muted mb-3">No discovery sources have reported identity data yet.</div>}
@@ -144,7 +146,10 @@ function AddressObservation(props: { address: HostIdentityAddress; currentMac: s
   return (
     <div class="border rounded p-2 mb-2">
       <div class="d-flex flex-wrap justify-content-between gap-2 align-items-center">
-        <span class="font-monospace">{props.address.address}</span>
+        <span>
+          <span class="device-cell-muted">IP </span>
+          <span class="font-monospace">{props.address.address}</span>
+        </span>
         <span class={props.address.active ? "badge text-bg-success" : "badge text-bg-secondary"}>
           {props.address.active ? "Current" : "Previous"}
         </span>
@@ -154,26 +159,49 @@ function AddressObservation(props: { address: HostIdentityAddress; currentMac: s
         <Show when={props.address.iface}> · Scanner interface {props.address.iface}</Show>
       </div>
       <div class="small mt-1">
-        First seen {formatIdentityTime(props.address.firstSeen)} · Last seen {formatIdentityTime(props.address.lastSeen)}
+        Address first seen {formatIdentityTime(props.address.firstSeen)} · Address last seen {formatIdentityTime(props.address.lastSeen)}
       </div>
 
       <Show when={otherMACs().length > 0}>
         <div class="mt-2 small">
-          <strong>Also observed with {otherMACs().length} other MAC{otherMACs().length === 1 ? "" : "s"}</strong>
-          <For each={otherMACs()}>{(observation) => <MACObservation observation={observation}></MACObservation>}</For>
+          <div class="d-flex flex-wrap align-items-center gap-2">
+            <strong>
+              This IP was also used by {otherMACs().length} other MAC{otherMACs().length === 1 ? "" : "s"}
+            </strong>
+            <ActionTooltip
+              title="IP reuse history"
+              detail="An IP address can be reused by different devices. This alone does not mean the MAC addresses belong to the same physical device."
+            >
+              <span
+                class="host-lifecycle-approx"
+                title="IP reuse history"
+                aria-label="IP reuse history explanation"
+                role="img"
+                tabIndex={0}
+              >
+                <i class="bi bi-info-circle" aria-hidden="true"></i>
+              </span>
+            </ActionTooltip>
+          </div>
+          <For each={otherMACs()}>{(observation) =>
+            <MACObservation address={props.address.address} observation={observation}></MACObservation>
+          }</For>
         </div>
       </Show>
     </div>
   );
 }
 
-function MACObservation(props: { observation: AddressMACObservation }) {
+function MACObservation(props: { address: string; observation: AddressMACObservation }) {
   return (
-    <div class="mt-1">
+    <div class="mt-1 d-flex flex-wrap gap-1 align-items-baseline">
+      <span class="device-cell-muted">IP</span>
+      <span class="font-monospace">{props.address}</span>
+      <span class="device-cell-muted">· MAC</span>
       <span class="font-monospace">{props.observation.mac}</span>
       <span class="device-cell-muted">
-        {" · "}{formatIdentityTime(props.observation.firstSeen)} → {formatIdentityTime(props.observation.lastSeen)}
-        {props.observation.active ? " · currently active" : ""}
+        · Observed {formatIdentityTime(props.observation.firstSeen)} → {formatIdentityTime(props.observation.lastSeen)}
+        {props.observation.active ? " · currently active on this IP" : ""}
       </span>
     </div>
   );
