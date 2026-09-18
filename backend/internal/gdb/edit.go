@@ -72,7 +72,7 @@ func Delete(table string, id int) {
 }
 
 // DeleteCurrentHostWithMetadata removes a current host, its persistent device-change
-// events, and its inventory metadata atomically.
+// events, inventory metadata, lifecycle state, and managed device profile atomically.
 func DeleteCurrentHostWithMetadata(host models.Host) error {
 	if host.ID < 1 {
 		return gorm.ErrRecordNotFound
@@ -92,6 +92,9 @@ func DeleteCurrentHostWithMetadata(host models.Host) error {
 			return err
 		}
 		if err := deleteHostMetadataByMAC(txDB, host.Mac); err != nil {
+			return err
+		}
+		if err := deleteDeviceProfileByMAC(txDB, host.Mac); err != nil {
 			return err
 		}
 		return deleteHostLifecycleByMAC(txDB, host.Mac)
