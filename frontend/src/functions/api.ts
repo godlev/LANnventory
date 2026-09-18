@@ -1,5 +1,5 @@
 import { isDeviceTypeValue, type DeviceTypeValue } from "./deviceTypes";
-import type { ActivityDeviceOption, ActivityStats, Conf, Host, HostEvent } from "./exports";
+import type { ActivityDeviceOption, ActivityStats, Conf, Host, HostEvent, Service } from "./exports";
 
 export const apiPath = '';
 export type ActivityCategory = "all" | "connectivity" | "changes";
@@ -304,6 +304,11 @@ export const apiGetHost = async (id:string) => {
   const res = await apiJSON<Host>(url);
 
   return res;
+};
+
+export const apiGetHostServices = async (id: number | string): Promise<Service[]> => {
+  const url = apiPath+'/api/host/'+encodeURIComponent(String(id))+'/services';
+  return await apiJSON<Service[]>(url);
 };
 
 export const apiGetHostIdentity = async (id: number | string): Promise<HostIdentity> => {

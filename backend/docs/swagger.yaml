@@ -500,6 +500,35 @@ definitions:
           type: string
         type: array
     type: object
+  models.Service:
+    properties:
+      address:
+        type: string
+      addressFamily:
+        type: string
+      firstDetected:
+        type: string
+      id:
+        type: integer
+      lastChecked:
+        type: string
+      lastDetected:
+        type: string
+      lastScanSource:
+        type: string
+      mac:
+        type: string
+      port:
+        type: integer
+      protocol:
+        type: string
+      serviceHint:
+        type: string
+      state:
+        type: string
+      stateChangedAt:
+        type: string
+    type: object
   models.Stat:
     properties:
       known:
@@ -1532,6 +1561,40 @@ paths:
       summary: Scan one port for a host
       tags:
       - network
+  /host/{id}/services:
+    get:
+      description: Return durable service summary records for the host MAC across
+        retained IPv4 and IPv6 addresses.
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Service'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get retained services for a host
+      tags:
+      - hosts
   /host/{id}/type:
     patch:
       consumes:

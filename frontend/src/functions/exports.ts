@@ -28,6 +28,22 @@ export interface Host {
 	FirstSeenEstimated: boolean;
 };
 
+export interface Service {
+	id: number;
+	mac: string;
+	address: string;
+	addressFamily: string;
+	protocol: string;
+	port: number;
+	state: "open" | "closed";
+	firstDetected: string;
+	lastDetected: string;
+	lastChecked: string;
+	stateChangedAt: string;
+	serviceHint: string;
+	lastScanSource: string;
+};
+
 export interface HostEvent {
 	ID:         number;
 	HostID:     number;

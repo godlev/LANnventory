@@ -4,6 +4,7 @@ import type { Host } from "../../functions/exports";
 
 type PingProps = {
   host: Host;
+  onScanComplete?: () => void;
 };
 
 function Ping(props: PingProps) {
@@ -56,6 +57,7 @@ function Ping(props: PingProps) {
       setScanError(error instanceof Error ? error.message : "Port scan failed");
     } finally {
       setIsRunning(false);
+      props.onScanComplete?.();
     }
   };
 

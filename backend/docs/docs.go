@@ -1542,6 +1542,56 @@ const docTemplate = `{
                 }
             }
         },
+        "/host/{id}/services": {
+            "get": {
+                "description": "Return durable service summary records for the host MAC across retained IPv4 and IPv6 addresses.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Get retained services for a host",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Service"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/host/{id}/type": {
             "patch": {
                 "description": "Update only a host's manually assigned device type",
@@ -2777,6 +2827,50 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "models.Service": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "addressFamily": {
+                    "type": "string"
+                },
+                "firstDetected": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "lastChecked": {
+                    "type": "string"
+                },
+                "lastDetected": {
+                    "type": "string"
+                },
+                "lastScanSource": {
+                    "type": "string"
+                },
+                "mac": {
+                    "type": "string"
+                },
+                "port": {
+                    "type": "integer"
+                },
+                "protocol": {
+                    "type": "string"
+                },
+                "serviceHint": {
+                    "type": "string"
+                },
+                "state": {
+                    "type": "string"
+                },
+                "stateChangedAt": {
+                    "type": "string"
                 }
             }
         },
