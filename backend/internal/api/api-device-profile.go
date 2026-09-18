@@ -1,6 +1,9 @@
 package api
 
 import (
+	"encoding/json"
+	"errors"
+	"io"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -89,7 +92,13 @@ func setHostDeviceProfile(c *gin.Context) {
 	}
 
 	var payload DeviceProfilePatchRequest
-	if err := c.ShouldBindJSON(&payload); err != nil {
+	decoder := json.NewDecoder(c.Request.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&payload); err != nil {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
 		return
 	}
