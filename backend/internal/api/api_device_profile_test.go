@@ -109,6 +109,14 @@ func TestHostDeleteRemovesManagedDeviceProfile(t *testing.T) {
 	if _, found, err := gdb.UpdateDeviceProfile(host.Mac, models.DeviceProfileUpdate{Manufacturer: &manufacturer}); err != nil || !found {
 		t.Fatalf("UpdateDeviceProfile found=%v err=%v", found, err)
 	}
+	role := "Storage"
+	if _, found, err := gdb.UpdateSystemDeviceProfile(host.Mac, models.SystemDeviceProfileUpdate{Role: &role}); err != nil || !found {
+		t.Fatalf("UpdateSystemDeviceProfile found=%v err=%v", found, err)
+	}
+	platform := "other"
+	if _, found, err := gdb.UpdateHypervisorProfile(host.Mac, models.HypervisorProfileUpdate{Platform: &platform}); err != nil || !found {
+		t.Fatalf("UpdateHypervisorProfile found=%v err=%v", found, err)
+	}
 
 	rec := getPath(router, "/api/host/del/"+itoa(host.ID))
 	if rec.Code != http.StatusOK {
@@ -116,6 +124,12 @@ func TestHostDeleteRemovesManagedDeviceProfile(t *testing.T) {
 	}
 	if _, found, err := gdb.SelectDeviceProfileByMAC(host.Mac); err != nil || found {
 		t.Fatalf("profile after host delete found=%v err=%v, want absent", found, err)
+	}
+	if _, found, err := gdb.SelectSystemDeviceProfileByMAC(host.Mac); err != nil || found {
+		t.Fatalf("system profile after host delete found=%v err=%v, want absent", found, err)
+	}
+	if _, found, err := gdb.SelectHypervisorProfileByMAC(host.Mac); err != nil || found {
+		t.Fatalf("hypervisor profile after host delete found=%v err=%v, want absent", found, err)
 	}
 }
 
