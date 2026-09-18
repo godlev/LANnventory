@@ -311,6 +311,23 @@ export const apiGetHostServices = async (id: number | string): Promise<Service[]
   return await apiJSON<Service[]>(url);
 };
 
+export const apiGetServiceScanSettings = async (id: number | string): Promise<ServiceScanSettings> => {
+  const url = apiPath+'/api/host/'+encodeURIComponent(String(id))+'/service-scan-settings';
+  return await apiJSON<ServiceScanSettings>(url);
+};
+
+export const apiSetServiceScanSettings = async (
+  id: number | string,
+  payload: ServiceScanSettingsPayload,
+): Promise<ServiceScanSettings> => {
+  const url = apiPath+'/api/host/'+encodeURIComponent(String(id))+'/service-scan-settings';
+  return await apiJSON<ServiceScanSettings>(url, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+};
+
 export const apiGetHostIdentity = async (id: number | string): Promise<HostIdentity> => {
   const url = apiPath+'/api/host/'+encodeURIComponent(String(id))+'/identity';
   return await apiJSON<HostIdentity>(url);
@@ -342,6 +359,18 @@ export type HostPortScanResult = {
   open: boolean;
   state: "open" | "closed" | "indeterminate";
 };
+
+export type ServiceScanSettings = {
+  enabled: boolean;
+  intervalMinutes: number;
+  ports: number[];
+  nextScanAt: string;
+  lastAttemptAt: string;
+  lastSuccessfulAt: string;
+  lastError: string;
+};
+
+export type ServiceScanSettingsPayload = Pick<ServiceScanSettings, "enabled" | "intervalMinutes" | "ports">;
 
 export const apiScanHostPort = async (id:number, port:number): Promise<HostPortScanResult> => {
   const url = apiPath+'/api/host/'+id+'/port/'+port+'/scan';
