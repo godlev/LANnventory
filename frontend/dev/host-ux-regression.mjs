@@ -9,6 +9,8 @@ const correlation = read("src/components/HostPage/CorrelationPanel.tsx");
 const hostActivity = read("src/components/HostPage/HostActivityCard.tsx");
 const activityFeed = read("src/components/ActivityFeed.tsx");
 const hostCard = read("src/components/HostPage/HostCard.tsx");
+const deviceProfile = read("src/components/HostPage/DeviceProfileCard.tsx");
+const deviceTypes = read("src/functions/deviceTypes.ts");
 
 function requireText(source, value, message) {
   if (!source.includes(value)) {
@@ -63,5 +65,11 @@ for (const label of [
   requireText(hostCard, ">" + label + "</div>", "Host Details label " + label + " must remain explicit.");
 }
 forbidText(hostCard, ">Hardware</div>", "ARP/OUI vendor text must not be labelled Hardware.");
+
+requireText(deviceProfile, "Managed inventory only.", "Device Profile must identify user-managed provenance.");
+requireText(deviceProfile, "Future imported Proxmox data is kept separate", "Managed/imported profile separation must remain explicit.");
+requireText(deviceProfile, "Capability profile; the Host remains Device Type Server.", "Hypervisor must remain a profile capability rather than a Device Type.");
+requireText(deviceProfile, '<option value="proxmox-ve">Proxmox VE</option>', "Manual Proxmox profile option must remain available.");
+forbidText(deviceTypes, '| "hypervisor"', "Hypervisor must not become an exclusive Device Type.");
 
 console.log("Host UX semantic regression checks passed.");
