@@ -4613,3 +4613,77 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
         text-align: left;
     }
 }
+
+/* Host Recent Events: event snapshots belong to the historical event, not current Host state. */
+.host-event-table {
+    table-layout: fixed;
+    width: 100%;
+}
+.host-event-table th,
+.host-event-table td {
+    padding: 0.5rem 0.75rem;
+    vertical-align: middle;
+}
+.host-event-table th:nth-child(1) { width: 34%; }
+.host-event-table th:nth-child(2) { width: 20%; }
+.host-event-table th:nth-child(3) { width: 28%; }
+.host-event-table th:nth-child(4) { width: 18%; }
+.host-event-description {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-width: 0;
+}
+.host-event-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 1.75rem;
+    height: 1.75rem;
+    border: 1px solid var(--wyl-card-border);
+    border-radius: 7px;
+    background-color: var(--transparent-light);
+}
+.host-event-network-value {
+    display: inline-block;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+}
+.host-event-mobile-label {
+    display: none;
+}
+
+@media (max-width: 575.98px) {
+    .host-event-table-wrap { overflow-x: visible; }
+    .host-event-table,
+    .host-event-table tbody {
+        display: block;
+        width: 100%;
+    }
+    .host-event-table thead { display: none; }
+    .host-event-table tr {
+        display: grid;
+        width: 100%;
+        padding: 0.45rem 0.7rem;
+        border-top: 1px solid var(--wyl-panel-border);
+    }
+    .host-event-table tbody tr:first-child { border-top: 0; }
+    .host-event-table td {
+        display: grid;
+        grid-template-columns: 4rem minmax(0, 1fr);
+        gap: 0.5rem;
+        align-items: start;
+        width: 100%;
+        padding: 0.28rem 0;
+        border: 0;
+    }
+    .host-event-mobile-label {
+        display: inline;
+        color: var(--wyl-muted);
+        font-size: 0.72rem;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+    .host-event-description { align-items: flex-start; }
+}

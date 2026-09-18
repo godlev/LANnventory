@@ -194,7 +194,7 @@ function CorrelationPanel(props: CorrelationPanelProps) {
               <div>
                 <h6 class="mb-1">Possible same device</h6>
                 <div class="small device-cell-muted">
-                  Suggestions are evidence-based. Nothing is merged automatically; your decision only records the relationship.
+                  LANnventory uses correlation evidence to suggest same-device relationships. Shared IP history alone is not a same-device conclusion.
                 </div>
               </div>
               <span class="host-detail-section-badge">Suggestion · User decision</span>
@@ -202,7 +202,7 @@ function CorrelationPanel(props: CorrelationPanelProps) {
 
             <Show
               when={rows().length > 0}
-              fallback={<div class="device-cell-muted">No same-device candidates or explicit decisions yet.</div>}
+              fallback={<div class="device-cell-muted">No evidence currently suggests that another MAC belongs to this same physical device.</div>}
             >
               <For each={rows()}>{(row) =>
                 <CorrelationRowView
