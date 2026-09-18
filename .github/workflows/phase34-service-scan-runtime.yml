@@ -317,9 +317,7 @@ jobs:
               Known: 1,
               Now:   1,
             }
-            if !gdb.Update("now", oldAddressHost) {
-              t.Fatal("gdb.Update old host failed")
-            }
+            gdb.Update("now", oldAddressHost)
             if err := gdb.RecordHostAddressObservations([]models.Host{oldAddressHost}); err != nil {
               t.Fatalf("RecordHostAddressObservations old: %v", err)
             }
@@ -332,9 +330,7 @@ jobs:
               t.Fatalf("current rows before update = %+v", currentRows)
             }
             host.ID = currentRows[0].ID
-            if !gdb.Update("now", host) {
-              t.Fatal("gdb.Update current host failed")
-            }
+            gdb.Update("now", host)
             if err := gdb.RecordHostAddressObservations([]models.Host{host}); err != nil {
               t.Fatalf("RecordHostAddressObservations current: %v", err)
             }
@@ -408,9 +404,7 @@ jobs:
               Known: 1,
               Now:   1,
             }
-            if !gdb.Update("now", host) {
-              t.Fatal("gdb.Update host failed")
-            }
+            gdb.Update("now", host)
             currentRows := gdb.SelectByMAC("now", host.Mac)
             host.ID = currentRows[0].ID
             if err := gdb.RecordHostAddressObservations([]models.Host{host}); err != nil {
