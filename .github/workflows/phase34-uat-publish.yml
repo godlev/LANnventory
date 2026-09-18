@@ -38,6 +38,8 @@ jobs:
             exit 1
           fi
           test "$(git rev-parse HEAD)" = "${TARGET_SHA}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -a "${UAT_TAG}" "${TARGET_SHA}" -m "Phase 34 UAT ${UAT_TAG}"
 
       - uses: actions/setup-node@v4
