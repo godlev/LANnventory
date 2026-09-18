@@ -1490,7 +1490,7 @@ const docTemplate = `{
         },
         "/host/{id}/port/{port}/scan": {
             "post": {
-                "description": "Scan a TCP port using the host's current IP. Definitive results update persistent service inventory and emit lifecycle activity only on state transitions.",
+                "description": "Scan a TCP port using the host's current IP. Definitive results update persistent service inventory and emit lifecycle activity only on state transitions. Indeterminate transport failures are returned without changing persisted service state.",
                 "produces": [
                     "application/json"
                 ],
@@ -2376,6 +2376,9 @@ const docTemplate = `{
                 },
                 "port": {
                     "type": "integer"
+                },
+                "state": {
+                    "type": "string"
                 }
             }
         },

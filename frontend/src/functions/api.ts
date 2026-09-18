@@ -335,6 +335,7 @@ export const apiPortScan = async (ip:string, port:number) => {
 export type HostPortScanResult = {
   port: number;
   open: boolean;
+  state: "open" | "closed" | "indeterminate";
 };
 
 export const apiScanHostPort = async (id:number, port:number): Promise<HostPortScanResult> => {

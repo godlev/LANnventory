@@ -232,6 +232,8 @@ definitions:
         type: boolean
       port:
         type: integer
+      state:
+        type: string
     type: object
   api.retentionRequest:
     properties:
@@ -1495,7 +1497,8 @@ paths:
     post:
       description: Scan a TCP port using the host's current IP. Definitive results
         update persistent service inventory and emit lifecycle activity only on state
-        transitions.
+        transitions. Indeterminate transport failures are returned without changing
+        persisted service state.
       parameters:
       - description: Host ID
         in: path

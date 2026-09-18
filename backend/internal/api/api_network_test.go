@@ -242,8 +242,16 @@ func TestHostPortScanDoesNotChangeStateOnIndeterminateFailure(t *testing.T) {
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusServiceUnavailable {
-		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusServiceUnavailable, rec.Body.String())
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var result hostPortScanResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &result); err != nil {
+		t.Fatalf("json.Unmarshal: %v", err)
+	}
+	if result.Port != 445 || result.Open || result.State != string(portscan.ProbeIndeterminate) {
+		t.Fatalf("result = %+v, want indeterminate port 445", result)
 	}
 
 	service, ok, err := gdb.SelectServiceByIdentity(host.Mac, host.IP, "tcp", 445)
