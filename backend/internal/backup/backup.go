@@ -27,11 +27,11 @@ type Document struct {
 // Data contains persisted application data only. It intentionally excludes
 // configuration and secrets so exports are portable across database backends.
 type Data struct {
-	CurrentHosts   []Host          `json:"currentHosts"`
-	History        []Host          `json:"history"`
-	Events         []Event         `json:"events"`
-	HostMetadata   []HostMetadata  `json:"hostMetadata"`
-	HostLifecycle  []HostLifecycle `json:"hostLifecycle"`
+	CurrentHosts          []Host                 `json:"currentHosts"`
+	History               []Host                 `json:"history"`
+	Events                []Event                `json:"events"`
+	HostMetadata          []HostMetadata         `json:"hostMetadata"`
+	HostLifecycle         []HostLifecycle        `json:"hostLifecycle"`
 	DeviceProfiles        []DeviceProfile        `json:"deviceProfiles"`
 	NetworkDeviceProfiles []NetworkDeviceProfile `json:"networkDeviceProfiles"`
 	SystemDeviceProfiles  []SystemDeviceProfile  `json:"systemDeviceProfiles"`
@@ -171,11 +171,11 @@ func NewDocument(data Data, appVersion string, createdAt time.Time) Document {
 
 func DataFromModels(currentHosts, history []models.Host, events []models.HostEvent, hostMetadata []models.HostMetadata, hostLifecycle []models.HostLifecycle, deviceProfiles []models.DeviceProfile, networkProfiles []models.NetworkDeviceProfile, systemProfiles []models.SystemDeviceProfile, hypervisorProfiles []models.HypervisorProfile) Data {
 	data := Data{
-		CurrentHosts:   make([]Host, 0, len(currentHosts)),
-		History:        make([]Host, 0, len(history)),
-		Events:         make([]Event, 0, len(events)),
-		HostMetadata:   make([]HostMetadata, 0, len(hostMetadata)),
-		HostLifecycle:  make([]HostLifecycle, 0, len(hostLifecycle)),
+		CurrentHosts:          make([]Host, 0, len(currentHosts)),
+		History:               make([]Host, 0, len(history)),
+		Events:                make([]Event, 0, len(events)),
+		HostMetadata:          make([]HostMetadata, 0, len(hostMetadata)),
+		HostLifecycle:         make([]HostLifecycle, 0, len(hostLifecycle)),
 		DeviceProfiles:        make([]DeviceProfile, 0, len(deviceProfiles)),
 		NetworkDeviceProfiles: make([]NetworkDeviceProfile, 0, len(networkProfiles)),
 		SystemDeviceProfiles:  make([]SystemDeviceProfile, 0, len(systemProfiles)),

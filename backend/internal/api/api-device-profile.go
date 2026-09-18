@@ -318,19 +318,25 @@ func validateDeviceProfilePatch(payload DeviceProfilePatchRequest) (models.Devic
 	changed := false
 	if payload.Manufacturer != nil {
 		value, err := profileText("manufacturer", *payload.Manufacturer, deviceProfileManufacturerMaxRunes, false)
-		if err != nil { return update, false, err }
+		if err != nil {
+			return update, false, err
+		}
 		update.Manufacturer = &value
 		changed = true
 	}
 	if payload.Model != nil {
 		value, err := profileText("model", *payload.Model, deviceProfileModelMaxRunes, false)
-		if err != nil { return update, false, err }
+		if err != nil {
+			return update, false, err
+		}
 		update.Model = &value
 		changed = true
 	}
 	if payload.ManagementAddress != nil {
 		value, err := profileText("managementAddress", *payload.ManagementAddress, deviceProfileManagementAddressMaxRunes, false)
-		if err != nil { return update, false, err }
+		if err != nil {
+			return update, false, err
+		}
 		update.ManagementAddress = &value
 		changed = true
 	}
@@ -357,7 +363,9 @@ func validateNetworkDeviceProfilePatch(payload NetworkDeviceProfilePatchRequest)
 	}
 	if payload.PortCapabilityNotes != nil {
 		value, err := profileText("portCapabilityNotes", *payload.PortCapabilityNotes, networkPortCapabilityNotesMaxRunes, true)
-		if err != nil { return update, false, err }
+		if err != nil {
+			return update, false, err
+		}
 		update.PortCapabilityNotes = &value
 		changed = true
 	}
@@ -369,19 +377,25 @@ func validateSystemDeviceProfilePatch(payload SystemDeviceProfilePatchRequest) (
 	changed := false
 	if payload.Role != nil {
 		value, err := profileText("role", *payload.Role, deviceProfileTextMaxRunes, false)
-		if err != nil { return update, false, err }
+		if err != nil {
+			return update, false, err
+		}
 		update.Role = &value
 		changed = true
 	}
 	if payload.OperatingSystem != nil {
 		value, err := profileText("operatingSystem", *payload.OperatingSystem, deviceProfileTextMaxRunes, false)
-		if err != nil { return update, false, err }
+		if err != nil {
+			return update, false, err
+		}
 		update.OperatingSystem = &value
 		changed = true
 	}
 	if payload.Version != nil {
 		value, err := profileText("version", *payload.Version, deviceProfileTextMaxRunes, false)
-		if err != nil { return update, false, err }
+		if err != nil {
+			return update, false, err
+		}
 		update.Version = &value
 		changed = true
 	}
@@ -401,19 +415,25 @@ func validateHypervisorProfilePatch(payload HypervisorProfilePatchRequest) (mode
 	}
 	if payload.Version != nil {
 		value, err := profileText("version", *payload.Version, deviceProfileTextMaxRunes, false)
-		if err != nil { return update, false, err }
+		if err != nil {
+			return update, false, err
+		}
 		update.Version = &value
 		changed = true
 	}
 	if payload.NodeName != nil {
 		value, err := profileText("nodeName", *payload.NodeName, deviceProfileTextMaxRunes, false)
-		if err != nil { return update, false, err }
+		if err != nil {
+			return update, false, err
+		}
 		update.NodeName = &value
 		changed = true
 	}
 	if payload.ClusterName != nil {
 		value, err := profileText("clusterName", *payload.ClusterName, deviceProfileTextMaxRunes, false)
-		if err != nil { return update, false, err }
+		if err != nil {
+			return update, false, err
+		}
 		update.ClusterName = &value
 		changed = true
 	}

@@ -1544,7 +1544,7 @@ const docTemplate = `{
         },
         "/host/{id}/profile": {
             "get": {
-                "description": "Return manually managed generic device-profile information. Imported/discovered integration data is stored separately and never overwrites this profile.",
+                "description": "Return manually managed generic and typed device-profile information. Imported/discovered integration data is stored separately and never overwrites these fields.",
                 "produces": [
                     "application/json"
                 ],
@@ -1589,7 +1589,7 @@ const docTemplate = `{
                 }
             },
             "patch": {
-                "description": "Partially update manually managed generic device-profile fields. Empty values clear fields; clearing all fields removes the managed profile row.",
+                "description": "Partially update manually managed generic device-profile fields. Empty values clear fields; clearing all fields removes the managed base profile row.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1615,6 +1615,228 @@ const docTemplate = `{
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/api.DeviceProfilePatchRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.DeviceProfileResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/host/{id}/profile/hypervisor": {
+            "delete": {
+                "description": "Remove only the manual Hypervisor capability/profile. The Host and its generic/system inventory remain unchanged.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Remove managed hypervisor profile",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.DeviceProfileResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Mark a Host as a managed hypervisor capability and store manually maintained platform details. This does not change Device Type and does not use credentials.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Create or update managed hypervisor profile",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Hypervisor profile payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.HypervisorProfilePatchRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.DeviceProfileResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/host/{id}/profile/network": {
+            "patch": {
+                "description": "Partially update network-device-specific managed fields. Physical port count 0 means not set.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Update managed network profile",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Network profile payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.NetworkDeviceProfilePatchRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.DeviceProfileResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/host/{id}/profile/system": {
+            "patch": {
+                "description": "Partially update lightweight Server/NAS system inventory without changing the Host Device Type.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Update managed system profile",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "System profile payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.SystemDeviceProfilePatchRequest"
                         }
                     }
                 ],
@@ -2376,8 +2598,17 @@ const docTemplate = `{
         "api.DeviceProfileResponse": {
             "type": "object",
             "properties": {
+                "hypervisor": {
+                    "$ref": "#/definitions/models.HypervisorProfile"
+                },
                 "managed": {
                     "$ref": "#/definitions/models.DeviceProfile"
+                },
+                "network": {
+                    "$ref": "#/definitions/models.NetworkDeviceProfile"
+                },
+                "system": {
+                    "$ref": "#/definitions/models.SystemDeviceProfile"
                 }
             }
         },
@@ -2600,6 +2831,23 @@ const docTemplate = `{
                 }
             }
         },
+        "api.HypervisorProfilePatchRequest": {
+            "type": "object",
+            "properties": {
+                "clusterName": {
+                    "type": "string"
+                },
+                "nodeName": {
+                    "type": "string"
+                },
+                "platform": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
         "api.IdentityCorrelationDecisionResponse": {
             "type": "object",
             "properties": {
@@ -2628,6 +2876,34 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.NetworkDeviceProfilePatchRequest": {
+            "type": "object",
+            "properties": {
+                "managementMode": {
+                    "type": "string"
+                },
+                "physicalPortCount": {
+                    "type": "integer"
+                },
+                "portCapabilityNotes": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.SystemDeviceProfilePatchRequest": {
+            "type": "object",
+            "properties": {
+                "operatingSystem": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "version": {
                     "type": "string"
                 }
             }
@@ -3109,6 +3385,29 @@ const docTemplate = `{
                 }
             }
         },
+        "models.HypervisorProfile": {
+            "type": "object",
+            "properties": {
+                "clusterName": {
+                    "type": "string"
+                },
+                "mac": {
+                    "type": "string"
+                },
+                "nodeName": {
+                    "type": "string"
+                },
+                "platform": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
         "models.InventoryOptions": {
             "type": "object",
             "properties": {
@@ -3123,6 +3422,26 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "models.NetworkDeviceProfile": {
+            "type": "object",
+            "properties": {
+                "mac": {
+                    "type": "string"
+                },
+                "managementMode": {
+                    "type": "string"
+                },
+                "physicalPortCount": {
+                    "type": "integer"
+                },
+                "portCapabilityNotes": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
                 }
             }
         },
@@ -3187,6 +3506,26 @@ const docTemplate = `{
                 },
                 "unknown": {
                     "type": "integer"
+                }
+            }
+        },
+        "models.SystemDeviceProfile": {
+            "type": "object",
+            "properties": {
+                "mac": {
+                    "type": "string"
+                },
+                "operatingSystem": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
                 }
             }
         }

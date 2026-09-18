@@ -54,7 +54,7 @@ type SystemDeviceProfileUpdate struct {
 type HypervisorPlatform string
 
 const (
-	HypervisorPlatformProxmoxVE HypervisorPlatform = "proxmox-ve"
+	HypervisorPlatformProxmoxVE  HypervisorPlatform = "proxmox-ve"
 	HypervisorPlatformVMwareESXi HypervisorPlatform = "vmware-esxi"
 	HypervisorPlatformHyperV     HypervisorPlatform = "hyper-v"
 	HypervisorPlatformOther      HypervisorPlatform = "other"

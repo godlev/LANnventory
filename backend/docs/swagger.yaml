@@ -63,8 +63,14 @@ definitions:
     type: object
   api.DeviceProfileResponse:
     properties:
+      hypervisor:
+        $ref: '#/definitions/models.HypervisorProfile'
       managed:
         $ref: '#/definitions/models.DeviceProfile'
+      network:
+        $ref: '#/definitions/models.NetworkDeviceProfile'
+      system:
+        $ref: '#/definitions/models.SystemDeviceProfile'
     type: object
   api.DiscoveryEvidenceObservation:
     properties:
@@ -209,6 +215,17 @@ definitions:
           type: string
         type: array
     type: object
+  api.HypervisorProfilePatchRequest:
+    properties:
+      clusterName:
+        type: string
+      nodeName:
+        type: string
+      platform:
+        type: string
+      version:
+        type: string
+    type: object
   api.IdentityCorrelationDecisionResponse:
     properties:
       active:
@@ -228,6 +245,24 @@ definitions:
       name:
         type: string
       updatedAt:
+        type: string
+    type: object
+  api.NetworkDeviceProfilePatchRequest:
+    properties:
+      managementMode:
+        type: string
+      physicalPortCount:
+        type: integer
+      portCapabilityNotes:
+        type: string
+    type: object
+  api.SystemDeviceProfilePatchRequest:
+    properties:
+      operatingSystem:
+        type: string
+      role:
+        type: string
+      version:
         type: string
     type: object
   api.colorRequest:
@@ -546,6 +581,21 @@ definitions:
       oldValue:
         type: string
     type: object
+  models.HypervisorProfile:
+    properties:
+      clusterName:
+        type: string
+      mac:
+        type: string
+      nodeName:
+        type: string
+      platform:
+        type: string
+      updatedAt:
+        type: string
+      version:
+        type: string
+    type: object
   models.InventoryOptions:
     properties:
       locations:
@@ -556,6 +606,19 @@ definitions:
         items:
           type: string
         type: array
+    type: object
+  models.NetworkDeviceProfile:
+    properties:
+      mac:
+        type: string
+      managementMode:
+        type: string
+      physicalPortCount:
+        type: integer
+      portCapabilityNotes:
+        type: string
+      updatedAt:
+        type: string
     type: object
   models.Service:
     properties:
@@ -598,6 +661,19 @@ definitions:
         type: integer
       unknown:
         type: integer
+    type: object
+  models.SystemDeviceProfile:
+    properties:
+      mac:
+        type: string
+      operatingSystem:
+        type: string
+      role:
+        type: string
+      updatedAt:
+        type: string
+      version:
+        type: string
     type: object
 info:
   contact:
@@ -1620,8 +1696,9 @@ paths:
       - network
   /host/{id}/profile:
     get:
-      description: Return manually managed generic device-profile information. Imported/discovered
-        integration data is stored separately and never overwrites this profile.
+      description: Return manually managed generic and typed device-profile information.
+        Imported/discovered integration data is stored separately and never overwrites
+        these fields.
       parameters:
       - description: Host ID
         in: path
@@ -1654,7 +1731,7 @@ paths:
       consumes:
       - application/json
       description: Partially update manually managed generic device-profile fields.
-        Empty values clear fields; clearing all fields removes the managed profile
+        Empty values clear fields; clearing all fields removes the managed base profile
         row.
       parameters:
       - description: Host ID
@@ -1688,6 +1765,158 @@ paths:
               type: string
             type: object
       summary: Update managed device profile
+      tags:
+      - hosts
+  /host/{id}/profile/hypervisor:
+    delete:
+      description: Remove only the manual Hypervisor capability/profile. The Host
+        and its generic/system inventory remain unchanged.
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.DeviceProfileResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Remove managed hypervisor profile
+      tags:
+      - hosts
+    patch:
+      consumes:
+      - application/json
+      description: Mark a Host as a managed hypervisor capability and store manually
+        maintained platform details. This does not change Device Type and does not
+        use credentials.
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Hypervisor profile payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.HypervisorProfilePatchRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.DeviceProfileResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create or update managed hypervisor profile
+      tags:
+      - hosts
+  /host/{id}/profile/network:
+    patch:
+      consumes:
+      - application/json
+      description: Partially update network-device-specific managed fields. Physical
+        port count 0 means not set.
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Network profile payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.NetworkDeviceProfilePatchRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.DeviceProfileResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update managed network profile
+      tags:
+      - hosts
+  /host/{id}/profile/system:
+    patch:
+      consumes:
+      - application/json
+      description: Partially update lightweight Server/NAS system inventory without
+        changing the Host Device Type.
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: System profile payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.SystemDeviceProfilePatchRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.DeviceProfileResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update managed system profile
       tags:
       - hosts
   /host/{id}/service-scan-settings:

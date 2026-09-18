@@ -145,7 +145,7 @@ func TestBackupExportEndpointIncludesStableDataAndMetadata(t *testing.T) {
 	networkMode := "managed"
 	networkPorts := 5
 	if _, found, err := gdb.UpdateNetworkDeviceProfile("AA:BB:CC:DD:EE:01", models.NetworkDeviceProfileUpdate{
-		ManagementMode: &networkMode,
+		ManagementMode:    &networkMode,
 		PhysicalPortCount: &networkPorts,
 	}); err != nil || !found {
 		t.Fatalf("UpdateNetworkDeviceProfile router found=%v err=%v", found, err)
@@ -154,9 +154,9 @@ func TestBackupExportEndpointIncludesStableDataAndMetadata(t *testing.T) {
 	systemOS := "TrueNAS SCALE"
 	systemVersion := "25.04"
 	if _, found, err := gdb.UpdateSystemDeviceProfile("AA:BB:CC:DD:EE:20", models.SystemDeviceProfileUpdate{
-		Role: &systemRole,
+		Role:            &systemRole,
 		OperatingSystem: &systemOS,
-		Version: &systemVersion,
+		Version:         &systemVersion,
 	}); err != nil || !found {
 		t.Fatalf("UpdateSystemDeviceProfile nas found=%v err=%v", found, err)
 	}
