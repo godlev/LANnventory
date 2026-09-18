@@ -80,6 +80,10 @@ jobs:
       - name: Check mock API syntax
         run: node --check frontend/dev/mock-api.mjs
 
+      - name: Check Host UX semantics
+        working-directory: frontend
+        run: npm run test:host-ux
+
       - name: Check Proxmox installer syntax and helpers
         run: |
           if [ -f proxmox/lannventory.sh ]; then
