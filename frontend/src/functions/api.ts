@@ -1,5 +1,5 @@
 import { isDeviceTypeValue, type DeviceTypeValue } from "./deviceTypes";
-import type { ActivityDeviceOption, ActivityStats, Conf, Host, HostEvent, Service } from "./exports";
+import type { ActivityDeviceOption, ActivityStats, Conf, DeviceProfile, Host, HostEvent, Service } from "./exports";
 
 export const apiPath = '';
 export type ActivityCategory = "all" | "connectivity" | "changes";
@@ -89,6 +89,16 @@ export type HostIdentity = {
 export type AddressIdentity = {
   address: string;
   macHistory: AddressMACObservation[];
+};
+
+export type DeviceProfileResponse = {
+  managed: DeviceProfile | null;
+};
+
+export type DeviceProfilePayload = {
+  manufacturer?: string;
+  model?: string;
+  managementAddress?: string;
 };
 
 const apiFetch = async (url: string, init?: RequestInit): Promise<Response> => {
@@ -304,6 +314,23 @@ export const apiGetHost = async (id:string) => {
   const res = await apiJSON<Host>(url);
 
   return res;
+};
+
+export const apiGetHostDeviceProfile = async (id: number | string): Promise<DeviceProfileResponse> => {
+  const url = apiPath+'/api/host/'+encodeURIComponent(String(id))+'/profile';
+  return await apiJSON<DeviceProfileResponse>(url);
+};
+
+export const apiPatchHostDeviceProfile = async (
+  id: number | string,
+  payload: DeviceProfilePayload,
+): Promise<DeviceProfileResponse> => {
+  const url = apiPath+'/api/host/'+encodeURIComponent(String(id))+'/profile';
+  return await apiJSON<DeviceProfileResponse>(url, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
 };
 
 export const apiGetHostServices = async (id: number | string): Promise<Service[]> => {
