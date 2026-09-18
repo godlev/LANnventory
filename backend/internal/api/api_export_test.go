@@ -132,6 +132,16 @@ func TestBackupExportEndpointIncludesStableDataAndMetadata(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("UpsertHostMetadata router: %v", err)
 	}
+	profileManufacturer := "TrueNAS"
+	profileModel := "Storage Node"
+	profileAddress := "nas.local"
+	if _, found, err := gdb.UpdateDeviceProfile("AA:BB:CC:DD:EE:20", models.DeviceProfileUpdate{
+		Manufacturer:      &profileManufacturer,
+		Model:             &profileModel,
+		ManagementAddress: &profileAddress,
+	}); err != nil || !found {
+		t.Fatalf("UpdateDeviceProfile nas found=%v err=%v", found, err)
+	}
 
 	rec = getPath(router, "/api/export/backup")
 	if rec.Code != http.StatusOK {
@@ -172,6 +182,13 @@ func TestBackupExportEndpointIncludesStableDataAndMetadata(t *testing.T) {
 	assertExportEventIDs(t, document.Data.Events, []int{1, 2}, "events")
 	assertExportMetadataMACs(t, document.Data.HostMetadata, []string{"AA:BB:CC:DD:EE:01", "AA:BB:CC:DD:EE:20"})
 	assertExportLifecycleMACs(t, document.Data.HostLifecycle, []string{"AA:BB:CC:DD:EE:01", "AA:BB:CC:DD:EE:20"})
+	assertExportDeviceProfileMACs(t, document.Data.DeviceProfiles, []string{"AA:BB:CC:DD:EE:20"})
+	if document.Data.DeviceProfiles[0].Manufacturer != profileManufacturer ||
+		document.Data.DeviceProfiles[0].Model != profileModel ||
+		document.Data.DeviceProfiles[0].ManagementAddress != profileAddress ||
+		document.Data.DeviceProfiles[0].UpdatedAt == "" {
+		t.Fatalf("device profile backup = %+v, want managed profile values", document.Data.DeviceProfiles[0])
+	}
 	assertStringSlice(t, document.Data.HostMetadata[0].Tags, routerTags, "router metadata tags")
 	assertStringSlice(t, document.Data.HostMetadata[1].Tags, nasTags, "nas metadata tags")
 	if !document.Data.HostMetadata[0].Pinned {
@@ -196,7 +213,8 @@ func TestBackupExportEndpointEmptyTablesUsesArrays(t *testing.T) {
 		!strings.Contains(rec.Body.String(), `"history": []`) ||
 		!strings.Contains(rec.Body.String(), `"events": []`) ||
 		!strings.Contains(rec.Body.String(), `"hostMetadata": []`) ||
-		!strings.Contains(rec.Body.String(), `"hostLifecycle": []`) {
+		!strings.Contains(rec.Body.String(), `"hostLifecycle": []`) ||
+		!strings.Contains(rec.Body.String(), `"deviceProfiles": []`) {
 		t.Fatalf("empty backup did not encode empty arrays: %s", rec.Body.String())
 	}
 }
@@ -404,6 +422,19 @@ func assertExportMetadataMACs(t *testing.T, metadata []backup.HostMetadata, want
 	for i, mac := range want {
 		if metadata[i].Mac != mac {
 			t.Fatalf("metadata[%d].Mac = %q, want %q: %+v", i, metadata[i].Mac, mac, metadata)
+		}
+	}
+}
+
+func assertExportDeviceProfileMACs(t *testing.T, profiles []backup.DeviceProfile, want []string) {
+	t.Helper()
+
+	if len(profiles) != len(want) {
+		t.Fatalf("device profiles len = %d, want %d: %+v", len(profiles), len(want), profiles)
+	}
+	for i, mac := range want {
+		if profiles[i].Mac != mac {
+			t.Fatalf("deviceProfiles[%d].Mac = %q, want %q: %+v", i, profiles[i].Mac, mac, profiles)
 		}
 	}
 }
