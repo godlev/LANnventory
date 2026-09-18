@@ -32,7 +32,10 @@ type Data struct {
 	Events         []Event         `json:"events"`
 	HostMetadata   []HostMetadata  `json:"hostMetadata"`
 	HostLifecycle  []HostLifecycle `json:"hostLifecycle"`
-	DeviceProfiles []DeviceProfile `json:"deviceProfiles"`
+	DeviceProfiles        []DeviceProfile        `json:"deviceProfiles"`
+	NetworkDeviceProfiles []NetworkDeviceProfile `json:"networkDeviceProfiles"`
+	SystemDeviceProfiles  []SystemDeviceProfile  `json:"systemDeviceProfiles"`
+	HypervisorProfiles    []HypervisorProfile    `json:"hypervisorProfiles"`
 }
 
 // Host mirrors the currently persisted host columns in the now/history tables.
