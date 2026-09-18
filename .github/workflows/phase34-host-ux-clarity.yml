@@ -528,7 +528,7 @@ jobs:
             frontend/package.json \
             frontend/package-lock.json \
             backend/internal/api/api_activity_test.go \
-            backend/internal/web/public \
+            backend/internal/web/public
           git diff --cached --check
           git commit -m "phase34: clarify Host identity and event history UX"
           git push origin HEAD:phase34-uat-host-ux
