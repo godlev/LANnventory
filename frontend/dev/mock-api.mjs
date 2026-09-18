@@ -141,6 +141,45 @@ const hostMetadata = new Map([
   }],
 ]);
 
+const deviceProfiles = new Map([
+  ['AA:BB:CC:00:00:01', {
+    managed: {
+      mac: 'AA:BB:CC:00:00:01',
+      manufacturer: 'GL.iNet',
+      model: 'Example Router',
+      managementAddress: 'router.local',
+      updatedAt: new Date().toISOString(),
+    },
+    network: {
+      mac: 'AA:BB:CC:00:00:01',
+      managementMode: 'managed',
+      physicalPortCount: 5,
+      portCapabilityNotes: 'Example managed router profile.',
+      updatedAt: new Date().toISOString(),
+    },
+    system: null,
+    hypervisor: null,
+  }],
+  ['AA:BB:CC:00:00:20', {
+    managed: {
+      mac: 'AA:BB:CC:00:00:20',
+      manufacturer: 'Example',
+      model: 'NAS',
+      managementAddress: 'nas.local',
+      updatedAt: new Date().toISOString(),
+    },
+    network: null,
+    system: {
+      mac: 'AA:BB:CC:00:00:20',
+      role: 'Storage',
+      operatingSystem: 'TrueNAS SCALE',
+      version: '25.04',
+      updatedAt: new Date().toISOString(),
+    },
+    hypervisor: null,
+  }],
+]);
+
 const config = {
   Host: host,
   Port: String(port),
@@ -196,6 +235,14 @@ const localPublicAssets = new Set([
   'lanventory-navbar.png',
 ]);
 const activityEvents = [];
+
+function profileForHost(hostEntry) {
+  const existing = deviceProfiles.get(hostEntry.Mac);
+  if (existing) {
+    return structuredClone(existing);
+  }
+  return { managed: null, network: null, system: null, hypervisor: null };
+}
 
 function sendJSON(res, value, statusCode = 200) {
   res.writeHead(statusCode, {
@@ -1204,6 +1251,18 @@ function routeReadOnly(req, res, url) {
     return true;
   }
 
+  const hostProfileMatch = pathname.match(/^\/api\/host\/(\d+)\/profile$/);
+  if (req.method === 'GET' && hostProfileMatch) {
+    const id = Number(hostProfileMatch[1]);
+    const hostEntry = findHostByID(id);
+    if (!hostEntry) {
+      sendJSON(res, { error: 'invalid host id' }, 400);
+      return true;
+    }
+    sendJSON(res, profileForHost(hostEntry));
+    return true;
+  }
+
   const hostMatch = pathname.match(/^\/api\/host\/(\d+)$/);
   if (req.method === 'GET' && hostMatch) {
     const id = Number(hostMatch[1]);
@@ -1321,6 +1380,78 @@ async function routeSafeAction(req, res, url) {
     const body = await readBody(req);
     const params = parseRequestBody(body);
     sendJSON(res, applyMetadataPatch(hostEntry, params));
+    return true;
+  }
+
+  const profileMatch = pathname.match(/^\/api\/host\/(\d+)\/profile(?:\/(network|system|hypervisor))?$/);
+  if ((req.method === 'PATCH' || req.method === 'DELETE') && profileMatch) {
+    const id = Number(profileMatch[1]);
+    const layer = profileMatch[2] ?? 'managed';
+    const hostEntry = findHostByID(id);
+    if (!hostEntry) {
+      sendJSON(res, { error: 'invalid host id' }, 400);
+      return true;
+    }
+
+    const profile = profileForHost(hostEntry);
+    if (req.method === 'DELETE') {
+      if (layer !== 'hypervisor') {
+        sendJSON(res, { error: 'unsupported profile delete' }, 400);
+        return true;
+      }
+      profile.hypervisor = null;
+      deviceProfiles.set(hostEntry.Mac, profile);
+      sendJSON(res, profile);
+      return true;
+    }
+
+    const params = parseRequestBody(await readBody(req));
+    const updatedAt = new Date().toISOString();
+    if (layer === 'managed') {
+      const next = {
+        mac: hostEntry.Mac,
+        manufacturer: String(params.manufacturer ?? profile.managed?.manufacturer ?? ''),
+        model: String(params.model ?? profile.managed?.model ?? ''),
+        managementAddress: String(params.managementAddress ?? profile.managed?.managementAddress ?? ''),
+        updatedAt,
+      };
+      profile.managed = next.manufacturer || next.model || next.managementAddress ? next : null;
+    } else if (layer === 'network') {
+      const next = {
+        mac: hostEntry.Mac,
+        managementMode: String(params.managementMode ?? profile.network?.managementMode ?? ''),
+        physicalPortCount: Number(params.physicalPortCount ?? profile.network?.physicalPortCount ?? 0),
+        portCapabilityNotes: String(params.portCapabilityNotes ?? profile.network?.portCapabilityNotes ?? ''),
+        updatedAt,
+      };
+      profile.network = next.managementMode || next.physicalPortCount || next.portCapabilityNotes ? next : null;
+    } else if (layer === 'system') {
+      const next = {
+        mac: hostEntry.Mac,
+        role: String(params.role ?? profile.system?.role ?? ''),
+        operatingSystem: String(params.operatingSystem ?? profile.system?.operatingSystem ?? ''),
+        version: String(params.version ?? profile.system?.version ?? ''),
+        updatedAt,
+      };
+      profile.system = next.role || next.operatingSystem || next.version ? next : null;
+    } else {
+      const platform = String(params.platform ?? profile.hypervisor?.platform ?? '');
+      if (!['proxmox-ve', 'vmware-esxi', 'hyper-v', 'other'].includes(platform)) {
+        sendJSON(res, { error: 'invalid hypervisor platform' }, 400);
+        return true;
+      }
+      profile.hypervisor = {
+        mac: hostEntry.Mac,
+        platform,
+        version: String(params.version ?? profile.hypervisor?.version ?? ''),
+        nodeName: String(params.nodeName ?? profile.hypervisor?.nodeName ?? ''),
+        clusterName: String(params.clusterName ?? profile.hypervisor?.clusterName ?? ''),
+        updatedAt,
+      };
+    }
+
+    deviceProfiles.set(hostEntry.Mac, profile);
+    sendJSON(res, profile);
     return true;
   }
 
