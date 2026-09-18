@@ -154,7 +154,17 @@ function CorrelationPanel(props: CorrelationPanelProps) {
   };
 
   return (
-    <div class="mt-4 pt-3 border-top">
+    <div class="identity-correlation-panel mt-4 pt-3 border-top">
+      <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
+        <div>
+          <h6 class="mb-1">Same-device correlation</h6>
+          <div class="small device-cell-muted">
+            Separate from IP address history. Suggestions assess whether different MAC identities may represent the same physical device.
+          </div>
+        </div>
+        <span class="host-detail-section-badge">Correlation · Separate evidence</span>
+      </div>
+
       <Show when={actionError()}>
         <div class="host-inline-error mb-3" role="alert">{actionError()}</div>
       </Show>
@@ -194,7 +204,7 @@ function CorrelationPanel(props: CorrelationPanelProps) {
               <div>
                 <h6 class="mb-1">Possible same device</h6>
                 <div class="small device-cell-muted">
-                  Suggestions are evidence-based. Nothing is merged automatically; your decision only records the relationship.
+                  Suggestions are evaluated separately from IP address history. Nothing is merged automatically; your decision only records the relationship.
                 </div>
               </div>
               <span class="host-detail-section-badge">Suggestion · User decision</span>
@@ -202,7 +212,7 @@ function CorrelationPanel(props: CorrelationPanelProps) {
 
             <Show
               when={rows().length > 0}
-              fallback={<div class="device-cell-muted">No same-device candidates or explicit decisions yet.</div>}
+              fallback={<div class="device-cell-muted">No evidence currently suggests that another MAC belongs to this same physical device.</div>}
             >
               <For each={rows()}>{(row) =>
                 <CorrelationRowView

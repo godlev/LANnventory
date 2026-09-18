@@ -557,20 +557,20 @@ function HostCard(_props: HostCardProps) {
             <div class="host-detail-section-header">
               <div class="host-detail-section-heading">
                 <i class="bi bi-router-fill" aria-hidden="true"></i>
-                <span id="host-discovery-heading">Network &amp; Discovery</span>
+                <span id="host-discovery-heading">Current network identity</span>
               </div>
               <span class="host-detail-section-badge">Read only</span>
             </div>
 
             <div class="host-property-grid host-property-grid-section">
-              <div class="host-field-label">IP</div>
+              <div class="host-field-label">Current IP</div>
               <div class="host-field-value">
                 <Show when={isOnline()} fallback={<span class="device-ip-offline">{_props.host.IP}</span>}>
                   <a href={"http://" + _props.host.IP} target="_blank" rel="noreferrer">{_props.host.IP}</a>
                 </Show>
               </div>
 
-              <div class="host-field-label">MAC</div>
+              <div class="host-field-label">Current MAC</div>
               <div class="host-field-value">{_props.host.Mac}</div>
 
               <div class="host-field-label">MAC type</div>
@@ -627,26 +627,26 @@ function HostCard(_props: HostCardProps) {
               <div class="host-field-label">Interface</div>
               <div class="host-field-value">{_props.host.Iface || <span class="device-cell-muted">Unknown</span>}</div>
 
-              <div class="host-field-label">Hardware</div>
+              <div class="host-field-label">Network vendor</div>
               <div class="host-field-value">{_props.host.Hw || <span class="device-cell-muted">Unknown</span>}</div>
 
               <div class="host-field-label">DNS name</div>
               <div class="host-field-value">{_props.host.DNS || <span class="device-cell-muted">Unknown</span>}</div>
 
-              <div class="host-field-label">First seen</div>
+              <div class="host-field-label">This MAC first seen</div>
               <div class="host-field-value" title={firstSeenRaw()}>
                 <Show when={firstSeenRaw()} fallback={<span class="device-cell-muted">Not seen yet</span>}>
                   <span class="host-lifecycle-value">
                     <span>{formattedFirstSeen()}</span>
                     <Show when={_props.host.FirstSeenEstimated}>
                       <ActionTooltip
-                        title="Approximate first seen"
-                        detail="Lifecycle tracking started after this device was already known. This time is the earliest retained evidence LANnventory could find."
+                        title="Approximate MAC first seen"
+                        detail="Lifecycle tracking started after this MAC identity was already known. This time is the earliest retained evidence LANnventory could find."
                       >
                         <span
                           class="host-lifecycle-approx"
                           title="Approximate first seen"
-                          aria-label="Approximate first seen"
+                          aria-label="Approximate MAC first seen"
                           role="img"
                           tabIndex={0}
                         >
@@ -658,7 +658,7 @@ function HostCard(_props: HostCardProps) {
                 </Show>
               </div>
 
-              <div class="host-field-label">Last seen</div>
+              <div class="host-field-label">This MAC last seen</div>
               <div class="host-field-value" title={lastSeenRaw()}>
                 <Show when={lastSeenRaw()} fallback={<span class="device-cell-muted">Not seen yet</span>}>
                   {formattedLastSeen()}

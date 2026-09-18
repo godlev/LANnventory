@@ -53,7 +53,7 @@ function IdentityCard(props: IdentityCardProps) {
           return;
         }
         setIdentity(emptyIdentity);
-        setLoadError("Identity observations could not be loaded.");
+        setLoadError("Network identity history could not be loaded.");
       })
       .finally(() => {
         if (activeRequest === requestID) {
@@ -73,23 +73,23 @@ function IdentityCard(props: IdentityCardProps) {
     <div class="card wyl-panel host-panel">
       <div class="card-header host-panel-header">
         <div>
-          <div class="host-panel-title">Identity observations</div>
+          <div class="host-panel-title">Network identity history</div>
           <div class="host-panel-subtitle">
-            Discovered network identity is read only and never overwrites managed inventory.
+            Read-only network observations. Managed inventory stays unchanged; shared IP history alone does not mean the same physical device.
           </div>
         </div>
         <span class="host-detail-section-badge">Discovered · Read only</span>
       </div>
 
       <div class="card-body">
-        <Show when={!loading()} fallback={<div class="device-cell-muted">Loading identity observations…</div>}>
+        <Show when={!loading()} fallback={<div class="device-cell-muted">Loading network identity history…</div>}>
           <Show when={!loadError()} fallback={<div class="host-inline-error" role="alert">{loadError()}</div>}>
             <div class="row g-3">
               <div class="col-12 col-xl-6">
-                <h6 class="mb-2">Addresses</h6>
+                <h6 class="mb-2">IP address history</h6>
                 <Show
                   when={identity().addresses.length > 0}
-                  fallback={<div class="device-cell-muted">No retained address observations yet.</div>}
+                  fallback={<div class="device-cell-muted">No retained IP address observations yet.</div>}
                 >
                   <For each={identity().addresses}>{(address) =>
                     <AddressObservation address={address} currentMac={identity().mac || props.host.Mac}></AddressObservation>
@@ -98,7 +98,8 @@ function IdentityCard(props: IdentityCardProps) {
               </div>
 
               <div class="col-12 col-xl-6">
-                <h6 class="mb-2">Data sources</h6>
+                <h6 class="mb-1">How LANnventory identified this</h6>
+                <div class="small device-cell-muted mb-2">Sources of discovered network information, not properties of the device.</div>
                 <Show
                   when={identity().dataSources.length > 0}
                   fallback={<div class="device-cell-muted mb-3">No discovery sources have reported identity data yet.</div>}
@@ -110,7 +111,7 @@ function IdentityCard(props: IdentityCardProps) {
                   </div>
                 </Show>
 
-                <h6 class="mb-2">Discovered identities</h6>
+                <h6 class="mb-2">Discovered identity evidence</h6>
                 <Show
                   when={identity().evidence.length > 0}
                   fallback={<div class="device-cell-muted">No discovered identity evidence yet.</div>}
@@ -144,7 +145,7 @@ function AddressObservation(props: { address: HostIdentityAddress; currentMac: s
   return (
     <div class="border rounded p-2 mb-2">
       <div class="d-flex flex-wrap justify-content-between gap-2 align-items-center">
-        <span class="font-monospace">{props.address.address}</span>
+        <span class="font-monospace">IP {props.address.address}</span>
         <span class={props.address.active ? "badge text-bg-success" : "badge text-bg-secondary"}>
           {props.address.active ? "Current" : "Previous"}
         </span>
@@ -154,27 +155,41 @@ function AddressObservation(props: { address: HostIdentityAddress; currentMac: s
         <Show when={props.address.iface}> · Scanner interface {props.address.iface}</Show>
       </div>
       <div class="small mt-1">
-        First seen {formatIdentityTime(props.address.firstSeen)} · Last seen {formatIdentityTime(props.address.lastSeen)}
+        IP first observed {formatIdentityTime(props.address.firstSeen)} · Last observed {formatIdentityTime(props.address.lastSeen)}
       </div>
 
       <Show when={otherMACs().length > 0}>
         <div class="mt-2 small">
-          <strong>Also observed with {otherMACs().length} other MAC{otherMACs().length === 1 ? "" : "s"}</strong>
-          <For each={otherMACs()}>{(observation) => <MACObservation observation={observation}></MACObservation>}</For>
+          <div class="d-flex flex-wrap align-items-center gap-2">
+            <strong>This IP was also used by {otherMACs().length} other MAC{otherMACs().length === 1 ? "" : "s"}</strong>
+            <span
+              class="host-lifecycle-approx"
+              title="An IP address can be reused by different devices. This alone does not mean the MAC addresses belong to the same physical device."
+              aria-label="An IP address can be reused by different devices. This alone does not mean the MAC addresses belong to the same physical device."
+              role="img"
+              tabIndex={0}
+            >
+              <i class="bi bi-info-circle" aria-hidden="true"></i>
+            </span>
+          </div>
+          <For each={otherMACs()}>{(observation) => <MACObservation address={props.address.address} observation={observation}></MACObservation>}</For>
         </div>
       </Show>
     </div>
   );
 }
 
-function MACObservation(props: { observation: AddressMACObservation }) {
+function MACObservation(props: { address: string; observation: AddressMACObservation }) {
   return (
-    <div class="mt-1">
-      <span class="font-monospace">{props.observation.mac}</span>
-      <span class="device-cell-muted">
-        {" · "}{formatIdentityTime(props.observation.firstSeen)} → {formatIdentityTime(props.observation.lastSeen)}
+    <div class="mt-2 border-start ps-2">
+      <div class="d-flex flex-wrap gap-2 align-items-baseline">
+        <span class="font-monospace">IP {props.address}</span>
+        <span class="font-monospace">MAC {props.observation.mac}</span>
+      </div>
+      <div class="device-cell-muted">
+        Observed {formatIdentityTime(props.observation.firstSeen)} → {formatIdentityTime(props.observation.lastSeen)}
         {props.observation.active ? " · currently active" : ""}
-      </span>
+      </div>
     </div>
   );
 }
