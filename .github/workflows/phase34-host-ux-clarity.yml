@@ -174,11 +174,6 @@ jobs:
           package.setdefault('scripts', {})['test:host-ux'] = 'node dev/host-ux-regression.mjs'
           package_path.write_text(json.dumps(package, indent=2) + '\n')
 
-          replace_once(
-              '.github/workflows/packaging-check.yml',
-              '      - name: Check mock API syntax\n        run: node --check frontend/dev/mock-api.mjs\n',
-              '      - name: Check mock API syntax\n        run: node --check frontend/dev/mock-api.mjs\n\n      - name: Check Host UX semantics\n        working-directory: frontend\n        run: npm run test:host-ux\n',
-          )
           PY
 
           cat > frontend/src/components/HostPage/HostActivityCard.tsx <<'EOF'
@@ -534,7 +529,6 @@ jobs:
             frontend/package-lock.json \
             backend/internal/api/api_activity_test.go \
             backend/internal/web/public \
-            .github/workflows/packaging-check.yml
           git diff --cached --check
           git commit -m "phase34: clarify Host identity and event history UX"
           git push origin HEAD:phase34-uat-host-ux
