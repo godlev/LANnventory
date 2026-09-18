@@ -242,6 +242,36 @@ definitions:
       presenceRetention:
         type: integer
     type: object
+  api.serviceScanSettingsRequest:
+    properties:
+      enabled:
+        type: boolean
+      intervalMinutes:
+        type: integer
+      ports:
+        items:
+          type: integer
+        type: array
+    type: object
+  api.serviceScanSettingsResponse:
+    properties:
+      enabled:
+        type: boolean
+      intervalMinutes:
+        type: integer
+      lastAttemptAt:
+        type: string
+      lastError:
+        type: string
+      lastSuccessfulAt:
+        type: string
+      nextScanAt:
+        type: string
+      ports:
+        items:
+          type: integer
+        type: array
+    type: object
   api.updateApplyRequest:
     properties:
       version:
@@ -1561,6 +1591,78 @@ paths:
       summary: Scan one port for a host
       tags:
       - network
+  /host/{id}/service-scan-settings:
+    get:
+      description: Return opt-in scheduled TCP service scan settings and runtime state
+        for a host.
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.serviceScanSettingsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get scheduled service scan settings
+      tags:
+      - hosts
+    put:
+      consumes:
+      - application/json
+      description: Enable or disable scheduled TCP service scanning for a host. Ports
+        are validated, de-duplicated and sorted. Enabling or changing settings schedules
+        the next scan immediately.
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Service scan settings
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.serviceScanSettingsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.serviceScanSettingsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Save scheduled service scan settings
+      tags:
+      - hosts
   /host/{id}/services:
     get:
       description: Return durable service summary records for the host MAC across

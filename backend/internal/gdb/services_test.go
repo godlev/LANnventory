@@ -217,27 +217,27 @@ func TestServiceInventoryRejectsInvalidIdentityAndState(t *testing.T) {
 		wantErr error
 	}{
 		{
-			name: "invalid mac",
+			name:    "invalid mac",
 			service: models.Service{Mac: "bad", Address: "192.168.1.1", Protocol: "tcp", Port: 22, State: "open"},
 			wantErr: errInvalidServiceIdentity,
 		},
 		{
-			name: "invalid address",
+			name:    "invalid address",
 			service: models.Service{Mac: "AA:BB:CC:DD:EE:36", Address: "not-an-ip", Protocol: "tcp", Port: 22, State: "open"},
 			wantErr: errInvalidServiceIdentity,
 		},
 		{
-			name: "invalid port",
+			name:    "invalid port",
 			service: models.Service{Mac: "AA:BB:CC:DD:EE:36", Address: "192.168.1.1", Protocol: "tcp", Port: 65536, State: "open"},
 			wantErr: errInvalidServiceIdentity,
 		},
 		{
-			name: "invalid protocol",
+			name:    "invalid protocol",
 			service: models.Service{Mac: "AA:BB:CC:DD:EE:36", Address: "192.168.1.1", Protocol: "udp", Port: 53, State: "open"},
 			wantErr: errInvalidServiceProtocol,
 		},
 		{
-			name: "invalid state",
+			name:    "invalid state",
 			service: models.Service{Mac: "AA:BB:CC:DD:EE:36", Address: "192.168.1.1", Protocol: "tcp", Port: 22, State: "unknown"},
 			wantErr: errInvalidServiceState,
 		},
@@ -259,5 +259,99 @@ func TestServiceInventoryRejectsInvalidIdentityAndState(t *testing.T) {
 		PortsJSON:       "[22]",
 	}); !errors.Is(err, errInvalidServiceInterval) {
 		t.Fatalf("settings error = %v, want %v", err, errInvalidServiceInterval)
+	}
+}
+
+func TestServiceScanSettingsCanonicalDueAndRuntimeUpdate(t *testing.T) {
+	oldConfig := conf.GetAppConfig()
+	conf.SetAppConfigForTest(models.Conf{
+		UseDB:  "sqlite",
+		DBPath: filepath.Join(t.TempDir(), "service-due.db"),
+	})
+	t.Cleanup(func() {
+		if err := Close(); err != nil {
+			t.Errorf("Close: %v", err)
+		}
+		conf.SetAppConfigForTest(oldConfig)
+	})
+
+	if err := StartErr(); err != nil {
+		t.Fatalf("StartErr: %v", err)
+	}
+
+	due, err := UpsertServiceScanSettings(models.ServiceScanSettings{
+		Mac:             "AA:BB:CC:DD:EE:C0",
+		Enabled:         true,
+		IntervalMinutes: 60,
+		PortsJSON:       "[443,22,443]",
+		NextScanAt:      "2026-09-18 10:00:00",
+	})
+	if err != nil {
+		t.Fatalf("Upsert due: %v", err)
+	}
+	if due.PortsJSON != "[22,443]" {
+		t.Fatalf("canonical ports = %q, want [22,443]", due.PortsJSON)
+	}
+
+	if _, err := UpsertServiceScanSettings(models.ServiceScanSettings{
+		Mac:             "AA:BB:CC:DD:EE:C1",
+		Enabled:         true,
+		IntervalMinutes: 60,
+		PortsJSON:       "[80]",
+		NextScanAt:      "2026-09-18 12:00:00",
+	}); err != nil {
+		t.Fatalf("Upsert future: %v", err)
+	}
+	if _, err := UpsertServiceScanSettings(models.ServiceScanSettings{
+		Mac:             "AA:BB:CC:DD:EE:C2",
+		Enabled:         false,
+		IntervalMinutes: 60,
+		PortsJSON:       "[]",
+		NextScanAt:      "2026-09-18 09:00:00",
+	}); err != nil {
+		t.Fatalf("Upsert disabled: %v", err)
+	}
+
+	rows, err := SelectDueServiceScanSettings("2026-09-18 11:00:00", 10)
+	if err != nil {
+		t.Fatalf("SelectDueServiceScanSettings: %v", err)
+	}
+	if len(rows) != 1 || rows[0].Mac != "AA:BB:CC:DD:EE:C0" {
+		t.Fatalf("due rows = %+v", rows)
+	}
+
+	if err := UpdateServiceScanRuntime(
+		due.Mac,
+		"2026-09-18 12:00:00",
+		"2026-09-18 11:00:00",
+		"2 of 4 probes indeterminate",
+		false,
+	); err != nil {
+		t.Fatalf("UpdateServiceScanRuntime failure: %v", err)
+	}
+
+	stored, found, err := SelectServiceScanSettingsByMAC(due.Mac)
+	if err != nil || !found {
+		t.Fatalf("Select after failure found=%v err=%v", found, err)
+	}
+	if stored.LastAttemptAt != "2026-09-18 11:00:00" || stored.LastSuccessfulAt != "" || stored.LastError == "" || stored.NextScanAt != "2026-09-18 12:00:00" {
+		t.Fatalf("failure runtime = %+v", stored)
+	}
+
+	if err := UpdateServiceScanRuntime(
+		due.Mac,
+		"2026-09-18 13:00:00",
+		"2026-09-18 12:00:00",
+		"",
+		true,
+	); err != nil {
+		t.Fatalf("UpdateServiceScanRuntime success: %v", err)
+	}
+	stored, found, err = SelectServiceScanSettingsByMAC(due.Mac)
+	if err != nil || !found {
+		t.Fatalf("Select after success found=%v err=%v", found, err)
+	}
+	if stored.LastSuccessfulAt != "2026-09-18 12:00:00" || stored.LastError != "" || stored.NextScanAt != "2026-09-18 13:00:00" {
+		t.Fatalf("success runtime = %+v", stored)
 	}
 }

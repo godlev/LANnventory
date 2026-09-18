@@ -7,6 +7,7 @@ import (
 
 	"github.com/godlev/LANnventory/internal/identity"
 	"github.com/godlev/LANnventory/internal/models"
+	"github.com/godlev/LANnventory/internal/servicescan"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -21,6 +22,7 @@ var (
 	errInvalidServiceState    = errors.New("invalid service state")
 	errInvalidServiceProtocol = errors.New("invalid service protocol")
 	errInvalidServiceInterval = errors.New("invalid service scan interval")
+	errInvalidServicePorts    = errors.New("invalid service scan ports")
 )
 
 // UpsertService stores one durable service summary keyed by MAC + address + protocol + port.
@@ -121,11 +123,13 @@ func UpsertServiceScanSettings(settings models.ServiceScanSettings) (models.Serv
 	if settings.IntervalMinutes <= 0 {
 		return models.ServiceScanSettings{}, errInvalidServiceInterval
 	}
-	settings.Mac = canonical
-	settings.PortsJSON = strings.TrimSpace(settings.PortsJSON)
-	if settings.PortsJSON == "" {
-		settings.PortsJSON = "[]"
+	portsJSON, ports, err := servicescan.CanonicalPortsJSON(settings.PortsJSON)
+	if err != nil || (settings.Enabled && len(ports) == 0) {
+		return models.ServiceScanSettings{}, errInvalidServicePorts
 	}
+	settings.Mac = canonical
+	settings.PortsJSON = portsJSON
+	settings.LastError = strings.TrimSpace(settings.LastError)
 
 	activeDB, release, err := acquireDB()
 	if err != nil {
@@ -173,6 +177,66 @@ func SelectServiceScanSettingsByMAC(mac string) (models.ServiceScanSettings, boo
 	defer release()
 
 	return selectServiceScanSettingsByMAC(activeDB, canonical)
+}
+
+// SelectDueServiceScanSettings returns enabled scheduled scans due at or before now.
+func SelectDueServiceScanSettings(now string, limit int) ([]models.ServiceScanSettings, error) {
+	now = strings.TrimSpace(now)
+	if now == "" {
+		return nil, errors.New("service scan due time is required")
+	}
+	if limit <= 0 {
+		limit = 32
+	}
+	if limit > 100 {
+		limit = 100
+	}
+
+	activeDB, release, err := acquireDB()
+	if err != nil {
+		return nil, err
+	}
+	defer release()
+
+	settings := make([]models.ServiceScanSettings, 0)
+	err = activeDB.Table(serviceScanSettingsTable).
+		Where("\"ENABLED\" = ? AND (\"NEXT_SCAN_AT\" = ? OR \"NEXT_SCAN_AT\" <= ?)", true, "", now).
+		Order("\"NEXT_SCAN_AT\" ASC, \"MAC\" ASC").
+		Limit(limit).
+		Find(&settings).Error
+	return settings, err
+}
+
+// UpdateServiceScanRuntime updates scheduler-owned fields without overwriting user configuration.
+func UpdateServiceScanRuntime(mac, nextScanAt, lastAttemptAt, lastError string, successful bool) error {
+	canonical, err := identity.NormalizeMAC(strings.TrimSpace(mac))
+	if err != nil {
+		return errInvalidServiceIdentity
+	}
+
+	updates := map[string]any{
+		"NEXT_SCAN_AT":    strings.TrimSpace(nextScanAt),
+		"LAST_ATTEMPT_AT": strings.TrimSpace(lastAttemptAt),
+		"LAST_ERROR":      strings.TrimSpace(lastError),
+	}
+	if successful {
+		updates["LAST_SUCCESSFUL_AT"] = strings.TrimSpace(lastAttemptAt)
+	}
+
+	activeDB, release, err := acquireDB()
+	if err != nil {
+		return err
+	}
+	defer release()
+
+	result := activeDB.Table(serviceScanSettingsTable).Where("\"MAC\" = ?", canonical).Updates(updates)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 func selectServiceByIdentity(activeDB *gorm.DB, mac, address, protocol string, port int) (service models.Service, ok bool, err error) {
