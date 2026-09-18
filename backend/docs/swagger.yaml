@@ -52,6 +52,20 @@ definitions:
       weight:
         type: integer
     type: object
+  api.DeviceProfilePatchRequest:
+    properties:
+      managementAddress:
+        type: string
+      manufacturer:
+        type: string
+      model:
+        type: string
+    type: object
+  api.DeviceProfileResponse:
+    properties:
+      managed:
+        $ref: '#/definitions/models.DeviceProfile'
+    type: object
   api.DiscoveryEvidenceObservation:
     properties:
       active:
@@ -447,6 +461,19 @@ definitions:
         description: PostgreSQL
         type: string
       version:
+        type: string
+    type: object
+  models.DeviceProfile:
+    properties:
+      mac:
+        type: string
+      managementAddress:
+        type: string
+      manufacturer:
+        type: string
+      model:
+        type: string
+      updatedAt:
         type: string
     type: object
   models.Host:
@@ -1591,6 +1618,78 @@ paths:
       summary: Scan one port for a host
       tags:
       - network
+  /host/{id}/profile:
+    get:
+      description: Return manually managed generic device-profile information. Imported/discovered
+        integration data is stored separately and never overwrites this profile.
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.DeviceProfileResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get managed device profile
+      tags:
+      - hosts
+    patch:
+      consumes:
+      - application/json
+      description: Partially update manually managed generic device-profile fields.
+        Empty values clear fields; clearing all fields removes the managed profile
+        row.
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Managed profile payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.DeviceProfilePatchRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.DeviceProfileResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update managed device profile
+      tags:
+      - hosts
   /host/{id}/service-scan-settings:
     get:
       description: Return opt-in scheduled TCP service scan settings and runtime state
