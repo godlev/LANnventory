@@ -146,6 +146,9 @@ func migrate(candidate *gorm.DB) error {
 	if err := candidate.Table(serviceScanSettingsTable).AutoMigrate(&models.ServiceScanSettings{}); err != nil {
 		return err
 	}
+	if err := backfillServiceHints(candidate); err != nil {
+		return err
+	}
 	if err := backfillHostLifecycle(candidate); err != nil {
 		return err
 	}

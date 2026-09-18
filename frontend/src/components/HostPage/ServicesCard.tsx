@@ -216,7 +216,7 @@ function ServicesCard(props: ServicesCardProps) {
         <div>
           <div id="host-services-title" class="host-panel-title">Services</div>
           <div class="host-panel-subtitle">
-            Retained TCP service state is tracked per exact device address.
+            Retained TCP service state is tracked per exact device address. Service hints are port-based labels, not protocol fingerprinting.
           </div>
         </div>
         <Show when={services().length > 0}>
@@ -352,7 +352,7 @@ function ServicesCard(props: ServicesCardProps) {
                         <td>
                           <div class="fw-semibold">{serviceLabel(service)}</div>
                           <Show when={service.serviceHint}>
-                            <div class="small device-cell-muted">{service.serviceHint}</div>
+                            <div class="small device-cell-muted">Hint: {service.serviceHint}</div>
                           </Show>
                         </td>
                         <td>

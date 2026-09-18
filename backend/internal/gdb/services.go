@@ -265,6 +265,28 @@ func selectServiceScanSettingsByMAC(activeDB *gorm.DB, mac string) (settings mod
 	return settings, true, nil
 }
 
+func backfillServiceHints(activeDB *gorm.DB) error {
+	var services []models.Service
+	if err := activeDB.Table(servicesTable).
+		Where("(\"SERVICE_HINT\" = ? OR \"SERVICE_HINT\" IS NULL)", "").
+		Find(&services).Error; err != nil {
+		return err
+	}
+
+	for _, service := range services {
+		hint := models.ServiceHintForPort(strings.ToLower(strings.TrimSpace(service.Protocol)), service.Port)
+		if hint == "" {
+			continue
+		}
+		if err := activeDB.Table(servicesTable).
+			Where("\"ID\" = ? AND (\"SERVICE_HINT\" = ? OR \"SERVICE_HINT\" IS NULL)", service.ID, "").
+			Update("SERVICE_HINT", hint).Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func normalizeService(service models.Service) (models.Service, error) {
 	canonicalMAC, err := identity.NormalizeMAC(strings.TrimSpace(service.Mac))
 	if err != nil {
@@ -298,6 +320,9 @@ func normalizeService(service models.Service) (models.Service, error) {
 	service.Protocol = protocol
 	service.State = state
 	service.ServiceHint = strings.TrimSpace(service.ServiceHint)
+	if service.ServiceHint == "" {
+		service.ServiceHint = models.ServiceHintForPort(protocol, service.Port)
+	}
 	service.LastScanSource = strings.TrimSpace(service.LastScanSource)
 	return service, nil
 }
