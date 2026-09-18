@@ -142,6 +142,32 @@ func TestBackupExportEndpointIncludesStableDataAndMetadata(t *testing.T) {
 	}); err != nil || !found {
 		t.Fatalf("UpdateDeviceProfile nas found=%v err=%v", found, err)
 	}
+	networkMode := "managed"
+	networkPorts := 5
+	if _, found, err := gdb.UpdateNetworkDeviceProfile("AA:BB:CC:DD:EE:01", models.NetworkDeviceProfileUpdate{
+		ManagementMode: &networkMode,
+		PhysicalPortCount: &networkPorts,
+	}); err != nil || !found {
+		t.Fatalf("UpdateNetworkDeviceProfile router found=%v err=%v", found, err)
+	}
+	systemRole := "Storage"
+	systemOS := "TrueNAS SCALE"
+	systemVersion := "25.04"
+	if _, found, err := gdb.UpdateSystemDeviceProfile("AA:BB:CC:DD:EE:20", models.SystemDeviceProfileUpdate{
+		Role: &systemRole,
+		OperatingSystem: &systemOS,
+		Version: &systemVersion,
+	}); err != nil || !found {
+		t.Fatalf("UpdateSystemDeviceProfile nas found=%v err=%v", found, err)
+	}
+	hypervisorPlatform := "proxmox-ve"
+	hypervisorNode := "pve-test"
+	if _, found, err := gdb.UpdateHypervisorProfile("AA:BB:CC:DD:EE:20", models.HypervisorProfileUpdate{
+		Platform: &hypervisorPlatform,
+		NodeName: &hypervisorNode,
+	}); err != nil || !found {
+		t.Fatalf("UpdateHypervisorProfile found=%v err=%v", found, err)
+	}
 
 	rec = getPath(router, "/api/export/backup")
 	if rec.Code != http.StatusOK {
@@ -183,6 +209,18 @@ func TestBackupExportEndpointIncludesStableDataAndMetadata(t *testing.T) {
 	assertExportMetadataMACs(t, document.Data.HostMetadata, []string{"AA:BB:CC:DD:EE:01", "AA:BB:CC:DD:EE:20"})
 	assertExportLifecycleMACs(t, document.Data.HostLifecycle, []string{"AA:BB:CC:DD:EE:01", "AA:BB:CC:DD:EE:20"})
 	assertExportDeviceProfileMACs(t, document.Data.DeviceProfiles, []string{"AA:BB:CC:DD:EE:20"})
+	if len(document.Data.NetworkDeviceProfiles) != 1 || document.Data.NetworkDeviceProfiles[0].Mac != "AA:BB:CC:DD:EE:01" ||
+		document.Data.NetworkDeviceProfiles[0].ManagementMode != networkMode || document.Data.NetworkDeviceProfiles[0].PhysicalPortCount != networkPorts {
+		t.Fatalf("network device profiles = %+v", document.Data.NetworkDeviceProfiles)
+	}
+	if len(document.Data.SystemDeviceProfiles) != 1 || document.Data.SystemDeviceProfiles[0].Mac != "AA:BB:CC:DD:EE:20" ||
+		document.Data.SystemDeviceProfiles[0].Role != systemRole || document.Data.SystemDeviceProfiles[0].OperatingSystem != systemOS {
+		t.Fatalf("system device profiles = %+v", document.Data.SystemDeviceProfiles)
+	}
+	if len(document.Data.HypervisorProfiles) != 1 || document.Data.HypervisorProfiles[0].Platform != hypervisorPlatform ||
+		document.Data.HypervisorProfiles[0].NodeName != hypervisorNode {
+		t.Fatalf("hypervisor profiles = %+v", document.Data.HypervisorProfiles)
+	}
 	if document.Data.DeviceProfiles[0].Manufacturer != profileManufacturer ||
 		document.Data.DeviceProfiles[0].Model != profileModel ||
 		document.Data.DeviceProfiles[0].ManagementAddress != profileAddress ||
@@ -214,7 +252,10 @@ func TestBackupExportEndpointEmptyTablesUsesArrays(t *testing.T) {
 		!strings.Contains(rec.Body.String(), `"events": []`) ||
 		!strings.Contains(rec.Body.String(), `"hostMetadata": []`) ||
 		!strings.Contains(rec.Body.String(), `"hostLifecycle": []`) ||
-		!strings.Contains(rec.Body.String(), `"deviceProfiles": []`) {
+		!strings.Contains(rec.Body.String(), `"deviceProfiles": []`) ||
+		!strings.Contains(rec.Body.String(), `"networkDeviceProfiles": []`) ||
+		!strings.Contains(rec.Body.String(), `"systemDeviceProfiles": []`) ||
+		!strings.Contains(rec.Body.String(), `"hypervisorProfiles": []`) {
 		t.Fatalf("empty backup did not encode empty arrays: %s", rec.Body.String())
 	}
 }
