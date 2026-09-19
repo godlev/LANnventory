@@ -38,6 +38,22 @@ Use `--compact` only when compact JSON is preferred:
 python3 proxmox/collect_inventory.py --compact
 ```
 
+### Script Import Safety Flow
+
+LANnventory does not persist collector output when it is first submitted. The import flow is deliberately two-step:
+
+1. **Preview** strictly validates the snapshot contract and returns a deterministic diff.
+2. The user reviews added, updated, unchanged, retired and conflicting workloads.
+3. **Apply** requires an explicit confirmation and the preview token returned by the previous step.
+4. LANnventory recomputes the preview against current persisted state. If inventory changed after preview, apply is rejected as stale.
+5. A valid apply is committed in one database transaction.
+
+Incomplete snapshots can be previewed so collection problems are visible, but they cannot be applied. A workload that already exists as manually maintained inventory is reported as a blocking source conflict rather than being overwritten.
+
+Imported node hostname, Proxmox version, cluster and status are stored separately from the manually managed Hypervisor profile. Differences are shown as managed/imported conflicts, but imported data never overwrites manual Hypervisor fields.
+
+The backend accepts at most 2 MiB per import request, rejects unknown JSON fields and validates schema version, source, RFC3339 collection time, VM/LXC identity, status, MAC addresses, VLAN tags, configured addresses and networks before generating a preview.
+
 ## What It Creates
 
 Defaults:
