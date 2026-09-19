@@ -5,9 +5,9 @@ import (
 	"errors"
 	"net"
 	"net/http"
-	"testing"
 	"net/http/httptest"
 	"strings"
+	"testing"
 
 	"github.com/godlev/LANnventory/internal/conf"
 	"github.com/godlev/LANnventory/internal/models"
@@ -48,7 +48,6 @@ func TestGuiContextReturnsListenerStartupError(t *testing.T) {
 		t.Fatalf("GuiContext() error = %v, want listener startup error", err)
 	}
 }
-
 
 func TestProxmoxCollectorDownload(t *testing.T) {
 	router := NewRouter()
