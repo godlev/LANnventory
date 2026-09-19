@@ -1,0 +1,69 @@
+name: Phase35 UAT2 UX refresh
+
+on:
+  push:
+    branches:
+      - phase35-device-profiles-proxmox
+    paths:
+      - .github/workflows/phase35-uat2-ux-refresh.yml
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase35-device-profiles-proxmox
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run Host UX semantic checks
+        working-directory: frontend
+        run: npm run test:host-ux
+
+      - name: Build canonical embedded frontend
+        working-directory: frontend
+        run: make all
+
+      - name: Verify mock API and collector copy
+        run: |
+          node --check frontend/dev/mock-api.mjs
+          cmp -s proxmox/collect_inventory.py frontend/public/lannventory-proxmox-collector.py
+          python3 -m py_compile proxmox/collect_inventory.py frontend/public/lannventory-proxmox-collector.py
+          python3 -m unittest proxmox/collect_inventory_test.py
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Backend regression
+        working-directory: backend
+        run: |
+          go test ./...
+          go vet ./...
+
+      - name: Commit refreshed embedded state
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo "No generated changes."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/internal/web/public
+          git diff --cached --check
+          git commit -m "phase35: refresh UAT2 onboarding bundle"
+          git push origin HEAD:phase35-device-profiles-proxmox
