@@ -1011,6 +1011,33 @@ definitions:
       updatedAt:
         type: string
     type: object
+  models.ProxmoxSourceState:
+    properties:
+      collectedAt:
+        type: string
+      collectorVersion:
+        type: string
+      complete:
+        type: boolean
+      hypervisorMac:
+        type: string
+      importedAt:
+        type: string
+      nodeClusterName:
+        type: string
+      nodeHostname:
+        type: string
+      nodePveVersion:
+        type: string
+      nodeStatus:
+        type: string
+      schemaVersion:
+        type: integer
+      snapshotDigest:
+        type: string
+      source:
+        type: string
+    type: object
   models.Service:
     properties:
       address:
@@ -2394,6 +2421,38 @@ paths:
               type: string
             type: object
       summary: Preview Proxmox script import
+      tags:
+      - hosts
+  /host/{id}/proxmox/source-state:
+    get:
+      description: Return the last successfully imported script-collector node state
+        for one Proxmox Host. Managed HypervisorProfile fields remain separate.
+      parameters:
+      - description: Proxmox Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ProxmoxSourceState'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get imported Proxmox source state
       tags:
       - hosts
   /host/{id}/service-scan-settings:

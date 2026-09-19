@@ -1995,6 +1995,53 @@ const docTemplate = `{
                 }
             }
         },
+        "/host/{id}/proxmox/source-state": {
+            "get": {
+                "description": "Return the last successfully imported script-collector node state for one Proxmox Host. Managed HypervisorProfile fields remain separate.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Get imported Proxmox source state",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Proxmox Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.ProxmoxSourceState"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/host/{id}/service-scan-settings": {
             "get": {
                 "description": "Return opt-in scheduled TCP service scan settings and runtime state for a host.",
@@ -4563,6 +4610,47 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.ProxmoxSourceState": {
+            "type": "object",
+            "properties": {
+                "collectedAt": {
+                    "type": "string"
+                },
+                "collectorVersion": {
+                    "type": "string"
+                },
+                "complete": {
+                    "type": "boolean"
+                },
+                "hypervisorMac": {
+                    "type": "string"
+                },
+                "importedAt": {
+                    "type": "string"
+                },
+                "nodeClusterName": {
+                    "type": "string"
+                },
+                "nodeHostname": {
+                    "type": "string"
+                },
+                "nodePveVersion": {
+                    "type": "string"
+                },
+                "nodeStatus": {
+                    "type": "string"
+                },
+                "schemaVersion": {
+                    "type": "integer"
+                },
+                "snapshotDigest": {
+                    "type": "string"
+                },
+                "source": {
                     "type": "string"
                 }
             }
