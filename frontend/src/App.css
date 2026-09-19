@@ -4996,3 +4996,174 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
         transform: rotate(90deg);
     }
 }
+
+
+/* Phase 35A UAT2 provenance and Proxmox onboarding */
+.profile-source-legend {
+    display: flex;
+    align-items: center;
+    gap: 0.42rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.8rem;
+    padding: 0.48rem 0.58rem;
+    border: 1px solid var(--wyl-panel-border);
+    border-radius: 7px;
+    background: var(--wyl-table-row-bg);
+}
+.profile-source-legend-title {
+    margin-right: 0.12rem;
+    color: var(--wyl-muted);
+    font-size: 0.68rem;
+    font-weight: 850;
+    text-transform: uppercase;
+}
+.profile-source-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.28rem;
+    padding: 0.16rem 0.42rem;
+    border: 1px solid var(--wyl-panel-border);
+    border-radius: 999px;
+    color: var(--bs-body-color);
+    font-size: 0.7rem;
+    font-weight: 750;
+}
+.profile-field-label,
+.proxmox-source-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.28rem;
+}
+.profile-source-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+    color: var(--wyl-muted);
+    cursor: help;
+    font-size: 0.68rem;
+    line-height: 1;
+}
+.profile-source-icon.is-manual {
+    color: var(--wyl-accent-unknown);
+}
+.profile-source-icon.is-discovered {
+    color: var(--wyl-link);
+}
+.profile-source-icon.is-imported {
+    color: var(--bs-success);
+}
+.profile-source-icon:focus-visible {
+    outline: 2px solid var(--wyl-link);
+    outline-offset: 2px;
+}
+.profile-field-hint {
+    margin-top: 0.15rem;
+    color: var(--wyl-muted);
+    font-size: 0.66rem;
+}
+
+.proxmox-permission-note {
+    display: grid;
+    grid-template-columns: 1.2rem minmax(0, 1fr);
+    gap: 0.55rem;
+    margin-top: 0.65rem;
+    padding: 0.62rem 0.7rem;
+    border: 1px solid color-mix(in srgb, var(--bs-success) 36%, var(--wyl-panel-border));
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--bs-success) 6%, transparent);
+    font-size: 0.76rem;
+    line-height: 1.42;
+}
+.proxmox-permission-note > i {
+    color: var(--bs-success);
+    font-size: 1rem;
+}
+.proxmox-import-wizard {
+    display: grid;
+    gap: 0.55rem;
+    margin-top: 0.7rem;
+}
+.proxmox-wizard-step {
+    display: grid;
+    grid-template-columns: 1.9rem minmax(0, 1fr);
+    gap: 0.58rem;
+    padding: 0.62rem;
+    border: 1px solid var(--wyl-panel-border);
+    border-radius: 8px;
+    background: var(--wyl-table-row-bg);
+}
+.proxmox-wizard-step-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border: 1px solid var(--wyl-control-border);
+    border-radius: 50%;
+    color: var(--wyl-heading);
+    background: var(--wyl-control-bg);
+    font-size: 0.78rem;
+    font-weight: 900;
+}
+.proxmox-wizard-step-body {
+    min-width: 0;
+}
+.proxmox-wizard-step-title {
+    margin-bottom: 0.32rem;
+    color: var(--wyl-heading);
+    font-size: 0.8rem;
+    font-weight: 850;
+}
+.proxmox-command-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.45rem;
+    align-items: stretch;
+}
+.proxmox-command-row .proxmox-collector-command {
+    display: block;
+    margin: 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}
+.proxmox-copy-button {
+    min-width: 5.2rem;
+}
+.proxmox-download-fallback,
+.proxmox-review-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.55rem;
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+}
+.proxmox-review-row > .small {
+    flex: 1 1 24rem;
+}
+.proxmox-review-row > .btn {
+    flex: 0 0 auto;
+}
+
+@media (max-width: 575.98px) {
+    .profile-source-legend {
+        align-items: flex-start;
+    }
+    .proxmox-command-row {
+        grid-template-columns: 1fr;
+    }
+    .proxmox-copy-button {
+        justify-self: start;
+    }
+    .proxmox-review-row {
+        align-items: stretch;
+        flex-direction: column;
+    }
+    .proxmox-review-row > .btn {
+        width: 100%;
+    }
+}
