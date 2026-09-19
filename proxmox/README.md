@@ -13,13 +13,22 @@ Do not run the installer inside an existing LXC. It creates a new Debian 13 unpr
 
 ## Read-Only Inventory Collector
 
-Phase 35 also includes a separate Proxmox inventory collector:
+Phase 35 also includes a separate Proxmox inventory collector. The LANnventory Host page for a Proxmox VE server now provides a guided import wizard and serves the collector directly from the running LANnventory instance.
+
+The easiest path is:
+
+1. Open the Proxmox node **Shell** as `root` (or an account allowed to run `qm`/`pct` and read the allowlisted network lines under `/etc/pve`).
+2. Copy the command shown by LANnventory. It downloads `/lannventory-proxmox-collector.py` from that LANnventory instance and runs it locally on the Proxmox node.
+3. Copy the JSON printed in the Proxmox shell back into LANnventory, or save it as a JSON file and upload it.
+4. Use **Preview changes** before applying anything.
+
+The collector does not use a Proxmox API password or token. It inherits the permissions of the shell user that runs it. It is independent from the LXC installer above, does not install or update LANnventory, does not contact LANnventory after it is downloaded, and does not transmit collected inventory to the Internet. It only prints a normalized JSON snapshot to standard output for the script-import workflow.
+
+For direct repository use, the equivalent command remains:
 
 ```bash
 python3 proxmox/collect_inventory.py > lannventory-proxmox.json
 ```
-
-The collector is independent from the LXC installer above. It does not install or update LANnventory, does not contact LANnventory, and does not transmit data to the Internet. It only prints a normalized JSON snapshot to standard output for the script-import workflow.
 
 The snapshot contains only:
 
@@ -142,7 +151,7 @@ If installation fails after the container is created, the installer leaves the c
 
 ## Updating Later
 
-This installer currently installs `v0.1.0-beta.3.1`. Future installer versions can update the release tag and package URL. Manual package upgrades should use a newer official LANnventory `.deb` release package and install it with `apt` inside the container so package dependencies remain managed by the OS.
+This installer currently installs `v0.1.0-beta.6.uat.1`. Future installer versions can update the release tag and package URL. Manual package upgrades should use a newer official LANnventory `.deb` release package and install it with `apt` inside the container so package dependencies remain managed by the OS.
 
 ## Notes About ARP Scanning In LXC
 
