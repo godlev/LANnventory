@@ -13,6 +13,7 @@ import type { Host } from "../../functions/exports";
 
 type ProfileCardProps = {
   host: Host;
+  onProfileChange?: (profile: DeviceProfileResponse) => void;
 };
 
 type ProfileDraft = {
@@ -61,6 +62,7 @@ function DeviceProfileCard(props: ProfileCardProps) {
     if (id < 1) {
       requestID++;
       setProfile(emptyProfile);
+      props.onProfileChange?.(emptyProfile);
       setDraft(draftFromProfile(emptyProfile));
       setBaseline(draftFromProfile(emptyProfile));
       setLoading(false);
@@ -83,6 +85,7 @@ function DeviceProfileCard(props: ProfileCardProps) {
     } catch {
       if (active !== requestID) return;
       setProfile(emptyProfile);
+      props.onProfileChange?.(emptyProfile);
       setError("Device profile could not be loaded.");
     } finally {
       if (active === requestID) setLoading(false);
@@ -91,6 +94,7 @@ function DeviceProfileCard(props: ProfileCardProps) {
 
   const applyProfile = (next: DeviceProfileResponse) => {
     setProfile(next);
+    props.onProfileChange?.(next);
     const nextDraft = draftFromProfile(next);
     setDraft(nextDraft);
     setBaseline(nextDraft);
