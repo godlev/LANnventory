@@ -8,7 +8,8 @@ const (
 	InfrastructureWorkloadStatusRunning = "running"
 	InfrastructureWorkloadStatusStopped = "stopped"
 
-	InfrastructureWorkloadSourceManual = "manual"
+	InfrastructureWorkloadSourceManual       = "manual"
+	InfrastructureWorkloadSourceScriptImport = "script-import"
 
 	InfrastructureWorkloadLinkSourceManual   = "manual"
 	InfrastructureWorkloadLinkSourceExactMAC = "exact-mac"
