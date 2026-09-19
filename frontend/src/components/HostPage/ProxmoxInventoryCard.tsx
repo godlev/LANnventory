@@ -409,7 +409,17 @@ function SourceSummary(props: {
 function SourceMetric(props: { label: string; value: string; monospace?: boolean }) {
   return (
     <div class="proxmox-source-metric">
-      <div class="proxmox-source-label">{props.label}</div>
+      <div class="proxmox-source-label">
+        {props.label}
+        <span
+          class="profile-source-icon is-imported ms-1"
+          title="Imported: observed by the read-only Proxmox collector. Managed profile fields are separate."
+          aria-label="Imported from Proxmox collector"
+          tabindex="0"
+        >
+          <i class="bi bi-box-arrow-in-down" aria-hidden="true"></i>
+        </span>
+      </div>
       <div class={"proxmox-source-value"+(props.monospace ? " font-monospace" : "")}>{props.value || "—"}</div>
     </div>
   );
@@ -590,49 +600,129 @@ function ImportSection(props: {
   onPreview: () => void;
   onApply: () => void;
 }) {
+  const [copied, setCopied] = createSignal(false);
+
+  const collectorURL = () => {
+    if (typeof window === "undefined") return "/lannventory-proxmox-collector.py";
+    return window.location.origin+"/lannventory-proxmox-collector.py";
+  };
+  const collectorCommand = () =>
+    "curl -fsSL "+collectorURL()+" -o /tmp/lannventory-proxmox-collector.py && python3 /tmp/lannventory-proxmox-collector.py";
+
+  const copyCollectorCommand = async () => {
+    try {
+      await navigator.clipboard.writeText(collectorCommand());
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setCopied(false);
+    }
+  };
+
   return (
     <div class="proxmox-section proxmox-import-section">
       <div class="proxmox-section-heading">
         <div>
-          <div class="small fw-semibold">Import read-only collector snapshot</div>
+          <div class="small fw-semibold">Import from Proxmox</div>
           <div class="small device-cell-muted">
-            Run the collector on the Proxmox node, then paste or upload its JSON. Preview is mandatory before Apply.
+            Guided read-only import. LANnventory does not need your Proxmox password or API token for this method.
           </div>
         </div>
         <span class="host-detail-section-badge">No credentials</span>
       </div>
 
-      <div class="proxmox-collector-command font-monospace">
-        python3 proxmox/collect_inventory.py &gt; lannventory-proxmox.json
+      <div class="proxmox-permission-note">
+        <i class="bi bi-shield-check" aria-hidden="true"></i>
+        <div>
+          <div class="fw-semibold">How access works</div>
+          <div>
+            The collector runs <strong>on the Proxmox node</strong> and uses the permissions of the shell user running it.
+            Use <strong>root</strong> or an account allowed to run <span class="font-monospace">qm</span>/<span class="font-monospace">pct</span>
+            and read the allowlisted network lines under <span class="font-monospace">/etc/pve</span>.
+            It does not log in to Proxmox from LANnventory and it does not send data anywhere.
+          </div>
+        </div>
       </div>
 
-      <div class="proxmox-import-controls">
-        <textarea
-          class="form-control form-control-sm wyl-control proxmox-import-textarea font-monospace"
-          rows={7}
-          placeholder="Paste collector JSON here…"
-          value={props.importText}
-          onInput={(event) => props.onText(event.currentTarget.value)}
-        ></textarea>
-        <div class="proxmox-import-actions">
-          <label class="btn btn-sm btn-outline-secondary mb-0">
-            <i class="bi bi-file-earmark-arrow-up me-1" aria-hidden="true"></i>
-            Choose JSON
-            <input
-              class="visually-hidden"
-              type="file"
-              accept=".json,application/json"
-              onChange={(event) => props.onFile(event.currentTarget.files?.[0])}
-            />
-          </label>
-          <button type="button" class="btn btn-sm btn-outline-secondary" disabled={!props.importText || props.previewing || props.applying} onClick={props.onClear}>
-            Clear
-          </button>
-          <button type="button" class="btn btn-sm btn-primary" disabled={!props.importText.trim() || props.previewing || props.applying} onClick={props.onPreview}>
-            <i class={props.previewing ? "bi bi-arrow-repeat proxmox-spin me-1" : "bi bi-search me-1"} aria-hidden="true"></i>
-            {props.previewing ? "Validating…" : "Preview"}
-          </button>
-        </div>
+      <div class="proxmox-import-wizard">
+        <WizardStep number="1" title="Open the Proxmox shell">
+          <div class="small device-cell-muted">
+            In the Proxmox web UI open <strong>Shell</strong> for this node, preferably as root.
+          </div>
+        </WizardStep>
+
+        <WizardStep number="2" title="Run the read-only collector">
+          <div class="small device-cell-muted mb-2">
+            Copy this command into the Proxmox shell. It downloads the collector from this LANnventory instance and prints the JSON result in the shell.
+          </div>
+          <div class="proxmox-command-row">
+            <code class="proxmox-collector-command">{collectorCommand()}</code>
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-secondary proxmox-copy-button"
+              onClick={() => void copyCollectorCommand()}
+            >
+              <i class={copied() ? "bi bi-check2 me-1" : "bi bi-copy me-1"} aria-hidden="true"></i>
+              {copied() ? "Copied" : "Copy"}
+            </button>
+          </div>
+          <div class="proxmox-download-fallback">
+            <span class="small device-cell-muted">If the Proxmox node cannot reach this LANnventory URL:</span>
+            <a
+              class="btn btn-sm btn-outline-secondary"
+              href="/lannventory-proxmox-collector.py"
+              download="lannventory-proxmox-collector.py"
+            >
+              <i class="bi bi-download me-1" aria-hidden="true"></i>
+              Download collector
+            </a>
+          </div>
+        </WizardStep>
+
+        <WizardStep number="3" title="Bring the JSON result back here">
+          <div class="small device-cell-muted mb-2">
+            Copy the complete JSON printed by the collector and paste it below. If you saved the output as a file instead, choose that JSON file.
+          </div>
+          <textarea
+            class="form-control form-control-sm wyl-control proxmox-import-textarea font-monospace"
+            rows={7}
+            placeholder={'Paste the collector JSON here, starting with "{" …'}
+            value={props.importText}
+            onInput={(event) => props.onText(event.currentTarget.value)}
+          ></textarea>
+          <div class="proxmox-import-actions mt-2">
+            <label class="btn btn-sm btn-outline-secondary mb-0">
+              <i class="bi bi-file-earmark-arrow-up me-1" aria-hidden="true"></i>
+              Choose JSON file
+              <input
+                class="visually-hidden"
+                type="file"
+                accept=".json,application/json"
+                onChange={(event) => props.onFile(event.currentTarget.files?.[0])}
+              />
+            </label>
+            <button type="button" class="btn btn-sm btn-outline-secondary" disabled={!props.importText || props.previewing || props.applying} onClick={props.onClear}>
+              Clear
+            </button>
+          </div>
+        </WizardStep>
+
+        <WizardStep number="4" title="Review before anything is saved">
+          <div class="proxmox-review-row">
+            <div class="small device-cell-muted">
+              Preview validates the JSON and shows Add / Update / Retire / Conflicts. Nothing is written until you review and confirm Apply.
+            </div>
+            <button
+              type="button"
+              class="btn btn-sm btn-primary"
+              disabled={!props.importText.trim() || props.previewing || props.applying}
+              onClick={props.onPreview}
+            >
+              <i class={props.previewing ? "bi bi-arrow-repeat proxmox-spin me-1" : "bi bi-search me-1"} aria-hidden="true"></i>
+              {props.previewing ? "Validating…" : "Preview changes"}
+            </button>
+          </div>
+        </WizardStep>
       </div>
 
       <Show when={props.error}>
@@ -732,6 +822,18 @@ function ImportSection(props: {
         )}
       </Show>
     </div>
+  );
+}
+
+function WizardStep(props: { number: string; title: string; children: any }) {
+  return (
+    <section class="proxmox-wizard-step">
+      <div class="proxmox-wizard-step-number" aria-hidden="true">{props.number}</div>
+      <div class="proxmox-wizard-step-body">
+        <div class="proxmox-wizard-step-title">{props.title}</div>
+        <div>{props.children}</div>
+      </div>
+    </section>
   );
 }
 
