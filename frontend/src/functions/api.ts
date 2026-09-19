@@ -123,6 +123,198 @@ export type HypervisorProfilePayload = {
   clusterName?: string;
 };
 
+
+export type ProxmoxSourceState = {
+  hypervisorMac: string;
+  source: "script-import";
+  schemaVersion: number;
+  collectorVersion: string;
+  collectedAt: string;
+  complete: boolean;
+  nodeHostname: string;
+  nodePveVersion: string;
+  nodeClusterName: string;
+  nodeStatus: "online" | "offline" | "unknown";
+  snapshotDigest: string;
+  importedAt: string;
+};
+
+export type InfrastructureWorkloadInterface = {
+  id: number;
+  workloadId: number;
+  name: string;
+  mac: string;
+  bridge: string;
+  vlanTag: string;
+  configuredAddress: string;
+  configuredNetwork: string;
+  updatedAt: string;
+};
+
+export type InfrastructureWorkloadHostLink = {
+  workloadId: number;
+  hostId: number;
+  hostMac: string;
+  linkSource: "manual" | "exact-mac";
+  linkedAt: string;
+  updatedAt: string;
+};
+
+export type InfrastructureWorkloadMatchedHost = {
+  hostId: number;
+  mac: string;
+  name: string;
+  ip: string;
+  deviceType: string;
+};
+
+export type InfrastructureWorkload = {
+  id: number;
+  hypervisorMac: string;
+  nativeId: string;
+  workloadType: "vm" | "container";
+  name: string;
+  status: "unknown" | "running" | "stopped";
+  source: "manual" | "script-import";
+  firstSeen: string;
+  lastSeen: string;
+  retiredAt: string;
+  updatedAt: string;
+  interfaces: InfrastructureWorkloadInterface[];
+  link: InfrastructureWorkloadHostLink | null;
+  matchedHost: InfrastructureWorkloadMatchedHost | null;
+};
+
+export type WorkloadMatchEvidence = {
+  code: string;
+  detail: string;
+  strength: "exact-mac" | "address" | "name";
+  active: boolean;
+};
+
+export type WorkloadMatchCandidate = {
+  hostId: number;
+  mac: string;
+  name: string;
+  ip: string;
+  deviceType: string;
+  active: boolean;
+  strength: "exact-mac" | "address" | "name";
+  evidence: WorkloadMatchEvidence[];
+};
+
+export type InfrastructureWorkloadMatch = {
+  workloadId: number;
+  nativeId: string;
+  workloadType: "vm" | "container";
+  name: string;
+  currentLink: InfrastructureWorkloadHostLink | null;
+  deterministicExactHostId?: number;
+  exactAmbiguous: boolean;
+  candidates: WorkloadMatchCandidate[];
+};
+
+export type ProxmoxSnapshotInterface = {
+  name: string;
+  mac?: string;
+  bridge?: string;
+  vlanTag?: string;
+  configuredAddress?: string;
+  configuredNetwork?: string;
+};
+
+export type ProxmoxSnapshotWorkload = {
+  nativeId: string;
+  workloadType: "vm" | "container";
+  name: string;
+  status: "unknown" | "running" | "stopped";
+  interfaces: ProxmoxSnapshotInterface[];
+};
+
+export type ProxmoxSnapshot = {
+  schemaVersion: number;
+  collectorVersion: string;
+  source: "script-import";
+  collectedAt: string;
+  complete: boolean;
+  collectionErrors?: string[];
+  node: {
+    hostname: string;
+    pveVersion: string;
+    clusterName?: string;
+    status: "online" | "offline" | "unknown";
+  };
+  workloads: ProxmoxSnapshotWorkload[];
+};
+
+export type ProxmoxImportPreviewSummary = {
+  added: number;
+  updated: number;
+  unchanged: number;
+  retired: number;
+  conflicts: number;
+};
+
+export type ProxmoxImportNodeView = {
+  hostname: string;
+  pveVersion: string;
+  clusterName: string;
+  status: string;
+};
+
+export type ProxmoxImportWorkloadView = {
+  id?: number;
+  nativeId: string;
+  workloadType: string;
+  name: string;
+  status: string;
+  source: string;
+  retiredAt?: string;
+  interfaces: Array<{
+    name: string;
+    mac: string;
+    bridge: string;
+    vlanTag: string;
+    configuredAddress: string;
+    configuredNetwork: string;
+  }>;
+};
+
+export type ProxmoxImportPreview = {
+  previewToken: string;
+  snapshotDigest: string;
+  source: string;
+  collectedAt: string;
+  complete: boolean;
+  applyAllowed: boolean;
+  blockedReasons: string[];
+  warnings: string[];
+  summary: ProxmoxImportPreviewSummary;
+  node: {
+    action: "add" | "update" | "unchanged";
+    before: ProxmoxImportNodeView | null;
+    after: ProxmoxImportNodeView;
+  };
+  managedConflicts: Array<{
+    field: string;
+    managed: string;
+    imported: string;
+  }>;
+  workloads: Array<{
+    action: "add" | "update" | "unchanged" | "retire" | "conflict";
+    key: string;
+    changes: string[];
+    before: ProxmoxImportWorkloadView | null;
+    after: ProxmoxImportWorkloadView | null;
+  }>;
+};
+
+export type ProxmoxImportApplyResponse = {
+  applied: boolean;
+  importedAt: string;
+  summary: ProxmoxImportPreviewSummary;
+};
+
 const apiFetch = async (url: string, init?: RequestInit): Promise<Response> => {
   const response = await fetch(url, init);
   if (!response.ok) {
@@ -388,6 +580,74 @@ export const apiDeleteHostHypervisorProfile = async (
 ): Promise<DeviceProfileResponse> => {
   const url = apiPath+'/api/host/'+encodeURIComponent(String(id))+'/profile/hypervisor';
   return await apiJSON<DeviceProfileResponse>(url, { method: 'DELETE' });
+};
+
+
+export const apiGetProxmoxSourceState = async (
+  id: number | string,
+): Promise<ProxmoxSourceState | null> => {
+  const url = apiPath+'/api/host/'+encodeURIComponent(String(id))+'/proxmox/source-state';
+  return await apiJSON<ProxmoxSourceState | null>(url);
+};
+
+export const apiGetHostWorkloads = async (
+  id: number | string,
+): Promise<InfrastructureWorkload[]> => {
+  const url = apiPath+'/api/host/'+encodeURIComponent(String(id))+'/workloads';
+  return await apiJSON<InfrastructureWorkload[]>(url);
+};
+
+export const apiGetHostWorkloadMatches = async (
+  id: number | string,
+): Promise<InfrastructureWorkloadMatch[]> => {
+  const url = apiPath+'/api/host/'+encodeURIComponent(String(id))+'/workload-matches';
+  return await apiJSON<InfrastructureWorkloadMatch[]>(url);
+};
+
+export const apiPreviewProxmoxImport = async (
+  id: number | string,
+  snapshot: ProxmoxSnapshot,
+): Promise<ProxmoxImportPreview> => {
+  const url = apiPath+'/api/host/'+encodeURIComponent(String(id))+'/proxmox/import/preview';
+  return await apiJSON<ProxmoxImportPreview>(url, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(snapshot),
+  });
+};
+
+export const apiApplyProxmoxImport = async (
+  id: number | string,
+  previewToken: string,
+  snapshot: ProxmoxSnapshot,
+): Promise<ProxmoxImportApplyResponse> => {
+  const url = apiPath+'/api/host/'+encodeURIComponent(String(id))+'/proxmox/import/apply';
+  return await apiJSON<ProxmoxImportApplyResponse>(url, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ previewToken, confirmed: true, snapshot }),
+  });
+};
+
+export const apiSetInfrastructureWorkloadLink = async (
+  id: number | string,
+  workloadId: number,
+  hostId: number,
+): Promise<InfrastructureWorkload> => {
+  const url = apiPath+'/api/host/'+encodeURIComponent(String(id))+'/workloads/'+encodeURIComponent(String(workloadId))+'/link';
+  return await apiJSON<InfrastructureWorkload>(url, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ hostId }),
+  });
+};
+
+export const apiDeleteInfrastructureWorkloadLink = async (
+  id: number | string,
+  workloadId: number,
+): Promise<InfrastructureWorkload> => {
+  const url = apiPath+'/api/host/'+encodeURIComponent(String(id))+'/workloads/'+encodeURIComponent(String(workloadId))+'/link';
+  return await apiJSON<InfrastructureWorkload>(url, { method: 'DELETE' });
 };
 
 export const apiGetHostServices = async (id: number | string): Promise<Service[]> => {
