@@ -243,6 +243,15 @@ func deleteHostHypervisorProfile(c *gin.Context) {
 	if !ok {
 		return
 	}
+	workloads, err := gdb.SelectInfrastructureWorkloadsByHypervisorMAC(host.Mac)
+	if err != nil {
+		profileWriteError(c, "hypervisor", host, err)
+		return
+	}
+	if len(workloads) > 0 {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "remove hypervisor workloads before removing the hypervisor profile"})
+		return
+	}
 	if err := gdb.DeleteHypervisorProfileByMAC(host.Mac); err != nil {
 		profileWriteError(c, "hypervisor", host, err)
 		return
