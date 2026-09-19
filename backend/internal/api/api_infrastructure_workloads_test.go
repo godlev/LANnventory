@@ -102,6 +102,12 @@ func TestInfrastructureWorkloadAPIRejectsInvalidOwnershipAndHypervisorState(t *t
 	}
 
 	enableTestHypervisor(t, router, server.ID)
+
+	rec = patchProfilePath(router, server.ID, "", `{"deviceType":"nas"}`)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("device type change while hypervisor enabled status = %d, want %d; body: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+
 	rec = workloadRequest(router, http.MethodPost, server.ID, "", `{"nativeId":"","workloadType":"vm"}`)
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("empty native id status = %d, want %d; body: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
@@ -156,6 +162,21 @@ func TestInfrastructureWorkloadAPIManualPatchAndDelete(t *testing.T) {
 	}
 	if len(workloads) != 0 {
 		t.Fatalf("workloads after delete = %+v, want empty", workloads)
+	}
+
+	rec = patchProfilePath(router, hypervisor.ID, "/hypervisor", `{"platform":"proxmox-ve"}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("re-enable hypervisor status = %d; body: %s", rec.Code, rec.Body.String())
+	}
+	rec = workloadRequest(router, http.MethodPost, hypervisor.ID, "", `{"nativeId":"301","workloadType":"vm"}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("create workload before profile removal guard status = %d; body: %s", rec.Code, rec.Body.String())
+	}
+	req := httptest.NewRequest(http.MethodDelete, "/api/host/"+itoa(hypervisor.ID)+"/profile/hypervisor", nil)
+	blocked := httptest.NewRecorder()
+	router.ServeHTTP(blocked, req)
+	if blocked.Code != http.StatusBadRequest {
+		t.Fatalf("remove hypervisor with workloads status = %d, want %d; body: %s", blocked.Code, http.StatusBadRequest, blocked.Body.String())
 	}
 }
 
