@@ -272,6 +272,7 @@ func assertPackagingSchema(t *testing.T) {
 		infrastructureWorkloadsTable,
 		infrastructureWorkloadInterfacesTable,
 		infrastructureWorkloadHostLinksTable,
+		proxmoxSourceStatesTable,
 	} {
 		if !db.Migrator().HasTable(table) {
 			t.Fatalf("%s table missing", table)
