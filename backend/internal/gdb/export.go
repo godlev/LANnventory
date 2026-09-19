@@ -23,6 +23,7 @@ func ExportData() (backup.Data, error) {
 	var workloads []models.InfrastructureWorkload
 	var workloadInterfaces []models.InfrastructureWorkloadInterface
 	var workloadLinks []models.InfrastructureWorkloadHostLink
+	var proxmoxSourceStates []models.ProxmoxSourceState
 
 	activeDB, release, err := acquireDB()
 	if err != nil {
@@ -69,6 +70,12 @@ func ExportData() (backup.Data, error) {
 		if err := txDB.Table(infrastructureWorkloadHostLinksTable).Order(clause.OrderByColumn{Column: clause.Column{Name: "WORKLOAD_ID"}}).Find(&workloadLinks).Error; err != nil {
 			return err
 		}
+		if err := txDB.Table(proxmoxSourceStatesTable).
+			Order(clause.OrderByColumn{Column: clause.Column{Name: "HYPERVISOR_MAC"}}).
+			Order(clause.OrderByColumn{Column: clause.Column{Name: "SOURCE"}}).
+			Find(&proxmoxSourceStates).Error; err != nil {
+			return err
+		}
 
 		return nil
 	})
@@ -76,7 +83,7 @@ func ExportData() (backup.Data, error) {
 		return backup.Data{}, err
 	}
 
-	return backup.DataFromModels(currentHosts, history, events, hostMetadata, hostLifecycle, deviceProfiles, networkProfiles, systemProfiles, hypervisorProfiles, workloads, workloadInterfaces, workloadLinks), nil
+	return backup.DataFromModels(currentHosts, history, events, hostMetadata, hostLifecycle, deviceProfiles, networkProfiles, systemProfiles, hypervisorProfiles, workloads, workloadInterfaces, workloadLinks, proxmoxSourceStates), nil
 }
 
 // ExportCurrentHosts returns enriched current inventory without reading history tables.
