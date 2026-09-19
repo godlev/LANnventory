@@ -265,7 +265,14 @@ func assertPackagingSchema(t *testing.T) {
 			t.Fatalf("device_profiles missing %s column", column)
 		}
 	}
-	for _, table := range []string{networkDeviceProfilesTable, systemDeviceProfilesTable, hypervisorProfilesTable} {
+	for _, table := range []string{
+		networkDeviceProfilesTable,
+		systemDeviceProfilesTable,
+		hypervisorProfilesTable,
+		infrastructureWorkloadsTable,
+		infrastructureWorkloadInterfacesTable,
+		infrastructureWorkloadHostLinksTable,
+	} {
 		if !db.Migrator().HasTable(table) {
 			t.Fatalf("%s table missing", table)
 		}
