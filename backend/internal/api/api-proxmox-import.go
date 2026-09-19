@@ -18,6 +18,126 @@ import (
 
 const maxProxmoxImportBodyBytes int64 = 2 * 1024 * 1024
 
+
+// ProxmoxImportSnapshotDoc mirrors the collector JSON contract for generated
+// API documentation while runtime validation remains in proxmoxsnapshot.
+type ProxmoxImportSnapshotDoc struct {
+	SchemaVersion    int                         `json:"schemaVersion"`
+	CollectorVersion string                      `json:"collectorVersion"`
+	Source           string                      `json:"source"`
+	CollectedAt      string                      `json:"collectedAt"`
+	Complete         bool                        `json:"complete"`
+	CollectionErrors []string                    `json:"collectionErrors,omitempty"`
+	Node             ProxmoxImportNodeDoc        `json:"node"`
+	Workloads        []ProxmoxImportWorkloadDoc  `json:"workloads"`
+}
+
+type ProxmoxImportNodeDoc struct {
+	Hostname    string `json:"hostname"`
+	PVEVersion  string `json:"pveVersion"`
+	ClusterName string `json:"clusterName,omitempty"`
+	Status      string `json:"status"`
+}
+
+type ProxmoxImportWorkloadDoc struct {
+	NativeID     string                       `json:"nativeId"`
+	WorkloadType string                       `json:"workloadType"`
+	Name         string                       `json:"name"`
+	Status       string                       `json:"status"`
+	Interfaces   []ProxmoxImportInterfaceDoc `json:"interfaces"`
+}
+
+type ProxmoxImportInterfaceDoc struct {
+	Name              string `json:"name"`
+	Mac               string `json:"mac,omitempty"`
+	Bridge            string `json:"bridge,omitempty"`
+	VLANTag           string `json:"vlanTag,omitempty"`
+	ConfiguredAddress string `json:"configuredAddress,omitempty"`
+	ConfiguredNetwork string `json:"configuredNetwork,omitempty"`
+}
+
+type ProxmoxImportPreviewSummaryDoc struct {
+	Added     int `json:"added"`
+	Updated   int `json:"updated"`
+	Unchanged int `json:"unchanged"`
+	Retired   int `json:"retired"`
+	Conflicts int `json:"conflicts"`
+}
+
+type ProxmoxImportFieldConflictDoc struct {
+	Field    string `json:"field"`
+	Managed  string `json:"managed"`
+	Imported string `json:"imported"`
+}
+
+type ProxmoxImportNodeViewDoc struct {
+	Hostname    string `json:"hostname"`
+	PVEVersion  string `json:"pveVersion"`
+	ClusterName string `json:"clusterName"`
+	Status      string `json:"status"`
+}
+
+type ProxmoxImportNodeDiffDoc struct {
+	Action string                    `json:"action"`
+	Before *ProxmoxImportNodeViewDoc `json:"before"`
+	After  ProxmoxImportNodeViewDoc  `json:"after"`
+}
+
+type ProxmoxImportInterfaceViewDoc struct {
+	Name              string `json:"name"`
+	Mac               string `json:"mac"`
+	Bridge            string `json:"bridge"`
+	VLANTag           string `json:"vlanTag"`
+	ConfiguredAddress string `json:"configuredAddress"`
+	ConfiguredNetwork string `json:"configuredNetwork"`
+}
+
+type ProxmoxImportWorkloadViewDoc struct {
+	ID           uint                            `json:"id,omitempty"`
+	NativeID     string                          `json:"nativeId"`
+	WorkloadType string                          `json:"workloadType"`
+	Name         string                          `json:"name"`
+	Status       string                          `json:"status"`
+	Source       string                          `json:"source"`
+	RetiredAt    string                          `json:"retiredAt,omitempty"`
+	Interfaces   []ProxmoxImportInterfaceViewDoc `json:"interfaces"`
+}
+
+type ProxmoxImportWorkloadDiffDoc struct {
+	Action  string                        `json:"action"`
+	Key     string                        `json:"key"`
+	Changes []string                      `json:"changes"`
+	Before  *ProxmoxImportWorkloadViewDoc `json:"before"`
+	After   *ProxmoxImportWorkloadViewDoc `json:"after"`
+}
+
+type ProxmoxImportPreviewDoc struct {
+	PreviewToken     string                           `json:"previewToken"`
+	SnapshotDigest   string                           `json:"snapshotDigest"`
+	Source           string                           `json:"source"`
+	CollectedAt      string                           `json:"collectedAt"`
+	Complete         bool                             `json:"complete"`
+	ApplyAllowed     bool                             `json:"applyAllowed"`
+	BlockedReasons   []string                         `json:"blockedReasons"`
+	Warnings         []string                         `json:"warnings"`
+	Summary          ProxmoxImportPreviewSummaryDoc   `json:"summary"`
+	Node             ProxmoxImportNodeDiffDoc         `json:"node"`
+	ManagedConflicts []ProxmoxImportFieldConflictDoc  `json:"managedConflicts"`
+	Workloads        []ProxmoxImportWorkloadDiffDoc   `json:"workloads"`
+}
+
+type ProxmoxImportApplyDoc struct {
+	PreviewToken string                   `json:"previewToken"`
+	Confirmed    bool                     `json:"confirmed"`
+	Snapshot     ProxmoxImportSnapshotDoc `json:"snapshot"`
+}
+
+type ProxmoxImportApplyResponseDoc struct {
+	Applied    bool                           `json:"applied"`
+	ImportedAt string                         `json:"importedAt"`
+	Summary    ProxmoxImportPreviewSummaryDoc `json:"summary"`
+}
+
 type ProxmoxImportApplyRequest struct {
 	PreviewToken string                   `json:"previewToken"`
 	Confirmed    bool                     `json:"confirmed"`
@@ -37,8 +157,8 @@ type ProxmoxImportApplyResponse struct {
 // @Accept       json
 // @Produce      json
 // @Param        id    path      string                    true  "Proxmox Host ID"
-// @Param        body  body      proxmoxsnapshot.Snapshot  true  "Collector snapshot"
-// @Success      200   {object}  proxmoximport.Preview
+// @Param        body  body      ProxmoxImportSnapshotDoc  true  "Collector snapshot"
+// @Success      200   {object}  ProxmoxImportPreviewDoc
 // @Failure      400   {object}  map[string]string
 // @Failure      500   {object}  map[string]string
 // @Router       /host/{id}/proxmox/import/preview [post]
@@ -75,8 +195,8 @@ func previewProxmoxScriptImport(c *gin.Context) {
 // @Accept       json
 // @Produce      json
 // @Param        id    path      string                     true  "Proxmox Host ID"
-// @Param        body  body      ProxmoxImportApplyRequest  true  "Confirmed preview token and collector snapshot"
-// @Success      200   {object}  ProxmoxImportApplyResponse
+// @Param        body  body      ProxmoxImportApplyDoc  true  "Confirmed preview token and collector snapshot"
+// @Success      200   {object}  ProxmoxImportApplyResponseDoc
 // @Failure      400   {object}  map[string]string
 // @Failure      409   {object}  map[string]string
 // @Failure      500   {object}  map[string]string
