@@ -196,6 +196,22 @@ func TestBackupExportEndpointIncludesStableDataAndMetadata(t *testing.T) {
 	); err != nil {
 		t.Fatalf("SetInfrastructureWorkloadHostLink: %v", err)
 	}
+	proxmoxState := models.ProxmoxSourceState{
+		Source:           models.InfrastructureWorkloadSourceScriptImport,
+		SchemaVersion:    1,
+		CollectorVersion: "1.0.0",
+		CollectedAt:      "2026-09-05T10:40:00Z",
+		Complete:         true,
+		NodeHostname:     "pve-imported",
+		NodePVEVersion:   "pve-manager/9.2.10",
+		NodeClusterName:  "home",
+		NodeStatus:       "online",
+		SnapshotDigest:   "export-test-digest",
+		ImportedAt:       "2026-09-05T10:41:00Z",
+	}
+	if err := gdb.ApplyProxmoxScriptImport("AA:BB:CC:DD:EE:20", proxmoxState, nil); err != nil {
+		t.Fatalf("ApplyProxmoxScriptImport state-only: %v", err)
+	}
 
 	rec = getPath(router, "/api/export/backup")
 	if rec.Code != http.StatusOK {
@@ -266,6 +282,12 @@ func TestBackupExportEndpointIncludesStableDataAndMetadata(t *testing.T) {
 		document.Data.InfrastructureWorkloadHostLinks[0].LinkSource != models.InfrastructureWorkloadLinkSourceManual {
 		t.Fatalf("infrastructure workload host links = %+v", document.Data.InfrastructureWorkloadHostLinks)
 	}
+	if len(document.Data.ProxmoxSourceStates) != 1 ||
+		document.Data.ProxmoxSourceStates[0].HypervisorMac != "AA:BB:CC:DD:EE:20" ||
+		document.Data.ProxmoxSourceStates[0].NodeHostname != "pve-imported" ||
+		document.Data.ProxmoxSourceStates[0].SnapshotDigest != "export-test-digest" {
+		t.Fatalf("Proxmox source states = %+v", document.Data.ProxmoxSourceStates)
+	}
 	if document.Data.DeviceProfiles[0].Manufacturer != profileManufacturer ||
 		document.Data.DeviceProfiles[0].Model != profileModel ||
 		document.Data.DeviceProfiles[0].ManagementAddress != profileAddress ||
@@ -303,7 +325,8 @@ func TestBackupExportEndpointEmptyTablesUsesArrays(t *testing.T) {
 		!strings.Contains(rec.Body.String(), `"hypervisorProfiles": []`) ||
 		!strings.Contains(rec.Body.String(), `"infrastructureWorkloads": []`) ||
 		!strings.Contains(rec.Body.String(), `"infrastructureWorkloadInterfaces": []`) ||
-		!strings.Contains(rec.Body.String(), `"infrastructureWorkloadHostLinks": []`) {
+		!strings.Contains(rec.Body.String(), `"infrastructureWorkloadHostLinks": []`) ||
+		!strings.Contains(rec.Body.String(), `"proxmoxSourceStates": []`) {
 		t.Fatalf("empty backup did not encode empty arrays: %s", rec.Body.String())
 	}
 }
