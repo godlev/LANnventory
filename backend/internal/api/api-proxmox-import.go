@@ -166,7 +166,7 @@ func proxmoxHypervisorHostFromRequest(c *gin.Context) (models.Host, bool) {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to load hypervisor profile"})
 		return models.Host{}, false
 	}
-	if !found || profile.Platform != models.HypervisorPlatformProxmoxVE {
+	if !found || profile.Platform != string(models.HypervisorPlatformProxmoxVE) {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "Proxmox import requires a Proxmox VE hypervisor profile"})
 		return models.Host{}, false
 	}
