@@ -196,6 +196,10 @@ func setHostHypervisorProfile(c *gin.Context) {
 	if !ok {
 		return
 	}
+	if host.DeviceType != "server" {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "hypervisor profile requires Device Type Server"})
+		return
+	}
 	var payload HypervisorProfilePatchRequest
 	if !decodeStrictProfileJSON(c, &payload) {
 		return
