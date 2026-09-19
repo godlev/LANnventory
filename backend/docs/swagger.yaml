@@ -282,6 +282,27 @@ definitions:
       hostId:
         type: integer
     type: object
+  api.InfrastructureWorkloadMatchResponseDoc:
+    properties:
+      candidates:
+        items:
+          $ref: '#/definitions/api.WorkloadMatchCandidateDoc'
+        type: array
+      currentLink:
+        $ref: '#/definitions/models.InfrastructureWorkloadHostLink'
+      deterministicExactHostId:
+        type: integer
+      exactAmbiguous:
+        type: boolean
+      name:
+        type: string
+      nativeId:
+        type: string
+      workloadId:
+        type: integer
+      workloadType:
+        type: string
+    type: object
   api.InfrastructureWorkloadMatchedHost:
     properties:
       deviceType:
@@ -565,6 +586,38 @@ definitions:
       role:
         type: string
       version:
+        type: string
+    type: object
+  api.WorkloadMatchCandidateDoc:
+    properties:
+      active:
+        type: boolean
+      deviceType:
+        type: string
+      evidence:
+        items:
+          $ref: '#/definitions/api.WorkloadMatchEvidenceDoc'
+        type: array
+      hostId:
+        type: integer
+      ip:
+        type: string
+      mac:
+        type: string
+      name:
+        type: string
+      strength:
+        type: string
+    type: object
+  api.WorkloadMatchEvidenceDoc:
+    properties:
+      active:
+        type: boolean
+      code:
+        type: string
+      detail:
+        type: string
+      strength:
         type: string
     type: object
   api.colorRequest:
@@ -2474,6 +2527,41 @@ paths:
           schema:
             $ref: '#/definitions/models.Host'
       summary: Set host device type
+      tags:
+      - hosts
+  /host/{id}/workload-matches:
+    get:
+      description: Return explainable workload-to-Host candidates. Exact MAC is the
+        only automatic evidence; address and name evidence remain suggestions. This
+        endpoint never mutates links.
+      parameters:
+      - description: Proxmox Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/api.InfrastructureWorkloadMatchResponseDoc'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get Proxmox workload Host match candidates
       tags:
       - hosts
   /host/{id}/workloads:

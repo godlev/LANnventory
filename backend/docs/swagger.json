@@ -2183,6 +2183,56 @@
                 }
             }
         },
+        "/host/{id}/workload-matches": {
+            "get": {
+                "description": "Return explainable workload-to-Host candidates. Exact MAC is the only automatic evidence; address and name evidence remain suggestions. This endpoint never mutates links.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Get Proxmox workload Host match candidates",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Proxmox Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/api.InfrastructureWorkloadMatchResponseDoc"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/host/{id}/workloads": {
             "get": {
                 "description": "Return infrastructure workloads hosted by one configured hypervisor. Workloads remain separate from LANnventory Hosts.",
@@ -3400,6 +3450,38 @@
                 }
             }
         },
+        "api.InfrastructureWorkloadMatchResponseDoc": {
+            "type": "object",
+            "properties": {
+                "candidates": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.WorkloadMatchCandidateDoc"
+                    }
+                },
+                "currentLink": {
+                    "$ref": "#/definitions/models.InfrastructureWorkloadHostLink"
+                },
+                "deterministicExactHostId": {
+                    "type": "integer"
+                },
+                "exactAmbiguous": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "nativeId": {
+                    "type": "string"
+                },
+                "workloadId": {
+                    "type": "integer"
+                },
+                "workloadType": {
+                    "type": "string"
+                }
+            }
+        },
         "api.InfrastructureWorkloadMatchedHost": {
             "type": "object",
             "properties": {
@@ -3833,6 +3915,55 @@
                     "type": "string"
                 },
                 "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.WorkloadMatchCandidateDoc": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean"
+                },
+                "deviceType": {
+                    "type": "string"
+                },
+                "evidence": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.WorkloadMatchEvidenceDoc"
+                    }
+                },
+                "hostId": {
+                    "type": "integer"
+                },
+                "ip": {
+                    "type": "string"
+                },
+                "mac": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "strength": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.WorkloadMatchEvidenceDoc": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean"
+                },
+                "code": {
+                    "type": "string"
+                },
+                "detail": {
+                    "type": "string"
+                },
+                "strength": {
                     "type": "string"
                 }
             }

@@ -40,14 +40,14 @@ type InfrastructureWorkloadMatchResponseDoc struct {
 }
 
 type InfrastructureWorkloadMatchResponse struct {
-	WorkloadID                uint                                   `json:"workloadId"`
-	NativeID                  string                                 `json:"nativeId"`
-	WorkloadType              string                                 `json:"workloadType"`
-	Name                      string                                 `json:"name"`
-	CurrentLink               *models.InfrastructureWorkloadHostLink `json:"currentLink"`
-	DeterministicExactHostID  int                                    `json:"deterministicExactHostId,omitempty"`
-	ExactAmbiguous            bool                                   `json:"exactAmbiguous"`
-	Candidates                []workloadmatch.Candidate              `json:"candidates"`
+	WorkloadID               uint                                   `json:"workloadId"`
+	NativeID                 string                                 `json:"nativeId"`
+	WorkloadType             string                                 `json:"workloadType"`
+	Name                     string                                 `json:"name"`
+	CurrentLink              *models.InfrastructureWorkloadHostLink `json:"currentLink"`
+	DeterministicExactHostID int                                    `json:"deterministicExactHostId,omitempty"`
+	ExactAmbiguous           bool                                   `json:"exactAmbiguous"`
+	Candidates               []workloadmatch.Candidate              `json:"candidates"`
 }
 
 // getHostInfrastructureWorkloadMatches godoc
