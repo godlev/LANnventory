@@ -247,6 +247,98 @@ definitions:
       updatedAt:
         type: string
     type: object
+  api.InfrastructureWorkloadCreateRequest:
+    properties:
+      interfaces:
+        items:
+          $ref: '#/definitions/api.InfrastructureWorkloadInterfaceRequest'
+        type: array
+      name:
+        type: string
+      nativeId:
+        type: string
+      status:
+        type: string
+      workloadType:
+        type: string
+    type: object
+  api.InfrastructureWorkloadInterfaceRequest:
+    properties:
+      bridge:
+        type: string
+      configuredAddress:
+        type: string
+      configuredNetwork:
+        type: string
+      mac:
+        type: string
+      name:
+        type: string
+      vlanTag:
+        type: string
+    type: object
+  api.InfrastructureWorkloadLinkRequest:
+    properties:
+      hostId:
+        type: integer
+    type: object
+  api.InfrastructureWorkloadMatchedHost:
+    properties:
+      deviceType:
+        type: string
+      hostId:
+        type: integer
+      ip:
+        type: string
+      mac:
+        type: string
+      name:
+        type: string
+    type: object
+  api.InfrastructureWorkloadPatchRequest:
+    properties:
+      interfaces:
+        items:
+          $ref: '#/definitions/api.InfrastructureWorkloadInterfaceRequest'
+        type: array
+      name:
+        type: string
+      status:
+        type: string
+    type: object
+  api.InfrastructureWorkloadResponse:
+    properties:
+      firstSeen:
+        type: string
+      hypervisorMac:
+        type: string
+      id:
+        type: integer
+      interfaces:
+        items:
+          $ref: '#/definitions/models.InfrastructureWorkloadInterface'
+        type: array
+      lastSeen:
+        type: string
+      link:
+        $ref: '#/definitions/models.InfrastructureWorkloadHostLink'
+      matchedHost:
+        $ref: '#/definitions/api.InfrastructureWorkloadMatchedHost'
+      name:
+        type: string
+      nativeId:
+        type: string
+      retiredAt:
+        type: string
+      source:
+        type: string
+      status:
+        type: string
+      updatedAt:
+        type: string
+      workloadType:
+        type: string
+    type: object
   api.NetworkDeviceProfilePatchRequest:
     properties:
       managementMode:
@@ -595,6 +687,42 @@ definitions:
         type: string
       version:
         type: string
+    type: object
+  models.InfrastructureWorkloadHostLink:
+    properties:
+      hostId:
+        type: integer
+      hostMac:
+        type: string
+      linkSource:
+        type: string
+      linkedAt:
+        type: string
+      updatedAt:
+        type: string
+      workloadId:
+        type: integer
+    type: object
+  models.InfrastructureWorkloadInterface:
+    properties:
+      bridge:
+        type: string
+      configuredAddress:
+        type: string
+      configuredNetwork:
+        type: string
+      id:
+        type: integer
+      mac:
+        type: string
+      name:
+        type: string
+      updatedAt:
+        type: string
+      vlanTag:
+        type: string
+      workloadId:
+        type: integer
     type: object
   models.InventoryOptions:
     properties:
@@ -2050,6 +2178,243 @@ paths:
           schema:
             $ref: '#/definitions/models.Host'
       summary: Set host device type
+      tags:
+      - hosts
+  /host/{id}/workloads:
+    get:
+      description: Return infrastructure workloads hosted by one configured hypervisor.
+        Workloads remain separate from LANnventory Hosts.
+      parameters:
+      - description: Hypervisor Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/api.InfrastructureWorkloadResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get hypervisor workloads
+      tags:
+      - hosts
+    post:
+      consumes:
+      - application/json
+      description: Add or update a manual VM/LXC inventory object by native ID and
+        type. This never creates a LANnventory Host.
+      parameters:
+      - description: Hypervisor Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Manual workload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.InfrastructureWorkloadCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.InfrastructureWorkloadResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Add or update a manual hypervisor workload
+      tags:
+      - hosts
+  /host/{id}/workloads/{workloadId}:
+    delete:
+      description: Delete a manually maintained workload inventory object. Imported
+        workload retirement uses snapshot reconciliation instead.
+      parameters:
+      - description: Hypervisor Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Workload ID
+        in: path
+        name: workloadId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete a manual hypervisor workload
+      tags:
+      - hosts
+    patch:
+      consumes:
+      - application/json
+      description: Update manually maintained workload fields while keeping native
+        ID and workload type immutable.
+      parameters:
+      - description: Hypervisor Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Workload ID
+        in: path
+        name: workloadId
+        required: true
+        type: string
+      - description: Manual workload changes
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.InfrastructureWorkloadPatchRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.InfrastructureWorkloadResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Edit a manual hypervisor workload
+      tags:
+      - hosts
+  /host/{id}/workloads/{workloadId}/link:
+    delete:
+      description: Remove only the logical MATCHES relation. Workload and Host records
+        remain unchanged.
+      parameters:
+      - description: Hypervisor Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Workload ID
+        in: path
+        name: workloadId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.InfrastructureWorkloadResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Unlink workload from Host
+      tags:
+      - hosts
+    put:
+      consumes:
+      - application/json
+      description: Create or replace the logical MATCHES relation without merging
+        workload or Host identity/history.
+      parameters:
+      - description: Hypervisor Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Workload ID
+        in: path
+        name: workloadId
+        required: true
+        type: string
+      - description: Target Host
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.InfrastructureWorkloadLinkRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.InfrastructureWorkloadResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Link workload to an existing Host
       tags:
       - hosts
   /host/add/{mac}:

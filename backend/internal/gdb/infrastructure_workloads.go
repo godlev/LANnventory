@@ -343,7 +343,7 @@ func selectInfrastructureWorkloadByIDDB(activeDB *gorm.DB, id uint) (models.Infr
 	}
 
 	record := models.InfrastructureWorkloadRecord{
-		Workload:  workload,
+		Workload:   workload,
 		Interfaces: interfaces,
 	}
 	if linkFound {

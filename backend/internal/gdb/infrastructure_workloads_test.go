@@ -10,8 +10,8 @@ func TestInfrastructureWorkloadMigrationUsesSeparateTables(t *testing.T) {
 	startSelectTestDB(t)
 
 	tests := []struct {
-		table string
-		model any
+		table   string
+		model   any
 		columns []string
 	}{
 		{infrastructureWorkloadsTable, &models.InfrastructureWorkload{}, []string{"ID", "HYPERVISOR_MAC", "NATIVE_ID", "WORKLOAD_TYPE", "NAME", "STATUS", "SOURCE", "FIRST_SEEN", "LAST_SEEN", "RETIRED_AT", "UPDATED_AT"}},
@@ -42,15 +42,15 @@ func TestInfrastructureWorkloadDoesNotCreateLANnventoryHost(t *testing.T) {
 	startSelectTestDB(t)
 
 	record, err := UpsertInfrastructureWorkload("AA:BB:CC:DD:EE:50", models.InfrastructureWorkloadUpsert{
-		NativeID: "119",
+		NativeID:     "119",
 		WorkloadType: models.InfrastructureWorkloadTypeVM,
-		Name: "ubuntu-plex-immich",
-		Status: models.InfrastructureWorkloadStatusRunning,
-		Source: models.InfrastructureWorkloadSourceManual,
+		Name:         "ubuntu-plex-immich",
+		Status:       models.InfrastructureWorkloadStatusRunning,
+		Source:       models.InfrastructureWorkloadSourceManual,
 		Interfaces: []models.InfrastructureWorkloadInterface{{
-			Name: "net0",
-			Mac: "bc:24:11:a2:40:12",
-			Bridge: "vmbr0",
+			Name:              "net0",
+			Mac:               "bc:24:11:a2:40:12",
+			Bridge:            "vmbr0",
 			ConfiguredAddress: "10.4.1.27",
 		}},
 	}, "2026-09-19T09:00:00Z")
@@ -78,23 +78,23 @@ func TestInfrastructureWorkloadInterfaceReplacementRollsBackOnInvalidInput(t *te
 	mac := "AA:BB:CC:DD:EE:51"
 
 	record, err := UpsertInfrastructureWorkload(mac, models.InfrastructureWorkloadUpsert{
-		NativeID: "101",
+		NativeID:     "101",
 		WorkloadType: models.InfrastructureWorkloadTypeVM,
-		Name: "router",
-		Status: models.InfrastructureWorkloadStatusRunning,
-		Source: models.InfrastructureWorkloadSourceManual,
-		Interfaces: []models.InfrastructureWorkloadInterface{{Name: "net0", Mac: "AA:BB:CC:00:00:01"}},
+		Name:         "router",
+		Status:       models.InfrastructureWorkloadStatusRunning,
+		Source:       models.InfrastructureWorkloadSourceManual,
+		Interfaces:   []models.InfrastructureWorkloadInterface{{Name: "net0", Mac: "AA:BB:CC:00:00:01"}},
 	}, "2026-09-19T09:00:00Z")
 	if err != nil {
 		t.Fatalf("seed workload: %v", err)
 	}
 
 	_, err = UpsertInfrastructureWorkload(mac, models.InfrastructureWorkloadUpsert{
-		NativeID: "101",
+		NativeID:     "101",
 		WorkloadType: models.InfrastructureWorkloadTypeVM,
-		Name: "router changed",
-		Status: models.InfrastructureWorkloadStatusStopped,
-		Source: models.InfrastructureWorkloadSourceManual,
+		Name:         "router changed",
+		Status:       models.InfrastructureWorkloadStatusStopped,
+		Source:       models.InfrastructureWorkloadSourceManual,
 		Interfaces: []models.InfrastructureWorkloadInterface{
 			{Name: "net0", Mac: "AA:BB:CC:00:00:01"},
 			{Name: "net0", Mac: "AA:BB:CC:00:00:02"},
@@ -129,11 +129,11 @@ func TestDeletingMatchedGuestHostUnlinksButKeepsWorkload(t *testing.T) {
 	}
 
 	record, err := UpsertInfrastructureWorkload(hypervisor.Mac, models.InfrastructureWorkloadUpsert{
-		NativeID: "200",
+		NativeID:     "200",
 		WorkloadType: models.InfrastructureWorkloadTypeVM,
-		Name: "guest",
-		Status: models.InfrastructureWorkloadStatusRunning,
-		Source: models.InfrastructureWorkloadSourceManual,
+		Name:         "guest",
+		Status:       models.InfrastructureWorkloadStatusRunning,
+		Source:       models.InfrastructureWorkloadSourceManual,
 	}, "2026-09-19T09:00:00Z")
 	if err != nil {
 		t.Fatalf("seed workload: %v", err)
@@ -162,12 +162,12 @@ func TestDeletingHypervisorHostDeletesItsHostedWorkloads(t *testing.T) {
 		t.Fatalf("seed hypervisor: %v", err)
 	}
 	record, err := UpsertInfrastructureWorkload(hypervisor.Mac, models.InfrastructureWorkloadUpsert{
-		NativeID: "201",
+		NativeID:     "201",
 		WorkloadType: models.InfrastructureWorkloadTypeContainer,
-		Name: "service",
-		Status: models.InfrastructureWorkloadStatusStopped,
-		Source: models.InfrastructureWorkloadSourceManual,
-		Interfaces: []models.InfrastructureWorkloadInterface{{Name: "net0", Mac: "AA:BB:CC:00:00:20"}},
+		Name:         "service",
+		Status:       models.InfrastructureWorkloadStatusStopped,
+		Source:       models.InfrastructureWorkloadSourceManual,
+		Interfaces:   []models.InfrastructureWorkloadInterface{{Name: "net0", Mac: "AA:BB:CC:00:00:20"}},
 	}, "2026-09-19T09:00:00Z")
 	if err != nil {
 		t.Fatalf("seed workload: %v", err)

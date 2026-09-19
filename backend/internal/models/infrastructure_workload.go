@@ -57,9 +57,9 @@ type InfrastructureWorkloadHostLink struct {
 
 // InfrastructureWorkloadRecord is the aggregate persistence read model.
 type InfrastructureWorkloadRecord struct {
-	Workload  InfrastructureWorkload
+	Workload   InfrastructureWorkload
 	Interfaces []InfrastructureWorkloadInterface
-	Link      *InfrastructureWorkloadHostLink
+	Link       *InfrastructureWorkloadHostLink
 }
 
 // InfrastructureWorkloadUpsert is a normalized write model used by manual and

@@ -41,9 +41,9 @@ type InfrastructureWorkloadCreateRequest struct {
 }
 
 type InfrastructureWorkloadPatchRequest struct {
-	Name       *string                                    `json:"name,omitempty"`
-	Status     *string                                    `json:"status,omitempty"`
-	Interfaces *[]InfrastructureWorkloadInterfaceRequest  `json:"interfaces,omitempty"`
+	Name       *string                                   `json:"name,omitempty"`
+	Status     *string                                   `json:"status,omitempty"`
+	Interfaces *[]InfrastructureWorkloadInterfaceRequest `json:"interfaces,omitempty"`
 }
 
 type InfrastructureWorkloadLinkRequest struct {
@@ -61,8 +61,8 @@ type InfrastructureWorkloadMatchedHost struct {
 type InfrastructureWorkloadResponse struct {
 	models.InfrastructureWorkload
 	Interfaces  []models.InfrastructureWorkloadInterface `json:"interfaces"`
-	Link        *models.InfrastructureWorkloadHostLink    `json:"link"`
-	MatchedHost *InfrastructureWorkloadMatchedHost        `json:"matchedHost"`
+	Link        *models.InfrastructureWorkloadHostLink   `json:"link"`
+	MatchedHost *InfrastructureWorkloadMatchedHost       `json:"matchedHost"`
 }
 
 // getHostInfrastructureWorkloads godoc

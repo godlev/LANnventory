@@ -2056,6 +2056,352 @@
                 }
             }
         },
+        "/host/{id}/workloads": {
+            "get": {
+                "description": "Return infrastructure workloads hosted by one configured hypervisor. Workloads remain separate from LANnventory Hosts.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Get hypervisor workloads",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Hypervisor Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/api.InfrastructureWorkloadResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Add or update a manual VM/LXC inventory object by native ID and type. This never creates a LANnventory Host.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Add or update a manual hypervisor workload",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Hypervisor Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Manual workload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.InfrastructureWorkloadCreateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.InfrastructureWorkloadResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/host/{id}/workloads/{workloadId}": {
+            "delete": {
+                "description": "Delete a manually maintained workload inventory object. Imported workload retirement uses snapshot reconciliation instead.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Delete a manual hypervisor workload",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Hypervisor Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Workload ID",
+                        "name": "workloadId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Update manually maintained workload fields while keeping native ID and workload type immutable.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Edit a manual hypervisor workload",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Hypervisor Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Workload ID",
+                        "name": "workloadId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Manual workload changes",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.InfrastructureWorkloadPatchRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.InfrastructureWorkloadResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/host/{id}/workloads/{workloadId}/link": {
+            "put": {
+                "description": "Create or replace the logical MATCHES relation without merging workload or Host identity/history.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Link workload to an existing Host",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Hypervisor Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Workload ID",
+                        "name": "workloadId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Target Host",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.InfrastructureWorkloadLinkRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.InfrastructureWorkloadResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Remove only the logical MATCHES relation. Workload and Host records remain unchanged.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Unlink workload from Host",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Hypervisor Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Workload ID",
+                        "name": "workloadId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.InfrastructureWorkloadResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/identity/address": {
             "get": {
                 "description": "Return every retained MAC identity observed using one IP address, including first/last seen timestamps.",
@@ -2873,6 +3219,147 @@
                 }
             }
         },
+        "api.InfrastructureWorkloadCreateRequest": {
+            "type": "object",
+            "properties": {
+                "interfaces": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.InfrastructureWorkloadInterfaceRequest"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "nativeId": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "workloadType": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.InfrastructureWorkloadInterfaceRequest": {
+            "type": "object",
+            "properties": {
+                "bridge": {
+                    "type": "string"
+                },
+                "configuredAddress": {
+                    "type": "string"
+                },
+                "configuredNetwork": {
+                    "type": "string"
+                },
+                "mac": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "vlanTag": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.InfrastructureWorkloadLinkRequest": {
+            "type": "object",
+            "properties": {
+                "hostId": {
+                    "type": "integer"
+                }
+            }
+        },
+        "api.InfrastructureWorkloadMatchedHost": {
+            "type": "object",
+            "properties": {
+                "deviceType": {
+                    "type": "string"
+                },
+                "hostId": {
+                    "type": "integer"
+                },
+                "ip": {
+                    "type": "string"
+                },
+                "mac": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.InfrastructureWorkloadPatchRequest": {
+            "type": "object",
+            "properties": {
+                "interfaces": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.InfrastructureWorkloadInterfaceRequest"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.InfrastructureWorkloadResponse": {
+            "type": "object",
+            "properties": {
+                "firstSeen": {
+                    "type": "string"
+                },
+                "hypervisorMac": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "interfaces": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.InfrastructureWorkloadInterface"
+                    }
+                },
+                "lastSeen": {
+                    "type": "string"
+                },
+                "link": {
+                    "$ref": "#/definitions/models.InfrastructureWorkloadHostLink"
+                },
+                "matchedHost": {
+                    "$ref": "#/definitions/api.InfrastructureWorkloadMatchedHost"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "nativeId": {
+                    "type": "string"
+                },
+                "retiredAt": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "workloadType": {
+                    "type": "string"
+                }
+            }
+        },
         "api.NetworkDeviceProfilePatchRequest": {
             "type": "object",
             "properties": {
@@ -3398,6 +3885,61 @@
                 },
                 "version": {
                     "type": "string"
+                }
+            }
+        },
+        "models.InfrastructureWorkloadHostLink": {
+            "type": "object",
+            "properties": {
+                "hostId": {
+                    "type": "integer"
+                },
+                "hostMac": {
+                    "type": "string"
+                },
+                "linkSource": {
+                    "type": "string"
+                },
+                "linkedAt": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "workloadId": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.InfrastructureWorkloadInterface": {
+            "type": "object",
+            "properties": {
+                "bridge": {
+                    "type": "string"
+                },
+                "configuredAddress": {
+                    "type": "string"
+                },
+                "configuredNetwork": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "mac": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "vlanTag": {
+                    "type": "string"
+                },
+                "workloadId": {
+                    "type": "integer"
                 }
             }
         },
