@@ -12,7 +12,7 @@ import (
 
 const (
 	Format        = "lannventory-backup"
-	FormatVersion = 4
+	FormatVersion = 5
 )
 
 // Document is the stable, versioned logical backup format.
@@ -35,7 +35,10 @@ type Data struct {
 	DeviceProfiles        []DeviceProfile        `json:"deviceProfiles"`
 	NetworkDeviceProfiles []NetworkDeviceProfile `json:"networkDeviceProfiles"`
 	SystemDeviceProfiles  []SystemDeviceProfile  `json:"systemDeviceProfiles"`
-	HypervisorProfiles    []HypervisorProfile    `json:"hypervisorProfiles"`
+	HypervisorProfiles             []HypervisorProfile             `json:"hypervisorProfiles"`
+	InfrastructureWorkloads        []InfrastructureWorkload        `json:"infrastructureWorkloads"`
+	InfrastructureWorkloadInterfaces []InfrastructureWorkloadInterface `json:"infrastructureWorkloadInterfaces"`
+	InfrastructureWorkloadHostLinks []InfrastructureWorkloadHostLink `json:"infrastructureWorkloadHostLinks"`
 }
 
 // Host mirrors the currently persisted host columns in the now/history tables.
@@ -116,6 +119,44 @@ type HypervisorProfile struct {
 	UpdatedAt   string `json:"updatedAt"`
 }
 
+// InfrastructureWorkload is the portable hypervisor workload representation.
+type InfrastructureWorkload struct {
+	ID            uint   `json:"id"`
+	HypervisorMac string `json:"hypervisorMac"`
+	NativeID      string `json:"nativeId"`
+	WorkloadType  string `json:"workloadType"`
+	Name          string `json:"name"`
+	Status        string `json:"status"`
+	Source        string `json:"source"`
+	FirstSeen     string `json:"firstSeen"`
+	LastSeen      string `json:"lastSeen"`
+	RetiredAt     string `json:"retiredAt"`
+	UpdatedAt     string `json:"updatedAt"`
+}
+
+// InfrastructureWorkloadInterface is the portable allowlisted workload network representation.
+type InfrastructureWorkloadInterface struct {
+	ID                uint   `json:"id"`
+	WorkloadID        uint   `json:"workloadId"`
+	Name              string `json:"name"`
+	Mac               string `json:"mac"`
+	Bridge            string `json:"bridge"`
+	VLANTag           string `json:"vlanTag"`
+	ConfiguredAddress string `json:"configuredAddress"`
+	ConfiguredNetwork string `json:"configuredNetwork"`
+	UpdatedAt         string `json:"updatedAt"`
+}
+
+// InfrastructureWorkloadHostLink is the portable logical MATCHES relation.
+type InfrastructureWorkloadHostLink struct {
+	WorkloadID uint   `json:"workloadId"`
+	HostID     int    `json:"hostId"`
+	HostMac    string `json:"hostMac"`
+	LinkSource string `json:"linkSource"`
+	LinkedAt   string `json:"linkedAt"`
+	UpdatedAt  string `json:"updatedAt"`
+}
+
 // HostLifecycle is the portable lifecycle backup representation.
 type HostLifecycle struct {
 	Mac                string `json:"mac"`
@@ -169,7 +210,7 @@ func NewDocument(data Data, appVersion string, createdAt time.Time) Document {
 	}
 }
 
-func DataFromModels(currentHosts, history []models.Host, events []models.HostEvent, hostMetadata []models.HostMetadata, hostLifecycle []models.HostLifecycle, deviceProfiles []models.DeviceProfile, networkProfiles []models.NetworkDeviceProfile, systemProfiles []models.SystemDeviceProfile, hypervisorProfiles []models.HypervisorProfile) Data {
+func DataFromModels(currentHosts, history []models.Host, events []models.HostEvent, hostMetadata []models.HostMetadata, hostLifecycle []models.HostLifecycle, deviceProfiles []models.DeviceProfile, networkProfiles []models.NetworkDeviceProfile, systemProfiles []models.SystemDeviceProfile, hypervisorProfiles []models.HypervisorProfile, workloads []models.InfrastructureWorkload, workloadInterfaces []models.InfrastructureWorkloadInterface, workloadLinks []models.InfrastructureWorkloadHostLink) Data {
 	data := Data{
 		CurrentHosts:          make([]Host, 0, len(currentHosts)),
 		History:               make([]Host, 0, len(history)),
@@ -179,7 +220,10 @@ func DataFromModels(currentHosts, history []models.Host, events []models.HostEve
 		DeviceProfiles:        make([]DeviceProfile, 0, len(deviceProfiles)),
 		NetworkDeviceProfiles: make([]NetworkDeviceProfile, 0, len(networkProfiles)),
 		SystemDeviceProfiles:  make([]SystemDeviceProfile, 0, len(systemProfiles)),
-		HypervisorProfiles:    make([]HypervisorProfile, 0, len(hypervisorProfiles)),
+		HypervisorProfiles:               make([]HypervisorProfile, 0, len(hypervisorProfiles)),
+		InfrastructureWorkloads:          make([]InfrastructureWorkload, 0, len(workloads)),
+		InfrastructureWorkloadInterfaces: make([]InfrastructureWorkloadInterface, 0, len(workloadInterfaces)),
+		InfrastructureWorkloadHostLinks:  make([]InfrastructureWorkloadHostLink, 0, len(workloadLinks)),
 	}
 
 	for _, host := range currentHosts {
@@ -208,6 +252,15 @@ func DataFromModels(currentHosts, history []models.Host, events []models.HostEve
 	}
 	for _, profile := range hypervisorProfiles {
 		data.HypervisorProfiles = append(data.HypervisorProfiles, HypervisorProfileFromModel(profile))
+	}
+	for _, workload := range workloads {
+		data.InfrastructureWorkloads = append(data.InfrastructureWorkloads, InfrastructureWorkloadFromModel(workload))
+	}
+	for _, iface := range workloadInterfaces {
+		data.InfrastructureWorkloadInterfaces = append(data.InfrastructureWorkloadInterfaces, InfrastructureWorkloadInterfaceFromModel(iface))
+	}
+	for _, link := range workloadLinks {
+		data.InfrastructureWorkloadHostLinks = append(data.InfrastructureWorkloadHostLinks, InfrastructureWorkloadHostLinkFromModel(link))
 	}
 
 	return data
@@ -297,6 +350,47 @@ func HypervisorProfileFromModel(profile models.HypervisorProfile) HypervisorProf
 	}
 }
 
+func InfrastructureWorkloadFromModel(workload models.InfrastructureWorkload) InfrastructureWorkload {
+	return InfrastructureWorkload{
+		ID:            workload.ID,
+		HypervisorMac: workload.HypervisorMac,
+		NativeID:      workload.NativeID,
+		WorkloadType:  workload.WorkloadType,
+		Name:          workload.Name,
+		Status:        workload.Status,
+		Source:        workload.Source,
+		FirstSeen:     workload.FirstSeen,
+		LastSeen:      workload.LastSeen,
+		RetiredAt:     workload.RetiredAt,
+		UpdatedAt:     workload.UpdatedAt,
+	}
+}
+
+func InfrastructureWorkloadInterfaceFromModel(iface models.InfrastructureWorkloadInterface) InfrastructureWorkloadInterface {
+	return InfrastructureWorkloadInterface{
+		ID:                iface.ID,
+		WorkloadID:        iface.WorkloadID,
+		Name:              iface.Name,
+		Mac:               iface.Mac,
+		Bridge:            iface.Bridge,
+		VLANTag:           iface.VLANTag,
+		ConfiguredAddress: iface.ConfiguredAddress,
+		ConfiguredNetwork: iface.ConfiguredNetwork,
+		UpdatedAt:         iface.UpdatedAt,
+	}
+}
+
+func InfrastructureWorkloadHostLinkFromModel(link models.InfrastructureWorkloadHostLink) InfrastructureWorkloadHostLink {
+	return InfrastructureWorkloadHostLink{
+		WorkloadID: link.WorkloadID,
+		HostID:     link.HostID,
+		HostMac:    link.HostMac,
+		LinkSource: link.LinkSource,
+		LinkedAt:   link.LinkedAt,
+		UpdatedAt:  link.UpdatedAt,
+	}
+}
+
 func HostLifecycleFromModel(lifecycle models.HostLifecycle) HostLifecycle {
 	return HostLifecycle{
 		Mac:                lifecycle.Mac,
@@ -383,6 +477,15 @@ func normalizeData(data Data) Data {
 	}
 	if data.HypervisorProfiles == nil {
 		data.HypervisorProfiles = []HypervisorProfile{}
+	}
+	if data.InfrastructureWorkloads == nil {
+		data.InfrastructureWorkloads = []InfrastructureWorkload{}
+	}
+	if data.InfrastructureWorkloadInterfaces == nil {
+		data.InfrastructureWorkloadInterfaces = []InfrastructureWorkloadInterface{}
+	}
+	if data.InfrastructureWorkloadHostLinks == nil {
+		data.InfrastructureWorkloadHostLinks = []InfrastructureWorkloadHostLink{}
 	}
 
 	return data
