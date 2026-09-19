@@ -10,6 +10,35 @@ import (
 	"github.com/godlev/LANnventory/internal/workloadmatch"
 )
 
+type WorkloadMatchEvidenceDoc struct {
+	Code     string `json:"code"`
+	Detail   string `json:"detail"`
+	Strength string `json:"strength"`
+	Active   bool   `json:"active"`
+}
+
+type WorkloadMatchCandidateDoc struct {
+	HostID     int                        `json:"hostId"`
+	Mac        string                     `json:"mac"`
+	Name       string                     `json:"name"`
+	IP         string                     `json:"ip"`
+	DeviceType string                     `json:"deviceType"`
+	Active     bool                       `json:"active"`
+	Strength   string                     `json:"strength"`
+	Evidence   []WorkloadMatchEvidenceDoc `json:"evidence"`
+}
+
+type InfrastructureWorkloadMatchResponseDoc struct {
+	WorkloadID               uint                                   `json:"workloadId"`
+	NativeID                 string                                 `json:"nativeId"`
+	WorkloadType             string                                 `json:"workloadType"`
+	Name                     string                                 `json:"name"`
+	CurrentLink              *models.InfrastructureWorkloadHostLink `json:"currentLink"`
+	DeterministicExactHostID int                                    `json:"deterministicExactHostId,omitempty"`
+	ExactAmbiguous           bool                                   `json:"exactAmbiguous"`
+	Candidates               []WorkloadMatchCandidateDoc            `json:"candidates"`
+}
+
 type InfrastructureWorkloadMatchResponse struct {
 	WorkloadID                uint                                   `json:"workloadId"`
 	NativeID                  string                                 `json:"nativeId"`
@@ -27,7 +56,7 @@ type InfrastructureWorkloadMatchResponse struct {
 // @Tags         hosts
 // @Produce      json
 // @Param        id   path      string                                  true  "Proxmox Host ID"
-// @Success      200  {array}   InfrastructureWorkloadMatchResponse
+// @Success      200  {array}   InfrastructureWorkloadMatchResponseDoc
 // @Failure      400  {object}  map[string]string
 // @Failure      500  {object}  map[string]string
 // @Router       /host/{id}/workload-matches [get]
