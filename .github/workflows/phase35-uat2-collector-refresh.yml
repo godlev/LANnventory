@@ -1,0 +1,66 @@
+name: Phase35 UAT2 collector refresh
+
+on:
+  push:
+    branches:
+      - phase35-device-profiles-proxmox
+    paths:
+      - .github/workflows/phase35-uat2-collector-refresh.yml
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase35-device-profiles-proxmox
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build canonical embedded frontend and collector
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run test:host-ux
+          make all
+
+      - name: Verify collector copies
+        run: |
+          cmp -s proxmox/collect_inventory.py frontend/public/lannventory-proxmox-collector.py
+          cmp -s proxmox/collect_inventory.py backend/internal/web/public/lannventory-proxmox-collector.py
+          python3 -m py_compile proxmox/collect_inventory.py frontend/public/lannventory-proxmox-collector.py backend/internal/web/public/lannventory-proxmox-collector.py
+          python3 -m unittest proxmox/collect_inventory_test.py
+          node --check frontend/dev/mock-api.mjs
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Format and test backend
+        run: |
+          gofmt -w backend/internal/web/webgui.go backend/internal/web/webgui_test.go
+          cd backend
+          go test ./...
+          go vet ./...
+
+      - name: Commit generated and formatted state
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo "No generated or formatting changes."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/internal/web
+          git diff --cached --check
+          git commit -m "phase35: refresh packaged Proxmox collector"
+          git push origin HEAD:phase35-device-profiles-proxmox
