@@ -10,6 +10,7 @@ const hostActivity = read("src/components/HostPage/HostActivityCard.tsx");
 const activityFeed = read("src/components/ActivityFeed.tsx");
 const hostCard = read("src/components/HostPage/HostCard.tsx");
 const deviceProfile = read("src/components/HostPage/DeviceProfileCard.tsx");
+const proxmoxInventory = read("src/components/HostPage/ProxmoxInventoryCard.tsx");
 const deviceTypes = read("src/functions/deviceTypes.ts");
 
 function requireText(source, value, message) {
@@ -67,9 +68,25 @@ for (const label of [
 forbidText(hostCard, ">Hardware</div>", "ARP/OUI vendor text must not be labelled Hardware.");
 
 requireText(deviceProfile, "Managed inventory only.", "Device Profile must identify user-managed provenance.");
-requireText(deviceProfile, "Future imported Proxmox data is kept separate", "Managed/imported profile separation must remain explicit.");
+requireText(deviceProfile, "Imported Proxmox data is kept separate", "Managed/imported profile separation must remain explicit.");
+requireText(deviceProfile, "Data source", "Device Profile must expose a data-source legend.");
+requireText(deviceProfile, 'source="manual"', "Managed Device Profile fields must carry manual provenance.");
+requireText(deviceProfile, 'source="discovered"', "Data-source legend must explain discovered provenance.");
+requireText(deviceProfile, 'source="imported"', "Data-source legend must explain imported provenance.");
+requireText(deviceProfile, "Imports will not overwrite this field.", "Manual field tooltip must state overwrite protection.");
+requireText(deviceProfile, "optional reference values", "Hypervisor reference fields must be explained as optional.");
 requireText(deviceProfile, "Capability profile; the Host remains Device Type Server.", "Hypervisor must remain a profile capability rather than a Device Type.");
 requireText(deviceProfile, '<option value="proxmox-ve">Proxmox VE</option>', "Manual Proxmox profile option must remain available.");
+
+requireText(proxmoxInventory, "How access works", "Proxmox onboarding must explain collector permissions.");
+requireText(proxmoxInventory, "uses the permissions of the shell user", "Collector access model must be explicit.");
+requireText(proxmoxInventory, "Open the Proxmox shell", "Proxmox import must be presented as a guided workflow.");
+requireText(proxmoxInventory, "Run the read-only collector", "Collector execution must be a dedicated wizard step.");
+requireText(proxmoxInventory, "Download collector", "Collector must be downloadable from the LANnventory UI.");
+requireText(proxmoxInventory, "/lannventory-proxmox-collector.py", "Collector download must be served by the local LANnventory instance.");
+requireText(proxmoxInventory, "Preview changes", "Preview must remain mandatory and explicit.");
+requireText(proxmoxInventory, "Nothing is written until you review and confirm Apply.", "Preview/apply safety wording must remain explicit.");
+requireText(proxmoxInventory, "Imported: observed by the read-only Proxmox collector.", "Imported source-state fields must expose provenance.");
 forbidText(deviceTypes, '| "hypervisor"', "Hypervisor must not become an exclusive Device Type.");
 
 console.log("Host UX semantic regression checks passed.");
