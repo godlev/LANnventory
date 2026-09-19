@@ -10,6 +10,34 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/godlev/LANnventory/main/
 
 Do not run the installer inside an existing LXC. It creates a new Debian 13 unprivileged LXC and installs the official LANnventory release package.
 
+
+## Read-Only Inventory Collector
+
+Phase 35 also includes a separate Proxmox inventory collector:
+
+```bash
+python3 proxmox/collect_inventory.py > lannventory-proxmox.json
+```
+
+The collector is independent from the LXC installer above. It does not install or update LANnventory, does not contact LANnventory, and does not transmit data to the Internet. It only prints a normalized JSON snapshot to standard output for the script-import workflow.
+
+The snapshot contains only:
+
+- schema/collector version, collection time and completeness state
+- node hostname, Proxmox VE version, cluster name when present, and basic online status
+- local QEMU VM and LXC IDs, names and running/stopped state
+- explicitly allowlisted network identity: interface name, MAC, bridge, VLAN tag and configured address/network when available
+
+Network configuration is extracted through an allowlist for `netN` and `ipconfigN` entries. Raw guest configuration is not emitted. Disk configuration, passwords, tokens, keys, arbitrary QEMU arguments, cloud-init/user data and other guest settings are not part of the snapshot.
+
+If any required inventory section cannot be collected, the JSON is emitted with `"complete": false` and a non-secret summary in `collectionErrors`. Incomplete snapshots are intended to be rejected for destructive reconciliation such as workload retirement.
+
+Use `--compact` only when compact JSON is preferred:
+
+```bash
+python3 proxmox/collect_inventory.py --compact
+```
+
 ## What It Creates
 
 Defaults:
@@ -32,10 +60,10 @@ The installer asks whether the new container should start automatically with Pro
 
 ## Installation Source
 
-The current installer installs LANnventory `v0.1.0-beta.3.1` from the official GitHub release package:
+The current installer installs LANnventory `v0.1.0-beta.6` from the official GitHub release package:
 
 ```text
-https://github.com/godlev/LANnventory/releases/download/v0.1.0-beta.3.1/lannventory_0.1.0-beta.3.1_linux_amd64.deb
+https://github.com/godlev/LANnventory/releases/download/v0.1.0-beta.6/lannventory_0.1.0-beta.6_linux_amd64.deb
 ```
 
 No Docker setup is required. No source compilation is performed.
