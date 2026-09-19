@@ -39,6 +39,7 @@ type Data struct {
 	InfrastructureWorkloads          []InfrastructureWorkload          `json:"infrastructureWorkloads"`
 	InfrastructureWorkloadInterfaces []InfrastructureWorkloadInterface `json:"infrastructureWorkloadInterfaces"`
 	InfrastructureWorkloadHostLinks  []InfrastructureWorkloadHostLink  `json:"infrastructureWorkloadHostLinks"`
+	ProxmoxSourceStates              []ProxmoxSourceState              `json:"proxmoxSourceStates"`
 }
 
 // Host mirrors the currently persisted host columns in the now/history tables.
@@ -157,6 +158,22 @@ type InfrastructureWorkloadHostLink struct {
 	UpdatedAt  string `json:"updatedAt"`
 }
 
+// ProxmoxSourceState is the portable imported/discovered Proxmox node state.
+type ProxmoxSourceState struct {
+	HypervisorMac    string `json:"hypervisorMac"`
+	Source           string `json:"source"`
+	SchemaVersion    int    `json:"schemaVersion"`
+	CollectorVersion string `json:"collectorVersion"`
+	CollectedAt      string `json:"collectedAt"`
+	Complete         bool   `json:"complete"`
+	NodeHostname     string `json:"nodeHostname"`
+	NodePVEVersion   string `json:"nodePveVersion"`
+	NodeClusterName  string `json:"nodeClusterName"`
+	NodeStatus       string `json:"nodeStatus"`
+	SnapshotDigest   string `json:"snapshotDigest"`
+	ImportedAt       string `json:"importedAt"`
+}
+
 // HostLifecycle is the portable lifecycle backup representation.
 type HostLifecycle struct {
 	Mac                string `json:"mac"`
@@ -210,7 +227,7 @@ func NewDocument(data Data, appVersion string, createdAt time.Time) Document {
 	}
 }
 
-func DataFromModels(currentHosts, history []models.Host, events []models.HostEvent, hostMetadata []models.HostMetadata, hostLifecycle []models.HostLifecycle, deviceProfiles []models.DeviceProfile, networkProfiles []models.NetworkDeviceProfile, systemProfiles []models.SystemDeviceProfile, hypervisorProfiles []models.HypervisorProfile, workloads []models.InfrastructureWorkload, workloadInterfaces []models.InfrastructureWorkloadInterface, workloadLinks []models.InfrastructureWorkloadHostLink) Data {
+func DataFromModels(currentHosts, history []models.Host, events []models.HostEvent, hostMetadata []models.HostMetadata, hostLifecycle []models.HostLifecycle, deviceProfiles []models.DeviceProfile, networkProfiles []models.NetworkDeviceProfile, systemProfiles []models.SystemDeviceProfile, hypervisorProfiles []models.HypervisorProfile, workloads []models.InfrastructureWorkload, workloadInterfaces []models.InfrastructureWorkloadInterface, workloadLinks []models.InfrastructureWorkloadHostLink, proxmoxSourceStates []models.ProxmoxSourceState) Data {
 	data := Data{
 		CurrentHosts:                     make([]Host, 0, len(currentHosts)),
 		History:                          make([]Host, 0, len(history)),
@@ -224,6 +241,7 @@ func DataFromModels(currentHosts, history []models.Host, events []models.HostEve
 		InfrastructureWorkloads:          make([]InfrastructureWorkload, 0, len(workloads)),
 		InfrastructureWorkloadInterfaces: make([]InfrastructureWorkloadInterface, 0, len(workloadInterfaces)),
 		InfrastructureWorkloadHostLinks:  make([]InfrastructureWorkloadHostLink, 0, len(workloadLinks)),
+		ProxmoxSourceStates:              make([]ProxmoxSourceState, 0, len(proxmoxSourceStates)),
 	}
 
 	for _, host := range currentHosts {
@@ -261,6 +279,9 @@ func DataFromModels(currentHosts, history []models.Host, events []models.HostEve
 	}
 	for _, link := range workloadLinks {
 		data.InfrastructureWorkloadHostLinks = append(data.InfrastructureWorkloadHostLinks, InfrastructureWorkloadHostLinkFromModel(link))
+	}
+	for _, state := range proxmoxSourceStates {
+		data.ProxmoxSourceStates = append(data.ProxmoxSourceStates, ProxmoxSourceStateFromModel(state))
 	}
 
 	return data
@@ -391,6 +412,23 @@ func InfrastructureWorkloadHostLinkFromModel(link models.InfrastructureWorkloadH
 	}
 }
 
+func ProxmoxSourceStateFromModel(state models.ProxmoxSourceState) ProxmoxSourceState {
+	return ProxmoxSourceState{
+		HypervisorMac:    state.HypervisorMac,
+		Source:           state.Source,
+		SchemaVersion:    state.SchemaVersion,
+		CollectorVersion: state.CollectorVersion,
+		CollectedAt:      state.CollectedAt,
+		Complete:         state.Complete,
+		NodeHostname:     state.NodeHostname,
+		NodePVEVersion:   state.NodePVEVersion,
+		NodeClusterName:  state.NodeClusterName,
+		NodeStatus:       state.NodeStatus,
+		SnapshotDigest:   state.SnapshotDigest,
+		ImportedAt:       state.ImportedAt,
+	}
+}
+
 func HostLifecycleFromModel(lifecycle models.HostLifecycle) HostLifecycle {
 	return HostLifecycle{
 		Mac:                lifecycle.Mac,
@@ -486,6 +524,9 @@ func normalizeData(data Data) Data {
 	}
 	if data.InfrastructureWorkloadHostLinks == nil {
 		data.InfrastructureWorkloadHostLinks = []InfrastructureWorkloadHostLink{}
+	}
+	if data.ProxmoxSourceStates == nil {
+		data.ProxmoxSourceStates = []ProxmoxSourceState{}
 	}
 
 	return data
