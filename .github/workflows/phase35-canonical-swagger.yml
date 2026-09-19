@@ -1,0 +1,42 @@
+name: Phase 35 Canonical Swagger
+
+on:
+  push:
+    branches:
+      - phase35-device-profiles-proxmox
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: phase35-device-profiles-proxmox
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+
+      - name: Refresh canonical Swagger
+        working-directory: backend
+        run: go run github.com/swaggo/swag/cmd/swag@v1.16.6 init -g main.go --dir cmd/LANnventory,internal/api,internal/models
+
+      - name: Test backend
+        working-directory: backend
+        run: go test ./...
+
+      - name: Commit canonical Swagger state
+        run: |
+          if git diff --quiet -- backend/docs; then
+            echo "Swagger already canonical."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/docs
+          git commit -m "phase35: refresh canonical Swagger state"
+          git push origin HEAD:phase35-device-profiles-proxmox
