@@ -94,6 +94,8 @@ jobs:
             python3 -m py_compile proxmox/collect_inventory.py proxmox/collect_inventory_test.py
             python3 -m unittest proxmox/collect_inventory_test.py
             cmp -s proxmox/collect_inventory.py frontend/public/lannventory-proxmox-collector.py
+            test -f backend/internal/web/public/lannventory-proxmox-collector.py
+            cmp -s proxmox/collect_inventory.py backend/internal/web/public/lannventory-proxmox-collector.py
           fi
 
       - name: Set up Go
