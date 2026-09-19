@@ -77,6 +77,22 @@ class CollectorParserTests(unittest.TestCase):
             self.assertNotIn("args:", joined)
             self.assertNotIn("cipassword", joined)
 
+    def test_collector_has_no_network_transfer_client(self):
+        source = MODULE_PATH.read_text(encoding="utf-8").lower()
+        for forbidden in [
+            "import requests",
+            "from requests",
+            "import urllib",
+            "from urllib",
+            "import socket",
+            "from socket",
+            "curl ",
+            "wget ",
+            "http://",
+            "https://",
+        ]:
+            self.assertNotIn(forbidden, source)
+
     def test_incomplete_snapshot_contract_is_explicit(self):
         snapshot = {
             "schemaVersion": collector.SCHEMA_VERSION,
