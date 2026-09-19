@@ -188,7 +188,7 @@ function DeviceProfileCard(props: ProfileCardProps) {
         <div>
           <div id="device-profile-title" class="host-panel-title">Device profile</div>
           <div class="host-panel-subtitle">
-            Managed inventory only. Future imported Proxmox data is kept separate and will not overwrite these values.
+            Managed inventory only. Imported Proxmox data is kept separate and will not overwrite these values.
           </div>
         </div>
         <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
@@ -214,6 +214,7 @@ function DeviceProfileCard(props: ProfileCardProps) {
       </div>
 
       <div class="card-body">
+        <DataSourceLegend />
         <Show when={!loading()} fallback={<div class="device-cell-muted">Loading device profile…</div>}>
           <div class="row g-3">
             <div class="col-12">
@@ -231,7 +232,7 @@ function DeviceProfileCard(props: ProfileCardProps) {
                 <div class="small fw-semibold mb-2">Network device</div>
                 <div class="row g-2">
                   <div class="col-12 col-lg-4">
-                    <label class="form-label small mb-1">Management</label>
+                    <FieldLabel label="Management" source="manual" />
                     <Show when={editing()} fallback={<ProfileValue value={managementModeLabel(draft().managementMode)} />}>
                       <select class="form-select form-select-sm wyl-control" value={draft().managementMode} onChange={(event) => updateDraft("managementMode", event.currentTarget.value as ProfileDraft["managementMode"])}>
                         <option value="">Not set</option>
@@ -241,13 +242,13 @@ function DeviceProfileCard(props: ProfileCardProps) {
                     </Show>
                   </div>
                   <div class="col-12 col-lg-4">
-                    <label class="form-label small mb-1">Physical ports</label>
+                    <FieldLabel label="Physical ports" source="manual" />
                     <Show when={editing()} fallback={<ProfileValue value={draft().physicalPortCount === "" || draft().physicalPortCount === "0" ? "" : draft().physicalPortCount} />}>
                       <input class="form-control form-control-sm wyl-control" type="number" min="0" max="65535" step="1" value={draft().physicalPortCount} onInput={(event) => updateDraft("physicalPortCount", event.currentTarget.value)} />
                     </Show>
                   </div>
                   <div class="col-12">
-                    <label class="form-label small mb-1">Port capability notes</label>
+                    <FieldLabel label="Port capability notes" source="manual" />
                     <Show when={editing()} fallback={<ProfileValue value={draft().portCapabilityNotes} />}>
                       <textarea class="form-control form-control-sm wyl-control" rows={2} value={draft().portCapabilityNotes} onInput={(event) => updateDraft("portCapabilityNotes", event.currentTarget.value)}></textarea>
                     </Show>
@@ -274,7 +275,7 @@ function DeviceProfileCard(props: ProfileCardProps) {
                 <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
                   <div>
                     <div class="small fw-semibold">Hypervisor</div>
-                    <div class="small device-cell-muted">Capability profile; the Host remains Device Type Server.</div>
+                    <div class="small device-cell-muted">Capability profile; the Host remains Device Type Server. Platform is selected manually. Version, node and cluster are optional reference values; imported observations appear separately below.</div>
                   </div>
                   <Show when={draft().hypervisorPlatform === "proxmox-ve"}>
                     <span class="badge text-bg-secondary">Proxmox VE</span>
@@ -282,7 +283,7 @@ function DeviceProfileCard(props: ProfileCardProps) {
                 </div>
                 <div class="row g-2">
                   <div class="col-12 col-lg-4">
-                    <label class="form-label small mb-1">Platform</label>
+                    <FieldLabel label="Platform" source="manual" />
                     <Show when={editing()} fallback={<ProfileValue value={hypervisorPlatformLabel(draft().hypervisorPlatform)} />}>
                       <select class="form-select form-select-sm wyl-control" value={draft().hypervisorPlatform} onChange={(event) => updateDraft("hypervisorPlatform", event.currentTarget.value as ProfileDraft["hypervisorPlatform"])}>
                         <option value="">Not a hypervisor</option>
@@ -294,9 +295,9 @@ function DeviceProfileCard(props: ProfileCardProps) {
                     </Show>
                   </div>
                   <Show when={draft().hypervisorPlatform !== ""}>
-                    <ProfileField label="Hypervisor version" editing={editing()} value={draft().hypervisorVersion} onInput={(value) => updateDraft("hypervisorVersion", value)} />
-                    <ProfileField label="Node name" editing={editing()} value={draft().nodeName} onInput={(value) => updateDraft("nodeName", value)} monospace />
-                    <ProfileField label="Cluster name" editing={editing()} value={draft().clusterName} onInput={(value) => updateDraft("clusterName", value)} />
+                    <ProfileField label="Hypervisor version" editing={editing()} value={draft().hypervisorVersion} onInput={(value) => updateDraft("hypervisorVersion", value)} hint="Optional manual reference" />
+                    <ProfileField label="Node name" editing={editing()} value={draft().nodeName} onInput={(value) => updateDraft("nodeName", value)} monospace hint="Optional manual reference" />
+                    <ProfileField label="Cluster name" editing={editing()} value={draft().clusterName} onInput={(value) => updateDraft("clusterName", value)} hint="Optional manual reference" />
                   </Show>
                 </div>
               </div>
@@ -321,10 +322,11 @@ function ProfileField(props: {
   value: string;
   onInput: (value: string) => void;
   monospace?: boolean;
+  hint?: string;
 }) {
   return (
     <div class="col-12 col-lg-4">
-      <label class="form-label small mb-1">{props.label}</label>
+      <FieldLabel label={props.label} source="manual" />
       <Show when={props.editing} fallback={<ProfileValue value={props.value} monospace={props.monospace} />}>
         <input
           class={"form-control form-control-sm wyl-control"+(props.monospace ? " font-monospace" : "")}
@@ -333,8 +335,64 @@ function ProfileField(props: {
           onInput={(event) => props.onInput(event.currentTarget.value)}
         />
       </Show>
+      <Show when={props.hint}>
+        <div class="profile-field-hint">{props.hint}</div>
+      </Show>
     </div>
   );
+}
+
+type DataSource = "manual" | "discovered" | "imported";
+
+function DataSourceLegend() {
+  return (
+    <div class="profile-source-legend" aria-label="Data source legend">
+      <span class="profile-source-legend-title">Data source</span>
+      <SourceLegendItem source="manual" label="Manual" />
+      <SourceLegendItem source="discovered" label="Discovered" />
+      <SourceLegendItem source="imported" label="Imported" />
+    </div>
+  );
+}
+
+function SourceLegendItem(props: { source: DataSource; label: string }) {
+  return (
+    <span class="profile-source-legend-item" title={sourceDescription(props.source)}>
+      <SourceIcon source={props.source} />
+      {props.label}
+    </span>
+  );
+}
+
+function FieldLabel(props: { label: string; source: DataSource }) {
+  return (
+    <label class="form-label small mb-1 profile-field-label">
+      <span>{props.label}</span>
+      <span
+        class={"profile-source-icon is-"+props.source}
+        title={sourceDescription(props.source)}
+        aria-label={sourceDescription(props.source)}
+        tabindex="0"
+      >
+        <SourceIcon source={props.source} />
+      </span>
+    </label>
+  );
+}
+
+function SourceIcon(props: { source: DataSource }) {
+  const icon = () => {
+    if (props.source === "manual") return "bi bi-pencil-square";
+    if (props.source === "discovered") return "bi bi-broadcast";
+    return "bi bi-box-arrow-in-down";
+  };
+  return <i class={icon()} aria-hidden="true"></i>;
+}
+
+function sourceDescription(source: DataSource) {
+  if (source === "manual") return "Manual: entered and maintained by you. Imports will not overwrite this field.";
+  if (source === "discovered") return "Discovered: observed automatically by LANnventory scanning.";
+  return "Imported: received from an external inventory source such as the Proxmox collector.";
 }
 
 function ProfileValue(props: { value: string; monospace?: boolean }) {
