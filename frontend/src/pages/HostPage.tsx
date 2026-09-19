@@ -152,7 +152,7 @@ function HostPage() {
             <ProxmoxInventoryCard host={currentHost()}></ProxmoxInventoryCard>
           </div>
         </div>
-      </div>
+      </Show>
       <div class="row g-3 mx-0 mt-1 host-page-row">
         <div class="col-md">
           <ServicesCard host={currentHost()} refreshKey={serviceRefreshKey()}></ServicesCard>
