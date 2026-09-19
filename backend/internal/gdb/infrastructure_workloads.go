@@ -97,7 +97,7 @@ func UpsertInfrastructureWorkload(hypervisorMac string, input models.Infrastruct
 	err = activeDB.Transaction(func(txDB *gorm.DB) error {
 		var workload models.InfrastructureWorkload
 		err := txDB.Table(infrastructureWorkloadsTable).
-			Where(""HYPERVISOR_MAC" = ? AND "NATIVE_ID" = ? AND "WORKLOAD_TYPE" = ?", canonical, nativeID, workloadType).
+			Where(`"HYPERVISOR_MAC" = ? AND "NATIVE_ID" = ? AND "WORKLOAD_TYPE" = ?`, canonical, nativeID, workloadType).
 			First(&workload).Error
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			workload = models.InfrastructureWorkload{
@@ -130,7 +130,7 @@ func UpsertInfrastructureWorkload(hypervisorMac string, input models.Infrastruct
 		workloadID = workload.ID
 
 		if err := txDB.Table(infrastructureWorkloadInterfacesTable).
-			Where(""WORKLOAD_ID" = ?", workload.ID).
+			Where(`"WORKLOAD_ID" = ?`, workload.ID).
 			Delete(&models.InfrastructureWorkloadInterface{}).Error; err != nil {
 			return err
 		}
@@ -202,7 +202,7 @@ func DeleteManualInfrastructureWorkload(id uint, hypervisorMac string) error {
 	return activeDB.Transaction(func(txDB *gorm.DB) error {
 		var workload models.InfrastructureWorkload
 		err := txDB.Table(infrastructureWorkloadsTable).
-			Where(""ID" = ? AND "HYPERVISOR_MAC" = ?", id, canonical).
+			Where(`"ID" = ? AND "HYPERVISOR_MAC" = ?`, id, canonical).
 			First(&workload).Error
 		if err != nil {
 			return err
@@ -242,13 +242,13 @@ func SetInfrastructureWorkloadHostLink(workloadID uint, host models.Host, linkSo
 	var result models.InfrastructureWorkloadHostLink
 	err = activeDB.Transaction(func(txDB *gorm.DB) error {
 		var workload models.InfrastructureWorkload
-		if err := txDB.Table(infrastructureWorkloadsTable).Where(""ID" = ?", workloadID).First(&workload).Error; err != nil {
+		if err := txDB.Table(infrastructureWorkloadsTable).Where(`"ID" = ?`, workloadID).First(&workload).Error; err != nil {
 			return err
 		}
 
 		var link models.InfrastructureWorkloadHostLink
 		err := txDB.Table(infrastructureWorkloadHostLinksTable).
-			Where(""WORKLOAD_ID" = ?", workloadID).
+			Where(`"WORKLOAD_ID" = ?`, workloadID).
 			First(&link).Error
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			link = models.InfrastructureWorkloadHostLink{
@@ -287,15 +287,15 @@ func DeleteInfrastructureWorkloadHostLink(workloadID uint) error {
 	defer release()
 
 	return activeDB.Table(infrastructureWorkloadHostLinksTable).
-		Where(""WORKLOAD_ID" = ?", workloadID).
+		Where(`"WORKLOAD_ID" = ?`, workloadID).
 		Delete(&models.InfrastructureWorkloadHostLink{}).Error
 }
 
 func selectInfrastructureWorkloadsByHypervisorMACDB(activeDB *gorm.DB, canonical string) ([]models.InfrastructureWorkloadRecord, error) {
 	var workloads []models.InfrastructureWorkload
 	if err := activeDB.Table(infrastructureWorkloadsTable).
-		Where(""HYPERVISOR_MAC" = ?", canonical).
-		Order(""RETIRED_AT" ASC, "WORKLOAD_TYPE" ASC, "NATIVE_ID" ASC, "ID" ASC").
+		Where(`"HYPERVISOR_MAC" = ?`, canonical).
+		Order(`"RETIRED_AT" ASC, "WORKLOAD_TYPE" ASC, "NATIVE_ID" ASC, "ID" ASC`).
 		Find(&workloads).Error; err != nil {
 		return nil, err
 	}
@@ -315,7 +315,7 @@ func selectInfrastructureWorkloadsByHypervisorMACDB(activeDB *gorm.DB, canonical
 
 func selectInfrastructureWorkloadByIDDB(activeDB *gorm.DB, id uint) (models.InfrastructureWorkloadRecord, bool, error) {
 	var workload models.InfrastructureWorkload
-	err := activeDB.Table(infrastructureWorkloadsTable).Where(""ID" = ?", id).First(&workload).Error
+	err := activeDB.Table(infrastructureWorkloadsTable).Where(`"ID" = ?`, id).First(&workload).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return models.InfrastructureWorkloadRecord{}, false, nil
 	}
@@ -325,8 +325,8 @@ func selectInfrastructureWorkloadByIDDB(activeDB *gorm.DB, id uint) (models.Infr
 
 	var interfaces []models.InfrastructureWorkloadInterface
 	if err := activeDB.Table(infrastructureWorkloadInterfacesTable).
-		Where(""WORKLOAD_ID" = ?", id).
-		Order(""NAME" ASC, "ID" ASC").
+		Where(`"WORKLOAD_ID" = ?`, id).
+		Order(`"NAME" ASC, "ID" ASC`).
 		Find(&interfaces).Error; err != nil {
 		return models.InfrastructureWorkloadRecord{}, false, err
 	}
@@ -334,7 +334,7 @@ func selectInfrastructureWorkloadByIDDB(activeDB *gorm.DB, id uint) (models.Infr
 	var link models.InfrastructureWorkloadHostLink
 	linkFound := true
 	err = activeDB.Table(infrastructureWorkloadHostLinksTable).
-		Where(""WORKLOAD_ID" = ?", id).
+		Where(`"WORKLOAD_ID" = ?`, id).
 		First(&link).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		linkFound = false
@@ -354,17 +354,17 @@ func selectInfrastructureWorkloadByIDDB(activeDB *gorm.DB, id uint) (models.Infr
 
 func deleteInfrastructureWorkloadTx(txDB *gorm.DB, workloadID uint) error {
 	if err := txDB.Table(infrastructureWorkloadHostLinksTable).
-		Where(""WORKLOAD_ID" = ?", workloadID).
+		Where(`"WORKLOAD_ID" = ?`, workloadID).
 		Delete(&models.InfrastructureWorkloadHostLink{}).Error; err != nil {
 		return err
 	}
 	if err := txDB.Table(infrastructureWorkloadInterfacesTable).
-		Where(""WORKLOAD_ID" = ?", workloadID).
+		Where(`"WORKLOAD_ID" = ?`, workloadID).
 		Delete(&models.InfrastructureWorkloadInterface{}).Error; err != nil {
 		return err
 	}
 	return txDB.Table(infrastructureWorkloadsTable).
-		Where(""ID" = ?", workloadID).
+		Where(`"ID" = ?`, workloadID).
 		Delete(&models.InfrastructureWorkload{}).Error
 }
 
@@ -378,14 +378,14 @@ func deleteInfrastructureRelationsForHost(txDB *gorm.DB, host models.Host) error
 	}
 
 	if err := txDB.Table(infrastructureWorkloadHostLinksTable).
-		Where(""HOST_MAC" = ? OR "HOST_ID" = ?", mac, host.ID).
+		Where(`"HOST_MAC" = ? OR "HOST_ID" = ?`, mac, host.ID).
 		Delete(&models.InfrastructureWorkloadHostLink{}).Error; err != nil {
 		return err
 	}
 
 	var workloadIDs []uint
 	if err := txDB.Table(infrastructureWorkloadsTable).
-		Where(""HYPERVISOR_MAC" = ?", mac).
+		Where(`"HYPERVISOR_MAC" = ?`, mac).
 		Pluck("ID", &workloadIDs).Error; err != nil {
 		return err
 	}
