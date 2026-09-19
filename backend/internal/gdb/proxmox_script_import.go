@@ -157,6 +157,10 @@ func ApplyProxmoxScriptImport(hypervisorMac string, state models.ProxmoxSourceSt
 			}
 		}
 
+		if err := reconcileExactMACWorkloadLinksTx(txDB, canonical, state.ImportedAt); err != nil {
+			return err
+		}
+
 		var existingState models.ProxmoxSourceState
 		err := txDB.Table(proxmoxSourceStatesTable).
 			Where(`"HYPERVISOR_MAC" = ? AND "SOURCE" = ?`, canonical, state.Source).
