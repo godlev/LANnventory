@@ -103,9 +103,12 @@ func TestInfrastructureWorkloadAPIRejectsInvalidOwnershipAndHypervisorState(t *t
 
 	enableTestHypervisor(t, router, server.ID)
 
-	rec = patchProfilePath(router, server.ID, "", `{"deviceType":"nas"}`)
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("device type change while hypervisor enabled status = %d, want %d; body: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	typeReq := httptest.NewRequest(http.MethodPatch, "/api/host/"+itoa(server.ID), bytes.NewBufferString(`{"deviceType":"nas"}`))
+	typeReq.Header.Set("Content-Type", "application/json")
+	typeRec := httptest.NewRecorder()
+	router.ServeHTTP(typeRec, typeReq)
+	if typeRec.Code != http.StatusBadRequest {
+		t.Fatalf("device type change while hypervisor enabled status = %d, want %d; body: %s", typeRec.Code, http.StatusBadRequest, typeRec.Body.String())
 	}
 
 	rec = workloadRequest(router, http.MethodPost, server.ID, "", `{"nativeId":"","workloadType":"vm"}`)
