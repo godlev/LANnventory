@@ -115,6 +115,38 @@ const fakeHosts = [
     LastSeen: '2025-12-30 18:42:09',
     FirstSeenEstimated: true,
   },
+  {
+    ID: 6,
+    Name: 'proxmox',
+    DNS: 'proxmox.local',
+    Iface: 'eth0',
+    IP: '192.168.1.6',
+    Mac: 'AA:BB:CC:00:00:60',
+    Hw: 'Fujitsu',
+    Date: now,
+    Known: 1,
+    Now: 1,
+    DeviceType: 'server',
+    FirstSeen: '2026-07-01 07:30:00',
+    LastSeen: now,
+    FirstSeenEstimated: false,
+  },
+  {
+    ID: 7,
+    Name: 'media-vm',
+    DNS: 'media-vm.local',
+    Iface: 'eth0',
+    IP: '192.168.1.27',
+    Mac: 'AA:BB:CC:00:00:70',
+    Hw: 'QEMU virtual NIC',
+    Date: now,
+    Known: 1,
+    Now: 1,
+    DeviceType: 'virtual-machine',
+    FirstSeen: '2026-08-05 11:20:00',
+    LastSeen: now,
+    FirstSeenEstimated: false,
+  },
 ];
 
 const hostMetadata = new Map([
@@ -137,6 +169,20 @@ const hostMetadata = new Map([
     Location: 'Office',
     Notes: '',
     Tags: ['workstation'],
+    Pinned: false,
+  }],
+  ['AA:BB:CC:00:00:60', {
+    Owner: 'Lab',
+    Location: 'Rack 1',
+    Notes: 'Mock Proxmox node for Phase 35 UI.',
+    Tags: ['server', 'proxmox'],
+    Pinned: true,
+  }],
+  ['AA:BB:CC:00:00:70', {
+    Owner: 'Lab',
+    Location: 'Virtual',
+    Notes: 'Mock VM with deterministic exact-MAC match.',
+    Tags: ['vm'],
     Pinned: false,
   }],
 ]);
@@ -178,7 +224,133 @@ const deviceProfiles = new Map([
     },
     hypervisor: null,
   }],
+  ['AA:BB:CC:00:00:60', {
+    managed: {
+      mac: 'AA:BB:CC:00:00:60',
+      manufacturer: 'Fujitsu',
+      model: 'CELSIUS W550P',
+      managementAddress: 'proxmox.local',
+      updatedAt: new Date().toISOString(),
+    },
+    network: null,
+    system: {
+      mac: 'AA:BB:CC:00:00:60',
+      role: 'Virtualization',
+      operatingSystem: 'Proxmox VE',
+      version: '9.2.10',
+      updatedAt: new Date().toISOString(),
+    },
+    hypervisor: {
+      mac: 'AA:BB:CC:00:00:60',
+      platform: 'proxmox-ve',
+      version: '9.2.10',
+      nodeName: 'pve-managed',
+      clusterName: 'home-lab',
+      updatedAt: new Date().toISOString(),
+    },
+  }],
 ]);
+
+const proxmoxSourceStates = new Map([
+  [6, {
+    hypervisorMac: 'AA:BB:CC:00:00:60',
+    source: 'script-import',
+    schemaVersion: 1,
+    collectorVersion: '1.0.0',
+    collectedAt: '2026-09-19T15:20:00Z',
+    complete: true,
+    nodeHostname: 'pve-mock',
+    nodePveVersion: 'pve-manager/9.2.10',
+    nodeClusterName: 'home-lab',
+    nodeStatus: 'online',
+    snapshotDigest: 'mock-snapshot-digest',
+    importedAt: '2026-09-19T15:21:00Z',
+  }],
+]);
+
+let nextMockWorkloadId = 3100;
+const proxmoxWorkloads = new Map([
+  [6, [
+    {
+      id: 3001,
+      hypervisorMac: 'AA:BB:CC:00:00:60',
+      nativeId: '119',
+      workloadType: 'vm',
+      name: 'media-vm',
+      status: 'running',
+      source: 'script-import',
+      firstSeen: '2026-09-15T09:00:00Z',
+      lastSeen: '2026-09-19T15:20:00Z',
+      retiredAt: '',
+      updatedAt: '2026-09-19T15:21:00Z',
+      interfaces: [{
+        id: 1,
+        workloadId: 3001,
+        name: 'net0',
+        mac: 'AA:BB:CC:00:00:70',
+        bridge: 'vmbr0',
+        vlanTag: '',
+        configuredAddress: '192.168.1.27/24',
+        configuredNetwork: '192.168.1.0/24',
+        updatedAt: '2026-09-19T15:21:00Z',
+      }],
+      link: {
+        workloadId: 3001,
+        hostId: 7,
+        hostMac: 'AA:BB:CC:00:00:70',
+        linkSource: 'exact-mac',
+        linkedAt: '2026-09-19T15:21:00Z',
+        updatedAt: '2026-09-19T15:21:00Z',
+      },
+      matchedHost: null,
+    },
+    {
+      id: 3002,
+      hypervisorMac: 'AA:BB:CC:00:00:60',
+      nativeId: '127',
+      workloadType: 'container',
+      name: 'desktop-helper',
+      status: 'stopped',
+      source: 'script-import',
+      firstSeen: '2026-09-15T09:00:00Z',
+      lastSeen: '2026-09-19T15:20:00Z',
+      retiredAt: '',
+      updatedAt: '2026-09-19T15:21:00Z',
+      interfaces: [{
+        id: 2,
+        workloadId: 3002,
+        name: 'eth0',
+        mac: 'AA:BB:CC:00:00:7F',
+        bridge: 'vmbr0',
+        vlanTag: '',
+        configuredAddress: '192.168.1.42/24',
+        configuredNetwork: '192.168.1.0/24',
+        updatedAt: '2026-09-19T15:21:00Z',
+      }],
+      link: null,
+      matchedHost: null,
+    },
+    {
+      id: 3003,
+      hypervisorMac: 'AA:BB:CC:00:00:60',
+      nativeId: '108',
+      workloadType: 'container',
+      name: 'old-service',
+      status: 'stopped',
+      source: 'script-import',
+      firstSeen: '2026-09-10T09:00:00Z',
+      lastSeen: '2026-09-17T15:20:00Z',
+      retiredAt: '2026-09-18T15:20:00Z',
+      updatedAt: '2026-09-18T15:21:00Z',
+      interfaces: [],
+      link: null,
+      matchedHost: null,
+    },
+  ]],
+]);
+
+const mockProxmoxPreviews = new Map();
+
 
 const config = {
   Host: host,
@@ -242,6 +414,269 @@ function profileForHost(hostEntry) {
     return structuredClone(existing);
   }
   return { managed: null, network: null, system: null, hypervisor: null };
+}
+
+
+function hostSummary(hostEntry) {
+  if (!hostEntry) return null;
+  return {
+    hostId: hostEntry.ID,
+    mac: hostEntry.Mac,
+    name: hostEntry.Name,
+    ip: hostEntry.IP,
+    deviceType: hostEntry.DeviceType,
+  };
+}
+
+function workloadMatchesForHost(hostId) {
+  const hypervisor = findHostByID(hostId);
+  const workloads = proxmoxWorkloads.get(hostId) ?? [];
+  return workloads.map((workload) => {
+    const candidates = new Map();
+    const addCandidate = (hostEntry, strength, code, detail) => {
+      if (!hostEntry || hostEntry.ID === hostId) return;
+      const existing = candidates.get(hostEntry.ID) ?? {
+        hostId: hostEntry.ID,
+        mac: hostEntry.Mac,
+        name: hostEntry.Name,
+        ip: hostEntry.IP,
+        deviceType: hostEntry.DeviceType,
+        active: hostEntry.Now === 1,
+        strength,
+        evidence: [],
+      };
+      const rank = { 'exact-mac': 0, address: 1, name: 2 };
+      if (rank[strength] < rank[existing.strength]) existing.strength = strength;
+      existing.evidence.push({ code, detail, strength, active: hostEntry.Now === 1 });
+      candidates.set(hostEntry.ID, existing);
+    };
+
+    for (const iface of workload.interfaces ?? []) {
+      const ifaceMac = String(iface.mac ?? '').toUpperCase();
+      if (ifaceMac) {
+        for (const hostEntry of fakeHosts.filter((item) => item.Mac.toUpperCase() === ifaceMac)) {
+          addCandidate(hostEntry, 'exact-mac', 'exact-interface-mac', (iface.name || 'interface')+' MAC '+ifaceMac+' exactly matches the Host MAC');
+        }
+      }
+      const address = String(iface.configuredAddress ?? '').split('/')[0];
+      if (address) {
+        for (const hostEntry of fakeHosts.filter((item) => item.IP === address)) {
+          addCandidate(hostEntry, 'address', 'current-address', (iface.name || 'interface')+' address '+address+' matches the Host current address');
+        }
+      }
+    }
+
+    const normalizedName = String(workload.name ?? '').trim().toLowerCase();
+    if (normalizedName) {
+      for (const hostEntry of fakeHosts) {
+        if (hostEntry.ID === hostId) continue;
+        if (String(hostEntry.Name ?? '').trim().toLowerCase() === normalizedName) {
+          addCandidate(hostEntry, 'name', 'host-name', 'Workload name matches Host name');
+        }
+        if (String(hostEntry.DNS ?? '').trim().toLowerCase().replace(/\.$/, '') === normalizedName.replace(/\.$/, '')) {
+          addCandidate(hostEntry, 'name', 'host-dns', 'Workload name matches Host DNS name');
+        }
+      }
+    }
+
+    const ordered = [...candidates.values()].sort((a, b) => {
+      const rank = { 'exact-mac': 0, address: 1, name: 2 };
+      return rank[a.strength]-rank[b.strength] || Number(b.active)-Number(a.active) || a.hostId-b.hostId;
+    });
+    const exact = ordered.filter((item) => item.strength === 'exact-mac');
+    return {
+      workloadId: workload.id,
+      nativeId: workload.nativeId,
+      workloadType: workload.workloadType,
+      name: workload.name,
+      currentLink: workload.link,
+      deterministicExactHostId: exact.length === 1 ? exact[0].hostId : undefined,
+      exactAmbiguous: exact.length > 1,
+      candidates: ordered,
+    };
+  });
+}
+
+function hydrateMockWorkloads(hostId) {
+  const workloads = structuredClone(proxmoxWorkloads.get(hostId) ?? []);
+  for (const workload of workloads) {
+    workload.matchedHost = workload.link ? hostSummary(findHostByID(workload.link.hostId)) : null;
+  }
+  return workloads;
+}
+
+function mockImportPreview(hostId, snapshot) {
+  const current = proxmoxWorkloads.get(hostId) ?? [];
+  const currentByKey = new Map(current.map((item) => [item.workloadType+':'+item.nativeId, item]));
+  const seen = new Set();
+  const diffs = [];
+  const summary = { added: 0, updated: 0, unchanged: 0, retired: 0, conflicts: 0 };
+  for (const incoming of snapshot.workloads ?? []) {
+    const key = incoming.workloadType+':'+incoming.nativeId;
+    seen.add(key);
+    const before = currentByKey.get(key);
+    const after = {
+      nativeId: incoming.nativeId,
+      workloadType: incoming.workloadType,
+      name: incoming.name ?? '',
+      status: incoming.status ?? 'unknown',
+      source: 'script-import',
+      interfaces: incoming.interfaces ?? [],
+    };
+    if (!before) {
+      summary.added++;
+      diffs.push({ action: 'add', key, changes: ['workload'], before: null, after });
+      continue;
+    }
+    const changes = [];
+    if (before.name !== after.name) changes.push('name');
+    if (before.status !== after.status) changes.push('status');
+    const beforeInterfaces = (before.interfaces ?? []).map(({ name, mac, bridge, vlanTag, configuredAddress, configuredNetwork }) => ({ name, mac, bridge, vlanTag, configuredAddress, configuredNetwork }));
+    if (JSON.stringify(beforeInterfaces) !== JSON.stringify(after.interfaces ?? [])) changes.push('interfaces');
+    if (before.retiredAt) changes.push('retired');
+    if (changes.length) {
+      summary.updated++;
+      diffs.push({ action: 'update', key, changes, before, after });
+    } else {
+      summary.unchanged++;
+      diffs.push({ action: 'unchanged', key, changes: [], before, after });
+    }
+  }
+  if (snapshot.complete) {
+    for (const before of current) {
+      const key = before.workloadType+':'+before.nativeId;
+      if (before.source === 'script-import' && !before.retiredAt && !seen.has(key)) {
+        summary.retired++;
+        diffs.push({ action: 'retire', key, changes: ['retired'], before, after: null });
+      }
+    }
+  }
+
+  const previous = proxmoxSourceStates.get(hostId);
+  const beforeNode = previous ? {
+    hostname: previous.nodeHostname,
+    pveVersion: previous.nodePveVersion,
+    clusterName: previous.nodeClusterName,
+    status: previous.nodeStatus,
+  } : null;
+  const afterNode = {
+    hostname: snapshot.node?.hostname ?? '',
+    pveVersion: snapshot.node?.pveVersion ?? '',
+    clusterName: snapshot.node?.clusterName ?? '',
+    status: snapshot.node?.status ?? 'unknown',
+  };
+  const nodeAction = !beforeNode ? 'add' : JSON.stringify(beforeNode) === JSON.stringify(afterNode) ? 'unchanged' : 'update';
+  const token = 'mock-preview-'+hostId+'-'+JSON.stringify(snapshot).length+'-'+String(snapshot.collectedAt ?? '');
+  mockProxmoxPreviews.set(hostId, { token, snapshotJSON: JSON.stringify(snapshot) });
+
+  return {
+    previewToken: token,
+    snapshotDigest: 'mock-'+JSON.stringify(snapshot).length,
+    source: snapshot.source ?? '',
+    collectedAt: snapshot.collectedAt ?? '',
+    complete: Boolean(snapshot.complete),
+    applyAllowed: Boolean(snapshot.complete),
+    blockedReasons: snapshot.complete ? [] : ['snapshot is incomplete; collect a complete snapshot before applying'],
+    warnings: snapshot.collectionErrors ?? [],
+    summary,
+    node: { action: nodeAction, before: beforeNode, after: afterNode },
+    managedConflicts: [],
+    workloads: diffs,
+  };
+}
+
+function applyMockProxmoxSnapshot(hostId, snapshot, previewToken) {
+  const previewState = mockProxmoxPreviews.get(hostId);
+  if (!previewState || previewState.token !== previewToken || previewState.snapshotJSON !== JSON.stringify(snapshot)) {
+    return { error: 'preview is stale; generate a new preview before applying', status: 409 };
+  }
+  if (!snapshot.complete) {
+    return { error: 'preview cannot be applied until blocking issues are resolved', status: 400 };
+  }
+
+  const hypervisor = findHostByID(hostId);
+  const importedAt = new Date().toISOString();
+  const current = proxmoxWorkloads.get(hostId) ?? [];
+  const currentByKey = new Map(current.map((item) => [item.workloadType+':'+item.nativeId, item]));
+  const seen = new Set();
+  const next = [];
+
+  for (const incoming of snapshot.workloads ?? []) {
+    const key = incoming.workloadType+':'+incoming.nativeId;
+    seen.add(key);
+    const previous = currentByKey.get(key);
+    const id = previous?.id ?? nextMockWorkloadId++;
+    const interfaces = (incoming.interfaces ?? []).map((iface, index) => ({
+      id: previous?.interfaces?.[index]?.id ?? id*100+index,
+      workloadId: id,
+      name: iface.name ?? '',
+      mac: String(iface.mac ?? '').toUpperCase(),
+      bridge: iface.bridge ?? '',
+      vlanTag: iface.vlanTag ?? '',
+      configuredAddress: iface.configuredAddress ?? '',
+      configuredNetwork: iface.configuredNetwork ?? '',
+      updatedAt: importedAt,
+    }));
+    let link = previous?.link?.linkSource === 'manual' ? previous.link : null;
+    if (!link) {
+      const exactHosts = new Set();
+      for (const iface of interfaces) {
+        if (!iface.mac) continue;
+        for (const hostEntry of fakeHosts.filter((item) => item.ID !== hostId && item.Mac.toUpperCase() === iface.mac)) {
+          exactHosts.add(hostEntry.ID);
+        }
+      }
+      if (exactHosts.size === 1) {
+        const target = findHostByID([...exactHosts][0]);
+        link = {
+          workloadId: id,
+          hostId: target.ID,
+          hostMac: target.Mac,
+          linkSource: 'exact-mac',
+          linkedAt: importedAt,
+          updatedAt: importedAt,
+        };
+      }
+    }
+    next.push({
+      id,
+      hypervisorMac: hypervisor?.Mac ?? '',
+      nativeId: String(incoming.nativeId ?? ''),
+      workloadType: incoming.workloadType ?? 'vm',
+      name: incoming.name ?? '',
+      status: incoming.status ?? 'unknown',
+      source: 'script-import',
+      firstSeen: previous?.firstSeen ?? snapshot.collectedAt,
+      lastSeen: snapshot.collectedAt,
+      retiredAt: '',
+      updatedAt: importedAt,
+      interfaces,
+      link,
+      matchedHost: null,
+    });
+  }
+  for (const previous of current) {
+    const key = previous.workloadType+':'+previous.nativeId;
+    if (seen.has(key) || previous.source !== 'script-import' || previous.retiredAt) continue;
+    next.push({ ...previous, retiredAt: snapshot.collectedAt, updatedAt: importedAt });
+  }
+  proxmoxWorkloads.set(hostId, next);
+  proxmoxSourceStates.set(hostId, {
+    hypervisorMac: hypervisor?.Mac ?? '',
+    source: 'script-import',
+    schemaVersion: snapshot.schemaVersion ?? 1,
+    collectorVersion: snapshot.collectorVersion ?? '',
+    collectedAt: snapshot.collectedAt ?? '',
+    complete: true,
+    nodeHostname: snapshot.node?.hostname ?? '',
+    nodePveVersion: snapshot.node?.pveVersion ?? '',
+    nodeClusterName: snapshot.node?.clusterName ?? '',
+    nodeStatus: snapshot.node?.status ?? 'unknown',
+    snapshotDigest: 'mock-'+JSON.stringify(snapshot).length,
+    importedAt,
+  });
+  mockProxmoxPreviews.delete(hostId);
+  return { applied: true, importedAt, summary: mockImportPreview(hostId, snapshot).summary };
 }
 
 function sendJSON(res, value, statusCode = 200) {
@@ -1248,6 +1683,102 @@ function routeReadOnly(req, res, url) {
     }
 
     sendJSON(res, events);
+    return true;
+  }
+
+  const proxmoxSourceMatch = pathname.match(/^\/api\/host\/(\d+)\/proxmox\/source-state$/);
+  if (req.method === 'GET' && proxmoxSourceMatch) {
+    const id = Number(proxmoxSourceMatch[1]);
+    const hostEntry = findHostByID(id);
+    if (!hostEntry || profileForHost(hostEntry).hypervisor?.platform !== 'proxmox-ve') {
+      sendJSON(res, { error: 'Proxmox source state requires a Proxmox VE hypervisor profile' }, 400);
+      return true;
+    }
+    sendJSON(res, proxmoxSourceStates.get(id) ?? null);
+    return true;
+  }
+
+  const proxmoxWorkloadsMatch = pathname.match(/^\/api\/host\/(\d+)\/workloads$/);
+  if (req.method === 'GET' && proxmoxWorkloadsMatch) {
+    const id = Number(proxmoxWorkloadsMatch[1]);
+    sendJSON(res, hydrateMockWorkloads(id));
+    return true;
+  }
+
+  const workloadMatchesMatch = pathname.match(/^\/api\/host\/(\d+)\/workload-matches$/);
+  if (req.method === 'GET' && workloadMatchesMatch) {
+    const id = Number(workloadMatchesMatch[1]);
+    sendJSON(res, workloadMatchesForHost(id));
+    return true;
+  }
+
+  const workloadLinkMatch = pathname.match(/^\/api\/host\/(\d+)\/workloads\/(\d+)\/link$/);
+  if ((req.method === 'PUT' || req.method === 'DELETE') && workloadLinkMatch) {
+    const hostId = Number(workloadLinkMatch[1]);
+    const workloadId = Number(workloadLinkMatch[2]);
+    const items = proxmoxWorkloads.get(hostId) ?? [];
+    const workload = items.find((item) => item.id === workloadId);
+    if (!workload) {
+      sendJSON(res, { error: 'workload does not belong to this hypervisor' }, 400);
+      return true;
+    }
+    if (req.method === 'DELETE') {
+      workload.link = null;
+      workload.matchedHost = null;
+      sendJSON(res, structuredClone(workload));
+      return true;
+    }
+    const params = parseRequestBody(await readBody(req));
+    const target = findHostByID(Number(params.hostId));
+    if (!target || target.ID === hostId) {
+      sendJSON(res, { error: 'target host does not exist' }, 400);
+      return true;
+    }
+    const changedAt = new Date().toISOString();
+    workload.link = {
+      workloadId,
+      hostId: target.ID,
+      hostMac: target.Mac,
+      linkSource: 'manual',
+      linkedAt: changedAt,
+      updatedAt: changedAt,
+    };
+    workload.matchedHost = hostSummary(target);
+    sendJSON(res, structuredClone(workload));
+    return true;
+  }
+
+  const proxmoxPreviewMatch = pathname.match(/^\/api\/host\/(\d+)\/proxmox\/import\/preview$/);
+  if (req.method === 'POST' && proxmoxPreviewMatch) {
+    const id = Number(proxmoxPreviewMatch[1]);
+    const hostEntry = findHostByID(id);
+    if (!hostEntry || profileForHost(hostEntry).hypervisor?.platform !== 'proxmox-ve') {
+      sendJSON(res, { error: 'Proxmox import requires a Proxmox VE hypervisor profile' }, 400);
+      return true;
+    }
+    const snapshot = parseRequestBody(await readBody(req));
+    if (snapshot.schemaVersion !== 1 || snapshot.source !== 'script-import' || !snapshot.node || !Array.isArray(snapshot.workloads)) {
+      sendJSON(res, { error: 'invalid Proxmox import JSON' }, 400);
+      return true;
+    }
+    sendJSON(res, mockImportPreview(id, snapshot));
+    return true;
+  }
+
+  const proxmoxApplyMatch = pathname.match(/^\/api\/host\/(\d+)\/proxmox\/import\/apply$/);
+  if (req.method === 'POST' && proxmoxApplyMatch) {
+    const id = Number(proxmoxApplyMatch[1]);
+    const params = parseRequestBody(await readBody(req));
+    if (params.confirmed !== true) {
+      sendJSON(res, { error: 'explicit confirmation is required' }, 400);
+      return true;
+    }
+    const result = applyMockProxmoxSnapshot(id, params.snapshot ?? {}, String(params.previewToken ?? ''));
+    if (result.error) {
+      sendJSON(res, { error: result.error }, result.status ?? 400);
+      return true;
+    }
+    sendJSON(res, result);
     return true;
   }
 
