@@ -123,6 +123,20 @@ func createHostInfrastructureWorkload(c *gin.Context) {
 		return
 	}
 
+	existing, err := gdb.SelectInfrastructureWorkloadsByHypervisorMAC(host.Mac)
+	if err != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to check existing workloads"})
+		return
+	}
+	for _, candidate := range existing {
+		if candidate.Workload.NativeID == input.NativeID &&
+			candidate.Workload.WorkloadType == input.WorkloadType &&
+			candidate.Workload.Source != models.InfrastructureWorkloadSourceManual {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "imported workloads cannot be overwritten through manual mode"})
+			return
+		}
+	}
+
 	record, err := gdb.UpsertInfrastructureWorkload(host.Mac, input, time.Now().UTC().Format(time.RFC3339))
 	if err != nil {
 		slog.Error("Failed to save manual infrastructure workload", "hostID", host.ID, "mac", host.Mac, "err", err)
@@ -256,10 +270,11 @@ func setHostInfrastructureWorkloadLink(c *gin.Context) {
 	}
 
 	var payload InfrastructureWorkloadLinkRequest
-	if !decodeStrictWorkloadJSON(c, &payload) || payload.HostID < 1 {
-		if payload.HostID < 1 {
-			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "valid hostId is required"})
-		}
+	if !decodeStrictWorkloadJSON(c, &payload) {
+		return
+	}
+	if payload.HostID < 1 {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "valid hostId is required"})
 		return
 	}
 
