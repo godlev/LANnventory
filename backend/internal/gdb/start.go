@@ -149,6 +149,9 @@ func migrate(candidate *gorm.DB) error {
 	if err := candidate.Table(infrastructureWorkloadHostLinksTable).AutoMigrate(&models.InfrastructureWorkloadHostLink{}); err != nil {
 		return err
 	}
+	if err := candidate.Table(proxmoxSourceStatesTable).AutoMigrate(&models.ProxmoxSourceState{}); err != nil {
+		return err
+	}
 	if err := candidate.Table(hostLifecycleTable).AutoMigrate(&models.HostLifecycle{}); err != nil {
 		return err
 	}
