@@ -168,6 +168,34 @@ func TestBackupExportEndpointIncludesStableDataAndMetadata(t *testing.T) {
 	}); err != nil || !found {
 		t.Fatalf("UpdateHypervisorProfile found=%v err=%v", found, err)
 	}
+	workloadRecord, err := gdb.UpsertInfrastructureWorkload("AA:BB:CC:DD:EE:20", models.InfrastructureWorkloadUpsert{
+		NativeID:     "119",
+		WorkloadType: models.InfrastructureWorkloadTypeVM,
+		Name:         "media-vm",
+		Status:       models.InfrastructureWorkloadStatusRunning,
+		Source:       models.InfrastructureWorkloadSourceManual,
+		Interfaces: []models.InfrastructureWorkloadInterface{{
+			Name:              "net0",
+			Mac:               "AA:BB:CC:00:01:19",
+			Bridge:            "vmbr0",
+			ConfiguredAddress: "192.168.1.119",
+		}},
+	}, "2026-09-05T10:30:00Z")
+	if err != nil {
+		t.Fatalf("UpsertInfrastructureWorkload: %v", err)
+	}
+	routerHost, err := gdb.SelectHostWithMetadataByID(1)
+	if err != nil {
+		t.Fatalf("SelectHostWithMetadataByID router: %v", err)
+	}
+	if _, err := gdb.SetInfrastructureWorkloadHostLink(
+		workloadRecord.Workload.ID,
+		routerHost,
+		models.InfrastructureWorkloadLinkSourceManual,
+		"2026-09-05T10:35:00Z",
+	); err != nil {
+		t.Fatalf("SetInfrastructureWorkloadHostLink: %v", err)
+	}
 
 	rec = getPath(router, "/api/export/backup")
 	if rec.Code != http.StatusOK {
@@ -221,6 +249,23 @@ func TestBackupExportEndpointIncludesStableDataAndMetadata(t *testing.T) {
 		document.Data.HypervisorProfiles[0].NodeName != hypervisorNode {
 		t.Fatalf("hypervisor profiles = %+v", document.Data.HypervisorProfiles)
 	}
+	if len(document.Data.InfrastructureWorkloads) != 1 ||
+		document.Data.InfrastructureWorkloads[0].NativeID != "119" ||
+		document.Data.InfrastructureWorkloads[0].WorkloadType != "vm" ||
+		document.Data.InfrastructureWorkloads[0].Source != "manual" {
+		t.Fatalf("infrastructure workloads = %+v", document.Data.InfrastructureWorkloads)
+	}
+	if len(document.Data.InfrastructureWorkloadInterfaces) != 1 ||
+		document.Data.InfrastructureWorkloadInterfaces[0].WorkloadID != workloadRecord.Workload.ID ||
+		document.Data.InfrastructureWorkloadInterfaces[0].Mac != "AA:BB:CC:00:01:19" {
+		t.Fatalf("infrastructure workload interfaces = %+v", document.Data.InfrastructureWorkloadInterfaces)
+	}
+	if len(document.Data.InfrastructureWorkloadHostLinks) != 1 ||
+		document.Data.InfrastructureWorkloadHostLinks[0].WorkloadID != workloadRecord.Workload.ID ||
+		document.Data.InfrastructureWorkloadHostLinks[0].HostID != routerHost.ID ||
+		document.Data.InfrastructureWorkloadHostLinks[0].LinkSource != models.InfrastructureWorkloadLinkSourceManual {
+		t.Fatalf("infrastructure workload host links = %+v", document.Data.InfrastructureWorkloadHostLinks)
+	}
 	if document.Data.DeviceProfiles[0].Manufacturer != profileManufacturer ||
 		document.Data.DeviceProfiles[0].Model != profileModel ||
 		document.Data.DeviceProfiles[0].ManagementAddress != profileAddress ||
@@ -255,7 +300,10 @@ func TestBackupExportEndpointEmptyTablesUsesArrays(t *testing.T) {
 		!strings.Contains(rec.Body.String(), `"deviceProfiles": []`) ||
 		!strings.Contains(rec.Body.String(), `"networkDeviceProfiles": []`) ||
 		!strings.Contains(rec.Body.String(), `"systemDeviceProfiles": []`) ||
-		!strings.Contains(rec.Body.String(), `"hypervisorProfiles": []`) {
+		!strings.Contains(rec.Body.String(), `"hypervisorProfiles": []`) ||
+		!strings.Contains(rec.Body.String(), `"infrastructureWorkloads": []`) ||
+		!strings.Contains(rec.Body.String(), `"infrastructureWorkloadInterfaces": []`) ||
+		!strings.Contains(rec.Body.String(), `"infrastructureWorkloadHostLinks": []`) {
 		t.Fatalf("empty backup did not encode empty arrays: %s", rec.Body.String())
 	}
 }
