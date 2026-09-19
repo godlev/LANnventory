@@ -1712,76 +1712,6 @@ function routeReadOnly(req, res, url) {
     return true;
   }
 
-  const workloadLinkMatch = pathname.match(/^\/api\/host\/(\d+)\/workloads\/(\d+)\/link$/);
-  if ((req.method === 'PUT' || req.method === 'DELETE') && workloadLinkMatch) {
-    const hostId = Number(workloadLinkMatch[1]);
-    const workloadId = Number(workloadLinkMatch[2]);
-    const items = proxmoxWorkloads.get(hostId) ?? [];
-    const workload = items.find((item) => item.id === workloadId);
-    if (!workload) {
-      sendJSON(res, { error: 'workload does not belong to this hypervisor' }, 400);
-      return true;
-    }
-    if (req.method === 'DELETE') {
-      workload.link = null;
-      workload.matchedHost = null;
-      sendJSON(res, structuredClone(workload));
-      return true;
-    }
-    const params = parseRequestBody(await readBody(req));
-    const target = findHostByID(Number(params.hostId));
-    if (!target || target.ID === hostId) {
-      sendJSON(res, { error: 'target host does not exist' }, 400);
-      return true;
-    }
-    const changedAt = new Date().toISOString();
-    workload.link = {
-      workloadId,
-      hostId: target.ID,
-      hostMac: target.Mac,
-      linkSource: 'manual',
-      linkedAt: changedAt,
-      updatedAt: changedAt,
-    };
-    workload.matchedHost = hostSummary(target);
-    sendJSON(res, structuredClone(workload));
-    return true;
-  }
-
-  const proxmoxPreviewMatch = pathname.match(/^\/api\/host\/(\d+)\/proxmox\/import\/preview$/);
-  if (req.method === 'POST' && proxmoxPreviewMatch) {
-    const id = Number(proxmoxPreviewMatch[1]);
-    const hostEntry = findHostByID(id);
-    if (!hostEntry || profileForHost(hostEntry).hypervisor?.platform !== 'proxmox-ve') {
-      sendJSON(res, { error: 'Proxmox import requires a Proxmox VE hypervisor profile' }, 400);
-      return true;
-    }
-    const snapshot = parseRequestBody(await readBody(req));
-    if (snapshot.schemaVersion !== 1 || snapshot.source !== 'script-import' || !snapshot.node || !Array.isArray(snapshot.workloads)) {
-      sendJSON(res, { error: 'invalid Proxmox import JSON' }, 400);
-      return true;
-    }
-    sendJSON(res, mockImportPreview(id, snapshot));
-    return true;
-  }
-
-  const proxmoxApplyMatch = pathname.match(/^\/api\/host\/(\d+)\/proxmox\/import\/apply$/);
-  if (req.method === 'POST' && proxmoxApplyMatch) {
-    const id = Number(proxmoxApplyMatch[1]);
-    const params = parseRequestBody(await readBody(req));
-    if (params.confirmed !== true) {
-      sendJSON(res, { error: 'explicit confirmation is required' }, 400);
-      return true;
-    }
-    const result = applyMockProxmoxSnapshot(id, params.snapshot ?? {}, String(params.previewToken ?? ''));
-    if (result.error) {
-      sendJSON(res, { error: result.error }, result.status ?? 400);
-      return true;
-    }
-    sendJSON(res, result);
-    return true;
-  }
-
   const hostProfileMatch = pathname.match(/^\/api\/host\/(\d+)\/profile$/);
   if (req.method === 'GET' && hostProfileMatch) {
     const id = Number(hostProfileMatch[1]);
@@ -1983,6 +1913,76 @@ async function routeSafeAction(req, res, url) {
 
     deviceProfiles.set(hostEntry.Mac, profile);
     sendJSON(res, profile);
+    return true;
+  }
+
+  const workloadLinkMatch = pathname.match(/^\/api\/host\/(\d+)\/workloads\/(\d+)\/link$/);
+  if ((req.method === 'PUT' || req.method === 'DELETE') && workloadLinkMatch) {
+    const hostId = Number(workloadLinkMatch[1]);
+    const workloadId = Number(workloadLinkMatch[2]);
+    const items = proxmoxWorkloads.get(hostId) ?? [];
+    const workload = items.find((item) => item.id === workloadId);
+    if (!workload) {
+      sendJSON(res, { error: 'workload does not belong to this hypervisor' }, 400);
+      return true;
+    }
+    if (req.method === 'DELETE') {
+      workload.link = null;
+      workload.matchedHost = null;
+      sendJSON(res, structuredClone(workload));
+      return true;
+    }
+    const params = parseRequestBody(await readBody(req));
+    const target = findHostByID(Number(params.hostId));
+    if (!target || target.ID === hostId) {
+      sendJSON(res, { error: 'target host does not exist' }, 400);
+      return true;
+    }
+    const changedAt = new Date().toISOString();
+    workload.link = {
+      workloadId,
+      hostId: target.ID,
+      hostMac: target.Mac,
+      linkSource: 'manual',
+      linkedAt: changedAt,
+      updatedAt: changedAt,
+    };
+    workload.matchedHost = hostSummary(target);
+    sendJSON(res, structuredClone(workload));
+    return true;
+  }
+
+  const proxmoxPreviewMatch = pathname.match(/^\/api\/host\/(\d+)\/proxmox\/import\/preview$/);
+  if (req.method === 'POST' && proxmoxPreviewMatch) {
+    const id = Number(proxmoxPreviewMatch[1]);
+    const hostEntry = findHostByID(id);
+    if (!hostEntry || profileForHost(hostEntry).hypervisor?.platform !== 'proxmox-ve') {
+      sendJSON(res, { error: 'Proxmox import requires a Proxmox VE hypervisor profile' }, 400);
+      return true;
+    }
+    const snapshot = parseRequestBody(await readBody(req));
+    if (snapshot.schemaVersion !== 1 || snapshot.source !== 'script-import' || !snapshot.node || !Array.isArray(snapshot.workloads)) {
+      sendJSON(res, { error: 'invalid Proxmox import JSON' }, 400);
+      return true;
+    }
+    sendJSON(res, mockImportPreview(id, snapshot));
+    return true;
+  }
+
+  const proxmoxApplyMatch = pathname.match(/^\/api\/host\/(\d+)\/proxmox\/import\/apply$/);
+  if (req.method === 'POST' && proxmoxApplyMatch) {
+    const id = Number(proxmoxApplyMatch[1]);
+    const params = parseRequestBody(await readBody(req));
+    if (params.confirmed !== true) {
+      sendJSON(res, { error: 'explicit confirmation is required' }, 400);
+      return true;
+    }
+    const result = applyMockProxmoxSnapshot(id, params.snapshot ?? {}, String(params.previewToken ?? ''));
+    if (result.error) {
+      sendJSON(res, { error: result.error }, result.status ?? 400);
+      return true;
+    }
+    sendJSON(res, result);
     return true;
   }
 
