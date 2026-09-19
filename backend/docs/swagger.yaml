@@ -348,23 +348,215 @@ definitions:
       portCapabilityNotes:
         type: string
     type: object
-  api.ProxmoxImportApplyRequest:
+  api.ProxmoxImportApplyDoc:
     properties:
       confirmed:
         type: boolean
       previewToken:
         type: string
       snapshot:
-        $ref: '#/definitions/proxmoxsnapshot.Snapshot'
+        $ref: '#/definitions/api.ProxmoxImportSnapshotDoc'
     type: object
-  api.ProxmoxImportApplyResponse:
+  api.ProxmoxImportApplyResponseDoc:
     properties:
       applied:
         type: boolean
       importedAt:
         type: string
       summary:
-        $ref: '#/definitions/proxmoximport.PreviewSummary'
+        $ref: '#/definitions/api.ProxmoxImportPreviewSummaryDoc'
+    type: object
+  api.ProxmoxImportFieldConflictDoc:
+    properties:
+      field:
+        type: string
+      imported:
+        type: string
+      managed:
+        type: string
+    type: object
+  api.ProxmoxImportInterfaceDoc:
+    properties:
+      bridge:
+        type: string
+      configuredAddress:
+        type: string
+      configuredNetwork:
+        type: string
+      mac:
+        type: string
+      name:
+        type: string
+      vlanTag:
+        type: string
+    type: object
+  api.ProxmoxImportInterfaceViewDoc:
+    properties:
+      bridge:
+        type: string
+      configuredAddress:
+        type: string
+      configuredNetwork:
+        type: string
+      mac:
+        type: string
+      name:
+        type: string
+      vlanTag:
+        type: string
+    type: object
+  api.ProxmoxImportNodeDiffDoc:
+    properties:
+      action:
+        type: string
+      after:
+        $ref: '#/definitions/api.ProxmoxImportNodeViewDoc'
+      before:
+        $ref: '#/definitions/api.ProxmoxImportNodeViewDoc'
+    type: object
+  api.ProxmoxImportNodeDoc:
+    properties:
+      clusterName:
+        type: string
+      hostname:
+        type: string
+      pveVersion:
+        type: string
+      status:
+        type: string
+    type: object
+  api.ProxmoxImportNodeViewDoc:
+    properties:
+      clusterName:
+        type: string
+      hostname:
+        type: string
+      pveVersion:
+        type: string
+      status:
+        type: string
+    type: object
+  api.ProxmoxImportPreviewDoc:
+    properties:
+      applyAllowed:
+        type: boolean
+      blockedReasons:
+        items:
+          type: string
+        type: array
+      collectedAt:
+        type: string
+      complete:
+        type: boolean
+      managedConflicts:
+        items:
+          $ref: '#/definitions/api.ProxmoxImportFieldConflictDoc'
+        type: array
+      node:
+        $ref: '#/definitions/api.ProxmoxImportNodeDiffDoc'
+      previewToken:
+        type: string
+      snapshotDigest:
+        type: string
+      source:
+        type: string
+      summary:
+        $ref: '#/definitions/api.ProxmoxImportPreviewSummaryDoc'
+      warnings:
+        items:
+          type: string
+        type: array
+      workloads:
+        items:
+          $ref: '#/definitions/api.ProxmoxImportWorkloadDiffDoc'
+        type: array
+    type: object
+  api.ProxmoxImportPreviewSummaryDoc:
+    properties:
+      added:
+        type: integer
+      conflicts:
+        type: integer
+      retired:
+        type: integer
+      unchanged:
+        type: integer
+      updated:
+        type: integer
+    type: object
+  api.ProxmoxImportSnapshotDoc:
+    properties:
+      collectedAt:
+        type: string
+      collectionErrors:
+        items:
+          type: string
+        type: array
+      collectorVersion:
+        type: string
+      complete:
+        type: boolean
+      node:
+        $ref: '#/definitions/api.ProxmoxImportNodeDoc'
+      schemaVersion:
+        type: integer
+      source:
+        type: string
+      workloads:
+        items:
+          $ref: '#/definitions/api.ProxmoxImportWorkloadDoc'
+        type: array
+    type: object
+  api.ProxmoxImportWorkloadDiffDoc:
+    properties:
+      action:
+        type: string
+      after:
+        $ref: '#/definitions/api.ProxmoxImportWorkloadViewDoc'
+      before:
+        $ref: '#/definitions/api.ProxmoxImportWorkloadViewDoc'
+      changes:
+        items:
+          type: string
+        type: array
+      key:
+        type: string
+    type: object
+  api.ProxmoxImportWorkloadDoc:
+    properties:
+      interfaces:
+        items:
+          $ref: '#/definitions/api.ProxmoxImportInterfaceDoc'
+        type: array
+      name:
+        type: string
+      nativeId:
+        type: string
+      status:
+        type: string
+      workloadType:
+        type: string
+    type: object
+  api.ProxmoxImportWorkloadViewDoc:
+    properties:
+      id:
+        type: integer
+      interfaces:
+        items:
+          $ref: '#/definitions/api.ProxmoxImportInterfaceViewDoc'
+        type: array
+      name:
+        type: string
+      nativeId:
+        type: string
+      retiredAt:
+        type: string
+      source:
+        type: string
+      status:
+        type: string
+      workloadType:
+        type: string
     type: object
   api.SystemDeviceProfilePatchRequest:
     properties:
@@ -819,198 +1011,6 @@ definitions:
       updatedAt:
         type: string
       version:
-        type: string
-    type: object
-  proxmoximport.FieldConflict:
-    properties:
-      field:
-        type: string
-      imported:
-        type: string
-      managed:
-        type: string
-    type: object
-  proxmoximport.InterfaceView:
-    properties:
-      bridge:
-        type: string
-      configuredAddress:
-        type: string
-      configuredNetwork:
-        type: string
-      mac:
-        type: string
-      name:
-        type: string
-      vlanTag:
-        type: string
-    type: object
-  proxmoximport.NodeDiff:
-    properties:
-      action:
-        type: string
-      after:
-        $ref: '#/definitions/proxmoximport.NodeView'
-      before:
-        $ref: '#/definitions/proxmoximport.NodeView'
-    type: object
-  proxmoximport.NodeView:
-    properties:
-      clusterName:
-        type: string
-      hostname:
-        type: string
-      pveVersion:
-        type: string
-      status:
-        type: string
-    type: object
-  proxmoximport.Preview:
-    properties:
-      applyAllowed:
-        type: boolean
-      blockedReasons:
-        items:
-          type: string
-        type: array
-      collectedAt:
-        type: string
-      complete:
-        type: boolean
-      managedConflicts:
-        items:
-          $ref: '#/definitions/proxmoximport.FieldConflict'
-        type: array
-      node:
-        $ref: '#/definitions/proxmoximport.NodeDiff'
-      previewToken:
-        type: string
-      snapshotDigest:
-        type: string
-      source:
-        type: string
-      summary:
-        $ref: '#/definitions/proxmoximport.PreviewSummary'
-      warnings:
-        items:
-          type: string
-        type: array
-      workloads:
-        items:
-          $ref: '#/definitions/proxmoximport.WorkloadDiff'
-        type: array
-    type: object
-  proxmoximport.PreviewSummary:
-    properties:
-      added:
-        type: integer
-      conflicts:
-        type: integer
-      retired:
-        type: integer
-      unchanged:
-        type: integer
-      updated:
-        type: integer
-    type: object
-  proxmoximport.WorkloadDiff:
-    properties:
-      action:
-        type: string
-      after:
-        $ref: '#/definitions/proxmoximport.WorkloadView'
-      before:
-        $ref: '#/definitions/proxmoximport.WorkloadView'
-      changes:
-        items:
-          type: string
-        type: array
-      key:
-        type: string
-    type: object
-  proxmoximport.WorkloadView:
-    properties:
-      id:
-        type: integer
-      interfaces:
-        items:
-          $ref: '#/definitions/proxmoximport.InterfaceView'
-        type: array
-      name:
-        type: string
-      nativeId:
-        type: string
-      retiredAt:
-        type: string
-      source:
-        type: string
-      status:
-        type: string
-      workloadType:
-        type: string
-    type: object
-  proxmoxsnapshot.InterfaceSnapshot:
-    properties:
-      bridge:
-        type: string
-      configuredAddress:
-        type: string
-      configuredNetwork:
-        type: string
-      mac:
-        type: string
-      name:
-        type: string
-      vlanTag:
-        type: string
-    type: object
-  proxmoxsnapshot.NodeSnapshot:
-    properties:
-      clusterName:
-        type: string
-      hostname:
-        type: string
-      pveVersion:
-        type: string
-      status:
-        type: string
-    type: object
-  proxmoxsnapshot.Snapshot:
-    properties:
-      collectedAt:
-        type: string
-      collectionErrors:
-        items:
-          type: string
-        type: array
-      collectorVersion:
-        type: string
-      complete:
-        type: boolean
-      node:
-        $ref: '#/definitions/proxmoxsnapshot.NodeSnapshot'
-      schemaVersion:
-        type: integer
-      source:
-        type: string
-      workloads:
-        items:
-          $ref: '#/definitions/proxmoxsnapshot.WorkloadSnapshot'
-        type: array
-    type: object
-  proxmoxsnapshot.WorkloadSnapshot:
-    properties:
-      interfaces:
-        items:
-          $ref: '#/definitions/proxmoxsnapshot.InterfaceSnapshot'
-        type: array
-      name:
-        type: string
-      nativeId:
-        type: string
-      status:
-        type: string
-      workloadType:
         type: string
     type: object
 info:
@@ -2274,14 +2274,14 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/api.ProxmoxImportApplyRequest'
+          $ref: '#/definitions/api.ProxmoxImportApplyDoc'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/api.ProxmoxImportApplyResponse'
+            $ref: '#/definitions/api.ProxmoxImportApplyResponseDoc'
         "400":
           description: Bad Request
           schema:
@@ -2320,14 +2320,14 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/proxmoxsnapshot.Snapshot'
+          $ref: '#/definitions/api.ProxmoxImportSnapshotDoc'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/proxmoximport.Preview'
+            $ref: '#/definitions/api.ProxmoxImportPreviewDoc'
         "400":
           description: Bad Request
           schema:

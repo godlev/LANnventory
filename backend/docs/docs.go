@@ -1895,7 +1895,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/api.ProxmoxImportApplyRequest"
+                            "$ref": "#/definitions/api.ProxmoxImportApplyDoc"
                         }
                     }
                 ],
@@ -1903,7 +1903,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/api.ProxmoxImportApplyResponse"
+                            "$ref": "#/definitions/api.ProxmoxImportApplyResponseDoc"
                         }
                     },
                     "400": {
@@ -1963,7 +1963,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/proxmoxsnapshot.Snapshot"
+                            "$ref": "#/definitions/api.ProxmoxImportSnapshotDoc"
                         }
                     }
                 ],
@@ -1971,7 +1971,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/proxmoximport.Preview"
+                            "$ref": "#/definitions/api.ProxmoxImportPreviewDoc"
                         }
                     },
                     "400": {
@@ -3508,7 +3508,7 @@ const docTemplate = `{
                 }
             }
         },
-        "api.ProxmoxImportApplyRequest": {
+        "api.ProxmoxImportApplyDoc": {
             "type": "object",
             "properties": {
                 "confirmed": {
@@ -3518,11 +3518,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "snapshot": {
-                    "$ref": "#/definitions/proxmoxsnapshot.Snapshot"
+                    "$ref": "#/definitions/api.ProxmoxImportSnapshotDoc"
                 }
             }
         },
-        "api.ProxmoxImportApplyResponse": {
+        "api.ProxmoxImportApplyResponseDoc": {
             "type": "object",
             "properties": {
                 "applied": {
@@ -3532,7 +3532,301 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "summary": {
-                    "$ref": "#/definitions/proxmoximport.PreviewSummary"
+                    "$ref": "#/definitions/api.ProxmoxImportPreviewSummaryDoc"
+                }
+            }
+        },
+        "api.ProxmoxImportFieldConflictDoc": {
+            "type": "object",
+            "properties": {
+                "field": {
+                    "type": "string"
+                },
+                "imported": {
+                    "type": "string"
+                },
+                "managed": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.ProxmoxImportInterfaceDoc": {
+            "type": "object",
+            "properties": {
+                "bridge": {
+                    "type": "string"
+                },
+                "configuredAddress": {
+                    "type": "string"
+                },
+                "configuredNetwork": {
+                    "type": "string"
+                },
+                "mac": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "vlanTag": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.ProxmoxImportInterfaceViewDoc": {
+            "type": "object",
+            "properties": {
+                "bridge": {
+                    "type": "string"
+                },
+                "configuredAddress": {
+                    "type": "string"
+                },
+                "configuredNetwork": {
+                    "type": "string"
+                },
+                "mac": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "vlanTag": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.ProxmoxImportNodeDiffDoc": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "after": {
+                    "$ref": "#/definitions/api.ProxmoxImportNodeViewDoc"
+                },
+                "before": {
+                    "$ref": "#/definitions/api.ProxmoxImportNodeViewDoc"
+                }
+            }
+        },
+        "api.ProxmoxImportNodeDoc": {
+            "type": "object",
+            "properties": {
+                "clusterName": {
+                    "type": "string"
+                },
+                "hostname": {
+                    "type": "string"
+                },
+                "pveVersion": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.ProxmoxImportNodeViewDoc": {
+            "type": "object",
+            "properties": {
+                "clusterName": {
+                    "type": "string"
+                },
+                "hostname": {
+                    "type": "string"
+                },
+                "pveVersion": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.ProxmoxImportPreviewDoc": {
+            "type": "object",
+            "properties": {
+                "applyAllowed": {
+                    "type": "boolean"
+                },
+                "blockedReasons": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "collectedAt": {
+                    "type": "string"
+                },
+                "complete": {
+                    "type": "boolean"
+                },
+                "managedConflicts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.ProxmoxImportFieldConflictDoc"
+                    }
+                },
+                "node": {
+                    "$ref": "#/definitions/api.ProxmoxImportNodeDiffDoc"
+                },
+                "previewToken": {
+                    "type": "string"
+                },
+                "snapshotDigest": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "summary": {
+                    "$ref": "#/definitions/api.ProxmoxImportPreviewSummaryDoc"
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "workloads": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.ProxmoxImportWorkloadDiffDoc"
+                    }
+                }
+            }
+        },
+        "api.ProxmoxImportPreviewSummaryDoc": {
+            "type": "object",
+            "properties": {
+                "added": {
+                    "type": "integer"
+                },
+                "conflicts": {
+                    "type": "integer"
+                },
+                "retired": {
+                    "type": "integer"
+                },
+                "unchanged": {
+                    "type": "integer"
+                },
+                "updated": {
+                    "type": "integer"
+                }
+            }
+        },
+        "api.ProxmoxImportSnapshotDoc": {
+            "type": "object",
+            "properties": {
+                "collectedAt": {
+                    "type": "string"
+                },
+                "collectionErrors": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "collectorVersion": {
+                    "type": "string"
+                },
+                "complete": {
+                    "type": "boolean"
+                },
+                "node": {
+                    "$ref": "#/definitions/api.ProxmoxImportNodeDoc"
+                },
+                "schemaVersion": {
+                    "type": "integer"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "workloads": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.ProxmoxImportWorkloadDoc"
+                    }
+                }
+            }
+        },
+        "api.ProxmoxImportWorkloadDiffDoc": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "after": {
+                    "$ref": "#/definitions/api.ProxmoxImportWorkloadViewDoc"
+                },
+                "before": {
+                    "$ref": "#/definitions/api.ProxmoxImportWorkloadViewDoc"
+                },
+                "changes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "key": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.ProxmoxImportWorkloadDoc": {
+            "type": "object",
+            "properties": {
+                "interfaces": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.ProxmoxImportInterfaceDoc"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "nativeId": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "workloadType": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.ProxmoxImportWorkloadViewDoc": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "interfaces": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.ProxmoxImportInterfaceViewDoc"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "nativeId": {
+                    "type": "string"
+                },
+                "retiredAt": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "workloadType": {
+                    "type": "string"
                 }
             }
         },
@@ -4222,300 +4516,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "version": {
-                    "type": "string"
-                }
-            }
-        },
-        "proxmoximport.FieldConflict": {
-            "type": "object",
-            "properties": {
-                "field": {
-                    "type": "string"
-                },
-                "imported": {
-                    "type": "string"
-                },
-                "managed": {
-                    "type": "string"
-                }
-            }
-        },
-        "proxmoximport.InterfaceView": {
-            "type": "object",
-            "properties": {
-                "bridge": {
-                    "type": "string"
-                },
-                "configuredAddress": {
-                    "type": "string"
-                },
-                "configuredNetwork": {
-                    "type": "string"
-                },
-                "mac": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "vlanTag": {
-                    "type": "string"
-                }
-            }
-        },
-        "proxmoximport.NodeDiff": {
-            "type": "object",
-            "properties": {
-                "action": {
-                    "type": "string"
-                },
-                "after": {
-                    "$ref": "#/definitions/proxmoximport.NodeView"
-                },
-                "before": {
-                    "$ref": "#/definitions/proxmoximport.NodeView"
-                }
-            }
-        },
-        "proxmoximport.NodeView": {
-            "type": "object",
-            "properties": {
-                "clusterName": {
-                    "type": "string"
-                },
-                "hostname": {
-                    "type": "string"
-                },
-                "pveVersion": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                }
-            }
-        },
-        "proxmoximport.Preview": {
-            "type": "object",
-            "properties": {
-                "applyAllowed": {
-                    "type": "boolean"
-                },
-                "blockedReasons": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "collectedAt": {
-                    "type": "string"
-                },
-                "complete": {
-                    "type": "boolean"
-                },
-                "managedConflicts": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/proxmoximport.FieldConflict"
-                    }
-                },
-                "node": {
-                    "$ref": "#/definitions/proxmoximport.NodeDiff"
-                },
-                "previewToken": {
-                    "type": "string"
-                },
-                "snapshotDigest": {
-                    "type": "string"
-                },
-                "source": {
-                    "type": "string"
-                },
-                "summary": {
-                    "$ref": "#/definitions/proxmoximport.PreviewSummary"
-                },
-                "warnings": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "workloads": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/proxmoximport.WorkloadDiff"
-                    }
-                }
-            }
-        },
-        "proxmoximport.PreviewSummary": {
-            "type": "object",
-            "properties": {
-                "added": {
-                    "type": "integer"
-                },
-                "conflicts": {
-                    "type": "integer"
-                },
-                "retired": {
-                    "type": "integer"
-                },
-                "unchanged": {
-                    "type": "integer"
-                },
-                "updated": {
-                    "type": "integer"
-                }
-            }
-        },
-        "proxmoximport.WorkloadDiff": {
-            "type": "object",
-            "properties": {
-                "action": {
-                    "type": "string"
-                },
-                "after": {
-                    "$ref": "#/definitions/proxmoximport.WorkloadView"
-                },
-                "before": {
-                    "$ref": "#/definitions/proxmoximport.WorkloadView"
-                },
-                "changes": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "key": {
-                    "type": "string"
-                }
-            }
-        },
-        "proxmoximport.WorkloadView": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "interfaces": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/proxmoximport.InterfaceView"
-                    }
-                },
-                "name": {
-                    "type": "string"
-                },
-                "nativeId": {
-                    "type": "string"
-                },
-                "retiredAt": {
-                    "type": "string"
-                },
-                "source": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "workloadType": {
-                    "type": "string"
-                }
-            }
-        },
-        "proxmoxsnapshot.InterfaceSnapshot": {
-            "type": "object",
-            "properties": {
-                "bridge": {
-                    "type": "string"
-                },
-                "configuredAddress": {
-                    "type": "string"
-                },
-                "configuredNetwork": {
-                    "type": "string"
-                },
-                "mac": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "vlanTag": {
-                    "type": "string"
-                }
-            }
-        },
-        "proxmoxsnapshot.NodeSnapshot": {
-            "type": "object",
-            "properties": {
-                "clusterName": {
-                    "type": "string"
-                },
-                "hostname": {
-                    "type": "string"
-                },
-                "pveVersion": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                }
-            }
-        },
-        "proxmoxsnapshot.Snapshot": {
-            "type": "object",
-            "properties": {
-                "collectedAt": {
-                    "type": "string"
-                },
-                "collectionErrors": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "collectorVersion": {
-                    "type": "string"
-                },
-                "complete": {
-                    "type": "boolean"
-                },
-                "node": {
-                    "$ref": "#/definitions/proxmoxsnapshot.NodeSnapshot"
-                },
-                "schemaVersion": {
-                    "type": "integer"
-                },
-                "source": {
-                    "type": "string"
-                },
-                "workloads": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/proxmoxsnapshot.WorkloadSnapshot"
-                    }
-                }
-            }
-        },
-        "proxmoxsnapshot.WorkloadSnapshot": {
-            "type": "object",
-            "properties": {
-                "interfaces": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/proxmoxsnapshot.InterfaceSnapshot"
-                    }
-                },
-                "name": {
-                    "type": "string"
-                },
-                "nativeId": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "workloadType": {
                     "type": "string"
                 }
             }
