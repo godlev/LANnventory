@@ -1861,6 +1861,133 @@
                 }
             }
         },
+        "/host/{id}/proxmox/import/apply": {
+            "post": {
+                "description": "Revalidate a previously previewed snapshot and atomically apply it only when the preview token still matches current persisted state.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Apply confirmed Proxmox script import",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Proxmox Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Confirmed preview token and collector snapshot",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.ProxmoxImportApplyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.ProxmoxImportApplyResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/host/{id}/proxmox/import/preview": {
+            "post": {
+                "description": "Strictly validate a read-only collector snapshot and return a deterministic diff. This endpoint never persists the snapshot.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Preview Proxmox script import",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Proxmox Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Collector snapshot",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/proxmoxsnapshot.Snapshot"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/proxmoximport.Preview"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/host/{id}/service-scan-settings": {
             "get": {
                 "description": "Return opt-in scheduled TCP service scan settings and runtime state for a host.",
@@ -3374,6 +3501,34 @@
                 }
             }
         },
+        "api.ProxmoxImportApplyRequest": {
+            "type": "object",
+            "properties": {
+                "confirmed": {
+                    "type": "boolean"
+                },
+                "previewToken": {
+                    "type": "string"
+                },
+                "snapshot": {
+                    "$ref": "#/definitions/proxmoxsnapshot.Snapshot"
+                }
+            }
+        },
+        "api.ProxmoxImportApplyResponse": {
+            "type": "object",
+            "properties": {
+                "applied": {
+                    "type": "boolean"
+                },
+                "importedAt": {
+                    "type": "string"
+                },
+                "summary": {
+                    "$ref": "#/definitions/proxmoximport.PreviewSummary"
+                }
+            }
+        },
         "api.SystemDeviceProfilePatchRequest": {
             "type": "object",
             "properties": {
@@ -4060,6 +4215,300 @@
                     "type": "string"
                 },
                 "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "proxmoximport.FieldConflict": {
+            "type": "object",
+            "properties": {
+                "field": {
+                    "type": "string"
+                },
+                "imported": {
+                    "type": "string"
+                },
+                "managed": {
+                    "type": "string"
+                }
+            }
+        },
+        "proxmoximport.InterfaceView": {
+            "type": "object",
+            "properties": {
+                "bridge": {
+                    "type": "string"
+                },
+                "configuredAddress": {
+                    "type": "string"
+                },
+                "configuredNetwork": {
+                    "type": "string"
+                },
+                "mac": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "vlanTag": {
+                    "type": "string"
+                }
+            }
+        },
+        "proxmoximport.NodeDiff": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "after": {
+                    "$ref": "#/definitions/proxmoximport.NodeView"
+                },
+                "before": {
+                    "$ref": "#/definitions/proxmoximport.NodeView"
+                }
+            }
+        },
+        "proxmoximport.NodeView": {
+            "type": "object",
+            "properties": {
+                "clusterName": {
+                    "type": "string"
+                },
+                "hostname": {
+                    "type": "string"
+                },
+                "pveVersion": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "proxmoximport.Preview": {
+            "type": "object",
+            "properties": {
+                "applyAllowed": {
+                    "type": "boolean"
+                },
+                "blockedReasons": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "collectedAt": {
+                    "type": "string"
+                },
+                "complete": {
+                    "type": "boolean"
+                },
+                "managedConflicts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/proxmoximport.FieldConflict"
+                    }
+                },
+                "node": {
+                    "$ref": "#/definitions/proxmoximport.NodeDiff"
+                },
+                "previewToken": {
+                    "type": "string"
+                },
+                "snapshotDigest": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "summary": {
+                    "$ref": "#/definitions/proxmoximport.PreviewSummary"
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "workloads": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/proxmoximport.WorkloadDiff"
+                    }
+                }
+            }
+        },
+        "proxmoximport.PreviewSummary": {
+            "type": "object",
+            "properties": {
+                "added": {
+                    "type": "integer"
+                },
+                "conflicts": {
+                    "type": "integer"
+                },
+                "retired": {
+                    "type": "integer"
+                },
+                "unchanged": {
+                    "type": "integer"
+                },
+                "updated": {
+                    "type": "integer"
+                }
+            }
+        },
+        "proxmoximport.WorkloadDiff": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "after": {
+                    "$ref": "#/definitions/proxmoximport.WorkloadView"
+                },
+                "before": {
+                    "$ref": "#/definitions/proxmoximport.WorkloadView"
+                },
+                "changes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "key": {
+                    "type": "string"
+                }
+            }
+        },
+        "proxmoximport.WorkloadView": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "interfaces": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/proxmoximport.InterfaceView"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "nativeId": {
+                    "type": "string"
+                },
+                "retiredAt": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "workloadType": {
+                    "type": "string"
+                }
+            }
+        },
+        "proxmoxsnapshot.InterfaceSnapshot": {
+            "type": "object",
+            "properties": {
+                "bridge": {
+                    "type": "string"
+                },
+                "configuredAddress": {
+                    "type": "string"
+                },
+                "configuredNetwork": {
+                    "type": "string"
+                },
+                "mac": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "vlanTag": {
+                    "type": "string"
+                }
+            }
+        },
+        "proxmoxsnapshot.NodeSnapshot": {
+            "type": "object",
+            "properties": {
+                "clusterName": {
+                    "type": "string"
+                },
+                "hostname": {
+                    "type": "string"
+                },
+                "pveVersion": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "proxmoxsnapshot.Snapshot": {
+            "type": "object",
+            "properties": {
+                "collectedAt": {
+                    "type": "string"
+                },
+                "collectionErrors": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "collectorVersion": {
+                    "type": "string"
+                },
+                "complete": {
+                    "type": "boolean"
+                },
+                "node": {
+                    "$ref": "#/definitions/proxmoxsnapshot.NodeSnapshot"
+                },
+                "schemaVersion": {
+                    "type": "integer"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "workloads": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/proxmoxsnapshot.WorkloadSnapshot"
+                    }
+                }
+            }
+        },
+        "proxmoxsnapshot.WorkloadSnapshot": {
+            "type": "object",
+            "properties": {
+                "interfaces": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/proxmoxsnapshot.InterfaceSnapshot"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "nativeId": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "workloadType": {
                     "type": "string"
                 }
             }

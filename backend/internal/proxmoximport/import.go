@@ -54,9 +54,9 @@ type NodeView struct {
 }
 
 type NodeDiff struct {
-	Action  string    `json:"action"`
+	Action string    `json:"action"`
 	Before *NodeView `json:"before"`
-	After   NodeView  `json:"after"`
+	After  NodeView  `json:"after"`
 }
 
 type InterfaceView struct {
@@ -83,7 +83,7 @@ type WorkloadDiff struct {
 	Action  string        `json:"action"`
 	Key     string        `json:"key"`
 	Changes []string      `json:"changes"`
-	Before *WorkloadView `json:"before"`
+	Before  *WorkloadView `json:"before"`
 	After   *WorkloadView `json:"after"`
 }
 

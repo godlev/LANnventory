@@ -79,7 +79,9 @@ func TestValidateAndNormalizeRejectsInvalidContract(t *testing.T) {
 		{"bad-network", func(s *proxmoxsnapshot.Snapshot) { s.Workloads[0].Interfaces[0].ConfiguredNetwork = "10.5.0.0/24" }},
 		{"bad-vlan", func(s *proxmoxsnapshot.Snapshot) { s.Workloads[0].Interfaces[0].VLANTag = "4095" }},
 		{"duplicate-workload", func(s *proxmoxsnapshot.Snapshot) { s.Workloads = append(s.Workloads, s.Workloads[0]) }},
-		{"duplicate-interface", func(s *proxmoxsnapshot.Snapshot) { s.Workloads[0].Interfaces = append(s.Workloads[0].Interfaces, s.Workloads[0].Interfaces[0]) }},
+		{"duplicate-interface", func(s *proxmoxsnapshot.Snapshot) {
+			s.Workloads[0].Interfaces = append(s.Workloads[0].Interfaces, s.Workloads[0].Interfaces[0])
+		}},
 	}
 
 	for _, tt := range tests {
