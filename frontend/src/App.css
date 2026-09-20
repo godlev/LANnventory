@@ -4743,7 +4743,7 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
 .proxmox-summary-grid,
 .proxmox-preview-summary {
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 0.45rem;
     margin-top: 0.55rem;
 }
@@ -4997,6 +4997,179 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     }
 }
 
+
+
+
+/* Phase 35A UAT workload match diagnostics and parent visibility */
+.proxmox-candidate.is-ip-conflict {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    border-color: color-mix(in srgb, var(--bs-warning) 60%, var(--wyl-panel-border));
+}
+.proxmox-ip-conflict-title {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 0.36rem;
+    margin: -0.34rem -0.4rem 0;
+    padding: 0.36rem 0.46rem;
+    color: var(--bs-warning-text-emphasis);
+    background: color-mix(in srgb, var(--bs-warning) 12%, transparent);
+    border-bottom: 1px solid color-mix(in srgb, var(--bs-warning) 35%, var(--wyl-panel-border));
+    border-radius: 6px 6px 0 0;
+    font-size: 0.75rem;
+    font-weight: 850;
+}
+.proxmox-candidate-actions {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: flex-start;
+    justify-content: flex-end;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+.proxmox-match-comparison {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem;
+    margin-top: 0.42rem;
+}
+.proxmox-match-side {
+    min-width: 0;
+    padding: 0.44rem 0.48rem;
+    border: 1px solid var(--wyl-panel-border);
+    border-radius: 6px;
+}
+.proxmox-match-side-label {
+    margin-bottom: 0.2rem;
+    color: var(--wyl-muted);
+    font-size: 0.62rem;
+    font-weight: 900;
+    letter-spacing: 0.035em;
+}
+.proxmox-match-field {
+    display: grid;
+    grid-template-columns: 2.1rem minmax(0, 1fr) auto;
+    gap: 0.35rem;
+    align-items: baseline;
+    margin-top: 0.18rem;
+    font-size: 0.7rem;
+}
+.proxmox-match-field > :nth-child(2) {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.proxmox-candidate-evidence-summary {
+    display: flex;
+    gap: 0.28rem;
+    flex-direction: column;
+    margin-top: 0.35rem;
+    font-size: 0.7rem;
+}
+.proxmox-rejected-candidates {
+    margin-top: 0.22rem;
+    padding: 0.34rem 0.42rem;
+    border: 1px dashed var(--wyl-panel-border);
+    border-radius: 6px;
+    color: var(--wyl-muted);
+    font-size: 0.72rem;
+}
+.proxmox-rejected-candidates > summary {
+    cursor: pointer;
+    font-weight: 750;
+}
+.proxmox-rejected-candidate {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-top: 0.36rem;
+    padding-top: 0.36rem;
+    border-top: 1px solid var(--wyl-panel-border);
+}
+.device-workload-parent {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-top: 0.12rem;
+    padding-left: 1.93rem;
+    min-width: 0;
+    font-size: 0.66rem;
+}
+.device-workload-parent-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.26rem;
+    min-width: 0;
+    color: var(--wyl-muted);
+    text-decoration: none;
+}
+.device-workload-parent-link:hover,
+.device-workload-parent-link:focus-visible {
+    color: var(--wyl-link);
+    text-decoration: underline;
+}
+.device-workload-parent-more {
+    flex: 0 0 auto;
+    padding: 0.05rem 0.24rem;
+    border: 1px solid var(--wyl-panel-border);
+    border-radius: 999px;
+    color: var(--wyl-muted);
+}
+.hosted-workload-list {
+    display: grid;
+    gap: 0.48rem;
+}
+.hosted-workload-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) auto;
+    gap: 0.65rem;
+    align-items: center;
+    padding: 0.55rem 0.62rem;
+    border: 1px solid var(--wyl-panel-border);
+    border-radius: 7px;
+    background: var(--wyl-table-row-bg);
+}
+.hosted-workload-identity,
+.hosted-workload-parent,
+.hosted-workload-link-source {
+    display: flex;
+    align-items: center;
+    gap: 0.38rem;
+    flex-wrap: wrap;
+    min-width: 0;
+}
+.hosted-workload-parent {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.12rem;
+}
+.hosted-workload-link-source {
+    justify-content: flex-end;
+}
+
+@media (max-width: 767.98px) {
+    .proxmox-candidate,
+    .proxmox-candidate.is-ip-conflict {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+    .proxmox-ip-conflict-title {
+        grid-column: 1;
+    }
+    .proxmox-candidate-actions {
+        justify-content: flex-start;
+    }
+    .proxmox-match-comparison {
+        grid-template-columns: 1fr;
+    }
+    .hosted-workload-row {
+        grid-template-columns: 1fr;
+    }
+    .hosted-workload-link-source {
+        justify-content: flex-start;
+    }
+}
 
 /* Phase 35A UAT2 provenance and Proxmox onboarding */
 .profile-source-legend {
