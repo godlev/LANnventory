@@ -44,6 +44,35 @@ class CollectorParserTests(unittest.TestCase):
             "configuredAddress": "10.4.1.70/24",
             "configuredNetwork": "10.4.1.0/24",
         }])
+    def test_lxc_duplicate_net_key_is_deduplicated(self):
+        interfaces = collector.parse_lxc_interfaces([
+            "net0: name=eth0,bridge=vmbr0,hwaddr=BC:24:11:18:5C:CF,type=veth",
+            "net0: name=eth0,bridge=vmbr0,hwaddr=BC:24:11:18:5C:CF,ip=10.4.1.29/24,type=veth",
+            "net0: name=eth0,bridge=vmbr0,hwaddr=BC:24:11:18:5C:CF,ip=10.4.1.29/24,type=veth",
+        ])
+        self.assertEqual(len(interfaces), 1)
+        self.assertEqual(interfaces[0]["name"], "eth0")
+        self.assertEqual(interfaces[0]["mac"], "BC:24:11:18:5C:CF")
+        self.assertEqual(interfaces[0]["configuredAddress"], "10.4.1.29/24")
+
+    def test_config_reader_ignores_snapshot_sections(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "129.conf")
+            with open(path, "w", encoding="utf-8") as handle:
+                handle.write("hostname: lannventory\n")
+                handle.write("net0: name=eth0,bridge=vmbr0,hwaddr=BC:24:11:18:5C:CF,type=veth\n")
+                handle.write("[pre-ip-change]\n")
+                handle.write("net0: name=eth0,bridge=vmbr0,hwaddr=BC:24:11:18:5C:CF,ip=10.4.1.29/24,type=veth\n")
+                handle.write("[older]\n")
+                handle.write("net0: name=eth0,bridge=vmbr0,hwaddr=BC:24:11:18:5C:CF,ip=10.4.1.29/24,type=veth\n")
+
+            lines = collector.read_allowlisted_config(path, collector.LXC_NETWORK_PATTERN, "test lxc")
+            self.assertEqual(lines, [
+                "net0: name=eth0,bridge=vmbr0,hwaddr=BC:24:11:18:5C:CF,type=veth",
+            ])
+            interfaces = collector.parse_lxc_interfaces(lines)
+            self.assertEqual(len(interfaces), 1)
+            self.assertEqual(interfaces[0]["configuredAddress"], "")
 
     def test_guest_lists_keep_only_identity_status(self):
         qemu = collector.parse_guest_list(
