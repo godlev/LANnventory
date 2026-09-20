@@ -1,0 +1,103 @@
+name: Phase35 UAT Hardening Prep
+
+on:
+  push:
+    branches:
+      - phase35-device-profiles-proxmox
+    paths:
+      - .github/workflows/phase35-uat-hardening-prep.yml
+
+permissions:
+  contents: write
+
+jobs:
+  prep:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout Phase 35 branch
+        uses: actions/checkout@v4
+        with:
+          ref: phase35-device-profiles-proxmox
+          fetch-depth: 0
+
+      - name: Format changed Go sources
+        run: |
+          gofmt -w \
+            backend/internal/models/infrastructure_workload.go \
+            backend/internal/models/infrastructure_workload_candidate_rejection.go \
+            backend/internal/gdb/workload_candidate_rejections.go \
+            backend/internal/gdb/workload_memberships.go \
+            backend/internal/gdb/infrastructure_workloads.go \
+            backend/internal/gdb/start.go \
+            backend/internal/gdb/start_test.go \
+            backend/internal/gdb/workload_matching_test.go \
+            backend/internal/api/api-workload-matches.go \
+            backend/internal/api/api-workload-memberships.go \
+            backend/internal/api/api_workload_matches_test.go \
+            backend/internal/api/api_infrastructure_workloads_test.go \
+            backend/internal/api/routes.go \
+            backend/internal/workloadmatch/match.go \
+            backend/internal/workloadmatch/match_test.go
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run frontend semantic regression
+        working-directory: frontend
+        run: npm run test:host-ux
+
+      - name: Check mock API syntax
+        run: node --check frontend/dev/mock-api.mjs
+
+      - name: Build frontend and embedded bundle
+        working-directory: frontend
+        run: make all
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Regenerate Swagger docs
+        working-directory: backend
+        run: go run github.com/swaggo/swag/cmd/swag@v1.16.6 init -g main.go --dir cmd/LANnventory,internal/api,internal/models
+
+      - name: Test backend
+        working-directory: backend
+        run: go test ./...
+
+      - name: Verify clean patch semantics
+        run: git diff --check
+
+      - name: Commit generated artifacts and remove prep workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/internal/web/public backend/docs \
+            backend/internal/models/infrastructure_workload.go \
+            backend/internal/models/infrastructure_workload_candidate_rejection.go \
+            backend/internal/gdb/workload_candidate_rejections.go \
+            backend/internal/gdb/workload_memberships.go \
+            backend/internal/gdb/infrastructure_workloads.go \
+            backend/internal/gdb/start.go \
+            backend/internal/gdb/start_test.go \
+            backend/internal/gdb/workload_matching_test.go \
+            backend/internal/api/api-workload-matches.go \
+            backend/internal/api/api-workload-memberships.go \
+            backend/internal/api/api_workload_matches_test.go \
+            backend/internal/api/api_infrastructure_workloads_test.go \
+            backend/internal/api/routes.go \
+            backend/internal/workloadmatch/match.go \
+            backend/internal/workloadmatch/match_test.go
+          git rm .github/workflows/phase35-uat-hardening-prep.yml
+          git commit -m "chore: refresh Phase 35A UAT hardening artifacts"
+          git push origin HEAD:phase35-device-profiles-proxmox
