@@ -54,6 +54,13 @@ function TableRow(_props: any) {
     linkSource: "manual" | "exact-mac";
   }>;
   const primaryWorkloadMembership = () => workloadMemberships()[0];
+  const compactWorkloadLabel = () => {
+    const item = primaryWorkloadMembership();
+    if (!item) return "";
+    return (item.workloadType === "container" ? "LXC" : "VM") + " " + item.nativeId;
+  };
+  const compactWorkloadIcon = () =>
+    primaryWorkloadMembership()?.workloadType === "container" ? "bi-box-seam" : "bi-display";
   const hostedOnLabel = () => {
     const item = primaryWorkloadMembership();
     if (!item) return "";
@@ -326,8 +333,24 @@ function TableRow(_props: any) {
           <Show when={pinError()}>
             <span class="visually-hidden" role="status">{pinError()}</span>
           </Show>
+          <Show when={_props.viewMode === "compact" && primaryWorkloadMembership()}>
+            <a
+              class="device-compact-workload"
+              href={(primaryWorkloadMembership()?.hypervisorHostId ?? 0) > 0
+                ? "/host/" + primaryWorkloadMembership()?.hypervisorHostId
+                : undefined}
+              title={"Linked Proxmox workload · " + hostedOnLabel()}
+              aria-label={"Linked Proxmox workload " + compactWorkloadLabel()}
+            >
+              <i class={"bi " + compactWorkloadIcon()} aria-hidden="true"></i>
+              <span>{primaryWorkloadMembership()?.nativeId}</span>
+              <Show when={workloadMemberships().length > 1}>
+                <span class="device-compact-workload-more">+{workloadMemberships().length - 1}</span>
+              </Show>
+            </a>
+          </Show>
         </span>
-        <Show when={primaryWorkloadMembership()}>
+        <Show when={_props.viewMode !== "compact" && primaryWorkloadMembership()}>
           <div class="device-workload-parent">
             <Show
               when={(primaryWorkloadMembership()?.hypervisorHostId ?? 0) > 0}
