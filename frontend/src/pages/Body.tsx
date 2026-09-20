@@ -1,4 +1,4 @@
-import { createSignal, For, onMount, Show } from "solid-js";
+import { createMemo, createSignal, For, onMount, Show } from "solid-js";
 
 import { allHosts, bkpHosts, filterState, hasMultipleIfaces, hostsLoadError } from "../functions/exports";
 
@@ -9,12 +9,27 @@ import SummaryCards from "../components/Body/SummaryCards";
 import RecentActivityPanel from "../components/Body/RecentActivityPanel";
 import { getHosts } from "../functions/atstart";
 import { deviceTypeFilterLabel } from "../functions/deviceTypes";
+import { apiGetInfrastructureWorkloadMemberships, type InfrastructureWorkloadMembership } from "../functions/api";
 
 function Body() {
   const [expandedDeviceRows, setExpandedDeviceRows] = createSignal<Record<string, boolean>>({});
+  const [workloadMemberships, setWorkloadMemberships] = createSignal<InfrastructureWorkloadMembership[]>([]);
 
   onMount(() => {
     getHosts();
+    void apiGetInfrastructureWorkloadMemberships()
+      .then((items) => setWorkloadMemberships(items ?? []))
+      .catch(() => setWorkloadMemberships([]));
+  });
+
+  const membershipsByHost = createMemo(() => {
+    const result = new Map<number, InfrastructureWorkloadMembership[]>();
+    for (const item of workloadMemberships()) {
+      const current = result.get(item.hostId) ?? [];
+      current.push(item);
+      result.set(item.hostId, current);
+    }
+    return result;
   });
 
   const deviceLabel = (count: number) => count === 1 ? "device" : "devices";
@@ -108,6 +123,7 @@ function Body() {
                 index={index() + 1}
                 mobileExpanded={isDeviceExpanded(host)}
                 onToggleMobileExpanded={() => toggleDeviceExpanded(host)}
+                workloadMemberships={membershipsByHost().get(host.ID) ?? []}
               ></TableRow>
             </>
             }</For>
