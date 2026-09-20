@@ -12,7 +12,10 @@ const hostCard = read("src/components/HostPage/HostCard.tsx");
 const deviceProfile = read("src/components/HostPage/DeviceProfileCard.tsx");
 const proxmoxInventory = read("src/components/HostPage/ProxmoxInventoryCard.tsx");
 const hostedWorkload = read("src/components/HostPage/HostedWorkloadCard.tsx");
+const homeBody = read("src/pages/Body.tsx");
+const homeCardHead = read("src/components/Body/CardHead.tsx");
 const homeTableRow = read("src/components/Body/TableRow.tsx");
+const appStyles = read("src/App.css");
 const deviceTypes = read("src/functions/deviceTypes.ts");
 
 function requireText(source, value, message) {
@@ -114,6 +117,15 @@ requireText(hostedWorkload, "Hosted on Proxmox", "Linked guest Host pages must e
 requireText(hostedWorkload, "Child relationship", "Guest Host relationship semantics must be explicit.");
 requireText(homeTableRow, "device-workload-parent", "Home device rows must surface linked Proxmox workload ancestry.");
 requireText(homeTableRow, "Linked Proxmox workload", "Home parent indicator must explain the relationship.");
+requireText(homeBody, "lannventory.home.tableView", "Home table view preference must persist in browser storage.");
+requireText(homeBody, 'device-table-" + tableView()', "Home table must expose the selected Comfortable/Compact mode as a CSS class.");
+requireText(homeCardHead, "Comfortable", "Home toolbar must offer Comfortable table view.");
+requireText(homeCardHead, "Compact", "Home toolbar must offer Compact table view.");
+requireText(homeTableRow, '_props.viewMode === "compact"', "Compact Home rows must have dedicated workload rendering.");
+requireText(homeTableRow, "device-compact-workload", "Compact Home rows must expose a one-line Proxmox workload marker.");
+requireText(homeTableRow, '_props.viewMode !== "compact"', "Comfortable-only second-line workload ancestry must be suppressed in Compact view.");
+requireText(appStyles, ".device-table-compact tbody td", "Compact Home table must reduce row density.");
+requireText(appStyles, ".device-compact-workload", "Compact Proxmox workload marker must have dedicated styling.");
 forbidText(deviceTypes, '| "hypervisor"', "Hypervisor must not become an exclusive Device Type.");
 
 console.log("Host UX semantic regression checks passed.");
