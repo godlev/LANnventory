@@ -30,7 +30,9 @@ jobs:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
 
-      - name: Format changed Go sources
+      - id: format_go
+        name: Format changed Go sources
+        continue-on-error: true
         run: |
           gofmt -w \
             backend/internal/models/infrastructure_workload.go \
@@ -56,52 +58,111 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Install frontend dependencies
+      - id: npm_ci
+        name: Install frontend dependencies
+        continue-on-error: true
         working-directory: frontend
         run: npm ci
 
-      - name: Run frontend semantic regression
+      - id: semantic
+        name: Run frontend semantic regression
+        continue-on-error: true
         working-directory: frontend
         run: npm run test:host-ux
 
-      - name: Check mock API syntax
+      - id: mock_syntax
+        name: Check mock API syntax
+        continue-on-error: true
         run: node --check frontend/dev/mock-api.mjs
 
-      - name: Build frontend and embedded bundle
+      - id: frontend_build
+        name: Build frontend and embedded bundle
+        continue-on-error: true
         working-directory: frontend
         run: make all
 
-      - name: Regenerate Swagger docs
+      - id: swagger
+        name: Regenerate Swagger docs
+        continue-on-error: true
         working-directory: backend
         run: go run github.com/swaggo/swag/cmd/swag@v1.16.6 init -g main.go --dir cmd/LANnventory,internal/api,internal/models
 
-      - name: Test backend
+      - id: backend_test
+        name: Test backend
+        continue-on-error: true
         working-directory: backend
         run: go test ./...
 
-      - name: Verify clean patch semantics
+      - id: diff_check
+        name: Verify clean patch semantics
+        continue-on-error: true
         run: git diff --check
 
-      - name: Commit generated artifacts and remove prep workflow
+      - name: Record prep result
+        if: always()
+        env:
+          FORMAT_GO: ${{ steps.format_go.outcome }}
+          NPM_CI: ${{ steps.npm_ci.outcome }}
+          SEMANTIC: ${{ steps.semantic.outcome }}
+          MOCK_SYNTAX: ${{ steps.mock_syntax.outcome }}
+          FRONTEND_BUILD: ${{ steps.frontend_build.outcome }}
+          SWAGGER: ${{ steps.swagger.outcome }}
+          BACKEND_TEST: ${{ steps.backend_test.outcome }}
+          DIFF_CHECK: ${{ steps.diff_check.outcome }}
         run: |
+          mkdir -p docs/uat
+          cat > docs/uat/phase35-hardening-prep-status.md <<EOF
+          # Phase 35A UAT hardening prep status
+
+          Source commit: ${GITHUB_SHA}
+
+          | Gate | Result |
+          | --- | --- |
+          | gofmt | ${FORMAT_GO} |
+          | npm ci | ${NPM_CI} |
+          | Host UX semantic regression | ${SEMANTIC} |
+          | Mock API syntax | ${MOCK_SYNTAX} |
+          | Frontend build + embedded bundle | ${FRONTEND_BUILD} |
+          | Swagger regeneration | ${SWAGGER} |
+          | Backend tests | ${BACKEND_TEST} |
+          | git diff --check | ${DIFF_CHECK} |
+          EOF
+
+          all_green=true
+          for value in "$FORMAT_GO" "$NPM_CI" "$SEMANTIC" "$MOCK_SYNTAX" "$FRONTEND_BUILD" "$SWAGGER" "$BACKEND_TEST" "$DIFF_CHECK"; do
+            if [ "$value" != "success" ]; then
+              all_green=false
+            fi
+          done
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add backend/internal/web/public backend/docs \
-            backend/internal/models/infrastructure_workload.go \
-            backend/internal/models/infrastructure_workload_candidate_rejection.go \
-            backend/internal/gdb/workload_candidate_rejections.go \
-            backend/internal/gdb/workload_memberships.go \
-            backend/internal/gdb/infrastructure_workloads.go \
-            backend/internal/gdb/start.go \
-            backend/internal/gdb/start_test.go \
-            backend/internal/gdb/workload_matching_test.go \
-            backend/internal/api/api-workload-matches.go \
-            backend/internal/api/api-workload-memberships.go \
-            backend/internal/api/api_workload_matches_test.go \
-            backend/internal/api/api_infrastructure_workloads_test.go \
-            backend/internal/api/routes.go \
-            backend/internal/workloadmatch/match.go \
-            backend/internal/workloadmatch/match_test.go
-          git rm .github/workflows/phase35-uat-hardening-prep.yml
-          git commit -m "chore: refresh Phase 35A UAT hardening artifacts"
+
+          if [ "$all_green" = true ]; then
+            git add docs/uat/phase35-hardening-prep-status.md \
+              backend/internal/web/public backend/docs \
+              backend/internal/models/infrastructure_workload.go \
+              backend/internal/models/infrastructure_workload_candidate_rejection.go \
+              backend/internal/gdb/workload_candidate_rejections.go \
+              backend/internal/gdb/workload_memberships.go \
+              backend/internal/gdb/infrastructure_workloads.go \
+              backend/internal/gdb/start.go \
+              backend/internal/gdb/start_test.go \
+              backend/internal/gdb/workload_matching_test.go \
+              backend/internal/api/api-workload-matches.go \
+              backend/internal/api/api-workload-memberships.go \
+              backend/internal/api/api_workload_matches_test.go \
+              backend/internal/api/api_infrastructure_workloads_test.go \
+              backend/internal/api/routes.go \
+              backend/internal/workloadmatch/match.go \
+              backend/internal/workloadmatch/match_test.go
+            git rm .github/workflows/phase35-uat-hardening-prep.yml
+            git commit -m "chore: refresh Phase 35A UAT hardening artifacts"
+            git push origin HEAD:phase35-device-profiles-proxmox
+            exit 0
+          fi
+
+          git add docs/uat/phase35-hardening-prep-status.md
+          git commit -m "ci: record Phase 35A hardening prep failure" || true
           git push origin HEAD:phase35-device-profiles-proxmox
+          exit 1
