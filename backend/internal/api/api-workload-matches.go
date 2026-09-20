@@ -125,7 +125,7 @@ func getHostInfrastructureWorkloadMatches(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, response)
 }
 
-type workloadCandidateRejectionRequest struct {
+type WorkloadCandidateRejectionRequest struct {
 	EvidenceFingerprint string `json:"evidenceFingerprint"`
 }
 
@@ -138,7 +138,7 @@ type workloadCandidateRejectionRequest struct {
 // @Param        id               path      string                              true  "Proxmox Host ID"
 // @Param        workloadId       path      string                              true  "Workload ID"
 // @Param        candidateHostId  path      string                              true  "Candidate Host ID"
-// @Param        body             body      workloadCandidateRejectionRequest   true  "Reviewed evidence"
+// @Param        body             body      WorkloadCandidateRejectionRequest   true  "Reviewed evidence"
 // @Success      200              {object}  WorkloadMatchCandidateDoc
 // @Failure      400              {object}  map[string]string
 // @Failure      409              {object}  map[string]string
@@ -159,7 +159,7 @@ func setHostInfrastructureWorkloadCandidateRejection(c *gin.Context) {
 		return
 	}
 
-	var payload workloadCandidateRejectionRequest
+	var payload WorkloadCandidateRejectionRequest
 	if !decodeStrictWorkloadJSON(c, &payload) {
 		return
 	}
