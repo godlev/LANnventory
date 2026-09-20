@@ -11,6 +11,8 @@ const activityFeed = read("src/components/ActivityFeed.tsx");
 const hostCard = read("src/components/HostPage/HostCard.tsx");
 const deviceProfile = read("src/components/HostPage/DeviceProfileCard.tsx");
 const proxmoxInventory = read("src/components/HostPage/ProxmoxInventoryCard.tsx");
+const hostedWorkload = read("src/components/HostPage/HostedWorkloadCard.tsx");
+const homeTableRow = read("src/components/Body/TableRow.tsx");
 const deviceTypes = read("src/functions/deviceTypes.ts");
 
 function requireText(source, value, message) {
@@ -97,6 +99,17 @@ requireText(proxmoxInventory, "no fake Hosts are created", "Preview must clarify
 requireText(proxmoxInventory, "No VM/LXC is created, changed, started, stopped, or deleted on Proxmox.", "Preview must explicitly state that Proxmox is not modified.");
 requireText(proxmoxInventory, "Managed Device Profile fields and manual workload links are not overwritten.", "Preview must state preservation guarantees.");
 requireText(proxmoxInventory, "Import into LANnventory", "Final action must be named as a LANnventory import rather than ambiguous Apply.");
+requireText(proxmoxInventory, "Possible IP conflict", "Address-only matches with conflicting MACs must be first-class diagnostics.");
+requireText(proxmoxInventory, "IP address match only", "Weak address evidence must be described explicitly.");
+requireText(proxmoxInventory, "MAC differs", "IP conflict diagnostics must expose the contradictory MAC evidence.");
+requireText(proxmoxInventory, "Link anyway", "Weak matches must require explicit manual linking.");
+requireText(proxmoxInventory, "Not this Host", "Weak matches must support explicit rejection.");
+requireText(proxmoxInventory, "Rejected suggestions", "Rejected candidates must remain recoverable without returning as active suggestions.");
+requireText(proxmoxInventory, "No MAC confirmation", "Name/address-only evidence must not imply MAC confirmation.");
+requireText(hostedWorkload, "Hosted on Proxmox", "Linked guest Host pages must expose their Proxmox parent.");
+requireText(hostedWorkload, "Child relationship", "Guest Host relationship semantics must be explicit.");
+requireText(homeTableRow, "device-workload-parent", "Home device rows must surface linked Proxmox workload ancestry.");
+requireText(homeTableRow, "Linked Proxmox workload", "Home parent indicator must explain the relationship.");
 forbidText(deviceTypes, '| "hypervisor"', "Hypervisor must not become an exclusive Device Type.");
 
 console.log("Host UX semantic regression checks passed.");
