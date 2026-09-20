@@ -197,6 +197,13 @@ func TestMatchEvidenceFingerprintIgnoresObservationTimestampsButChangesWithMater
 		t.Fatalf("liveness-only change altered identity fingerprint: first=%+v liveness=%+v", first.Candidates, thirdLiveness.Candidates)
 	}
 
+	host.IP = "10.4.1.17"
+	fourthAddressSource := Match(record, "", []models.Host{host}, addresses, nil)
+	if len(fourthAddressSource.Candidates) != 1 || fourthAddressSource.Candidates[0].EvidenceFingerprint != first.Candidates[0].EvidenceFingerprint {
+		t.Fatalf("same address from current/history sources altered identity fingerprint: first=%+v current-history=%+v", first.Candidates, fourthAddressSource.Candidates)
+	}
+	host.IP = "10.4.1.200"
+
 	host.Mac = "54:67:E6:E7:6F:CC"
 	addresses[0].Mac = host.Mac
 	third := Match(record, "", []models.Host{host}, addresses, nil)
