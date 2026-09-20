@@ -68,7 +68,7 @@ func getInfrastructureWorkloadMemberships(c *gin.Context) {
 	hostByMAC := make(map[string]models.Host, len(hosts))
 	for _, host := range hosts {
 		hostByID[host.ID] = host
-		if mac := identity.MACKey(host.Mac); mac != "" {
+		if mac, err := identity.NormalizeMAC(host.Mac); err == nil {
 			hostByMAC[mac] = host
 		}
 	}
@@ -83,7 +83,8 @@ func getInfrastructureWorkloadMemberships(c *gin.Context) {
 		if !exists || !strings.EqualFold(strings.TrimSpace(target.Mac), strings.TrimSpace(link.HostMac)) {
 			continue
 		}
-		parent := hostByMAC[identity.MACKey(row.Workload.HypervisorMac)]
+		parentKey, _ := identity.NormalizeMAC(row.Workload.HypervisorMac)
+		parent := hostByMAC[parentKey]
 		response = append(response, InfrastructureWorkloadMembershipResponse{
 			WorkloadID:       row.Workload.ID,
 			NativeID:         row.Workload.NativeID,
