@@ -531,3 +531,55 @@ func TestPhase35UAT3SelectionFromUAT2(t *testing.T) {
 		t.Fatalf("Stable channel exposed UAT3: status=%+v selected=%+v ok=%v", stableStatus, selected, ok)
 	}
 }
+
+func TestPhase35UAT4SelectionFromUAT3(t *testing.T) {
+	releases := []release{
+		{
+			TagName:     "v0.1.0-beta.6.uat.4",
+			Prerelease:  true,
+			Draft:       false,
+			PublishedAt: "2026-09-20T00:00:00Z",
+			HTMLURL:     "https://github.com/godlev/LANnventory/releases/tag/v0.1.0-beta.6.uat.4",
+		},
+		{
+			TagName:    "v0.1.0-beta.6.uat.3",
+			Prerelease: true,
+			Draft:      false,
+		},
+	}
+
+	betaStatus, selected, ok := buildStatus(
+		"v0.1.0-beta.6.uat.3",
+		BetaChannel,
+		releases,
+		time.Time{},
+		false,
+	)
+	if !ok || selected.TagName != "v0.1.0-beta.6.uat.4" {
+		t.Fatalf("Beta did not select UAT4: selected=%+v ok=%v", selected, ok)
+	}
+	if !betaStatus.Available || betaStatus.LatestVersion != "0.1.0-beta.6.uat.4" {
+		t.Fatalf("Beta status = %+v, want available UAT4", betaStatus)
+	}
+
+	stableStatus, selected, ok := buildStatus(
+		"v0.1.0-beta.6.uat.3",
+		StableChannel,
+		releases,
+		time.Time{},
+		false,
+	)
+	if ok || selected.TagName != "" || stableStatus.Available {
+		t.Fatalf("Stable channel exposed UAT4 prerelease: status=%+v selected=%+v ok=%v", stableStatus, selected, ok)
+	}
+
+	future := []release{
+		{TagName: "v0.1.0-beta.7", Prerelease: true},
+		{TagName: "v0.1.0-beta.6.uat.4", Prerelease: true},
+		{TagName: "v0.1.0-beta.6.uat.3", Prerelease: true},
+	}
+	next, ok := selectLatestRelease(future, BetaChannel)
+	if !ok || next.TagName != "v0.1.0-beta.7" {
+		t.Fatalf("future beta.7 should supersede UAT4, got %+v ok=%v", next, ok)
+	}
+}
