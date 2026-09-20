@@ -508,12 +508,17 @@ function workloadMatchesForHost(hostId) {
             : hasName
               ? 'name-only'
               : 'unknown';
+      const fingerprintEvidence = [...new Set(candidate.evidence.map((item) => {
+        const matchedValue = String(item.matchedValue ?? '').trim();
+        if (item.strength === 'address' && matchedValue) return 'address|'+matchedValue;
+        return item.strength+'|'+item.code+'|'+matchedValue;
+      }))].sort();
       candidate.evidenceFingerprint = [
         candidate.mac,
         candidate.strength,
         candidate.assessment,
         workloadMacs.join(','),
-        ...candidate.evidence.map((item) => item.code+'|'+(item.matchedValue ?? '')),
+        ...fingerprintEvidence,
       ].join('\\n');
       candidate.rejected = candidate.strength !== 'exact-mac' &&
         workloadCandidateRejections.get(workload.id+':'+candidate.hostId) === candidate.evidenceFingerprint;
