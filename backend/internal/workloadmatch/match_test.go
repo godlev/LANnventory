@@ -68,7 +68,7 @@ func TestMatchAddressAndNameAreSuggestionOnly(t *testing.T) {
 		{ID: 21, Name: "guest", Mac: "AA:BB:CC:DD:EE:21", IP: "10.4.1.21", Now: 0},
 	}
 	addresses := []models.HostAddress{
-		{Mac: "AA:BB:CC:DD:EE:21", Address: "10.4.1.44", Active: false},
+		{Mac: "AA:BB:CC:DD:EE:21", Address: "10.4.1.44", Active: true},
 	}
 	discovery := []models.HostDiscoveryEvidence{
 		{Mac: "AA:BB:CC:DD:EE:21", Kind: models.DiscoveryKindHostname, Value: "guest.local", Active: true},
