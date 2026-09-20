@@ -25,6 +25,7 @@ function Body() {
   const membershipsByHost = createMemo(() => {
     const result = new Map<number, InfrastructureWorkloadMembership[]>();
     for (const item of workloadMemberships()) {
+      if (item.retiredAt) continue;
       const current = result.get(item.hostId) ?? [];
       current.push(item);
       result.set(item.hostId, current);
