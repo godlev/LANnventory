@@ -324,9 +324,12 @@ func evidenceFingerprint(candidate Candidate) string {
 		candidate.Assessment,
 		strings.Join(candidate.WorkloadMACs, ","),
 	}
+	evidenceParts := make([]string, 0, len(candidate.Evidence))
 	for _, evidence := range candidate.Evidence {
-		parts = append(parts, fmt.Sprintf("%s|%s|%t", evidence.Code, evidence.MatchedValue, evidence.Active))
+		evidenceParts = append(evidenceParts, fmt.Sprintf("%s|%s|%t", evidence.Code, evidence.MatchedValue, evidence.Active))
 	}
+	sort.Strings(evidenceParts)
+	parts = append(parts, evidenceParts...)
 	sum := sha256.Sum256([]byte(strings.Join(parts, "\n")))
 	return hex.EncodeToString(sum[:])
 }
