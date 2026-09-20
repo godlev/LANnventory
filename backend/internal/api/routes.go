@@ -33,6 +33,8 @@ func Routes(router *gin.Engine) {
 		r0.DELETE("/host/:id/workloads/:workloadId", deleteHostInfrastructureWorkload)
 		r0.PUT("/host/:id/workloads/:workloadId/link", setHostInfrastructureWorkloadLink)
 		r0.DELETE("/host/:id/workloads/:workloadId/link", deleteHostInfrastructureWorkloadLink)
+		r0.PUT("/host/:id/workloads/:workloadId/match-rejections/:candidateHostId", setHostInfrastructureWorkloadCandidateRejection)
+		r0.DELETE("/host/:id/workloads/:workloadId/match-rejections/:candidateHostId", deleteHostInfrastructureWorkloadCandidateRejection)
 		r0.POST("/host/:id/proxmox/import/preview", previewProxmoxScriptImport)
 		r0.POST("/host/:id/proxmox/import/apply", applyProxmoxScriptImport)
 		r0.GET("/host/:id/proxmox/source-state", getHostProxmoxSourceState)
