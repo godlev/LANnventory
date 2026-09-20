@@ -1,5 +1,5 @@
 // @title LANnventory API
-// @version 0.1.0-beta.6.uat.2
+// @version 0.1.0-beta.6.uat.3
 // @description Local network inventory and monitoring application
 // @contact.url   https://github.com/godlev/LANnventory
 // @license.name  MIT

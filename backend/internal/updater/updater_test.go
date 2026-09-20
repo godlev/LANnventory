@@ -498,3 +498,36 @@ func TestPhase35UAT2SelectionFromUAT1(t *testing.T) {
 		t.Fatalf("future beta.7 should supersede Phase 35 UAT2, got %+v ok=%v", next, ok)
 	}
 }
+
+func TestPhase35UAT3SelectionFromUAT2(t *testing.T) {
+	releases := []release{
+		{TagName: "v0.1.0-beta.6.uat.3", Prerelease: true, Draft: false},
+		{TagName: "v0.1.0-beta.6.uat.2", Prerelease: true, Draft: false},
+		{TagName: "v0.1.0-beta.6", Prerelease: true, Draft: false},
+	}
+
+	status, selected, ok := buildStatus(
+		"v0.1.0-beta.6.uat.2",
+		BetaChannel,
+		releases,
+		time.Time{},
+		false,
+	)
+	if !ok || selected.TagName != "v0.1.0-beta.6.uat.3" {
+		t.Fatalf("Beta selected %+v ok=%v, want UAT3", selected, ok)
+	}
+	if !status.Available || status.LatestVersion != "0.1.0-beta.6.uat.3" {
+		t.Fatalf("Beta status = %+v, want UAT3 available", status)
+	}
+
+	stableStatus, selected, ok := buildStatus(
+		"v0.1.0-beta.6.uat.2",
+		StableChannel,
+		releases,
+		time.Time{},
+		false,
+	)
+	if ok || selected.TagName != "" || stableStatus.Available {
+		t.Fatalf("Stable channel exposed UAT3: status=%+v selected=%+v ok=%v", stableStatus, selected, ok)
+	}
+}
