@@ -85,8 +85,18 @@ requireText(proxmoxInventory, "Run the read-only collector", "Collector executio
 requireText(proxmoxInventory, "Download collector", "Collector must be downloadable from the LANnventory UI.");
 requireText(proxmoxInventory, "/lannventory-proxmox-collector.py", "Collector download must be served by the local LANnventory instance.");
 requireText(proxmoxInventory, "Preview changes", "Preview must remain mandatory and explicit.");
-requireText(proxmoxInventory, "Nothing is written until you review and confirm Apply.", "Preview/apply safety wording must remain explicit.");
+requireText(proxmoxInventory, "Nothing is written until you review and confirm the import.", "Preview/apply safety wording must remain explicit.");
 requireText(proxmoxInventory, "Imported: observed by the read-only Proxmox collector.", "Imported source-state fields must expose provenance.");
+requireText(proxmoxInventory, "--compact > "+snapshotPath", "Collector workflow must write compact output to a file instead of flooding the shell.");
+requireText(proxmoxInventory, "Recommended for larger environments:", "Large-environment file transfer guidance must remain explicit.");
+requireText(proxmoxInventory, "scp root@", "Wizard must provide an SCP file-transfer option.");
+requireText(proxmoxInventory, "Select command", "Shell commands must be manually selected rather than copied programmatically.");
+forbidText(proxmoxInventory, "navigator.clipboard.writeText", "Shell commands must not be written to the clipboard programmatically.");
+requireText(proxmoxInventory, "What Import will do in LANnventory", "Preview must explain the effect of Import before confirmation.");
+requireText(proxmoxInventory, "no fake Hosts are created", "Preview must clarify that workloads are not LANnventory Hosts.");
+requireText(proxmoxInventory, "No VM/LXC is created, changed, started, stopped, or deleted on Proxmox.", "Preview must explicitly state that Proxmox is not modified.");
+requireText(proxmoxInventory, "Managed Device Profile fields and manual workload links are not overwritten.", "Preview must state preservation guarantees.");
+requireText(proxmoxInventory, "Import into LANnventory", "Final action must be named as a LANnventory import rather than ambiguous Apply.");
 forbidText(deviceTypes, '| "hypervisor"', "Hypervisor must not become an exclusive Device Type.");
 
 console.log("Host UX semantic regression checks passed.");
