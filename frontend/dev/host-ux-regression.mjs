@@ -106,6 +106,10 @@ requireText(proxmoxInventory, "Link anyway", "Weak matches must require explicit
 requireText(proxmoxInventory, "Not this Host", "Weak matches must support explicit rejection.");
 requireText(proxmoxInventory, "Rejected suggestions", "Rejected candidates must remain recoverable without returning as active suggestions.");
 requireText(proxmoxInventory, "No MAC confirmation", "Name/address-only evidence must not imply MAC confirmation.");
+requireText(proxmoxInventory, "Linked automatically", "Persisted exact-MAC relationships must be visibly identified as already linked.");
+requireText(proxmoxInventory, "Linked manually", "Persisted manual relationships must be visibly identified as already linked.");
+requireText(proxmoxInventory, "Remove link", "The linked-state action must describe removing an existing relationship.");
+requireText(proxmoxInventory, "Historical IP reuse is kept in Host history only.", "Historical IP reuse must be explained as context rather than workload-match evidence.");
 requireText(hostedWorkload, "Hosted on Proxmox", "Linked guest Host pages must expose their Proxmox parent.");
 requireText(hostedWorkload, "Child relationship", "Guest Host relationship semantics must be explicit.");
 requireText(homeTableRow, "device-workload-parent", "Home device rows must surface linked Proxmox workload ancestry.");
