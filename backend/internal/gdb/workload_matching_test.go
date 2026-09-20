@@ -203,3 +203,66 @@ func testProxmoxSourceState(collectedAt, importedAt, digest string) models.Proxm
 		ImportedAt:       importedAt,
 	}
 }
+
+
+func TestWorkloadCandidateRejectionPersistsWithoutChangingLinkOrIdentity(t *testing.T) {
+	startSelectTestDB(t)
+
+	hypervisor := models.Host{ID: 1, Name: "pve", Mac: "AA:BB:CC:DD:EE:E0", DeviceType: "server", Now: 1}
+	candidateHost := models.Host{ID: 2, Name: "physical", Mac: "AA:BB:CC:DD:EE:E1", IP: "10.4.1.67", Now: 1}
+	for _, host := range []models.Host{hypervisor, candidateHost} {
+		if err := UpdateWithError("now", host); err != nil {
+			t.Fatalf("seed host %+v: %v", host, err)
+		}
+	}
+	record, err := UpsertInfrastructureWorkload(hypervisor.Mac, models.InfrastructureWorkloadUpsert{
+		NativeID:     "104",
+		WorkloadType: models.InfrastructureWorkloadTypeContainer,
+		Name:         "actualbudget",
+		Status:       models.InfrastructureWorkloadStatusRunning,
+		Source:       models.InfrastructureWorkloadSourceScriptImport,
+		Interfaces: []models.InfrastructureWorkloadInterface{{
+			Name:              "net0",
+			Mac:               "BC:24:11:14:02:A5",
+			ConfiguredAddress: "10.4.1.67/24",
+		}},
+	}, "2026-09-20T20:00:00Z")
+	if err != nil {
+		t.Fatalf("seed workload: %v", err)
+	}
+
+	row, err := SetInfrastructureWorkloadCandidateRejection(
+		record.Workload.ID,
+		candidateHost,
+		"fingerprint-1",
+		"address",
+		"2026-09-20T20:05:00Z",
+	)
+	if err != nil {
+		t.Fatalf("SetInfrastructureWorkloadCandidateRejection: %v", err)
+	}
+	if row.HostID != candidateHost.ID || row.HostMac != candidateHost.Mac || row.EvidenceFingerprint != "fingerprint-1" {
+		t.Fatalf("rejection = %+v", row)
+	}
+
+	rows, err := SelectInfrastructureWorkloadCandidateRejections(record.Workload.ID)
+	if err != nil || len(rows) != 1 {
+		t.Fatalf("SelectInfrastructureWorkloadCandidateRejections rows=%+v err=%v", rows, err)
+	}
+	persisted, found, err := SelectInfrastructureWorkloadByID(record.Workload.ID)
+	if err != nil || !found || persisted.Link != nil {
+		t.Fatalf("rejection changed workload/link: record=%+v found=%v err=%v", persisted, found, err)
+	}
+	hosts := SelectByMAC("now", candidateHost.Mac)
+	if len(hosts) != 1 || hosts[0].ID != candidateHost.ID {
+		t.Fatalf("rejection changed Host identity: %+v", hosts)
+	}
+
+	if err := DeleteInfrastructureWorkloadCandidateRejection(record.Workload.ID, candidateHost.ID); err != nil {
+		t.Fatalf("DeleteInfrastructureWorkloadCandidateRejection: %v", err)
+	}
+	rows, err = SelectInfrastructureWorkloadCandidateRejections(record.Workload.ID)
+	if err != nil || len(rows) != 0 {
+		t.Fatalf("rejections after delete rows=%+v err=%v", rows, err)
+	}
+}
