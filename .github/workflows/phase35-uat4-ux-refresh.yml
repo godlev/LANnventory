@@ -1,5 +1,5 @@
 name: Phase35 UAT4 UX refresh
-# retry after semantic assertion fix
+# retry after wording assertion fix
 
 on:
   push:
