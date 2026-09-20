@@ -90,6 +90,62 @@ func TestProxmoxImportDoesNotAutoLinkAddressOnlyCandidate(t *testing.T) {
 	}
 }
 
+func TestProxmoxImportExactMACSupersedesPriorWeakCandidateRejection(t *testing.T) {
+	startSelectTestDB(t)
+
+	hypervisor := models.Host{ID: 1, Name: "pve", Mac: "AA:BB:CC:DD:EE:B8", DeviceType: "server", Now: 1}
+	guest := models.Host{ID: 2, Name: "physical", Mac: "AA:BB:CC:DD:EE:B9", IP: "10.4.1.67", Now: 1}
+	for _, host := range []models.Host{hypervisor, guest} {
+		if err := UpdateWithError("now", host); err != nil {
+			t.Fatalf("seed host %+v: %v", host, err)
+		}
+	}
+
+	state := testProxmoxSourceState("2026-09-20T18:00:00Z", "2026-09-20T18:01:00Z", "reject-weak")
+	input := []models.InfrastructureWorkloadUpsert{{
+		NativeID:     "104",
+		WorkloadType: models.InfrastructureWorkloadTypeContainer,
+		Name:         "actualbudget",
+		Status:       models.InfrastructureWorkloadStatusRunning,
+		Source:       models.InfrastructureWorkloadSourceScriptImport,
+		Interfaces: []models.InfrastructureWorkloadInterface{{
+			Name:              "net0",
+			Mac:               "BC:24:11:14:02:A5",
+			ConfiguredAddress: "10.4.1.67/24",
+		}},
+	}}
+	if err := ApplyProxmoxScriptImport(hypervisor.Mac, state, input); err != nil {
+		t.Fatalf("weak import: %v", err)
+	}
+	records, err := SelectInfrastructureWorkloadsByHypervisorMAC(hypervisor.Mac)
+	if err != nil || len(records) != 1 || records[0].Link != nil {
+		t.Fatalf("weak import records=%+v err=%v", records, err)
+	}
+	if _, err := SetInfrastructureWorkloadCandidateRejection(
+		records[0].Workload.ID,
+		guest,
+		"prior-weak-evidence",
+		"address",
+		"2026-09-20T18:02:00Z",
+	); err != nil {
+		t.Fatalf("seed rejection: %v", err)
+	}
+
+	input[0].Interfaces[0].Mac = guest.Mac
+	state = testProxmoxSourceState("2026-09-20T18:10:00Z", "2026-09-20T18:11:00Z", "exact-later")
+	if err := ApplyProxmoxScriptImport(hypervisor.Mac, state, input); err != nil {
+		t.Fatalf("exact re-import: %v", err)
+	}
+	records, err = SelectInfrastructureWorkloadsByHypervisorMAC(hypervisor.Mac)
+	if err != nil || len(records) != 1 {
+		t.Fatalf("exact reload records=%+v err=%v", records, err)
+	}
+	if records[0].Link == nil || records[0].Link.HostID != guest.ID ||
+		records[0].Link.LinkSource != models.InfrastructureWorkloadLinkSourceExactMAC {
+		t.Fatalf("exact MAC did not supersede weak rejection: %+v", records[0].Link)
+	}
+}
+
 func TestProxmoxImportPreservesManualWorkloadLink(t *testing.T) {
 	startSelectTestDB(t)
 
