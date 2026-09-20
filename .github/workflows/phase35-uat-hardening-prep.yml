@@ -10,6 +10,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: phase35-uat-hardening-prep
+  cancel-in-progress: true
+
 jobs:
   prep:
     runs-on: ubuntu-22.04
