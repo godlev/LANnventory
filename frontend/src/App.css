@@ -1147,6 +1147,45 @@ html[data-bs-theme] body {
 .device-toolbar-actions .btn {
     white-space: nowrap;
 }
+.device-view-toggle {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.12rem;
+    background-color: var(--wyl-control-bg);
+    border: 1px solid var(--wyl-control-border);
+    border-radius: 7px;
+}
+.device-view-toggle-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+    min-height: 1.8rem;
+    padding: 0.2rem 0.48rem;
+    color: var(--wyl-muted);
+    background-color: transparent;
+    border: 0;
+    border-radius: 5px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    line-height: 1;
+    white-space: nowrap;
+    cursor: pointer;
+}
+.device-view-toggle-button:hover,
+.device-view-toggle-button:focus-visible {
+    color: var(--wyl-link-hover);
+    background-color: var(--wyl-control-hover-bg);
+}
+.device-view-toggle-button:focus-visible {
+    outline: 2px solid var(--bs-primary);
+    outline-offset: 1px;
+}
+.device-view-toggle-button.is-active {
+    color: var(--wyl-control-text-strong);
+    background-color: var(--wyl-card-active-bg);
+    box-shadow: inset 0 0 0 1px var(--wyl-control-border);
+}
 .wyl-button,
 .btn.wyl-button {
     display: inline-flex;
@@ -1268,6 +1307,65 @@ html[data-bs-theme] .device-table > tbody > tr > td {
 }
 .device-table tbody tr {
     background-color: var(--wyl-table-row-bg);
+}
+.device-table-compact tbody td {
+    padding-top: 0.16rem;
+    padding-bottom: 0.16rem;
+    font-size: 0.88rem;
+}
+.device-table-compact .device-table-name {
+    overflow: hidden;
+}
+.device-table-compact .device-name-content {
+    width: 100%;
+    flex-wrap: nowrap;
+}
+.device-table-compact .device-name-link {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: none;
+}
+.device-table-compact .device-known-toggle,
+.device-table-compact .device-pin-toggle,
+.device-table-compact .device-action-link,
+.device-table-compact .device-type-trigger {
+    width: 1.5rem;
+    height: 1.5rem;
+}
+.device-compact-workload {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.22rem;
+    flex: 0 0 auto;
+    min-height: 1.28rem;
+    padding: 0.08rem 0.28rem;
+    color: var(--wyl-muted) !important;
+    background-color: var(--wyl-control-bg);
+    border: 1px solid var(--wyl-control-border);
+    border-radius: 999px;
+    font-size: 0.64rem;
+    font-weight: 850;
+    line-height: 1;
+    text-decoration: none !important;
+    white-space: nowrap;
+}
+.device-compact-workload:hover,
+.device-compact-workload:focus-visible {
+    color: var(--wyl-link-hover) !important;
+    background-color: var(--wyl-control-hover-bg);
+    text-decoration: none !important;
+}
+.device-compact-workload:focus-visible {
+    outline: 2px solid var(--bs-primary);
+    outline-offset: 1px;
+}
+.device-compact-workload > i {
+    font-size: 0.68rem;
+}
+.device-compact-workload-more {
+    padding-left: 0.18rem;
+    border-left: 1px solid var(--wyl-control-border);
+    color: var(--wyl-muted);
 }
 html[data-bs-theme] .device-table > tbody > tr:hover > td {
     background-color: var(--wyl-table-hover-bg);
@@ -2927,6 +3025,14 @@ html[data-bs-theme] .activity-table > tbody > tr.activity-group-row:hover > td {
 }
 
 @media (max-width: 1199.98px) {
+    .device-view-toggle-button span {
+        display: none;
+    }
+    .device-view-toggle-button {
+        width: 1.8rem;
+        padding-left: 0;
+        padding-right: 0;
+    }
     .device-table-wrap {
         overflow-x: visible !important;
         scrollbar-gutter: auto;
