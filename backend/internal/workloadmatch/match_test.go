@@ -164,7 +164,7 @@ func TestMatchClassifiesSameAddressDifferentMACAsPossibleIPConflict(t *testing.T
 	}
 }
 
-func TestMatchEvidenceFingerprintIgnoresObservationTimestampsButChangesWithMaterialEvidence(t *testing.T) {
+func TestMatchEvidenceFingerprintIgnoresObservationRefreshButNotMaterialIdentityChanges(t *testing.T) {
 	record := models.InfrastructureWorkloadRecord{
 		Workload: models.InfrastructureWorkload{ID: 122, NativeID: "122", WorkloadType: "container", Name: "frigate"},
 		Interfaces: []models.InfrastructureWorkloadInterface{{
@@ -173,7 +173,7 @@ func TestMatchEvidenceFingerprintIgnoresObservationTimestampsButChangesWithMater
 			ConfiguredAddress: "10.4.1.17/24",
 		}},
 	}
-	host := models.Host{ID: 17, Name: "KIVI Kids TV", Mac: "54:67:E6:E7:6F:CB", IP: "10.4.1.200"}
+	host := models.Host{ID: 17, Name: "KIVI Kids TV", Mac: "54:67:E6:E7:6F:CB", IP: "10.4.1.17", Now: 1}
 	addresses := []models.HostAddress{{
 		Mac: host.Mac, Address: "10.4.1.17", Active: true,
 		FirstSeen: "2026-09-19T10:00:00Z", LastSeen: "2026-09-19T11:00:00Z",
@@ -189,27 +189,26 @@ func TestMatchEvidenceFingerprintIgnoresObservationTimestampsButChangesWithMater
 		t.Fatalf("timestamp-only refresh changed fingerprint: %q != %q", first.Candidates[0].EvidenceFingerprint, second.Candidates[0].EvidenceFingerprint)
 	}
 
-	host.Now = 1
 	addresses[0].Active = false
-	thirdLiveness := Match(record, "", []models.Host{host}, addresses, nil)
-	if len(thirdLiveness.Candidates) != 1 || thirdLiveness.Candidates[0].EvidenceFingerprint != first.Candidates[0].EvidenceFingerprint {
-		t.Fatalf("liveness-only change altered identity fingerprint: first=%+v liveness=%+v", first.Candidates, thirdLiveness.Candidates)
+	currentOnly := Match(record, "", []models.Host{host}, addresses, nil)
+	if len(currentOnly.Candidates) != 1 || currentOnly.Candidates[0].EvidenceFingerprint != first.Candidates[0].EvidenceFingerprint {
+		t.Fatalf("active observation aging into history changed current-address identity fingerprint: first=%+v current=%+v", first.Candidates, currentOnly.Candidates)
+	}
+
+	host.IP = "10.4.1.200"
+	historicalOnly := Match(record, "", []models.Host{host}, addresses, nil)
+	if len(historicalOnly.Candidates) != 0 {
+		t.Fatalf("retained historical IP reuse must not remain a workload candidate: %+v", historicalOnly.Candidates)
 	}
 
 	host.IP = "10.4.1.17"
-	fourthAddressSource := Match(record, "", []models.Host{host}, addresses, nil)
-	if len(fourthAddressSource.Candidates) != 1 || fourthAddressSource.Candidates[0].EvidenceFingerprint != first.Candidates[0].EvidenceFingerprint {
-		t.Fatalf("same address from current/history sources altered identity fingerprint: first=%+v current-history=%+v", first.Candidates, fourthAddressSource.Candidates)
-	}
-	host.IP = "10.4.1.200"
-
 	host.Mac = "54:67:E6:E7:6F:CC"
-	addresses[0].Mac = host.Mac
 	third := Match(record, "", []models.Host{host}, addresses, nil)
 	if len(third.Candidates) != 1 || third.Candidates[0].EvidenceFingerprint == first.Candidates[0].EvidenceFingerprint {
 		t.Fatalf("material MAC change did not change fingerprint: first=%+v third=%+v", first.Candidates, third.Candidates)
 	}
 
+	host.IP = "10.4.1.200"
 	host.Mac = "BC:24:11:F8:D8:48"
 	fourth := Match(record, "", []models.Host{host}, nil, nil)
 	if fourth.DeterministicExactHostID != host.ID || len(fourth.Candidates) != 1 || fourth.Candidates[0].Assessment != "exact-mac" {
