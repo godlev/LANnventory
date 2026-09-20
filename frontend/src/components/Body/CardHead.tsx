@@ -6,7 +6,12 @@ import Search from "../Search";
 import { apiDelHost } from "../../functions/api";
 import DeviceDisplaySelect from "./DeviceDisplaySelect";
 
-function CardHead() {
+type Props = {
+  viewMode: "comfortable" | "compact";
+  onViewModeChange: (mode: "comfortable" | "compact") => void;
+};
+
+function CardHead(props: Props) {
 
   const handleDel = async () => {
     const ids = selectedIDs();
@@ -37,6 +42,28 @@ function CardHead() {
         <Filter></Filter>
       </div>
       <div class="device-toolbar-actions">
+        <div class="device-view-toggle" role="group" aria-label="Home table view">
+          <button
+            type="button"
+            class={"device-view-toggle-button" + (props.viewMode === "comfortable" ? " is-active" : "")}
+            aria-pressed={props.viewMode === "comfortable"}
+            title="Comfortable view"
+            onClick={() => props.onViewModeChange("comfortable")}
+          >
+            <i class="bi bi-layout-text-window-reverse" aria-hidden="true"></i>
+            <span>Comfortable</span>
+          </button>
+          <button
+            type="button"
+            class={"device-view-toggle-button" + (props.viewMode === "compact" ? " is-active" : "")}
+            aria-pressed={props.viewMode === "compact"}
+            title="Compact view"
+            onClick={() => props.onViewModeChange("compact")}
+          >
+            <i class="bi bi-list-ul" aria-hidden="true"></i>
+            <span>Compact</span>
+          </button>
+        </div>
         <DeviceDisplaySelect></DeviceDisplaySelect>
         <button
           type="button"
