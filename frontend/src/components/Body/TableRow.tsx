@@ -240,7 +240,7 @@ function TableRow(_props: any) {
               <span class="device-mobile-detail-label">Hosted on</span>
               <span class="device-mobile-detail-value">
                 <Show
-                  when={primaryWorkloadMembership()?.hypervisorHostId > 0}
+                  when={(primaryWorkloadMembership()?.hypervisorHostId ?? 0) > 0}
                   fallback={<span>{hostedOnLabel()}</span>}
                 >
                   <a href={"/host/"+primaryWorkloadMembership()?.hypervisorHostId}>{hostedOnLabel()}</a>
@@ -330,7 +330,7 @@ function TableRow(_props: any) {
         <Show when={primaryWorkloadMembership()}>
           <div class="device-workload-parent">
             <Show
-              when={primaryWorkloadMembership()?.hypervisorHostId > 0}
+              when={(primaryWorkloadMembership()?.hypervisorHostId ?? 0) > 0}
               fallback={
                 <span class="device-workload-parent-link">
                   <i class="bi bi-diagram-2" aria-hidden="true"></i>
