@@ -87,7 +87,7 @@ requireText(proxmoxInventory, "/lannventory-proxmox-collector.py", "Collector do
 requireText(proxmoxInventory, "Preview changes", "Preview must remain mandatory and explicit.");
 requireText(proxmoxInventory, "Nothing is written until you review and confirm the import.", "Preview/apply safety wording must remain explicit.");
 requireText(proxmoxInventory, "Imported: observed by the read-only Proxmox collector.", "Imported source-state fields must expose provenance.");
-requireText(proxmoxInventory, "--compact > "+snapshotPath", "Collector workflow must write compact output to a file instead of flooding the shell.");
+requireText(proxmoxInventory, '--compact > "+snapshotPath', "Collector workflow must write compact output to a file instead of flooding the shell.");
 requireText(proxmoxInventory, "Recommended for larger environments:", "Large-environment file transfer guidance must remain explicit.");
 requireText(proxmoxInventory, "scp root@", "Wizard must provide an SCP file-transfer option.");
 requireText(proxmoxInventory, "Select command", "Shell commands must be manually selected rather than copied programmatically.");
