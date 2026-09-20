@@ -154,6 +154,11 @@ func Match(
 	}
 
 	for _, row := range addresses {
+		// Retained address history is useful context, but IP reuse is not identity
+		// evidence. Only an active address observation may suggest a workload match.
+		if !row.Active {
+			continue
+		}
 		address := normalizedAddress(row.Address)
 		if address == "" {
 			continue
@@ -163,17 +168,11 @@ func Match(
 			continue
 		}
 		for _, hostID := range hostIDsByMAC[identity.MACKey(row.Mac)] {
-			code := "address-history"
-			state := "retained address history"
-			if row.Active {
-				code = "active-address-observation"
-				state = "active address observation"
-			}
 			addEvidence(hostID, Evidence{
-				Code:         code,
-				Detail:       fmt.Sprintf("%s configured address %s matches a Host %s", joinedInterfaceLabel(ifaces), address, state),
+				Code:         "active-address-observation",
+				Detail:       fmt.Sprintf("%s configured address %s matches a Host active address observation", joinedInterfaceLabel(ifaces), address),
 				Strength:     StrengthAddress,
-				Active:       row.Active,
+				Active:       true,
 				MatchedValue: address,
 				FirstSeen:    row.FirstSeen,
 				LastSeen:     row.LastSeen,
