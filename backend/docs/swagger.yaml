@@ -316,6 +316,35 @@ definitions:
       name:
         type: string
     type: object
+  api.InfrastructureWorkloadMembershipResponse:
+    properties:
+      hostId:
+        type: integer
+      hostMac:
+        type: string
+      hypervisorHostId:
+        type: integer
+      hypervisorIp:
+        type: string
+      hypervisorMac:
+        type: string
+      hypervisorName:
+        type: string
+      linkSource:
+        type: string
+      nativeId:
+        type: string
+      retiredAt:
+        type: string
+      workloadId:
+        type: integer
+      workloadName:
+        type: string
+      workloadStatus:
+        type: string
+      workloadType:
+        type: string
+    type: object
   api.InfrastructureWorkloadPatchRequest:
     properties:
       interfaces:
@@ -588,26 +617,47 @@ definitions:
       version:
         type: string
     type: object
+  api.WorkloadCandidateRejectionRequest:
+    properties:
+      evidenceFingerprint:
+        type: string
+    type: object
   api.WorkloadMatchCandidateDoc:
     properties:
       active:
         type: boolean
+      assessment:
+        type: string
       deviceType:
         type: string
       evidence:
         items:
           $ref: '#/definitions/api.WorkloadMatchEvidenceDoc'
         type: array
+      evidenceFingerprint:
+        type: string
       hostId:
         type: integer
       ip:
         type: string
       mac:
         type: string
+      matchedAddresses:
+        items:
+          type: string
+        type: array
       name:
         type: string
+      possibleIpConflict:
+        type: boolean
+      rejected:
+        type: boolean
       strength:
         type: string
+      workloadMacs:
+        items:
+          type: string
+        type: array
     type: object
   api.WorkloadMatchEvidenceDoc:
     properties:
@@ -616,6 +666,12 @@ definitions:
       code:
         type: string
       detail:
+        type: string
+      firstSeen:
+        type: string
+      lastSeen:
+        type: string
+      matchedValue:
         type: string
       strength:
         type: string
@@ -2860,6 +2916,102 @@ paths:
       summary: Link workload to an existing Host
       tags:
       - hosts
+  /host/{id}/workloads/{workloadId}/match-rejections/{candidateHostId}:
+    delete:
+      description: Remove only the explicit "Not this Host" decision. Workload, Host
+        identity/history, and links remain unchanged.
+      parameters:
+      - description: Proxmox Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Workload ID
+        in: path
+        name: workloadId
+        required: true
+        type: string
+      - description: Candidate Host ID
+        in: path
+        name: candidateHostId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Clear a workload Host candidate rejection
+      tags:
+      - hosts
+    put:
+      consumes:
+      - application/json
+      description: Persist a non-destructive "Not this Host" decision for the current
+        weak address/name evidence. Exact-MAC evidence cannot be rejected here, and
+        changed evidence is re-evaluated automatically.
+      parameters:
+      - description: Proxmox Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Workload ID
+        in: path
+        name: workloadId
+        required: true
+        type: string
+      - description: Candidate Host ID
+        in: path
+        name: candidateHostId
+        required: true
+        type: string
+      - description: Reviewed evidence
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.WorkloadCandidateRejectionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.WorkloadMatchCandidateDoc'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Reject a weak workload Host candidate
+      tags:
+      - hosts
   /host/add/{mac}:
     get:
       description: |-
@@ -2942,6 +3094,40 @@ paths:
               type: string
             type: object
       summary: Get address identity observations
+      tags:
+      - hosts
+  /infrastructure/workload-memberships:
+    get:
+      description: Return read-only reverse projections for persisted workload MATCHES
+        relations. Optional hostId limits the response to one current LANnventory
+        Host.
+      parameters:
+      - description: Current Host ID
+        in: query
+        name: hostId
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/api.InfrastructureWorkloadMembershipResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get workload-to-Host memberships
       tags:
       - hosts
   /inventory/options:

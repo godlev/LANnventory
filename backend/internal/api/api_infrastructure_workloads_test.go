@@ -201,7 +201,6 @@ func workloadRequest(router *gin.Engine, method string, hostID int, suffix, body
 	return rec
 }
 
-
 func TestInfrastructureWorkloadMembershipsExposeReverseParentRelation(t *testing.T) {
 	router := setupTestRouter(t)
 	hypervisor := seedHost(t, models.Host{Name: "proxmox", Mac: "AA:BB:CC:DD:F1:10", IP: "10.4.1.6", DeviceType: "server"})

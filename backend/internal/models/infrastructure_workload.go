@@ -74,7 +74,6 @@ type InfrastructureWorkloadUpsert struct {
 	Interfaces   []InfrastructureWorkloadInterface
 }
 
-
 // InfrastructureWorkloadMembershipRecord is a read-only reverse projection of
 // an existing workload MATCHES relation. It does not create a Host hierarchy or
 // change either the Host or workload record.

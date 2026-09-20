@@ -166,7 +166,6 @@ func TestWorkloadMatchesEndpointReportsAmbiguousExactMACWithoutAutoLink(t *testi
 	}
 }
 
-
 func TestWorkloadMatchRejectionHidesOnlyUnchangedWeakEvidence(t *testing.T) {
 	router := setupTestRouter(t)
 	hypervisor := seedHost(t, models.Host{Name: "pve", Mac: "AA:BB:CC:DD:F0:10", DeviceType: "server", Now: 1})

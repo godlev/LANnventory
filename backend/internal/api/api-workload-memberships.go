@@ -16,16 +16,16 @@ import (
 // existing workload-to-Host MATCHES relation so a LANnventory Host can show
 // which Proxmox VM/LXC it represents and which hypervisor owns that workload.
 type InfrastructureWorkloadMembershipResponse struct {
-	WorkloadID      uint   `json:"workloadId"`
-	NativeID        string `json:"nativeId"`
-	WorkloadType    string `json:"workloadType"`
-	WorkloadName    string `json:"workloadName"`
-	WorkloadStatus  string `json:"workloadStatus"`
-	RetiredAt       string `json:"retiredAt"`
-	HostID          int    `json:"hostId"`
-	HostMac         string `json:"hostMac"`
-	LinkSource      string `json:"linkSource"`
-	HypervisorHostID int   `json:"hypervisorHostId"`
+	WorkloadID       uint   `json:"workloadId"`
+	NativeID         string `json:"nativeId"`
+	WorkloadType     string `json:"workloadType"`
+	WorkloadName     string `json:"workloadName"`
+	WorkloadStatus   string `json:"workloadStatus"`
+	RetiredAt        string `json:"retiredAt"`
+	HostID           int    `json:"hostId"`
+	HostMac          string `json:"hostMac"`
+	LinkSource       string `json:"linkSource"`
+	HypervisorHostID int    `json:"hypervisorHostId"`
 	HypervisorMac    string `json:"hypervisorMac"`
 	HypervisorName   string `json:"hypervisorName"`
 	HypervisorIP     string `json:"hypervisorIp"`

@@ -132,7 +132,6 @@ func TestMatchDeduplicatesEvidencePerHost(t *testing.T) {
 	}
 }
 
-
 func TestMatchClassifiesSameAddressDifferentMACAsPossibleIPConflict(t *testing.T) {
 	record := models.InfrastructureWorkloadRecord{
 		Workload: models.InfrastructureWorkload{ID: 104, NativeID: "104", WorkloadType: "container", Name: "actualbudget"},

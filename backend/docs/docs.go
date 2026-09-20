@@ -2633,6 +2633,144 @@ const docTemplate = `{
                 }
             }
         },
+        "/host/{id}/workloads/{workloadId}/match-rejections/{candidateHostId}": {
+            "put": {
+                "description": "Persist a non-destructive \"Not this Host\" decision for the current weak address/name evidence. Exact-MAC evidence cannot be rejected here, and changed evidence is re-evaluated automatically.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Reject a weak workload Host candidate",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Proxmox Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Workload ID",
+                        "name": "workloadId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Candidate Host ID",
+                        "name": "candidateHostId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Reviewed evidence",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.WorkloadCandidateRejectionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.WorkloadMatchCandidateDoc"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Remove only the explicit \"Not this Host\" decision. Workload, Host identity/history, and links remain unchanged.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Clear a workload Host candidate rejection",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Proxmox Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Workload ID",
+                        "name": "workloadId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Candidate Host ID",
+                        "name": "candidateHostId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/identity/address": {
             "get": {
                 "description": "Return every retained MAC identity observed using one IP address, including first/last seen timestamps.",
@@ -2657,6 +2795,55 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/api.AddressIdentityResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/infrastructure/workload-memberships": {
+            "get": {
+                "description": "Return read-only reverse projections for persisted workload MATCHES relations. Optional hostId limits the response to one current LANnventory Host.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Get workload-to-Host memberships",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Current Host ID",
+                        "name": "hostId",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/api.InfrastructureWorkloadMembershipResponse"
+                            }
                         }
                     },
                     "400": {
@@ -3556,6 +3743,50 @@ const docTemplate = `{
                 }
             }
         },
+        "api.InfrastructureWorkloadMembershipResponse": {
+            "type": "object",
+            "properties": {
+                "hostId": {
+                    "type": "integer"
+                },
+                "hostMac": {
+                    "type": "string"
+                },
+                "hypervisorHostId": {
+                    "type": "integer"
+                },
+                "hypervisorIp": {
+                    "type": "string"
+                },
+                "hypervisorMac": {
+                    "type": "string"
+                },
+                "hypervisorName": {
+                    "type": "string"
+                },
+                "linkSource": {
+                    "type": "string"
+                },
+                "nativeId": {
+                    "type": "string"
+                },
+                "retiredAt": {
+                    "type": "string"
+                },
+                "workloadId": {
+                    "type": "integer"
+                },
+                "workloadName": {
+                    "type": "string"
+                },
+                "workloadStatus": {
+                    "type": "string"
+                },
+                "workloadType": {
+                    "type": "string"
+                }
+            }
+        },
         "api.InfrastructureWorkloadPatchRequest": {
             "type": "object",
             "properties": {
@@ -3973,11 +4204,22 @@ const docTemplate = `{
                 }
             }
         },
+        "api.WorkloadCandidateRejectionRequest": {
+            "type": "object",
+            "properties": {
+                "evidenceFingerprint": {
+                    "type": "string"
+                }
+            }
+        },
         "api.WorkloadMatchCandidateDoc": {
             "type": "object",
             "properties": {
                 "active": {
                     "type": "boolean"
+                },
+                "assessment": {
+                    "type": "string"
                 },
                 "deviceType": {
                     "type": "string"
@@ -3988,6 +4230,9 @@ const docTemplate = `{
                         "$ref": "#/definitions/api.WorkloadMatchEvidenceDoc"
                     }
                 },
+                "evidenceFingerprint": {
+                    "type": "string"
+                },
                 "hostId": {
                     "type": "integer"
                 },
@@ -3997,11 +4242,29 @@ const docTemplate = `{
                 "mac": {
                     "type": "string"
                 },
+                "matchedAddresses": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "name": {
                     "type": "string"
                 },
+                "possibleIpConflict": {
+                    "type": "boolean"
+                },
+                "rejected": {
+                    "type": "boolean"
+                },
                 "strength": {
                     "type": "string"
+                },
+                "workloadMacs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -4015,6 +4278,15 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "detail": {
+                    "type": "string"
+                },
+                "firstSeen": {
+                    "type": "string"
+                },
+                "lastSeen": {
+                    "type": "string"
+                },
+                "matchedValue": {
                     "type": "string"
                 },
                 "strength": {

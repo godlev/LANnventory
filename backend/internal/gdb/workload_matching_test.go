@@ -260,7 +260,6 @@ func testProxmoxSourceState(collectedAt, importedAt, digest string) models.Proxm
 	}
 }
 
-
 func TestWorkloadCandidateRejectionPersistsWithoutChangingLinkOrIdentity(t *testing.T) {
 	startSelectTestDB(t)
 
