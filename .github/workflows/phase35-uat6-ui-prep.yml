@@ -69,3 +69,4 @@ jobs:
           git rm .github/workflows/phase35-uat6-ui-prep.yml
           git commit -m "chore: refresh UAT6 Proxmox UX artifacts"
           git push origin HEAD:phase35-device-profiles-proxmox
+# retry after active-address fixture correction
