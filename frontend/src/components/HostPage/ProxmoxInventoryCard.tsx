@@ -2,11 +2,13 @@ import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 
 import {
   apiApplyProxmoxImport,
+  apiClearInfrastructureWorkloadCandidateRejection,
   apiDeleteInfrastructureWorkloadLink,
   apiGetHostWorkloadMatches,
   apiGetHostWorkloads,
   apiGetProxmoxSourceState,
   apiPreviewProxmoxImport,
+  apiRejectInfrastructureWorkloadCandidate,
   apiSetInfrastructureWorkloadLink,
   type InfrastructureWorkload,
   type InfrastructureWorkloadMatch,
@@ -45,6 +47,9 @@ function ProxmoxInventoryCard(props: Props) {
   const stoppedCount = createMemo(() => activeWorkloads().filter((item) => item.status === "stopped").length);
   const retiredCount = createMemo(() => workloads().filter((item) => Boolean(item.retiredAt)).length);
   const matchedCount = createMemo(() => activeWorkloads().filter((item) => item.link !== null).length);
+  const possibleConflictCount = createMemo(() =>
+    matches().filter((item) => item.candidates.some((candidate) => candidate.possibleIpConflict && !candidate.rejected)).length
+  );
   const matchesByWorkload = createMemo(() => {
     const result = new Map<number, InfrastructureWorkloadMatch>();
     for (const item of matches()) {
@@ -237,6 +242,39 @@ function ProxmoxInventoryCard(props: Props) {
     }
   };
 
+  const rejectCandidate = async (workloadID: number, candidate: WorkloadMatchCandidate) => {
+    if (linkBusy() !== 0 || props.host.ID < 1 || candidate.strength === "exact-mac") return;
+    setLinkBusy(workloadID);
+    setLoadError("");
+    try {
+      await apiRejectInfrastructureWorkloadCandidate(
+        props.host.ID,
+        workloadID,
+        candidate.hostId,
+        candidate.evidenceFingerprint,
+      );
+      await refresh(props.host.ID);
+    } catch (error) {
+      setLoadError(apiErrorMessage(error, "Candidate rejection could not be saved. Refresh and review the current evidence."));
+    } finally {
+      setLinkBusy(0);
+    }
+  };
+
+  const clearCandidateRejection = async (workloadID: number, candidateHostID: number) => {
+    if (linkBusy() !== 0 || props.host.ID < 1) return;
+    setLinkBusy(workloadID);
+    setLoadError("");
+    try {
+      await apiClearInfrastructureWorkloadCandidateRejection(props.host.ID, workloadID, candidateHostID);
+      await refresh(props.host.ID);
+    } catch (error) {
+      setLoadError(apiErrorMessage(error, "Candidate rejection could not be cleared."));
+    } finally {
+      setLinkBusy(0);
+    }
+  };
+
   return (
     <section class="card wyl-panel host-panel proxmox-panel" aria-labelledby="proxmox-inventory-title">
       <div class="card-header host-panel-header">
@@ -276,6 +314,7 @@ function ProxmoxInventoryCard(props: Props) {
             stopped={stoppedCount()}
             retired={retiredCount()}
             matched={matchedCount()}
+            conflicts={possibleConflictCount()}
           />
 
           <div class="proxmox-section">
@@ -317,6 +356,8 @@ function ProxmoxInventoryCard(props: Props) {
                           busy={linkBusy() === workload.id}
                           onLink={(hostID) => void linkCandidate(workload.id, hostID)}
                           onUnlink={() => void unlinkWorkload(workload.id)}
+                          onReject={(candidate) => void rejectCandidate(workload.id, candidate)}
+                          onClearRejection={(hostID) => void clearCandidateRejection(workload.id, hostID)}
                         />
                       )}
                     </For>
@@ -353,6 +394,7 @@ function SourceSummary(props: {
   stopped: number;
   retired: number;
   matched: number;
+  conflicts: number;
 }) {
   return (
     <div class="proxmox-source-block">
@@ -401,6 +443,7 @@ function SourceSummary(props: {
         <SummaryMetric label="Running" value={props.running} />
         <SummaryMetric label="Stopped" value={props.stopped} />
         <SummaryMetric label="Matched" value={props.matched} />
+        <SummaryMetric label="IP conflicts" value={props.conflicts} />
         <SummaryMetric label="Retired" value={props.retired} />
       </div>
     </div>
@@ -441,6 +484,8 @@ function WorkloadRow(props: {
   busy: boolean;
   onLink: (hostID: number) => void;
   onUnlink: () => void;
+  onReject: (candidate: WorkloadMatchCandidate) => void;
+  onClearRejection: (hostID: number) => void;
 }) {
   const retired = () => Boolean(props.workload.retiredAt);
   return (
@@ -490,6 +535,8 @@ function WorkloadRow(props: {
           busy={props.busy}
           onLink={props.onLink}
           onUnlink={props.onUnlink}
+          onReject={props.onReject}
+          onClearRejection={props.onClearRejection}
         />
       </td>
     </tr>
@@ -502,9 +549,13 @@ function MatchCell(props: {
   busy: boolean;
   onLink: (hostID: number) => void;
   onUnlink: () => void;
+  onReject: (candidate: WorkloadMatchCandidate) => void;
+  onClearRejection: (hostID: number) => void;
 }) {
   const currentHost = () => props.workload.matchedHost;
   const currentLink = () => props.workload.link;
+  const activeCandidates = () => (props.match?.candidates ?? []).filter((candidate) => !candidate.rejected);
+  const rejectedCandidates = () => (props.match?.candidates ?? []).filter((candidate) => candidate.rejected);
 
   return (
     <div class="proxmox-match-cell">
@@ -519,20 +570,53 @@ function MatchCell(props: {
               </div>
             </Show>
             <Show
-              when={(props.match?.candidates?.length ?? 0) > 0}
-              fallback={<span class="device-cell-muted">No Host candidates</span>}
+              when={activeCandidates().length > 0}
+              fallback={
+                <span class="device-cell-muted">
+                  {rejectedCandidates().length > 0 ? "No active Host candidates" : "No Host candidates"}
+                </span>
+              }
             >
               <div class="proxmox-candidate-list">
-                <For each={props.match?.candidates ?? []}>
+                <For each={activeCandidates()}>
                   {(candidate) => (
                     <CandidateAction
+                      workload={props.workload}
                       candidate={candidate}
                       busy={props.busy}
                       onLink={() => props.onLink(candidate.hostId)}
+                      onReject={() => props.onReject(candidate)}
                     />
                   )}
                 </For>
               </div>
+            </Show>
+            <Show when={rejectedCandidates().length > 0}>
+              <details class="proxmox-rejected-candidates">
+                <summary>
+                  Rejected suggestions ({rejectedCandidates().length})
+                </summary>
+                <For each={rejectedCandidates()}>
+                  {(candidate) => (
+                    <div class="proxmox-rejected-candidate">
+                      <div>
+                        <div class="fw-semibold">{candidate.name || candidate.ip || candidate.mac}</div>
+                        <div class="small device-cell-muted">
+                          {candidateAssessmentLabel(candidate)} · {candidate.ip || "no address"} · {candidate.mac || "no MAC"}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-outline-secondary"
+                        disabled={props.busy}
+                        onClick={() => props.onClearRejection(candidate.hostId)}
+                      >
+                        {props.busy ? "Working…" : "Show again"}
+                      </button>
+                    </div>
+                  )}
+                </For>
+              </details>
             </Show>
           </>
         }
@@ -563,29 +647,189 @@ function MatchCell(props: {
   );
 }
 
-function CandidateAction(props: { candidate: WorkloadMatchCandidate; busy: boolean; onLink: () => void }) {
+function CandidateAction(props: {
+  workload: InfrastructureWorkload;
+  candidate: WorkloadMatchCandidate;
+  busy: boolean;
+  onLink: () => void;
+  onReject: () => void;
+}) {
+  const matchedAddress = () => props.candidate.matchedAddresses?.[0] ?? "";
+  const matchingInterface = () => {
+    const address = matchedAddress();
+    if (address) {
+      const byAddress = props.workload.interfaces.find((iface) => normalizeConfiguredAddress(iface.configuredAddress) === address);
+      if (byAddress) return byAddress;
+    }
+    if (props.candidate.strength === "exact-mac") {
+      const targetMAC = normalizeMac(props.candidate.mac);
+      const byMAC = props.workload.interfaces.find((iface) => normalizeMac(iface.mac) === targetMAC);
+      if (byMAC) return byMAC;
+    }
+    return props.workload.interfaces[0];
+  };
+  const workloadIP = () => matchingInterface()?.configuredAddress || matchedAddress() || "—";
+  const workloadMAC = () => matchingInterface()?.mac || props.candidate.workloadMacs?.[0] || "—";
+  const hostIP = () => props.candidate.ip || matchedAddress() || "—";
+  const hostMAC = () => props.candidate.mac || "—";
+  const sameAddress = () => Boolean(matchedAddress()) &&
+    normalizeConfiguredAddress(workloadIP()) === normalizeConfiguredAddress(hostIP());
+  const sameMAC = () => workloadMAC() !== "—" && hostMAC() !== "—" &&
+    normalizeMac(workloadMAC()) === normalizeMac(hostMAC());
+  const addressEvidence = () => props.candidate.evidence.find((item) => item.strength === "address");
+  const hasNameEvidence = () => props.candidate.evidence.some((item) => item.strength === "name");
+  const isWeak = () => props.candidate.strength !== "exact-mac";
   const detail = () => props.candidate.evidence.map((item) => item.detail).join("\n");
+
   return (
-    <div class="proxmox-candidate" title={detail()}>
+    <div
+      class={"proxmox-candidate"+(props.candidate.possibleIpConflict ? " is-ip-conflict" : "")}
+      title={detail()}
+    >
+      <Show when={props.candidate.possibleIpConflict}>
+        <div class="proxmox-ip-conflict-title">
+          <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+          <span>Possible IP conflict</span>
+        </div>
+      </Show>
+
       <div class="proxmox-candidate-body">
         <div class="proxmox-candidate-title">
           <span>{props.candidate.name || props.candidate.ip || props.candidate.mac}</span>
-          <span class={"badge "+candidateBadgeClass(props.candidate.strength)}>{candidateLabel(props.candidate.strength)}</span>
+          <span class={"badge "+candidateAssessmentBadgeClass(props.candidate)}>
+            {candidateAssessmentLabel(props.candidate)}
+          </span>
         </div>
-        <div class="small device-cell-muted">
-          {[props.candidate.ip, props.candidate.mac].filter(Boolean).join(" · ")}
-        </div>
+
+        <Show
+          when={props.candidate.possibleIpConflict}
+          fallback={
+            <div class="proxmox-candidate-evidence-summary">
+              <strong>{candidateEvidenceSummary(props.candidate)}</strong>
+              <Show when={addressEvidence()?.firstSeen || addressEvidence()?.lastSeen}>
+                <span class="device-cell-muted">
+                  {formatEvidenceWindow(addressEvidence()?.firstSeen, addressEvidence()?.lastSeen)}
+                </span>
+              </Show>
+            </div>
+          }
+        >
+          <div class="proxmox-match-comparison">
+            <div class="proxmox-match-side">
+              <div class="proxmox-match-side-label">PROXMOX WORKLOAD</div>
+              <div class="fw-semibold">{props.workload.name || props.workload.nativeId}</div>
+              <div class="proxmox-match-field">
+                <span>IP</span>
+                <span class="font-monospace">{workloadIP()}</span>
+              </div>
+              <div class="proxmox-match-field">
+                <span>MAC</span>
+                <span class="font-monospace">{workloadMAC()}</span>
+              </div>
+            </div>
+            <div class="proxmox-match-side">
+              <div class="proxmox-match-side-label">LANnventory HOST</div>
+              <div class="fw-semibold">{props.candidate.name || props.candidate.ip || props.candidate.mac}</div>
+              <div class="proxmox-match-field">
+                <span>IP</span>
+                <span class="font-monospace">{hostIP()}</span>
+                <span class={sameAddress() ? "text-success" : "text-danger"} aria-label={sameAddress() ? "same" : "different"}>
+                  {sameAddress() ? "✓ same" : "✕ different"}
+                </span>
+              </div>
+              <div class="proxmox-match-field">
+                <span>MAC</span>
+                <span class="font-monospace">{hostMAC()}</span>
+                <span class={sameMAC() ? "text-success" : "text-danger"} aria-label={sameMAC() ? "same" : "different"}>
+                  {sameMAC() ? "✓ same" : "✕ different"}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div class="proxmox-candidate-evidence-summary">
+            <strong>Evidence: IP address match only</strong>
+            <span class="device-cell-muted">
+              MAC differs{hasNameEvidence() ? " · additional name evidence also exists" : ""}
+            </span>
+            <Show when={addressEvidence()?.firstSeen || addressEvidence()?.lastSeen}>
+              <span class="device-cell-muted">
+                {formatEvidenceWindow(addressEvidence()?.firstSeen, addressEvidence()?.lastSeen)}
+              </span>
+            </Show>
+          </div>
+        </Show>
       </div>
-      <button
-        type="button"
-        class="btn btn-sm btn-outline-primary"
-        disabled={props.busy}
-        onClick={props.onLink}
-      >
-        Link
-      </button>
+
+      <div class="proxmox-candidate-actions">
+        <button
+          type="button"
+          class="btn btn-sm btn-outline-primary"
+          disabled={props.busy}
+          onClick={props.onLink}
+        >
+          {props.busy ? "Working…" : isWeak() ? "Link anyway" : "Link"}
+        </button>
+        <Show when={isWeak()}>
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-secondary"
+            disabled={props.busy}
+            onClick={props.onReject}
+          >
+            {props.busy ? "Working…" : "Not this Host"}
+          </button>
+        </Show>
+      </div>
     </div>
   );
+}
+
+function candidateEvidenceSummary(candidate: WorkloadMatchCandidate) {
+  switch (candidate.assessment) {
+    case "exact-mac": return "Exact MAC match";
+    case "possible-ip-conflict": return "IP address matches, but MAC differs";
+    case "address-only": return "IP address match only · No MAC confirmation";
+    case "name-only": return "Name match only · No MAC confirmation";
+    default: return candidateLabel(candidate.strength);
+  }
+}
+
+function candidateAssessmentLabel(candidate: WorkloadMatchCandidate) {
+  if (candidate.possibleIpConflict) return "IP conflict";
+  switch (candidate.assessment) {
+    case "exact-mac": return "Exact MAC";
+    case "address-only": return "Address";
+    case "name-only": return "Name";
+    default: return candidateLabel(candidate.strength);
+  }
+}
+
+function candidateAssessmentBadgeClass(candidate: WorkloadMatchCandidate) {
+  if (candidate.possibleIpConflict) return "text-bg-warning";
+  return candidateBadgeClass(candidate.strength);
+}
+
+function normalizeConfiguredAddress(value: string) {
+  const trimmed = (value || "").trim();
+  if (!trimmed) return "";
+  if (trimmed.startsWith("[") && trimmed.includes("]")) {
+    return trimmed.slice(1, trimmed.indexOf("]"));
+  }
+  const slash = trimmed.indexOf("/");
+  return slash >= 0 ? trimmed.slice(0, slash) : trimmed;
+}
+
+function normalizeMac(value: string) {
+  return (value || "").trim().replace(/-/g, ":").toUpperCase();
+}
+
+function formatEvidenceWindow(firstSeen?: string, lastSeen?: string) {
+  if (firstSeen && lastSeen) {
+    return "Observed "+formatTimestamp(firstSeen)+" → "+formatTimestamp(lastSeen);
+  }
+  if (lastSeen) return "Observed "+formatTimestamp(lastSeen);
+  if (firstSeen) return "First observed "+formatTimestamp(firstSeen);
+  return "";
 }
 
 function ImportSection(props: {
