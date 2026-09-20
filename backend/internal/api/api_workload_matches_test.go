@@ -165,3 +165,153 @@ func TestWorkloadMatchesEndpointReportsAmbiguousExactMACWithoutAutoLink(t *testi
 		t.Fatalf("ambiguous exact result = %+v", matches[0])
 	}
 }
+
+
+func TestWorkloadMatchRejectionHidesOnlyUnchangedWeakEvidence(t *testing.T) {
+	router := setupTestRouter(t)
+	hypervisor := seedHost(t, models.Host{Name: "pve", Mac: "AA:BB:CC:DD:F0:10", DeviceType: "server", Now: 1})
+	guest := seedHost(t, models.Host{Name: "IR + RF - Tuya", Mac: "FC:67:1F:26:20:A5", IP: "10.4.1.67", DeviceType: "iot", Now: 1})
+	enableTestHypervisor(t, router, hypervisor.ID)
+
+	rec := workloadRequest(router, http.MethodPost, hypervisor.ID, "", `{
+		"nativeId":"104",
+		"workloadType":"container",
+		"name":"actualbudget",
+		"status":"running",
+		"interfaces":[{"name":"net0","mac":"BC:24:11:14:02:A5","configuredAddress":"10.4.1.67/24"}]
+	}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("create workload status = %d; body: %s", rec.Code, rec.Body.String())
+	}
+	var workload InfrastructureWorkloadResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &workload); err != nil {
+		t.Fatalf("json.Unmarshal workload: %v", err)
+	}
+
+	loadMatches := func() []InfrastructureWorkloadMatchResponse {
+		t.Helper()
+		matchesRec := getPath(router, "/api/host/"+itoa(hypervisor.ID)+"/workload-matches")
+		if matchesRec.Code != http.StatusOK {
+			t.Fatalf("matches status = %d; body: %s", matchesRec.Code, matchesRec.Body.String())
+		}
+		var matches []InfrastructureWorkloadMatchResponse
+		if err := json.Unmarshal(matchesRec.Body.Bytes(), &matches); err != nil {
+			t.Fatalf("json.Unmarshal matches: %v", err)
+		}
+		return matches
+	}
+
+	matches := loadMatches()
+	if len(matches) != 1 || len(matches[0].Candidates) != 1 {
+		t.Fatalf("initial matches = %+v", matches)
+	}
+	candidate := matches[0].Candidates[0]
+	if candidate.HostID != guest.ID || !candidate.PossibleIPConflict || candidate.Assessment != "possible-ip-conflict" || candidate.Rejected {
+		t.Fatalf("initial candidate = %+v", candidate)
+	}
+	if candidate.EvidenceFingerprint == "" {
+		t.Fatal("candidate evidence fingerprint is empty")
+	}
+
+	rec = workloadRequest(
+		router,
+		http.MethodPut,
+		hypervisor.ID,
+		"/"+itoa(int(workload.ID))+"/match-rejections/"+itoa(guest.ID),
+		`{"evidenceFingerprint":"`+candidate.EvidenceFingerprint+`"}`,
+	)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("reject candidate status = %d; body: %s", rec.Code, rec.Body.String())
+	}
+	matches = loadMatches()
+	if len(matches[0].Candidates) != 1 || !matches[0].Candidates[0].Rejected {
+		t.Fatalf("unchanged rejected candidate was not marked rejected: %+v", matches[0].Candidates)
+	}
+	originalFingerprint := matches[0].Candidates[0].EvidenceFingerprint
+
+	rec = workloadRequest(
+		router,
+		http.MethodPatch,
+		hypervisor.ID,
+		"/"+itoa(int(workload.ID)),
+		`{"interfaces":[{"name":"net0","mac":"BC:24:11:14:02:A5","configuredAddress":"10.4.1.68/24"}]}`,
+	)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("patch workload status = %d; body: %s", rec.Code, rec.Body.String())
+	}
+	guest.IP = "10.4.1.68"
+	if err := gdb.UpdateWithError("now", guest); err != nil {
+		t.Fatalf("move candidate Host address: %v", err)
+	}
+
+	matches = loadMatches()
+	if len(matches[0].Candidates) != 1 {
+		t.Fatalf("changed evidence candidates = %+v", matches[0].Candidates)
+	}
+	changed := matches[0].Candidates[0]
+	if changed.EvidenceFingerprint == originalFingerprint {
+		t.Fatalf("material address change did not change evidence fingerprint: %+v", changed)
+	}
+	if changed.Rejected {
+		t.Fatalf("stale rejection suppressed changed evidence: %+v", changed)
+	}
+
+	rec = workloadRequest(
+		router,
+		http.MethodPatch,
+		hypervisor.ID,
+		"/"+itoa(int(workload.ID)),
+		`{"interfaces":[{"name":"net0","mac":"FC:67:1F:26:20:A5","configuredAddress":"10.4.1.68/24"}]}`,
+	)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("patch exact workload MAC status = %d; body: %s", rec.Code, rec.Body.String())
+	}
+	matches = loadMatches()
+	if matches[0].DeterministicExactHostID != guest.ID || len(matches[0].Candidates) != 1 ||
+		matches[0].Candidates[0].Strength != workloadmatch.StrengthExactMAC || matches[0].Candidates[0].Rejected {
+		t.Fatalf("stronger exact evidence did not supersede rejection: %+v", matches[0])
+	}
+
+	rec = workloadRequest(router, http.MethodDelete, hypervisor.ID, "/"+itoa(int(workload.ID))+"/match-rejections/"+itoa(guest.ID), "")
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("clear rejection status = %d; body: %s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestWorkloadMatchRejectEndpointRefusesExactMACCandidate(t *testing.T) {
+	router := setupTestRouter(t)
+	hypervisor := seedHost(t, models.Host{Name: "pve", Mac: "AA:BB:CC:DD:F0:20", DeviceType: "server", Now: 1})
+	guest := seedHost(t, models.Host{Name: "guest", Mac: "AA:BB:CC:DD:F0:21", DeviceType: "server", Now: 1})
+	enableTestHypervisor(t, router, hypervisor.ID)
+
+	rec := workloadRequest(router, http.MethodPost, hypervisor.ID, "", `{
+		"nativeId":"220",
+		"workloadType":"vm",
+		"name":"guest",
+		"interfaces":[{"name":"net0","mac":"AA:BB:CC:DD:F0:21"}]
+	}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("create workload status = %d; body: %s", rec.Code, rec.Body.String())
+	}
+	var workload InfrastructureWorkloadResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &workload); err != nil {
+		t.Fatalf("json.Unmarshal workload: %v", err)
+	}
+	matchesRec := getPath(router, "/api/host/"+itoa(hypervisor.ID)+"/workload-matches")
+	var matches []InfrastructureWorkloadMatchResponse
+	if err := json.Unmarshal(matchesRec.Body.Bytes(), &matches); err != nil || len(matches) != 1 || len(matches[0].Candidates) != 1 {
+		t.Fatalf("exact matches=%+v err=%v", matches, err)
+	}
+	candidate := matches[0].Candidates[0]
+
+	rec = workloadRequest(
+		router,
+		http.MethodPut,
+		hypervisor.ID,
+		"/"+itoa(int(workload.ID))+"/match-rejections/"+itoa(guest.ID),
+		`{"evidenceFingerprint":"`+candidate.EvidenceFingerprint+`"}`,
+	)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("exact candidate rejection status = %d, want %d; body: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+}
