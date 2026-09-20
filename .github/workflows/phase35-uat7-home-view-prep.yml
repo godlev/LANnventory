@@ -1,0 +1,65 @@
+name: Phase35 UAT7 Home View Prep
+
+on:
+  push:
+    branches:
+      - phase35-device-profiles-proxmox
+    paths:
+      - .github/workflows/phase35-uat7-home-view-prep.yml
+
+permissions:
+  contents: write
+
+jobs:
+  prep:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout Phase 35 branch
+        uses: actions/checkout@v4
+        with:
+          ref: phase35-device-profiles-proxmox
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run Home and Host UX semantic regression
+        working-directory: frontend
+        run: npm run test:host-ux
+
+      - name: Check mock API syntax
+        run: node --check frontend/dev/mock-api.mjs
+
+      - name: Build frontend and embedded bundle
+        working-directory: frontend
+        run: make all
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Test backend
+        working-directory: backend
+        run: go test ./...
+
+      - name: Verify patch semantics
+        run: git diff --check
+
+      - name: Commit generated bundle and remove prep workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/internal/web/public
+          git rm .github/workflows/phase35-uat7-home-view-prep.yml
+          git commit -m "chore: refresh UAT7 Home view artifacts"
+          git push origin HEAD:phase35-device-profiles-proxmox
