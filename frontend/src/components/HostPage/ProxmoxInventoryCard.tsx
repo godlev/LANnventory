@@ -623,22 +623,32 @@ function MatchCell(props: {
       >
         <div class="proxmox-linked-host">
           <div>
-            <div class="fw-semibold">{currentHost()?.name || currentHost()?.ip || currentHost()?.mac}</div>
-            <div class="small device-cell-muted">
+            <div class="proxmox-linked-state">
+              <span class={"badge "+(currentLink()?.linkSource === "exact-mac" ? "text-bg-success" : "text-bg-primary")}>
+                {currentLink()?.linkSource === "exact-mac" ? "Linked automatically" : "Linked manually"}
+              </span>
+              <span class="small device-cell-muted">
+                {currentLink()?.linkSource === "exact-mac" ? "Exact MAC" : "Manual choice"}
+              </span>
+            </div>
+            <div class="fw-semibold proxmox-linked-host-name">
+              {currentHost()?.name || currentHost()?.ip || currentHost()?.mac}
+            </div>
+            <div class="small device-cell-muted proxmox-linked-host-identity">
               {[currentHost()?.ip, currentHost()?.mac].filter(Boolean).join(" · ")}
             </div>
           </div>
           <div class="proxmox-link-actions">
-            <span class={"badge "+(currentLink()?.linkSource === "exact-mac" ? "text-bg-success" : "text-bg-primary")}>
-              {currentLink()?.linkSource === "exact-mac" ? "Exact MAC" : "Manual"}
-            </span>
             <button
               type="button"
               class="btn btn-sm btn-outline-secondary"
               disabled={props.busy}
+              title={currentLink()?.linkSource === "exact-mac"
+                ? "Remove this workload ↔ Host relationship. Exact MAC evidence remains and a future import may link it automatically again."
+                : "Remove this workload ↔ Host relationship."}
               onClick={props.onUnlink}
             >
-              {props.busy ? "Working…" : "Unlink"}
+              {props.busy ? "Working…" : "Remove link"}
             </button>
           </div>
         </div>
@@ -747,7 +757,7 @@ function CandidateAction(props: {
             </div>
           </div>
           <div class="proxmox-candidate-evidence-summary">
-            <strong>Evidence: IP address match only</strong>
+            <strong>Evidence: current IP address match only</strong>
             <span class="device-cell-muted">
               MAC differs{hasNameEvidence() ? " · additional name evidence also exists" : ""}
             </span>
@@ -756,6 +766,12 @@ function CandidateAction(props: {
                 {formatEvidenceWindow(addressEvidence()?.firstSeen, addressEvidence()?.lastSeen)}
               </span>
             </Show>
+            <div class="proxmox-ip-conflict-guidance">
+              <i class="bi bi-info-circle" aria-hidden="true"></i>
+              <span>
+                This address overlap is not proof that both records are the same device. If you change the VM/LXC IP in Proxmox, import a fresh snapshot and this conflict disappears once the current addresses no longer overlap. Historical IP reuse is kept in Host history only.
+              </span>
+            </div>
           </div>
         </Show>
       </div>
