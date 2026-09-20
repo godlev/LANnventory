@@ -1,6 +1,8 @@
 package workloadmatch
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"net"
 	"sort"
@@ -17,21 +19,30 @@ const (
 )
 
 type Evidence struct {
-	Code     string `json:"code"`
-	Detail   string `json:"detail"`
-	Strength string `json:"strength"`
-	Active   bool   `json:"active"`
+	Code         string `json:"code"`
+	Detail       string `json:"detail"`
+	Strength     string `json:"strength"`
+	Active       bool   `json:"active"`
+	MatchedValue string `json:"matchedValue,omitempty"`
+	FirstSeen    string `json:"firstSeen,omitempty"`
+	LastSeen     string `json:"lastSeen,omitempty"`
 }
 
 type Candidate struct {
-	HostID     int        `json:"hostId"`
-	Mac        string     `json:"mac"`
-	Name       string     `json:"name"`
-	IP         string     `json:"ip"`
-	DeviceType string     `json:"deviceType"`
-	Active     bool       `json:"active"`
-	Strength   string     `json:"strength"`
-	Evidence   []Evidence `json:"evidence"`
+	HostID              int        `json:"hostId"`
+	Mac                 string     `json:"mac"`
+	Name                string     `json:"name"`
+	IP                  string     `json:"ip"`
+	DeviceType          string     `json:"deviceType"`
+	Active              bool       `json:"active"`
+	Strength            string     `json:"strength"`
+	Assessment          string     `json:"assessment"`
+	PossibleIPConflict  bool       `json:"possibleIpConflict"`
+	MatchedAddresses    []string   `json:"matchedAddresses"`
+	WorkloadMACs        []string   `json:"workloadMacs"`
+	EvidenceFingerprint string     `json:"evidenceFingerprint"`
+	Rejected            bool       `json:"rejected"`
+	Evidence            []Evidence `json:"evidence"`
 }
 
 type Result struct {
@@ -99,17 +110,20 @@ func Match(
 		candidate.Evidence = append(candidate.Evidence, evidence)
 	}
 
+	workloadMACSet := make(map[string]struct{})
 	for _, iface := range record.Interfaces {
 		mac, err := identity.NormalizeMAC(iface.Mac)
 		if err != nil {
 			continue
 		}
+		workloadMACSet[mac] = struct{}{}
 		for _, hostID := range hostIDsByMAC[mac] {
 			addEvidence(hostID, Evidence{
-				Code:     "exact-interface-mac",
-				Detail:   fmt.Sprintf("%s MAC %s exactly matches the Host MAC", interfaceLabel(iface.Name), mac),
-				Strength: StrengthExactMAC,
-				Active:   hostByID[hostID].Now == 1,
+				Code:         "exact-interface-mac",
+				Detail:       fmt.Sprintf("%s MAC %s exactly matches the Host MAC", interfaceLabel(iface.Name), mac),
+				Strength:     StrengthExactMAC,
+				Active:       hostByID[hostID].Now == 1,
+				MatchedValue: mac,
 			})
 		}
 	}
@@ -131,10 +145,11 @@ func Match(
 			continue
 		}
 		addEvidence(host.ID, Evidence{
-			Code:     "current-address",
-			Detail:   fmt.Sprintf("%s configured address %s matches the Host current address", joinedInterfaceLabel(ifaces), address),
-			Strength: StrengthAddress,
-			Active:   host.Now == 1,
+			Code:         "current-address",
+			Detail:       fmt.Sprintf("%s configured address %s matches the Host current address", joinedInterfaceLabel(ifaces), address),
+			Strength:     StrengthAddress,
+			Active:       host.Now == 1,
+			MatchedValue: address,
 		})
 	}
 
@@ -155,10 +170,13 @@ func Match(
 				state = "active address observation"
 			}
 			addEvidence(hostID, Evidence{
-				Code:     code,
-				Detail:   fmt.Sprintf("%s configured address %s matches a Host %s", joinedInterfaceLabel(ifaces), address, state),
-				Strength: StrengthAddress,
-				Active:   row.Active,
+				Code:         code,
+				Detail:       fmt.Sprintf("%s configured address %s matches a Host %s", joinedInterfaceLabel(ifaces), address, state),
+				Strength:     StrengthAddress,
+				Active:       row.Active,
+				MatchedValue: address,
+				FirstSeen:    row.FirstSeen,
+				LastSeen:     row.LastSeen,
 			})
 		}
 	}
@@ -168,18 +186,20 @@ func Match(
 		for _, host := range hostByID {
 			if workloadName == normalizedName(host.Name) && strings.TrimSpace(host.Name) != "" {
 				addEvidence(host.ID, Evidence{
-					Code:     "host-name",
-					Detail:   fmt.Sprintf("Workload name %q matches Host name %q", record.Workload.Name, host.Name),
-					Strength: StrengthName,
-					Active:   host.Now == 1,
+					Code:         "host-name",
+					Detail:       fmt.Sprintf("Workload name %q matches Host name %q", record.Workload.Name, host.Name),
+					Strength:     StrengthName,
+					Active:       host.Now == 1,
+					MatchedValue: workloadName,
 				})
 			}
 			if workloadName == normalizedName(host.DNS) && strings.TrimSpace(host.DNS) != "" {
 				addEvidence(host.ID, Evidence{
-					Code:     "host-dns",
-					Detail:   fmt.Sprintf("Workload name %q matches Host DNS name %q", record.Workload.Name, host.DNS),
-					Strength: StrengthName,
-					Active:   host.Now == 1,
+					Code:         "host-dns",
+					Detail:       fmt.Sprintf("Workload name %q matches Host DNS name %q", record.Workload.Name, host.DNS),
+					Strength:     StrengthName,
+					Active:       host.Now == 1,
+					MatchedValue: workloadName,
 				})
 			}
 		}
@@ -194,14 +214,23 @@ func Match(
 			}
 			for _, hostID := range hostIDsByMAC[identity.MACKey(row.Mac)] {
 				addEvidence(hostID, Evidence{
-					Code:     "discovered-" + kind,
-					Detail:   fmt.Sprintf("Workload name %q matches discovered %s %q", record.Workload.Name, kind, row.Value),
-					Strength: StrengthName,
-					Active:   row.Active,
+					Code:         "discovered-" + kind,
+					Detail:       fmt.Sprintf("Workload name %q matches discovered %s %q", record.Workload.Name, kind, row.Value),
+					Strength:     StrengthName,
+					Active:       row.Active,
+					MatchedValue: workloadName,
+					FirstSeen:    row.FirstSeen,
+					LastSeen:     row.LastSeen,
 				})
 			}
 		}
 	}
+
+	workloadMACs := make([]string, 0, len(workloadMACSet))
+	for mac := range workloadMACSet {
+		workloadMACs = append(workloadMACs, mac)
+	}
+	sort.Strings(workloadMACs)
 
 	result := Result{Candidates: []Candidate{}}
 	exactHostIDs := make([]int, 0)
@@ -219,6 +248,7 @@ func Match(
 			}
 			return left.Detail < right.Detail
 		})
+		finalizeCandidate(candidate, workloadMACs)
 		if candidate.Strength == StrengthExactMAC {
 			exactHostIDs = append(exactHostIDs, hostID)
 		}
@@ -244,6 +274,70 @@ func Match(
 		return left.HostID < right.HostID
 	})
 	return result
+}
+
+func finalizeCandidate(candidate *Candidate, workloadMACs []string) {
+	candidate.WorkloadMACs = append([]string(nil), workloadMACs...)
+	addressSet := make(map[string]struct{})
+	hasExact := false
+	hasAddress := false
+	hasName := false
+	for _, evidence := range candidate.Evidence {
+		switch evidence.Strength {
+		case StrengthExactMAC:
+			hasExact = true
+		case StrengthAddress:
+			hasAddress = true
+			if evidence.MatchedValue != "" {
+				addressSet[evidence.MatchedValue] = struct{}{}
+			}
+		case StrengthName:
+			hasName = true
+		}
+	}
+	candidate.MatchedAddresses = make([]string, 0, len(addressSet))
+	for address := range addressSet {
+		candidate.MatchedAddresses = append(candidate.MatchedAddresses, address)
+	}
+	sort.Strings(candidate.MatchedAddresses)
+
+	candidate.PossibleIPConflict = hasAddress && !hasExact && candidate.Mac != "" && len(workloadMACs) > 0 && !containsString(workloadMACs, candidate.Mac)
+	switch {
+	case hasExact:
+		candidate.Assessment = "exact-mac"
+	case candidate.PossibleIPConflict:
+		candidate.Assessment = "possible-ip-conflict"
+	case hasAddress:
+		candidate.Assessment = "address-only"
+	case hasName:
+		candidate.Assessment = "name-only"
+	default:
+		candidate.Assessment = "unknown"
+	}
+	candidate.EvidenceFingerprint = evidenceFingerprint(*candidate)
+}
+
+func evidenceFingerprint(candidate Candidate) string {
+	parts := []string{
+		candidate.Mac,
+		candidate.Strength,
+		candidate.Assessment,
+		strings.Join(candidate.WorkloadMACs, ","),
+	}
+	for _, evidence := range candidate.Evidence {
+		parts = append(parts, fmt.Sprintf("%s|%s|%t", evidence.Code, evidence.MatchedValue, evidence.Active))
+	}
+	sum := sha256.Sum256([]byte(strings.Join(parts, "\n")))
+	return hex.EncodeToString(sum[:])
+}
+
+func containsString(values []string, target string) bool {
+	for _, value := range values {
+		if value == target {
+			return true
+		}
+	}
+	return false
 }
 
 func strengthRank(value string) int {
