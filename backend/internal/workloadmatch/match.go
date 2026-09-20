@@ -326,7 +326,7 @@ func evidenceFingerprint(candidate Candidate) string {
 	}
 	evidenceParts := make([]string, 0, len(candidate.Evidence))
 	for _, evidence := range candidate.Evidence {
-		evidenceParts = append(evidenceParts, fmt.Sprintf("%s|%s|%t", evidence.Code, evidence.MatchedValue, evidence.Active))
+		evidenceParts = append(evidenceParts, fmt.Sprintf("%s|%s", evidence.Code, evidence.MatchedValue))
 	}
 	sort.Strings(evidenceParts)
 	parts = append(parts, evidenceParts...)
