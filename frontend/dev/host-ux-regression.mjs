@@ -81,7 +81,7 @@ requireText(deviceProfile, '<option value="proxmox-ve">Proxmox VE</option>', "Ma
 requireText(proxmoxInventory, "How access works", "Proxmox onboarding must explain collector permissions.");
 requireText(proxmoxInventory, "uses the permissions of the shell user", "Collector access model must be explicit.");
 requireText(proxmoxInventory, "Open the Proxmox shell", "Proxmox import must be presented as a guided workflow.");
-requireText(proxmoxInventory, "Run the read-only collector", "Collector execution must be a dedicated wizard step.");
+requireText(proxmoxInventory, "Create a compact snapshot file", "Collector execution must be a dedicated wizard step.");
 requireText(proxmoxInventory, "Download collector", "Collector must be downloadable from the LANnventory UI.");
 requireText(proxmoxInventory, "/lannventory-proxmox-collector.py", "Collector download must be served by the local LANnventory instance.");
 requireText(proxmoxInventory, "Preview changes", "Preview must remain mandatory and explicit.");
