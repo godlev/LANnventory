@@ -324,14 +324,30 @@ func evidenceFingerprint(candidate Candidate) string {
 		candidate.Assessment,
 		strings.Join(candidate.WorkloadMACs, ","),
 	}
-	evidenceParts := make([]string, 0, len(candidate.Evidence))
+	evidencePartSet := make(map[string]struct{}, len(candidate.Evidence))
 	for _, evidence := range candidate.Evidence {
-		evidenceParts = append(evidenceParts, fmt.Sprintf("%s|%s", evidence.Code, evidence.MatchedValue))
+		part := fingerprintEvidencePart(evidence)
+		if part == "" {
+			continue
+		}
+		evidencePartSet[part] = struct{}{}
+	}
+	evidenceParts := make([]string, 0, len(evidencePartSet))
+	for part := range evidencePartSet {
+		evidenceParts = append(evidenceParts, part)
 	}
 	sort.Strings(evidenceParts)
 	parts = append(parts, evidenceParts...)
 	sum := sha256.Sum256([]byte(strings.Join(parts, "\n")))
 	return hex.EncodeToString(sum[:])
+}
+
+func fingerprintEvidencePart(evidence Evidence) string {
+	matchedValue := strings.TrimSpace(evidence.MatchedValue)
+	if evidence.Strength == StrengthAddress && matchedValue != "" {
+		return fmt.Sprintf("%s|%s", StrengthAddress, matchedValue)
+	}
+	return fmt.Sprintf("%s|%s|%s", evidence.Strength, evidence.Code, matchedValue)
 }
 
 func containsString(values []string, target string) bool {
