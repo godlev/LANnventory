@@ -200,3 +200,66 @@ func workloadRequest(router *gin.Engine, method string, hostID int, suffix, body
 	router.ServeHTTP(rec, req)
 	return rec
 }
+
+
+func TestInfrastructureWorkloadMembershipsExposeReverseParentRelation(t *testing.T) {
+	router := setupTestRouter(t)
+	hypervisor := seedHost(t, models.Host{Name: "proxmox", Mac: "AA:BB:CC:DD:F1:10", IP: "10.4.1.6", DeviceType: "server"})
+	guest := seedHost(t, models.Host{Name: "actualbudget", Mac: "AA:BB:CC:DD:F1:11", IP: "10.4.1.67", DeviceType: "server"})
+	enableTestHypervisor(t, router, hypervisor.ID)
+
+	rec := workloadRequest(router, http.MethodPost, hypervisor.ID, "", `{
+		"nativeId":"104",
+		"workloadType":"container",
+		"name":"actualbudget",
+		"status":"running"
+	}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("create workload status = %d; body: %s", rec.Code, rec.Body.String())
+	}
+	var workload InfrastructureWorkloadResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &workload); err != nil {
+		t.Fatalf("json.Unmarshal workload: %v", err)
+	}
+	rec = workloadRequest(router, http.MethodPut, hypervisor.ID, "/"+itoa(int(workload.ID))+"/link", `{"hostId":`+itoa(guest.ID)+`}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("link workload status = %d; body: %s", rec.Code, rec.Body.String())
+	}
+
+	rec = getPath(router, "/api/infrastructure/workload-memberships")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("memberships status = %d; body: %s", rec.Code, rec.Body.String())
+	}
+	var memberships []InfrastructureWorkloadMembershipResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &memberships); err != nil {
+		t.Fatalf("json.Unmarshal memberships: %v", err)
+	}
+	if len(memberships) != 1 {
+		t.Fatalf("memberships = %+v", memberships)
+	}
+	item := memberships[0]
+	if item.HostID != guest.ID || item.WorkloadID != workload.ID || item.NativeID != "104" ||
+		item.WorkloadType != "container" || item.HypervisorHostID != hypervisor.ID ||
+		item.HypervisorName != hypervisor.Name || item.HypervisorIP != hypervisor.IP {
+		t.Fatalf("membership = %+v", item)
+	}
+
+	rec = getPath(router, "/api/infrastructure/workload-memberships?hostId="+itoa(guest.ID))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("filtered memberships status = %d; body: %s", rec.Code, rec.Body.String())
+	}
+	memberships = nil
+	if err := json.Unmarshal(rec.Body.Bytes(), &memberships); err != nil || len(memberships) != 1 {
+		t.Fatalf("filtered memberships=%+v err=%v", memberships, err)
+	}
+
+	other := seedHost(t, models.Host{Name: "other", Mac: "AA:BB:CC:DD:F1:12"})
+	rec = getPath(router, "/api/infrastructure/workload-memberships?hostId="+itoa(other.ID))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("other filtered memberships status = %d; body: %s", rec.Code, rec.Body.String())
+	}
+	memberships = nil
+	if err := json.Unmarshal(rec.Body.Bytes(), &memberships); err != nil || len(memberships) != 0 {
+		t.Fatalf("other memberships=%+v err=%v", memberships, err)
+	}
+}
