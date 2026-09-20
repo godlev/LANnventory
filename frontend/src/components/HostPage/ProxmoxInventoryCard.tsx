@@ -180,12 +180,12 @@ function ProxmoxInventoryCard(props: Props) {
 
     const summary = currentPreview.summary;
     const accepted = window.confirm(
-      "Apply this reviewed Proxmox snapshot?\n\n"+
-      "Add: "+summary.added+
+      "Import this reviewed snapshot into LANnventory?\n\n"+
+      "New workload records: "+summary.added+
       " · Update: "+summary.updated+
       " · Retire: "+summary.retired+
       " · Unchanged: "+summary.unchanged+
-      "\n\nManaged Device Profile fields will not be overwritten."
+      "\n\nThis changes LANnventory inventory only. It does not create, modify, stop, start, or delete anything on Proxmox. Workloads are not created as LANnventory Hosts. Managed Device Profile fields and manual links are preserved."
     );
     if (!accepted) return;
 
@@ -338,6 +338,7 @@ function ProxmoxInventoryCard(props: Props) {
             onClear={clearImport}
             onPreview={() => void handlePreview()}
             onApply={() => void handleApply()}
+            proxmoxAddress={props.host.IP}
           />
         </Show>
       </div>
@@ -599,24 +600,38 @@ function ImportSection(props: {
   onClear: () => void;
   onPreview: () => void;
   onApply: () => void;
+  proxmoxAddress: string;
 }) {
-  const [copied, setCopied] = createSignal(false);
+  const [selectedCommand, setSelectedCommand] = createSignal("");
+  let collectCommandRef: HTMLElement | undefined;
+  let scpCommandRef: HTMLElement | undefined;
+  let catCommandRef: HTMLElement | undefined;
 
   const collectorURL = () => {
     if (typeof window === "undefined") return "/lannventory-proxmox-collector.py";
     return window.location.origin+"/lannventory-proxmox-collector.py";
   };
+  const snapshotPath = "/tmp/lannventory-proxmox.json";
   const collectorCommand = () =>
-    "curl -fsSL "+collectorURL()+" -o /tmp/lannventory-proxmox-collector.py && python3 /tmp/lannventory-proxmox-collector.py";
+    "curl -fsSL "+collectorURL()+" -o /tmp/lannventory-proxmox-collector.py && python3 /tmp/lannventory-proxmox-collector.py --compact > "+snapshotPath+" && echo 'Snapshot saved to "+snapshotPath+"'";
+  const scpCommand = () => {
+    const address = props.proxmoxAddress?.trim() || "<PROXMOX-IP>";
+    return "scp root@"+address+":"+snapshotPath+" .";
+  };
+  const catCommand = () => "cat "+snapshotPath;
 
-  const copyCollectorCommand = async () => {
-    try {
-      await navigator.clipboard.writeText(collectorCommand());
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1800);
-    } catch {
-      setCopied(false);
-    }
+  const selectCommand = (element: HTMLElement | undefined, key: string) => {
+    if (!element || typeof window === "undefined") return;
+    const selection = window.getSelection();
+    if (!selection) return;
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    selection.removeAllRanges();
+    selection.addRange(range);
+    setSelectedCommand(key);
+    window.setTimeout(() => {
+      if (selectedCommand() === key) setSelectedCommand("");
+    }, 3500);
   };
 
   return (
@@ -639,7 +654,7 @@ function ImportSection(props: {
             The collector runs <strong>on the Proxmox node</strong> and uses the permissions of the shell user running it.
             Use <strong>root</strong> or an account allowed to run <span class="font-monospace">qm</span>/<span class="font-monospace">pct</span>
             and read the allowlisted network lines under <span class="font-monospace">/etc/pve</span>.
-            It does not log in to Proxmox from LANnventory and it does not send data anywhere.
+            It does not log in to Proxmox from LANnventory and it does not send collected data anywhere.
           </div>
         </div>
       </div>
@@ -651,20 +666,21 @@ function ImportSection(props: {
           </div>
         </WizardStep>
 
-        <WizardStep number="2" title="Run the read-only collector">
+        <WizardStep number="2" title="Create a compact snapshot file">
           <div class="small device-cell-muted mb-2">
-            Copy this command into the Proxmox shell. It downloads the collector from this LANnventory instance and prints the JSON result in the shell.
+            Run this on the Proxmox node. The collector output is written directly to <span class="font-monospace">{snapshotPath}</span>, so large environments do not flood the terminal with JSON.
           </div>
-          <div class="proxmox-command-row">
-            <code class="proxmox-collector-command">{collectorCommand()}</code>
-            <button
-              type="button"
-              class="btn btn-sm btn-outline-secondary proxmox-copy-button"
-              onClick={() => void copyCollectorCommand()}
-            >
-              <i class={copied() ? "bi bi-check2 me-1" : "bi bi-copy me-1"} aria-hidden="true"></i>
-              {copied() ? "Copied" : "Copy"}
-            </button>
+          <CommandBox
+            command={collectorCommand()}
+            selected={selectedCommand() === "collect"}
+            onSelect={(element) => {
+              collectCommandRef = element;
+              selectCommand(collectCommandRef, "collect");
+            }}
+          />
+          <div class="proxmox-command-security-note">
+            <i class="bi bi-shield-lock me-1" aria-hidden="true"></i>
+            LANnventory does not copy terminal commands to your clipboard automatically. Select the command, press <strong>Ctrl+C</strong>, then paste it into the Proxmox shell.
           </div>
           <div class="proxmox-download-fallback">
             <span class="small device-cell-muted">If the Proxmox node cannot reach this LANnventory URL:</span>
@@ -679,14 +695,42 @@ function ImportSection(props: {
           </div>
         </WizardStep>
 
-        <WizardStep number="3" title="Bring the JSON result back here">
+        <WizardStep number="3" title="Bring the snapshot file to this browser">
           <div class="small device-cell-muted mb-2">
-            Copy the complete JSON printed by the collector and paste it below. If you saved the output as a file instead, choose that JSON file.
+            <strong>Recommended for larger environments:</strong> copy the JSON file from Proxmox to the computer where this browser is running, then use <strong>Choose JSON file</strong>.
+          </div>
+          <div class="proxmox-transfer-option">
+            <div class="small fw-semibold">Option A · Copy the file with SCP from your computer</div>
+            <CommandBox
+              command={scpCommand()}
+              selected={selectedCommand() === "scp"}
+              onSelect={(element) => {
+                scpCommandRef = element;
+                selectCommand(scpCommandRef, "scp");
+              }}
+            />
+            <div class="small device-cell-muted mt-1">
+              Run this in a terminal on your computer, not in the Proxmox shell. If SSH uses a different user, address, or port, adjust the command.
+            </div>
+          </div>
+          <div class="proxmox-transfer-option">
+            <div class="small fw-semibold">Option B · Paste JSON manually</div>
+            <div class="small device-cell-muted mb-1">
+              For smaller setups you can print the compact file and copy the single JSON line.
+            </div>
+            <CommandBox
+              command={catCommand()}
+              selected={selectedCommand() === "cat"}
+              onSelect={(element) => {
+                catCommandRef = element;
+                selectCommand(catCommandRef, "cat");
+              }}
+            />
           </div>
           <textarea
-            class="form-control form-control-sm wyl-control proxmox-import-textarea font-monospace"
+            class="form-control form-control-sm wyl-control proxmox-import-textarea font-monospace mt-2"
             rows={7}
-            placeholder={'Paste the collector JSON here, starting with "{" …'}
+            placeholder={'Paste compact collector JSON here, starting with "{" …'}
             value={props.importText}
             onInput={(event) => props.onText(event.currentTarget.value)}
           ></textarea>
@@ -710,7 +754,7 @@ function ImportSection(props: {
         <WizardStep number="4" title="Review before anything is saved">
           <div class="proxmox-review-row">
             <div class="small device-cell-muted">
-              Preview validates the JSON and shows Add / Update / Retire / Conflicts. Nothing is written until you review and confirm Apply.
+              Preview validates the snapshot and shows exactly what LANnventory would add, update, keep unchanged, or mark retired. Nothing is written until you review and confirm the import.
             </div>
             <button
               type="button"
@@ -743,7 +787,7 @@ function ImportSection(props: {
                 </div>
               </div>
               <span class={"badge "+(preview().applyAllowed ? "text-bg-success" : "text-bg-warning")}>
-                {preview().applyAllowed ? "Ready to apply" : "Blocked"}
+                {preview().applyAllowed ? "Ready to import" : "Blocked"}
               </span>
             </div>
 
@@ -754,6 +798,8 @@ function ImportSection(props: {
               <PreviewMetric label="Retire" value={preview().summary.retired} />
               <PreviewMetric label="Conflicts" value={preview().summary.conflicts} />
             </div>
+
+            <ApplyImpact preview={preview()} />
 
             <Show when={preview().blockedReasons.length > 0}>
               <div class="proxmox-preview-alert is-blocked">
@@ -786,7 +832,7 @@ function ImportSection(props: {
               <div class="table-responsive mt-2">
                 <table class="table table-sm align-middle mb-0 proxmox-preview-table">
                   <thead>
-                    <tr><th>Action</th><th>Workload</th><th>Changes</th></tr>
+                    <tr><th>Action</th><th>Workload</th><th>What changes in LANnventory</th></tr>
                   </thead>
                   <tbody>
                     <For each={preview().workloads}>
@@ -797,7 +843,7 @@ function ImportSection(props: {
                             <span class="font-monospace me-2">{item.after?.nativeId ?? item.before?.nativeId ?? item.key}</span>
                             <span>{item.after?.name ?? item.before?.name ?? ""}</span>
                           </td>
-                          <td>{item.changes.length ? item.changes.join(", ") : "No changes"}</td>
+                          <td>{previewChangeDescription(item.action, item.changes)}</td>
                         </tr>
                       )}
                     </For>
@@ -807,7 +853,9 @@ function ImportSection(props: {
             </Show>
 
             <div class="proxmox-preview-footer">
-              <div class="small device-cell-muted">Apply revalidates the snapshot and rejects a stale Preview if inventory changed meanwhile.</div>
+              <div class="small device-cell-muted">
+                Import revalidates the snapshot and rejects a stale Preview if inventory changed meanwhile.
+              </div>
               <button
                 type="button"
                 class="btn btn-sm btn-success"
@@ -815,7 +863,7 @@ function ImportSection(props: {
                 onClick={props.onApply}
               >
                 <i class={props.applying ? "bi bi-arrow-repeat proxmox-spin me-1" : "bi bi-check2-circle me-1"} aria-hidden="true"></i>
-                {props.applying ? "Applying…" : "Apply reviewed snapshot"}
+                {props.applying ? "Importing…" : "Import into LANnventory"}
               </button>
             </div>
           </div>
@@ -823,6 +871,68 @@ function ImportSection(props: {
       </Show>
     </div>
   );
+}
+
+function CommandBox(props: {
+  command: string;
+  selected: boolean;
+  onSelect: (element: HTMLElement) => void;
+}) {
+  let commandRef: HTMLElement | undefined;
+  return (
+    <div class="proxmox-command-row">
+      <code ref={commandRef} class="proxmox-collector-command">{props.command}</code>
+      <button
+        type="button"
+        class="btn btn-sm btn-outline-secondary proxmox-copy-button"
+        onClick={() => commandRef && props.onSelect(commandRef)}
+      >
+        <i class={props.selected ? "bi bi-check2 me-1" : "bi bi-text-paragraph me-1"} aria-hidden="true"></i>
+        {props.selected ? "Selected — Ctrl+C" : "Select command"}
+      </button>
+    </div>
+  );
+}
+
+function ApplyImpact(props: { preview: ProxmoxImportPreview }) {
+  const s = () => props.preview.summary;
+  return (
+    <div class="proxmox-apply-impact">
+      <div class="proxmox-apply-impact-title">
+        <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
+        What Import will do in LANnventory
+      </div>
+      <div class="proxmox-apply-impact-grid">
+        <div>
+          <strong>{s().added}</strong>
+          <span>new workload record{s().added === 1 ? "" : "s"} will be added under this Proxmox Host.</span>
+        </div>
+        <div>
+          <strong>{s().updated}</strong>
+          <span>existing workload record{s().updated === 1 ? "" : "s"} will be updated.</span>
+        </div>
+        <div>
+          <strong>{s().retired}</strong>
+          <span>previously imported workload{s().retired === 1 ? "" : "s"} will be marked retired, not deleted.</span>
+        </div>
+      </div>
+      <div class="proxmox-apply-impact-safety">
+        <div><i class="bi bi-check2-circle" aria-hidden="true"></i> Workloads remain separate from LANnventory Hosts; no fake Hosts are created.</div>
+        <div><i class="bi bi-check2-circle" aria-hidden="true"></i> Only a unique exact-MAC match may auto-link to an existing Host; weaker matches still require your choice.</div>
+        <div><i class="bi bi-shield-check" aria-hidden="true"></i> No VM/LXC is created, changed, started, stopped, or deleted on Proxmox.</div>
+        <div><i class="bi bi-shield-check" aria-hidden="true"></i> Managed Device Profile fields and manual workload links are not overwritten.</div>
+      </div>
+    </div>
+  );
+}
+
+function previewChangeDescription(action: string, changes: string[]) {
+  if (action === "add") return "Create a new workload inventory record.";
+  if (action === "retire") return "Mark the imported workload as retired; keep its history.";
+  if (action === "conflict") return "Blocked by a manual/imported ownership conflict.";
+  if (action === "unchanged") return "No inventory fields will change.";
+  if (changes.length === 0) return "Update the existing workload record.";
+  return "Update: "+changes.join(", ")+".";
 }
 
 function WizardStep(props: { number: string; title: string; children: any }) {
