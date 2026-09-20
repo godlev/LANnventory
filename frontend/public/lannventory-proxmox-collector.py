@@ -20,7 +20,7 @@ import sys
 from typing import Iterable
 
 SCHEMA_VERSION = 1
-COLLECTOR_VERSION = "1.0.0"
+COLLECTOR_VERSION = "1.0.1"
 SOURCE = "script-import"
 
 QEMU_NETWORK_PATTERN = r"^(net|ipconfig)[0-9]+:"
@@ -47,15 +47,22 @@ def run_command(args: list[str], label: str) -> str:
 
 
 def read_allowlisted_config(path: str, pattern: str, label: str) -> list[str]:
-    """Return only matching allowlisted config lines.
+    """Return only matching allowlisted lines from the active config section.
 
-    grep reads the source file and only matching lines cross the process boundary
-    into the collector. Raw config, disks, passwords, tokens and user-data keys
-    are never captured by this Python process or emitted in the snapshot.
+    Proxmox stores snapshot sections after the active configuration using
+    [snapshot-name] headers. The collector must stop before the first such
+    section, otherwise historical netN/ipconfigN values can be mistaken for the
+    current guest network configuration.
+
+    awk reads the source file, exits at the first section header, and only
+    matching allowlisted lines cross the process boundary into the collector.
+    Raw config, disks, passwords, tokens and user-data keys are never captured
+    by this Python process or emitted in the snapshot.
     """
+    awk_program = f'/^[[:space:]]*\\[/ {{ exit }} /{pattern}/ {{ print }}'
     try:
         result = subprocess.run(
-            ["grep", "-E", pattern, path],
+            ["awk", awk_program, path],
             check=False,
             capture_output=True,
             text=True,
@@ -63,8 +70,6 @@ def read_allowlisted_config(path: str, pattern: str, label: str) -> list[str]:
     except OSError as exc:
         raise CollectionError(f"{label} network metadata unavailable") from exc
 
-    if result.returncode == 1:
-        return []
     if result.returncode != 0:
         raise CollectionError(f"{label} network metadata unavailable")
     return [line.strip() for line in result.stdout.splitlines() if line.strip()]
@@ -190,7 +195,7 @@ def parse_qemu_interfaces(lines: Iterable[str]) -> list[dict[str, str]]:
 
 
 def parse_lxc_interfaces(lines: Iterable[str]) -> list[dict[str, str]]:
-    interfaces: list[dict[str, str]] = []
+    interfaces_by_key: dict[str, dict[str, str]] = {}
     for line in lines:
         if ":" not in line:
             continue
@@ -202,17 +207,15 @@ def parse_lxc_interfaces(lines: Iterable[str]) -> list[dict[str, str]]:
         address = configured_address(values.get("ip", ""))
         if not address:
             address = configured_address(values.get("ip6", ""))
-        interfaces.append(
-            {
-                "name": values.get("name", key),
-                "mac": normalize_mac(values.get("hwaddr", value)),
-                "bridge": values.get("bridge", ""),
-                "vlanTag": values.get("tag", ""),
-                "configuredAddress": address,
-                "configuredNetwork": configured_network(address),
-            }
-        )
-    return sorted(interfaces, key=lambda item: item["name"])
+        interfaces_by_key[key] = {
+            "name": values.get("name", key),
+            "mac": normalize_mac(values.get("hwaddr", value)),
+            "bridge": values.get("bridge", ""),
+            "vlanTag": values.get("tag", ""),
+            "configuredAddress": address,
+            "configuredNetwork": configured_network(address),
+        }
+    return sorted(interfaces_by_key.values(), key=lambda item: item["name"])
 
 
 def collect_cluster_name() -> str:
@@ -276,7 +279,7 @@ def collect_workload_type(command: list[str], workload_type: str, errors: list[s
 
 
 def preflight() -> None:
-    required = ["hostname", "pveversion", "qm", "pct", "grep"]
+    required = ["hostname", "pveversion", "qm", "pct", "awk"]
     missing = [command for command in required if shutil.which(command) is None]
     if missing:
         raise CollectionError("required Proxmox commands unavailable: " + ", ".join(sorted(missing)))
