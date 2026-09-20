@@ -11,11 +11,25 @@ import { getHosts } from "../functions/atstart";
 import { deviceTypeFilterLabel } from "../functions/deviceTypes";
 import { apiGetInfrastructureWorkloadMemberships, type InfrastructureWorkloadMembership } from "../functions/api";
 
+type HomeTableView = "comfortable" | "compact";
+
+const homeTableViewStorageKey = "lannventory.home.tableView";
+
 function Body() {
   const [expandedDeviceRows, setExpandedDeviceRows] = createSignal<Record<string, boolean>>({});
   const [workloadMemberships, setWorkloadMemberships] = createSignal<InfrastructureWorkloadMembership[]>([]);
+  const [tableView, setTableView] = createSignal<HomeTableView>("comfortable");
 
   onMount(() => {
+    try {
+      const savedView = window.localStorage.getItem(homeTableViewStorageKey);
+      if (savedView === "comfortable" || savedView === "compact") {
+        setTableView(savedView);
+      }
+    } catch {
+      // Browser storage is optional; Comfortable remains the safe default.
+    }
+
     getHosts();
     void apiGetInfrastructureWorkloadMemberships()
       .then((items) => setWorkloadMemberships(items ?? []))
@@ -32,6 +46,15 @@ function Body() {
     }
     return result;
   });
+
+  const setHomeTableView = (next: HomeTableView) => {
+    setTableView(next);
+    try {
+      window.localStorage.setItem(homeTableViewStorageKey, next);
+    } catch {
+      // Keep the in-session view even when browser storage is unavailable.
+    }
+  };
 
   const deviceLabel = (count: number) => count === 1 ? "device" : "devices";
 
@@ -97,10 +120,10 @@ function Body() {
           <div class="device-panel-title">Devices</div>
           <div class="device-panel-subtitle">{currentSubtitle()}</div>
         </div>
-        <CardHead></CardHead>
+        <CardHead viewMode={tableView()} onViewModeChange={setHomeTableView}></CardHead>
       </div>
       <div class="card-body table-responsive device-table-wrap">
-        <table class="table table-hover device-table">
+        <table class={"table table-hover device-table device-table-" + tableView()}>
           <TableHead></TableHead>
           <tbody>
             <For each={allHosts}>{(host, index) =>
@@ -125,6 +148,7 @@ function Body() {
                 mobileExpanded={isDeviceExpanded(host)}
                 onToggleMobileExpanded={() => toggleDeviceExpanded(host)}
                 workloadMemberships={membershipsByHost().get(host.ID) ?? []}
+                viewMode={tableView()}
               ></TableRow>
             </>
             }</For>
