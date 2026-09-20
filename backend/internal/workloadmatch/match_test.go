@@ -131,3 +131,75 @@ func TestMatchDeduplicatesEvidencePerHost(t *testing.T) {
 		t.Fatalf("expected explainable multi-source evidence, got %+v", result.Candidates[0].Evidence)
 	}
 }
+
+
+func TestMatchClassifiesSameAddressDifferentMACAsPossibleIPConflict(t *testing.T) {
+	record := models.InfrastructureWorkloadRecord{
+		Workload: models.InfrastructureWorkload{ID: 104, NativeID: "104", WorkloadType: "container", Name: "actualbudget"},
+		Interfaces: []models.InfrastructureWorkloadInterface{{
+			Name:              "net0",
+			Mac:               "BC:24:11:14:02:A5",
+			ConfiguredAddress: "10.4.1.67/24",
+		}},
+	}
+	hosts := []models.Host{{
+		ID: 67, Name: "IR + RF - Tuya", Mac: "FC:67:1F:26:20:A5", IP: "10.4.1.67", Now: 1,
+	}}
+
+	result := Match(record, "AA:BB:CC:DD:EE:99", hosts, nil, nil)
+	if result.DeterministicExactHostID != 0 || len(result.Candidates) != 1 {
+		t.Fatalf("result = %+v", result)
+	}
+	candidate := result.Candidates[0]
+	if candidate.Strength != StrengthAddress || candidate.Assessment != "possible-ip-conflict" || !candidate.PossibleIPConflict {
+		t.Fatalf("candidate classification = %+v", candidate)
+	}
+	if len(candidate.MatchedAddresses) != 1 || candidate.MatchedAddresses[0] != "10.4.1.67" {
+		t.Fatalf("matched addresses = %+v", candidate.MatchedAddresses)
+	}
+	if len(candidate.WorkloadMACs) != 1 || candidate.WorkloadMACs[0] != "BC:24:11:14:02:A5" {
+		t.Fatalf("workload MACs = %+v", candidate.WorkloadMACs)
+	}
+	if candidate.EvidenceFingerprint == "" {
+		t.Fatal("evidence fingerprint is empty")
+	}
+}
+
+func TestMatchEvidenceFingerprintIgnoresObservationTimestampsButChangesWithMaterialEvidence(t *testing.T) {
+	record := models.InfrastructureWorkloadRecord{
+		Workload: models.InfrastructureWorkload{ID: 122, NativeID: "122", WorkloadType: "container", Name: "frigate"},
+		Interfaces: []models.InfrastructureWorkloadInterface{{
+			Name:              "net0",
+			Mac:               "BC:24:11:F8:D8:48",
+			ConfiguredAddress: "10.4.1.17/24",
+		}},
+	}
+	host := models.Host{ID: 17, Name: "KIVI Kids TV", Mac: "54:67:E6:E7:6F:CB", IP: "10.4.1.200"}
+	addresses := []models.HostAddress{{
+		Mac: host.Mac, Address: "10.4.1.17", Active: true,
+		FirstSeen: "2026-09-19T10:00:00Z", LastSeen: "2026-09-19T11:00:00Z",
+	}}
+
+	first := Match(record, "", []models.Host{host}, addresses, nil)
+	addresses[0].LastSeen = "2026-09-20T22:00:00Z"
+	second := Match(record, "", []models.Host{host}, addresses, nil)
+	if len(first.Candidates) != 1 || len(second.Candidates) != 1 {
+		t.Fatalf("candidates first=%+v second=%+v", first.Candidates, second.Candidates)
+	}
+	if first.Candidates[0].EvidenceFingerprint != second.Candidates[0].EvidenceFingerprint {
+		t.Fatalf("timestamp-only refresh changed fingerprint: %q != %q", first.Candidates[0].EvidenceFingerprint, second.Candidates[0].EvidenceFingerprint)
+	}
+
+	host.Mac = "54:67:E6:E7:6F:CC"
+	addresses[0].Mac = host.Mac
+	third := Match(record, "", []models.Host{host}, addresses, nil)
+	if len(third.Candidates) != 1 || third.Candidates[0].EvidenceFingerprint == first.Candidates[0].EvidenceFingerprint {
+		t.Fatalf("material MAC change did not change fingerprint: first=%+v third=%+v", first.Candidates, third.Candidates)
+	}
+
+	host.Mac = "BC:24:11:F8:D8:48"
+	fourth := Match(record, "", []models.Host{host}, nil, nil)
+	if fourth.DeterministicExactHostID != host.ID || len(fourth.Candidates) != 1 || fourth.Candidates[0].Assessment != "exact-mac" {
+		t.Fatalf("stronger exact-MAC evidence did not supersede weak evidence: %+v", fourth)
+	}
+}
