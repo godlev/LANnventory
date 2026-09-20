@@ -272,6 +272,7 @@ func assertPackagingSchema(t *testing.T) {
 		infrastructureWorkloadsTable,
 		infrastructureWorkloadInterfacesTable,
 		infrastructureWorkloadHostLinksTable,
+		infrastructureWorkloadCandidateRejectionsTable,
 		proxmoxSourceStatesTable,
 	} {
 		if !db.Migrator().HasTable(table) {
