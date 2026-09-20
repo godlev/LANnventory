@@ -190,6 +190,13 @@ func TestMatchEvidenceFingerprintIgnoresObservationTimestampsButChangesWithMater
 		t.Fatalf("timestamp-only refresh changed fingerprint: %q != %q", first.Candidates[0].EvidenceFingerprint, second.Candidates[0].EvidenceFingerprint)
 	}
 
+	host.Now = 1
+	addresses[0].Active = false
+	thirdLiveness := Match(record, "", []models.Host{host}, addresses, nil)
+	if len(thirdLiveness.Candidates) != 1 || thirdLiveness.Candidates[0].EvidenceFingerprint != first.Candidates[0].EvidenceFingerprint {
+		t.Fatalf("liveness-only change altered identity fingerprint: first=%+v liveness=%+v", first.Candidates, thirdLiveness.Candidates)
+	}
+
 	host.Mac = "54:67:E6:E7:6F:CC"
 	addresses[0].Mac = host.Mac
 	third := Match(record, "", []models.Host{host}, addresses, nil)
