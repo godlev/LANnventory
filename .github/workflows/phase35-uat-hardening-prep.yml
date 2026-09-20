@@ -24,6 +24,12 @@ jobs:
           ref: phase35-device-profiles-proxmox
           fetch-depth: 0
 
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
       - name: Format changed Go sources
         run: |
           gofmt -w \
@@ -64,12 +70,6 @@ jobs:
       - name: Build frontend and embedded bundle
         working-directory: frontend
         run: make all
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: backend/go.mod
-          cache-dependency-path: backend/go.sum
 
       - name: Regenerate Swagger docs
         working-directory: backend
