@@ -513,7 +513,7 @@ function workloadMatchesForHost(hostId) {
         candidate.strength,
         candidate.assessment,
         workloadMacs.join(','),
-        ...candidate.evidence.map((item) => item.code+'|'+(item.matchedValue ?? '')+'|'+String(item.active)),
+        ...candidate.evidence.map((item) => item.code+'|'+(item.matchedValue ?? '')),
       ].join('\\n');
       candidate.rejected = candidate.strength !== 'exact-mac' &&
         workloadCandidateRejections.get(workload.id+':'+candidate.hostId) === candidate.evidenceFingerprint;
