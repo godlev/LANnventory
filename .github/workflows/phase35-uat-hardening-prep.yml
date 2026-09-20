@@ -1,4 +1,5 @@
 name: Phase35 UAT Hardening Prep
+# Final source includes liveness-stable workload rejection fingerprints.
 
 on:
   push:
