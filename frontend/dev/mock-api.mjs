@@ -350,6 +350,7 @@ const proxmoxWorkloads = new Map([
 ]);
 
 const mockProxmoxPreviews = new Map();
+const workloadCandidateRejections = new Map();
 
 
 const config = {
@@ -429,11 +430,10 @@ function hostSummary(hostEntry) {
 }
 
 function workloadMatchesForHost(hostId) {
-  const hypervisor = findHostByID(hostId);
   const workloads = proxmoxWorkloads.get(hostId) ?? [];
   return workloads.map((workload) => {
     const candidates = new Map();
-    const addCandidate = (hostEntry, strength, code, detail) => {
+    const addCandidate = (hostEntry, strength, code, detail, matchedValue = '') => {
       if (!hostEntry || hostEntry.ID === hostId) return;
       const existing = candidates.get(hostEntry.ID) ?? {
         hostId: hostEntry.ID,
@@ -443,25 +443,35 @@ function workloadMatchesForHost(hostId) {
         deviceType: hostEntry.DeviceType,
         active: hostEntry.Now === 1,
         strength,
+        assessment: 'unknown',
+        possibleIpConflict: false,
+        matchedAddresses: [],
+        workloadMacs: [],
+        evidenceFingerprint: '',
+        rejected: false,
         evidence: [],
       };
       const rank = { 'exact-mac': 0, address: 1, name: 2 };
       if (rank[strength] < rank[existing.strength]) existing.strength = strength;
-      existing.evidence.push({ code, detail, strength, active: hostEntry.Now === 1 });
+      existing.evidence.push({ code, detail, strength, active: hostEntry.Now === 1, matchedValue });
       candidates.set(hostEntry.ID, existing);
     };
+
+    const workloadMacs = [...new Set((workload.interfaces ?? [])
+      .map((iface) => String(iface.mac ?? '').trim().toUpperCase())
+      .filter(Boolean))].sort();
 
     for (const iface of workload.interfaces ?? []) {
       const ifaceMac = String(iface.mac ?? '').toUpperCase();
       if (ifaceMac) {
         for (const hostEntry of fakeHosts.filter((item) => item.Mac.toUpperCase() === ifaceMac)) {
-          addCandidate(hostEntry, 'exact-mac', 'exact-interface-mac', (iface.name || 'interface')+' MAC '+ifaceMac+' exactly matches the Host MAC');
+          addCandidate(hostEntry, 'exact-mac', 'exact-interface-mac', (iface.name || 'interface')+' MAC '+ifaceMac+' exactly matches the Host MAC', ifaceMac);
         }
       }
       const address = String(iface.configuredAddress ?? '').split('/')[0];
       if (address) {
         for (const hostEntry of fakeHosts.filter((item) => item.IP === address)) {
-          addCandidate(hostEntry, 'address', 'current-address', (iface.name || 'interface')+' address '+address+' matches the Host current address');
+          addCandidate(hostEntry, 'address', 'current-address', (iface.name || 'interface')+' address '+address+' matches the Host current address', address);
         }
       }
     }
@@ -471,15 +481,44 @@ function workloadMatchesForHost(hostId) {
       for (const hostEntry of fakeHosts) {
         if (hostEntry.ID === hostId) continue;
         if (String(hostEntry.Name ?? '').trim().toLowerCase() === normalizedName) {
-          addCandidate(hostEntry, 'name', 'host-name', 'Workload name matches Host name');
+          addCandidate(hostEntry, 'name', 'host-name', 'Workload name matches Host name', normalizedName);
         }
         if (String(hostEntry.DNS ?? '').trim().toLowerCase().replace(/\.$/, '') === normalizedName.replace(/\.$/, '')) {
-          addCandidate(hostEntry, 'name', 'host-dns', 'Workload name matches Host DNS name');
+          addCandidate(hostEntry, 'name', 'host-dns', 'Workload name matches Host DNS name', normalizedName);
         }
       }
     }
 
-    const ordered = [...candidates.values()].sort((a, b) => {
+    const ordered = [...candidates.values()].map((candidate) => {
+      candidate.workloadMacs = workloadMacs;
+      candidate.matchedAddresses = [...new Set(candidate.evidence
+        .filter((item) => item.strength === 'address' && item.matchedValue)
+        .map((item) => item.matchedValue))].sort();
+      const hasExact = candidate.evidence.some((item) => item.strength === 'exact-mac');
+      const hasAddress = candidate.evidence.some((item) => item.strength === 'address');
+      const hasName = candidate.evidence.some((item) => item.strength === 'name');
+      candidate.possibleIpConflict = hasAddress && !hasExact && Boolean(candidate.mac) &&
+        workloadMacs.length > 0 && !workloadMacs.includes(String(candidate.mac).toUpperCase());
+      candidate.assessment = hasExact
+        ? 'exact-mac'
+        : candidate.possibleIpConflict
+          ? 'possible-ip-conflict'
+          : hasAddress
+            ? 'address-only'
+            : hasName
+              ? 'name-only'
+              : 'unknown';
+      candidate.evidenceFingerprint = [
+        candidate.mac,
+        candidate.strength,
+        candidate.assessment,
+        workloadMacs.join(','),
+        ...candidate.evidence.map((item) => item.code+'|'+(item.matchedValue ?? '')+'|'+String(item.active)),
+      ].join('\\n');
+      candidate.rejected = candidate.strength !== 'exact-mac' &&
+        workloadCandidateRejections.get(workload.id+':'+candidate.hostId) === candidate.evidenceFingerprint;
+      return candidate;
+    }).sort((a, b) => {
       const rank = { 'exact-mac': 0, address: 1, name: 2 };
       return rank[a.strength]-rank[b.strength] || Number(b.active)-Number(a.active) || a.hostId-b.hostId;
     });
@@ -495,6 +534,35 @@ function workloadMatchesForHost(hostId) {
       candidates: ordered,
     };
   });
+}
+
+function mockWorkloadMemberships(hostId = 0) {
+  const rows = [];
+  for (const [hypervisorHostId, workloads] of proxmoxWorkloads.entries()) {
+    const hypervisor = findHostByID(hypervisorHostId);
+    for (const workload of workloads) {
+      if (!workload.link) continue;
+      if (hostId > 0 && workload.link.hostId !== hostId) continue;
+      const target = findHostByID(workload.link.hostId);
+      if (!target || target.Mac !== workload.link.hostMac) continue;
+      rows.push({
+        workloadId: workload.id,
+        nativeId: workload.nativeId,
+        workloadType: workload.workloadType,
+        workloadName: workload.name,
+        workloadStatus: workload.status,
+        retiredAt: workload.retiredAt ?? '',
+        hostId: target.ID,
+        hostMac: target.Mac,
+        linkSource: workload.link.linkSource,
+        hypervisorHostId: hypervisor?.ID ?? 0,
+        hypervisorMac: workload.hypervisorMac,
+        hypervisorName: hypervisor?.Name ?? '',
+        hypervisorIp: hypervisor?.IP ?? '',
+      });
+    }
+  }
+  return rows;
 }
 
 function hydrateMockWorkloads(hostId) {
@@ -1613,6 +1681,12 @@ function routeReadOnly(req, res, url) {
     return true;
   }
 
+  if (req.method === 'GET' && pathname === '/api/infrastructure/workload-memberships') {
+    const hostId = Number(url.searchParams.get('hostId') ?? 0);
+    sendJSON(res, mockWorkloadMemberships(Number.isFinite(hostId) ? hostId : 0));
+    return true;
+  }
+
   if (req.method === 'GET' && pathname === '/api/inventory/options') {
     sendJSON(res, inventoryOptions());
     return true;
@@ -1913,6 +1987,38 @@ async function routeSafeAction(req, res, url) {
 
     deviceProfiles.set(hostEntry.Mac, profile);
     sendJSON(res, profile);
+    return true;
+  }
+
+  const workloadRejectMatch = pathname.match(/^\/api\/host\/(\d+)\/workloads\/(\d+)\/match-rejections\/(\d+)$/);
+  if ((req.method === 'PUT' || req.method === 'DELETE') && workloadRejectMatch) {
+    const hostId = Number(workloadRejectMatch[1]);
+    const workloadId = Number(workloadRejectMatch[2]);
+    const candidateHostId = Number(workloadRejectMatch[3]);
+    const match = workloadMatchesForHost(hostId).find((item) => item.workloadId === workloadId);
+    const candidate = match?.candidates.find((item) => item.hostId === candidateHostId);
+    const key = workloadId+':'+candidateHostId;
+    if (req.method === 'DELETE') {
+      workloadCandidateRejections.delete(key);
+      res.writeHead(204);
+      res.end();
+      return true;
+    }
+    if (!candidate) {
+      sendJSON(res, { error: 'candidate is no longer supported by current evidence' }, 409);
+      return true;
+    }
+    if (candidate.strength === 'exact-mac') {
+      sendJSON(res, { error: 'exact MAC candidates cannot be rejected as weak matches' }, 400);
+      return true;
+    }
+    const params = parseRequestBody(await readBody(req));
+    if (String(params.evidenceFingerprint ?? '') !== candidate.evidenceFingerprint) {
+      sendJSON(res, { error: 'candidate evidence changed; review the refreshed match before rejecting it' }, 409);
+      return true;
+    }
+    workloadCandidateRejections.set(key, candidate.evidenceFingerprint);
+    sendJSON(res, { ...candidate, rejected: true });
     return true;
   }
 
