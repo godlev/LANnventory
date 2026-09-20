@@ -5167,3 +5167,81 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
         width: 100%;
     }
 }
+
+
+/* Phase 35A UAT4 snapshot transfer and import-impact clarity */
+.proxmox-command-security-note {
+    margin-top: 0.42rem;
+    color: var(--wyl-muted);
+    font-size: 0.7rem;
+    line-height: 1.35;
+}
+.proxmox-transfer-option {
+    margin-top: 0.55rem;
+    padding: 0.52rem 0.58rem;
+    border: 1px solid var(--wyl-panel-border);
+    border-radius: 7px;
+    background: color-mix(in srgb, var(--wyl-table-row-bg) 85%, transparent);
+}
+.proxmox-apply-impact {
+    margin-top: 0.6rem;
+    padding: 0.62rem 0.68rem;
+    border: 1px solid color-mix(in srgb, var(--bs-info) 36%, var(--wyl-panel-border));
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--bs-info) 5%, transparent);
+}
+.proxmox-apply-impact-title {
+    display: flex;
+    align-items: center;
+    gap: 0.36rem;
+    color: var(--wyl-heading);
+    font-size: 0.78rem;
+    font-weight: 850;
+}
+.proxmox-apply-impact-title > i {
+    color: var(--bs-info);
+}
+.proxmox-apply-impact-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.45rem;
+    margin-top: 0.52rem;
+}
+.proxmox-apply-impact-grid > div {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.42rem;
+    align-items: baseline;
+    padding: 0.45rem 0.5rem;
+    border: 1px solid var(--wyl-panel-border);
+    border-radius: 7px;
+}
+.proxmox-apply-impact-grid strong {
+    color: var(--wyl-heading);
+    font-size: 1rem;
+}
+.proxmox-apply-impact-grid span,
+.proxmox-apply-impact-safety {
+    color: var(--wyl-muted);
+    font-size: 0.71rem;
+    line-height: 1.35;
+}
+.proxmox-apply-impact-safety {
+    display: grid;
+    gap: 0.3rem;
+    margin-top: 0.5rem;
+}
+.proxmox-apply-impact-safety > div {
+    display: flex;
+    gap: 0.34rem;
+    align-items: flex-start;
+}
+.proxmox-apply-impact-safety i {
+    margin-top: 0.06rem;
+    color: var(--bs-success);
+}
+@media (max-width: 767.98px) {
+    .proxmox-apply-impact-grid {
+        grid-template-columns: 1fr;
+    }
+}
