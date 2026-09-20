@@ -358,6 +358,11 @@ func deleteInfrastructureWorkloadTx(txDB *gorm.DB, workloadID uint) error {
 		Delete(&models.InfrastructureWorkloadHostLink{}).Error; err != nil {
 		return err
 	}
+	if err := txDB.Table(infrastructureWorkloadCandidateRejectionsTable).
+		Where(`"WORKLOAD_ID" = ?`, workloadID).
+		Delete(&models.InfrastructureWorkloadCandidateRejection{}).Error; err != nil {
+		return err
+	}
 	if err := txDB.Table(infrastructureWorkloadInterfacesTable).
 		Where(`"WORKLOAD_ID" = ?`, workloadID).
 		Delete(&models.InfrastructureWorkloadInterface{}).Error; err != nil {
@@ -380,6 +385,11 @@ func deleteInfrastructureRelationsForHost(txDB *gorm.DB, host models.Host) error
 	if err := txDB.Table(infrastructureWorkloadHostLinksTable).
 		Where(`"HOST_MAC" = ? OR "HOST_ID" = ?`, mac, host.ID).
 		Delete(&models.InfrastructureWorkloadHostLink{}).Error; err != nil {
+		return err
+	}
+	if err := txDB.Table(infrastructureWorkloadCandidateRejectionsTable).
+		Where(`"HOST_MAC" = ? OR "HOST_ID" = ?`, mac, host.ID).
+		Delete(&models.InfrastructureWorkloadCandidateRejection{}).Error; err != nil {
 		return err
 	}
 
