@@ -190,6 +190,9 @@ export type WorkloadMatchEvidence = {
   detail: string;
   strength: "exact-mac" | "address" | "name";
   active: boolean;
+  matchedValue?: string;
+  firstSeen?: string;
+  lastSeen?: string;
 };
 
 export type WorkloadMatchCandidate = {
@@ -200,6 +203,12 @@ export type WorkloadMatchCandidate = {
   deviceType: string;
   active: boolean;
   strength: "exact-mac" | "address" | "name";
+  assessment: "exact-mac" | "possible-ip-conflict" | "address-only" | "name-only" | "unknown" | string;
+  possibleIpConflict: boolean;
+  matchedAddresses: string[];
+  workloadMacs: string[];
+  evidenceFingerprint: string;
+  rejected: boolean;
   evidence: WorkloadMatchEvidence[];
 };
 
@@ -212,6 +221,23 @@ export type InfrastructureWorkloadMatch = {
   deterministicExactHostId?: number;
   exactAmbiguous: boolean;
   candidates: WorkloadMatchCandidate[];
+};
+
+
+export type InfrastructureWorkloadMembership = {
+  workloadId: number;
+  nativeId: string;
+  workloadType: "vm" | "container";
+  workloadName: string;
+  workloadStatus: "unknown" | "running" | "stopped";
+  retiredAt: string;
+  hostId: number;
+  hostMac: string;
+  linkSource: "manual" | "exact-mac";
+  hypervisorHostId: number;
+  hypervisorMac: string;
+  hypervisorName: string;
+  hypervisorIp: string;
 };
 
 export type ProxmoxSnapshotInterface = {
@@ -602,6 +628,45 @@ export const apiGetHostWorkloadMatches = async (
 ): Promise<InfrastructureWorkloadMatch[]> => {
   const url = apiPath+'/api/host/'+encodeURIComponent(String(id))+'/workload-matches';
   return await apiJSON<InfrastructureWorkloadMatch[]>(url);
+};
+
+export const apiRejectInfrastructureWorkloadCandidate = async (
+  id: number | string,
+  workloadId: number,
+  candidateHostId: number,
+  evidenceFingerprint: string,
+): Promise<WorkloadMatchCandidate> => {
+  const url = apiPath+'/api/host/'+encodeURIComponent(String(id))+
+    '/workloads/'+encodeURIComponent(String(workloadId))+
+    '/match-rejections/'+encodeURIComponent(String(candidateHostId));
+  return await apiJSON<WorkloadMatchCandidate>(url, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ evidenceFingerprint }),
+  });
+};
+
+export const apiClearInfrastructureWorkloadCandidateRejection = async (
+  id: number | string,
+  workloadId: number,
+  candidateHostId: number,
+): Promise<void> => {
+  const url = apiPath+'/api/host/'+encodeURIComponent(String(id))+
+    '/workloads/'+encodeURIComponent(String(workloadId))+
+    '/match-rejections/'+encodeURIComponent(String(candidateHostId));
+  await apiFetch(url, { method: 'DELETE' });
+};
+
+export const apiGetInfrastructureWorkloadMemberships = async (
+  hostId?: number | string,
+): Promise<InfrastructureWorkloadMembership[]> => {
+  const params = new URLSearchParams();
+  if (hostId !== undefined && String(hostId).trim() !== "") {
+    params.set("hostId", String(hostId));
+  }
+  const query = params.toString();
+  const url = apiPath+'/api/infrastructure/workload-memberships'+(query ? '?'+query : '');
+  return await apiJSON<InfrastructureWorkloadMembership[]>(url);
 };
 
 export const apiPreviewProxmoxImport = async (
