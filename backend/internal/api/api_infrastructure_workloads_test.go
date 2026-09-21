@@ -265,7 +265,9 @@ func TestInfrastructureWorkloadMembershipsExposeReverseParentRelation(t *testing
 
 func TestInfrastructureWorkloadSummariesCountCurrentInventoryByHypervisor(t *testing.T) {
 	router := setupTestRouter(t)
-	hypervisor := seedHost(t, models.Host{Name: "PROXMOX", Mac: "AA:BB:CC:DD:F2:10", IP: "10.4.1.6", DeviceType: "server"})
+	// Keep the Host MAC lowercase to mirror real discovered Hosts while the
+	// workload inventory normalizes hypervisor ownership to canonical uppercase.
+	hypervisor := seedHost(t, models.Host{Name: "PROXMOX", Mac: "aa:bb:cc:dd:f2:10", IP: "10.4.1.6", DeviceType: "server"})
 	enableTestHypervisor(t, router, hypervisor.ID)
 
 	for _, workload := range []string{
