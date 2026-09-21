@@ -60,7 +60,7 @@ func TestProxmoxAPISyncRequiresPreviewThenExplicitApply(t *testing.T) {
 	defer server.Close()
 
 	if err := gdb.UpsertProxmoxAPIConfig(models.ProxmoxAPIConfig{
-		HypervisorMac: host.Mac, Enabled: true, BaseURL: server.URL, TokenID: "u@pve!t", TokenSecret: "secret",
+		HypervisorMac: host.Mac, Enabled: false, BaseURL: server.URL, TokenID: "u@pve!t", TokenSecret: "secret",
 		VerifyTLS: false, TimeoutSeconds: 5,
 	}); err != nil {
 		t.Fatalf("UpsertProxmoxAPIConfig: %v", err)
@@ -118,7 +118,7 @@ func TestProxmoxAPISyncRequiresPreviewThenExplicitApply(t *testing.T) {
 		t.Fatalf("API source state found=%v err=%v state=%+v", found, err, state)
 	}
 	config, found, err := gdb.SelectProxmoxAPIConfig(host.Mac)
-	if err != nil || !found || config.LastSuccessfulSync == "" || config.Status != "connected" {
+	if err != nil || !found || !config.Enabled || config.LastSuccessfulSync == "" || config.Status != "connected" {
 		t.Fatalf("API sync status found=%v err=%v config=%+v", found, err, config)
 	}
 }
