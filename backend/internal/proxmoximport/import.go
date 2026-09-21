@@ -72,6 +72,7 @@ type WorkloadView struct {
 	ID           uint            `json:"id,omitempty"`
 	NativeID     string          `json:"nativeId"`
 	WorkloadType string          `json:"workloadType"`
+	NodeName     string          `json:"nodeName,omitempty"`
 	Name         string          `json:"name"`
 	Status       string          `json:"status"`
 	Source       string          `json:"source"`
@@ -393,6 +394,7 @@ func SnapshotWorkloadInputs(snapshot proxmoxsnapshot.Snapshot) ([]models.Infrast
 		inputs = append(inputs, models.InfrastructureWorkloadUpsert{
 			NativeID:     workload.NativeID,
 			WorkloadType: workload.WorkloadType,
+			NodeName:     workload.NodeName,
 			Name:         workload.Name,
 			Status:       workload.Status,
 			Source:       source,
@@ -636,6 +638,7 @@ func workloadViewFromSnapshot(workload proxmoxsnapshot.WorkloadSnapshot, source 
 	view := WorkloadView{
 		NativeID:     workload.NativeID,
 		WorkloadType: workload.WorkloadType,
+		NodeName:     workload.NodeName,
 		Name:         workload.Name,
 		Status:       workload.Status,
 		Source:       source,
@@ -659,6 +662,7 @@ func workloadViewFromRecord(record models.InfrastructureWorkloadRecord) Workload
 		ID:           record.Workload.ID,
 		NativeID:     record.Workload.NativeID,
 		WorkloadType: record.Workload.WorkloadType,
+		NodeName:     record.Workload.NodeName,
 		Name:         record.Workload.Name,
 		Status:       record.Workload.Status,
 		Source:       record.Workload.Source,
@@ -683,6 +687,9 @@ func workloadViewFromRecord(record models.InfrastructureWorkloadRecord) Workload
 
 func workloadChanges(before, after WorkloadView) []string {
 	changes := []string{}
+	if before.NodeName != after.NodeName {
+		changes = append(changes, "nodeName")
+	}
 	if before.Name != after.Name {
 		changes = append(changes, "name")
 	}
