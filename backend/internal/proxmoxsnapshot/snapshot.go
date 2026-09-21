@@ -4,6 +4,7 @@ const (
 	SchemaVersion     = 1
 	CollectorVersion  = "1.0.0"
 	SourceScriptImport = "script-import"
+	SourceProxmoxAPI  = "proxmox-api"
 )
 
 // Snapshot is the normalized contract shared by the read-only script collector
