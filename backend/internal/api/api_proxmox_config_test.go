@@ -140,6 +140,37 @@ func TestProxmoxAPIConfigEnabledRequiresSecureCompleteCredentials(t *testing.T) 
 	}
 }
 
+func TestProxmoxAPIConfigClearingSecretDisablesEnabledSource(t *testing.T) {
+	router := setupTestRouter(t)
+	host := seedHost(t, models.Host{Name: "pve-api-clear-enabled", Mac: "AA:BB:CC:DD:EE:A5", DeviceType: "server"})
+	enableTestHypervisor(t, router, host.ID)
+
+	if err := gdb.UpsertProxmoxAPIConfig(models.ProxmoxAPIConfig{
+		HypervisorMac: host.Mac,
+		Enabled:       true,
+		BaseURL:       "https://10.4.1.6:8006",
+		TokenID:       "lannventory@pve!inventory",
+		TokenSecret:   "enabled-secret",
+		VerifyTLS:     true,
+		TimeoutSeconds: 10,
+		Status:        "connected",
+	}); err != nil {
+		t.Fatalf("UpsertProxmoxAPIConfig: %v", err)
+	}
+
+	rec := patchProxmoxAPIConfig(t, router, host.ID, `{"clearTokenSecret":true}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("clear enabled secret status = %d; body: %s", rec.Code, rec.Body.String())
+	}
+	stored, found, err := gdb.SelectProxmoxAPIConfig(host.Mac)
+	if err != nil || !found {
+		t.Fatalf("SelectProxmoxAPIConfig found=%v err=%v", found, err)
+	}
+	if stored.Enabled || stored.TokenSecret != "" {
+		t.Fatalf("cleared config must be disabled with no secret: %+v", stored)
+	}
+}
+
 func TestProxmoxAPIConfigSecretIsExcludedFromBackup(t *testing.T) {
 	router := setupTestRouter(t)
 	host := seedHost(t, models.Host{Name: "pve-api-backup", Mac: "AA:BB:CC:DD:EE:A4", DeviceType: "server"})
