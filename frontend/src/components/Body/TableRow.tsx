@@ -54,6 +54,18 @@ function TableRow(_props: any) {
     linkSource: "manual" | "exact-mac";
   }>;
   const primaryWorkloadMembership = () => workloadMemberships()[0];
+  const hypervisorWorkloadSummary = () => _props.hypervisorWorkloadSummary as {
+    platform: string;
+    vmCount: number;
+    containerCount: number;
+    totalCount: number;
+  } | undefined;
+  const isProxmoxHypervisor = () => hypervisorWorkloadSummary()?.platform === "proxmox-ve";
+  const hypervisorInventoryLabel = () => {
+    const summary = hypervisorWorkloadSummary();
+    if (!summary) return "";
+    return summary.containerCount + " LXC · " + summary.vmCount + " VM";
+  };
   const compactWorkloadLabel = () => {
     const item = primaryWorkloadMembership();
     if (!item) return "";
@@ -243,6 +255,10 @@ function TableRow(_props: any) {
             <span class="device-mobile-detail-value">{_props.host.Mac}</span>
             <span class="device-mobile-detail-label">Hardware</span>
             <span class="device-mobile-detail-value">{hardwareText()}</span>
+            <Show when={isProxmoxHypervisor()}>
+              <span class="device-mobile-detail-label">Proxmox inventory</span>
+              <span class="device-mobile-detail-value">{hypervisorInventoryLabel()}</span>
+            </Show>
             <Show when={primaryWorkloadMembership()}>
               <span class="device-mobile-detail-label">Hosted on</span>
               <span class="device-mobile-detail-value">
@@ -349,6 +365,17 @@ function TableRow(_props: any) {
               </Show>
             </a>
           </Show>
+          <Show when={_props.viewMode === "compact" && isProxmoxHypervisor()}>
+            <span
+              class="device-compact-hypervisor-summary"
+              title={"Current Proxmox inventory · " + hypervisorInventoryLabel()}
+              aria-label={"Current Proxmox inventory " + hypervisorInventoryLabel()}
+            >
+              <span><i class="bi bi-box-seam" aria-hidden="true"></i>{hypervisorWorkloadSummary()?.containerCount} LXC</span>
+              <span class="device-compact-summary-separator">·</span>
+              <span><i class="bi bi-display" aria-hidden="true"></i>{hypervisorWorkloadSummary()?.vmCount} VM</span>
+            </span>
+          </Show>
         </span>
         <Show when={_props.viewMode !== "compact" && primaryWorkloadMembership()}>
           <div class="device-workload-parent">
@@ -373,6 +400,16 @@ function TableRow(_props: any) {
             <Show when={workloadMemberships().length > 1}>
               <span class="device-workload-parent-more">+{workloadMemberships().length - 1}</span>
             </Show>
+          </div>
+        </Show>
+        <Show when={_props.viewMode !== "compact" && isProxmoxHypervisor()}>
+          <div
+            class="device-hypervisor-summary"
+            title={"Current non-retired Proxmox inventory · " + hypervisorInventoryLabel()}
+          >
+            <span><i class="bi bi-box-seam" aria-hidden="true"></i>{hypervisorWorkloadSummary()?.containerCount} LXC</span>
+            <span class="device-hypervisor-summary-separator">·</span>
+            <span><i class="bi bi-display" aria-hidden="true"></i>{hypervisorWorkloadSummary()?.vmCount} VM</span>
           </div>
         </Show>
       </td>
