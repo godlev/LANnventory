@@ -570,6 +570,29 @@ function mockWorkloadMemberships(hostId = 0) {
   return rows;
 }
 
+function mockWorkloadSummaries() {
+  const rows = [];
+  for (const [hypervisorHostId, workloads] of proxmoxWorkloads.entries()) {
+    const hypervisor = findHostByID(hypervisorHostId);
+    if (!hypervisor) continue;
+    const current = workloads.filter((item) => !item.retiredAt);
+    const vmCount = current.filter((item) => item.workloadType === 'vm').length;
+    const containerCount = current.filter((item) => item.workloadType === 'container').length;
+    if (vmCount + containerCount === 0) continue;
+    rows.push({
+      hypervisorHostId: hypervisor.ID,
+      hypervisorMac: hypervisor.Mac,
+      hypervisorName: hypervisor.Name,
+      hypervisorIp: hypervisor.IP,
+      platform: profileForHost(hypervisor).hypervisor?.platform ?? '',
+      vmCount,
+      containerCount,
+      totalCount: vmCount + containerCount,
+    });
+  }
+  return rows;
+}
+
 function hydrateMockWorkloads(hostId) {
   const workloads = structuredClone(proxmoxWorkloads.get(hostId) ?? []);
   for (const workload of workloads) {
@@ -1689,6 +1712,11 @@ function routeReadOnly(req, res, url) {
   if (req.method === 'GET' && pathname === '/api/infrastructure/workload-memberships') {
     const hostId = Number(url.searchParams.get('hostId') ?? 0);
     sendJSON(res, mockWorkloadMemberships(Number.isFinite(hostId) ? hostId : 0));
+    return true;
+  }
+
+  if (req.method === 'GET' && pathname === '/api/infrastructure/workload-summaries') {
+    sendJSON(res, mockWorkloadSummaries());
     return true;
   }
 
