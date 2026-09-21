@@ -11,14 +11,24 @@ import (
 
 var ErrInfrastructureWorkloadSourceConflict = errors.New("infrastructure workload source conflict")
 
-// ApplyProxmoxScriptImport atomically applies one complete, validated script
-// snapshot. Manual or other-source workload rows are never overwritten.
+// ApplyProxmoxScriptImport preserves the Phase 35A script-import entry point.
 func ApplyProxmoxScriptImport(hypervisorMac string, state models.ProxmoxSourceState, workloads []models.InfrastructureWorkloadUpsert) error {
+	if state.Source != models.InfrastructureWorkloadSourceScriptImport {
+		return errors.New("invalid Proxmox script import source")
+	}
+	return ApplyProxmoxImport(hypervisorMac, state, workloads)
+}
+
+// ApplyProxmoxImport atomically applies one complete, validated Proxmox snapshot.
+// Manual or unknown-source workload rows are never overwritten. Script/API
+// provenance can transition because they are two collection modes for the same
+// canonical infrastructure workload inventory.
+func ApplyProxmoxImport(hypervisorMac string, state models.ProxmoxSourceState, workloads []models.InfrastructureWorkloadUpsert) error {
 	canonical, err := identity.NormalizeMAC(hypervisorMac)
 	if err != nil {
 		return err
 	}
-	if state.Source != models.InfrastructureWorkloadSourceScriptImport {
+	if !isManagedProxmoxWorkloadSource(state.Source) {
 		return errors.New("invalid Proxmox import source")
 	}
 	if !state.Complete {
@@ -39,7 +49,7 @@ func ApplyProxmoxScriptImport(hypervisorMac string, state models.ProxmoxSourceSt
 	return activeDB.Transaction(func(txDB *gorm.DB) error {
 		incoming := make(map[string]struct{}, len(workloads))
 		for _, input := range workloads {
-			if input.Source != models.InfrastructureWorkloadSourceScriptImport {
+			if input.Source != state.Source || !isManagedProxmoxWorkloadSource(input.Source) {
 				return errors.New("invalid imported workload source")
 			}
 			nativeID := strings.TrimSpace(input.NativeID)
@@ -76,13 +86,13 @@ func ApplyProxmoxScriptImport(hypervisorMac string, state models.ProxmoxSourceSt
 				}
 			} else if err != nil {
 				return err
-			} else if workload.Source != models.InfrastructureWorkloadSourceScriptImport {
+			} else if !isManagedProxmoxWorkloadSource(workload.Source) {
 				return ErrInfrastructureWorkloadSourceConflict
 			}
 
 			workload.Name = strings.TrimSpace(input.Name)
 			workload.Status = status
-			workload.Source = models.InfrastructureWorkloadSourceScriptImport
+			workload.Source = state.Source
 			if workload.FirstSeen == "" {
 				workload.FirstSeen = state.CollectedAt
 			}
@@ -138,7 +148,10 @@ func ApplyProxmoxScriptImport(hypervisorMac string, state models.ProxmoxSourceSt
 
 		var existingImported []models.InfrastructureWorkload
 		if err := txDB.Table(infrastructureWorkloadsTable).
-			Where(`"HYPERVISOR_MAC" = ? AND "SOURCE" = ?`, canonical, models.InfrastructureWorkloadSourceScriptImport).
+			Where(`"HYPERVISOR_MAC" = ? AND "SOURCE" IN ?`, canonical, []string{
+				models.InfrastructureWorkloadSourceScriptImport,
+				models.InfrastructureWorkloadSourceProxmoxAPI,
+			}).
 			Find(&existingImported).Error; err != nil {
 			return err
 		}
@@ -186,4 +199,14 @@ func ApplyProxmoxScriptImport(hypervisorMac string, state models.ProxmoxSourceSt
 				"IMPORTED_AT":       state.ImportedAt,
 			}).Error
 	})
+}
+
+
+func isManagedProxmoxWorkloadSource(source string) bool {
+	switch strings.TrimSpace(source) {
+	case models.InfrastructureWorkloadSourceScriptImport, models.InfrastructureWorkloadSourceProxmoxAPI:
+		return true
+	default:
+		return false
+	}
 }
