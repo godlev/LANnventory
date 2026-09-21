@@ -100,6 +100,7 @@ func UpdateProxmoxAPIStatus(hypervisorMac, status, lastAttemptAt, lastSuccessful
 	}
 	if success := strings.TrimSpace(lastSuccessfulSync); success != "" {
 		updates["LAST_SUCCESSFUL_SYNC"] = success
+		updates["ENABLED"] = true
 	}
 	return activeDB.Table(proxmoxAPIConfigsTable).
 		Where(`"HYPERVISOR_MAC" = ?`, canonical).
