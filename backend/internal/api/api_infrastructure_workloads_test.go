@@ -262,3 +262,46 @@ func TestInfrastructureWorkloadMembershipsExposeReverseParentRelation(t *testing
 		t.Fatalf("other memberships=%+v err=%v", memberships, err)
 	}
 }
+
+
+func TestInfrastructureWorkloadSummariesCountCurrentInventoryByHypervisor(t *testing.T) {
+	router := setupTestRouter(t)
+	hypervisor := seedHost(t, models.Host{Name: "PROXMOX", Mac: "AA:BB:CC:DD:F2:10", IP: "10.4.1.6", DeviceType: "server"})
+	enableTestHypervisor(t, router, hypervisor.ID)
+
+	for _, workload := range []string{
+		`{"nativeId":"100","workloadType":"vm","name":"windows","status":"stopped"}`,
+		`{"nativeId":"112","workloadType":"vm","name":"haos","status":"running"}`,
+		`{"nativeId":"102","workloadType":"container","name":"qbittorrent","status":"running"}`,
+		`{"nativeId":"130","workloadType":"container","name":"arr-tools","status":"stopped"}`,
+		`{"nativeId":"131","workloadType":"container","name":"zoraxy","status":"running"}`,
+	} {
+		rec := workloadRequest(router, http.MethodPost, hypervisor.ID, "", workload)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("create workload status = %d; body: %s", rec.Code, rec.Body.String())
+		}
+	}
+
+	rec := getPath(router, "/api/infrastructure/workload-summaries")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("workload summaries status = %d; body: %s", rec.Code, rec.Body.String())
+	}
+
+	var summaries []InfrastructureWorkloadSummaryResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &summaries); err != nil {
+		t.Fatalf("json.Unmarshal summaries: %v", err)
+	}
+	if len(summaries) != 1 {
+		t.Fatalf("summaries = %+v", summaries)
+	}
+	summary := summaries[0]
+	if summary.HypervisorHostID != hypervisor.ID ||
+		summary.HypervisorName != hypervisor.Name ||
+		summary.HypervisorIP != hypervisor.IP ||
+		summary.Platform != "proxmox-ve" ||
+		summary.VMCount != 2 ||
+		summary.ContainerCount != 3 ||
+		summary.TotalCount != 5 {
+		t.Fatalf("summary = %+v", summary)
+	}
+}
