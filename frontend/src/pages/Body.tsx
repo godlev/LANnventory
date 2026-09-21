@@ -9,7 +9,12 @@ import SummaryCards from "../components/Body/SummaryCards";
 import RecentActivityPanel from "../components/Body/RecentActivityPanel";
 import { getHosts } from "../functions/atstart";
 import { deviceTypeFilterLabel } from "../functions/deviceTypes";
-import { apiGetInfrastructureWorkloadMemberships, type InfrastructureWorkloadMembership } from "../functions/api";
+import {
+  apiGetInfrastructureWorkloadMemberships,
+  apiGetInfrastructureWorkloadSummaries,
+  type InfrastructureWorkloadMembership,
+  type InfrastructureWorkloadSummary,
+} from "../functions/api";
 
 type HomeTableView = "comfortable" | "compact";
 
@@ -18,6 +23,7 @@ const homeTableViewStorageKey = "lannventory.home.tableView";
 function Body() {
   const [expandedDeviceRows, setExpandedDeviceRows] = createSignal<Record<string, boolean>>({});
   const [workloadMemberships, setWorkloadMemberships] = createSignal<InfrastructureWorkloadMembership[]>([]);
+  const [workloadSummaries, setWorkloadSummaries] = createSignal<InfrastructureWorkloadSummary[]>([]);
   const [tableView, setTableView] = createSignal<HomeTableView>("comfortable");
 
   onMount(() => {
@@ -34,6 +40,9 @@ function Body() {
     void apiGetInfrastructureWorkloadMemberships()
       .then((items) => setWorkloadMemberships(items ?? []))
       .catch(() => setWorkloadMemberships([]));
+    void apiGetInfrastructureWorkloadSummaries()
+      .then((items) => setWorkloadSummaries(items ?? []))
+      .catch(() => setWorkloadSummaries([]));
   });
 
   const membershipsByHost = createMemo(() => {
@@ -43,6 +52,15 @@ function Body() {
       const current = result.get(item.hostId) ?? [];
       current.push(item);
       result.set(item.hostId, current);
+    }
+    return result;
+  });
+
+  const workloadSummaryByHypervisorHost = createMemo(() => {
+    const result = new Map<number, InfrastructureWorkloadSummary>();
+    for (const item of workloadSummaries()) {
+      if (item.hypervisorHostId < 1) continue;
+      result.set(item.hypervisorHostId, item);
     }
     return result;
   });
@@ -148,6 +166,7 @@ function Body() {
                 mobileExpanded={isDeviceExpanded(host)}
                 onToggleMobileExpanded={() => toggleDeviceExpanded(host)}
                 workloadMemberships={membershipsByHost().get(host.ID) ?? []}
+                hypervisorWorkloadSummary={workloadSummaryByHypervisorHost().get(host.ID)}
                 viewMode={tableView()}
               ></TableRow>
             </>
