@@ -59,6 +59,17 @@ func TestCollectSnapshotMapsAllowlistedStandaloneAndClusterFields(t *testing.T) 
 	}
 }
 
+func TestNodeSnapshotPrefersClusterLocalNode(t *testing.T) {
+	node := nodeSnapshotFromAPI("cluster-api.example.local", "pve-manager/9.2.10", []ClusterStatusEntry{
+		{Type: "cluster", Name: "lab"},
+		{Type: "node", Name: "pve-1", IP: "10.0.0.1", Online: 1},
+		{Type: "node", Name: "pve-2", IP: "10.0.0.2", Online: 1, Local: 1},
+	})
+	if node.Hostname != "pve-2" || node.ClusterName != "lab" {
+		t.Fatalf("cluster local node provenance = %+v", node)
+	}
+}
+
 func TestCollectSnapshotMarksPartialConfigFailureIncomplete(t *testing.T) {
 	server := newTestProxmoxServer(t, true)
 	defer server.Close()
