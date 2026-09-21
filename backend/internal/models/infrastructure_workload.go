@@ -10,6 +10,7 @@ const (
 
 	InfrastructureWorkloadSourceManual       = "manual"
 	InfrastructureWorkloadSourceScriptImport = "script-import"
+	InfrastructureWorkloadSourceProxmoxAPI   = "proxmox-api"
 
 	InfrastructureWorkloadLinkSourceManual   = "manual"
 	InfrastructureWorkloadLinkSourceExactMAC = "exact-mac"
