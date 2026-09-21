@@ -896,7 +896,6 @@ function formatEvidenceWindow(firstSeen?: string, lastSeen?: string) {
 
 function ProxmoxAPISection(props: { hostID: number; onApplied: () => void | Promise<void> }) {
   const [config, setConfig] = createSignal<ProxmoxAPIConfig | null>(null);
-  const [enabled, setEnabled] = createSignal(false);
   const [baseUrl, setBaseUrl] = createSignal("");
   const [tokenId, setTokenId] = createSignal("");
   const [tokenSecret, setTokenSecret] = createSignal("");
@@ -917,7 +916,6 @@ function ProxmoxAPISection(props: { hostID: number; onApplied: () => void | Prom
 
   const applyConfig = (next: ProxmoxAPIConfig) => {
     setConfig(next);
-    setEnabled(next.enabled);
     setBaseUrl(next.baseUrl || "");
     setTokenId(next.tokenId || "");
     setTokenSecret("");
@@ -965,7 +963,6 @@ function ProxmoxAPISection(props: { hostID: number; onApplied: () => void | Prom
     setStatus("");
     try {
       const patch = {
-        enabled: enabled(),
         baseUrl: baseUrl().trim(),
         tokenId: tokenId().trim(),
         verifyTls: verifyTls(),
@@ -978,6 +975,22 @@ function ProxmoxAPISection(props: { hostID: number; onApplied: () => void | Prom
       setStatus("API settings saved. The token secret remains write-only.");
     } catch (saveError) {
       setError(apiErrorMessage(saveError, "Proxmox API settings could not be saved."));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const disableIntegration = async () => {
+    if (props.hostID < 1 || saving() || !config()?.enabled) return;
+    setSaving(true);
+    setError("");
+    setStatus("");
+    try {
+      const next = await apiPatchProxmoxAPIConfig(props.hostID, { enabled: false });
+      applyConfig(next);
+      setStatus("Proxmox API inventory source disabled. Stored credentials were kept.");
+    } catch (disableError) {
+      setError(apiErrorMessage(disableError, "Proxmox API integration could not be disabled."));
     } finally {
       setSaving(false);
     }
@@ -1026,7 +1039,9 @@ function ProxmoxAPISection(props: { hostID: number; onApplied: () => void | Prom
       setAPISnapshot(result.snapshot);
       setAPIPreview(result.preview);
       setStatus(result.preview.applyAllowed
-        ? "Sync preview ready. No inventory changes have been written yet."
+        ? (config()?.enabled
+          ? "Sync preview ready. No inventory changes have been written yet."
+          : "First sync preview ready. Review it and Apply to enable the API inventory source.")
         : "Sync preview is blocked. Review the reasons below; existing inventory is unchanged.");
       applyConfig(await apiGetProxmoxAPIConfig(props.hostID));
     } catch (syncError) {
@@ -1060,7 +1075,7 @@ function ProxmoxAPISection(props: { hostID: number; onApplied: () => void | Prom
       const result = await apiApplyProxmoxAPISync(props.hostID, currentPreview.previewToken, currentSnapshot);
       setAPISnapshot(null);
       setAPIPreview(null);
-      setStatus("API snapshot applied at "+formatTimestamp(result.importedAt)+".");
+      setStatus("API snapshot applied at "+formatTimestamp(result.importedAt)+". The API inventory source is now enabled.");
       applyConfig(await apiGetProxmoxAPIConfig(props.hostID));
       await props.onApplied();
     } catch (applyError) {
@@ -1076,11 +1091,11 @@ function ProxmoxAPISection(props: { hostID: number; onApplied: () => void | Prom
         <div>
           <div class="small fw-semibold">Proxmox API</div>
           <div class="small device-cell-muted">
-            Optional automatic-capable source. Phase 35.8 sync is still user-triggered and always previews changes before Apply.
+            Optional read-only source. The first Sync always previews changes; the integration becomes enabled only after you explicitly Apply the reviewed preview.
           </div>
         </div>
         <span class={"host-detail-section-badge"+(config()?.enabled ? " is-active" : "")}>
-          {config()?.enabled ? "Enabled" : "Optional"}
+          {config()?.enabled ? "Enabled" : "Not enabled"}
         </span>
       </div>
 
@@ -1154,15 +1169,6 @@ function ProxmoxAPISection(props: { hostID: number; onApplied: () => void | Prom
             <input
               class="form-check-input"
               type="checkbox"
-              checked={enabled()}
-              onChange={(event) => { setEnabled(event.currentTarget.checked); markDirty(); }}
-            />
-            <span class="form-check-label">Enable API inventory source</span>
-          </label>
-          <label class="form-check mb-0">
-            <input
-              class="form-check-input"
-              type="checkbox"
               checked={verifyTls()}
               onChange={(event) => { setVerifyTls(event.currentTarget.checked); markDirty(); }}
             />
@@ -1197,10 +1203,16 @@ function ProxmoxAPISection(props: { hostID: number; onApplied: () => void | Prom
             <i class={testing() ? "bi bi-arrow-repeat proxmox-spin me-1" : "bi bi-plug me-1"} aria-hidden="true"></i>
             {testing() ? "Testing…" : "Test connection"}
           </button>
-          <button type="button" class="btn btn-sm btn-primary" disabled={syncing() || dirty() || !config()?.enabled || !config()?.tokenSecretConfigured} onClick={() => void syncNow()}>
+          <button type="button" class="btn btn-sm btn-primary" disabled={syncing() || dirty() || !config()?.tokenSecretConfigured} onClick={() => void syncNow()}>
             <i class={syncing() ? "bi bi-arrow-repeat proxmox-spin me-1" : "bi bi-arrow-repeat me-1"} aria-hidden="true"></i>
             {syncing() ? "Collecting…" : "Sync now"}
           </button>
+          <Show when={config()?.enabled}>
+            <button type="button" class="btn btn-sm btn-outline-danger" disabled={saving() || dirty()} onClick={() => void disableIntegration()}>
+              <i class="bi bi-pause-circle me-1" aria-hidden="true"></i>
+              Disable API source
+            </button>
+          </Show>
           <Show when={dirty()}><span class="small text-warning">Unsaved changes</span></Show>
         </div>
 
@@ -1318,7 +1330,10 @@ function ProxmoxAPISection(props: { hostID: number; onApplied: () => void | Prom
               </Show>
 
               <div class="proxmox-preview-footer">
-                <div class="small device-cell-muted">Apply revalidates this Snapshot and its stale-preview token before writing anything.</div>
+                <div class="small device-cell-muted">
+                  Apply revalidates this Snapshot and its stale-preview token before writing anything.
+                  {!config()?.enabled ? " The first successful Apply also enables this API inventory source." : ""}
+                </div>
                 <button
                   type="button"
                   class="btn btn-sm btn-success"
