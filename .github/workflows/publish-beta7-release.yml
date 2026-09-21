@@ -1,0 +1,64 @@
+name: Publish beta.7 release
+
+on:
+  push:
+    branches:
+      - phase35-device-profiles-proxmox
+    paths:
+      - .github/workflows/publish-beta7-release.yml
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v0.1.0-beta.7
+          fetch-depth: 0
+
+      - name: Verify exact final tag
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "0e4c07e2cfce511d3f3671505f00e4852cfa465b"
+          test "$(git show HEAD:backend/internal/version/version.go | grep -c 'var Version = "0.1.0-beta.7"')" = "1"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build embedded frontend
+        working-directory: frontend
+        run: make all
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Publish release artifacts with GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: v2.18.0
+          args: release --clean
+          workdir: backend
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Apply curated beta.7 release notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release edit v0.1.0-beta.7 \
+            --repo "$GITHUB_REPOSITORY" \
+            --notes-file docs/releases/v0.1.0-beta.7.md
