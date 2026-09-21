@@ -63,6 +63,56 @@ Imported node hostname, Proxmox version, cluster and status are stored separatel
 
 The backend accepts at most 2 MiB per import request, rejects unknown JSON fields and validates schema version, source, RFC3339 collection time, VM/LXC identity, status, MAC addresses, VLAN tags, configured addresses and networks before generating a preview.
 
+## Read-Only Proxmox API Inventory
+
+Phase 35.8 adds an optional Proxmox API source beside the script workflow. Both sources normalize into the same `proxmoxsnapshot.Snapshot` contract and then use the same validation, Preview/Diff, workload matching and atomic Apply path.
+
+The API integration is intentionally read-only. LANnventory only performs GET requests for Proxmox version, cluster/node status, cluster resources and the allowlisted VM/LXC configuration needed to derive network identity. It has no API code for starting, stopping, rebooting, creating, deleting or modifying guests, snapshots, networking, storage or permissions.
+
+### Recommended least-privilege token
+
+Use a dedicated Proxmox user and a privilege-separated API token. The smallest practical role for LANnventory's current inventory calls is `Sys.Audit` + `VM.Audit` at the cluster root so node/cluster inventory and VM/LXC configuration can be read without mutation privileges:
+
+```bash
+pveum role add LANnventoryAudit -privs "Sys.Audit VM.Audit"
+pveum user add lannventory@pve -comment "LANnventory read-only inventory"
+pveum acl modify / -user lannventory@pve -role LANnventoryAudit
+pveum user token add lannventory@pve inventory -privsep 1
+pveum acl modify / -token 'lannventory@pve!inventory' -role LANnventoryAudit
+pveum user permissions lannventory@pve
+pveum user token permissions lannventory@pve inventory
+```
+
+A privilege-separated token can never exceed the permissions of its backing user, so both the user and token grants are deliberate. If a Proxmox release or local ACL policy requires broader read visibility, the built-in `PVEAuditor` role at `/` is the supported read-only fallback; do not replace it with `Administrator` or root credentials just to make the integration work.
+
+LANnventory's **Test connection** checks authentication, node access, VM inventory access and LXC inventory access before any sync. It does not import or change LANnventory inventory.
+
+### TLS and token handling
+
+TLS certificate verification is enabled by default and is never disabled automatically. If the Proxmox certificate is signed by a private CA, the preferred approach is to add that CA to the operating system trust store used by the LANnventory service. Phase 35.8 does not add a separate application-managed CA secret store. Certificate verification can be disabled explicitly in the Host UI for environments that cannot provide a trusted chain, and the UI shows a warning while it is disabled.
+
+The token secret is write-only through the LANnventory API:
+
+- GET configuration responses only report whether a secret is configured.
+- an omitted or blank secret keeps the existing value;
+- a new non-empty secret replaces it;
+- **Clear stored token secret** removes it explicitly;
+- the secret is not included in LANnventory backup export, Events, diagnostics or connection error text.
+
+### Manual Sync now safety flow
+
+API sync deliberately remains user-triggered in Phase 35.8:
+
+1. **Sync now** performs a read-only collection.
+2. The result is normalized to the same Snapshot contract as script import.
+3. LANnventory shows the existing Preview/Diff semantics: additions, updates, retirements, Host matches, ambiguous candidates, IP conflicts and managed-field differences.
+4. Nothing is written until the user confirms **Apply to LANnventory**.
+5. Apply revalidates the Snapshot and stale-preview token and commits through the same atomic persistence path.
+
+Timeouts, TLS failures, authentication failures, permission failures, malformed responses and partial guest-configuration failures never retire or remove the last good inventory. A partial collection is returned as `complete: false`, can be inspected, and is blocked from Apply.
+
+Periodic scheduling is intentionally not part of Phase 35.8.
+
 ## What It Creates
 
 Defaults:
