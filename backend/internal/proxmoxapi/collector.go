@@ -193,8 +193,9 @@ func CollectSnapshot(ctx context.Context, client *Client, collectedAt time.Time)
 func nodeSnapshotFromAPI(endpointHost, pveVersion string, entries []ClusterStatusEntry) proxmoxsnapshot.NodeSnapshot {
 	clusterName := ""
 	type nodeInfo struct {
-		name string
-		ip   string
+		name  string
+		ip    string
+		local bool
 	}
 	nodes := []nodeInfo{}
 	for _, entry := range entries {
@@ -209,7 +210,7 @@ func nodeSnapshotFromAPI(endpointHost, pveVersion string, entries []ClusterStatu
 				name = strings.TrimSpace(stringValue(entry.NodeID))
 			}
 			if name != "" {
-				nodes = append(nodes, nodeInfo{name: name, ip: strings.TrimSpace(entry.IP)})
+				nodes = append(nodes, nodeInfo{name: name, ip: strings.TrimSpace(entry.IP), local: entry.Local == 1})
 			}
 		}
 	}
@@ -220,9 +221,17 @@ func nodeSnapshotFromAPI(endpointHost, pveVersion string, entries []ClusterStatu
 		host = nodes[0].name
 	} else {
 		for _, node := range nodes {
-			if strings.EqualFold(host, node.name) || (node.ip != "" && host == node.ip) {
+			if node.local {
 				host = node.name
 				break
+			}
+		}
+		if host == strings.TrimSpace(endpointHost) {
+			for _, node := range nodes {
+				if strings.EqualFold(host, node.name) || (node.ip != "" && host == node.ip) {
+					host = node.name
+					break
+				}
 			}
 		}
 	}
