@@ -179,3 +179,66 @@ func TestApplyProxmoxScriptImportRejectsIncompleteSnapshot(t *testing.T) {
 		t.Fatal("incomplete snapshot unexpectedly applied")
 	}
 }
+
+
+func TestApplyProxmoxImportTransitionsScriptToAPIAndPreservesManualLink(t *testing.T) {
+	startSelectTestDB(t)
+	hypervisorMac := "AA:BB:CC:DD:EE:83"
+
+	target := models.Host{Mac: "AA:BB:CC:DD:EE:19", Name: "media-host", IP: "10.4.1.19", Now: 1}
+	if err := UpdateWithError("now", target); err != nil {
+		t.Fatalf("seed target host: %v", err)
+	}
+	targets := SelectByMAC("now", target.Mac)
+	if len(targets) != 1 {
+		t.Fatalf("target hosts = %+v", targets)
+	}
+
+	scriptState := models.ProxmoxSourceState{
+		Source: models.InfrastructureWorkloadSourceScriptImport,
+		SchemaVersion: 1, CollectorVersion: "1.0.0", CollectedAt: "2026-09-21T08:00:00Z",
+		Complete: true, NodeHostname: "pve-1", NodePVEVersion: "pve-manager/9.2.10",
+		NodeStatus: "online", SnapshotDigest: "script-digest", ImportedAt: "2026-09-21T08:01:00Z",
+	}
+	scriptWorkloads := []models.InfrastructureWorkloadUpsert{{
+		NativeID: "119", WorkloadType: models.InfrastructureWorkloadTypeVM, NodeName: "pve-1",
+		Name: "media", Status: models.InfrastructureWorkloadStatusRunning,
+		Source: models.InfrastructureWorkloadSourceScriptImport,
+		Interfaces: []models.InfrastructureWorkloadInterface{{Name: "net0", Mac: target.Mac}},
+	}}
+	if err := ApplyProxmoxScriptImport(hypervisorMac, scriptState, scriptWorkloads); err != nil {
+		t.Fatalf("script apply: %v", err)
+	}
+	records, err := SelectInfrastructureWorkloadsByHypervisorMAC(hypervisorMac)
+	if err != nil || len(records) != 1 {
+		t.Fatalf("script records=%+v err=%v", records, err)
+	}
+	if _, err := SetInfrastructureWorkloadHostLink(records[0].Workload.ID, targets[0], models.InfrastructureWorkloadLinkSourceManual, "2026-09-21T08:02:00Z"); err != nil {
+		t.Fatalf("manual link: %v", err)
+	}
+
+	apiState := scriptState
+	apiState.Source = models.InfrastructureWorkloadSourceProxmoxAPI
+	apiState.CollectedAt = "2026-09-21T09:00:00Z"
+	apiState.ImportedAt = "2026-09-21T09:01:00Z"
+	apiState.SnapshotDigest = "api-digest"
+	apiWorkloads := []models.InfrastructureWorkloadUpsert{{
+		NativeID: "119", WorkloadType: models.InfrastructureWorkloadTypeVM, NodeName: "pve-1",
+		Name: "media", Status: models.InfrastructureWorkloadStatusRunning,
+		Source: models.InfrastructureWorkloadSourceProxmoxAPI,
+		Interfaces: []models.InfrastructureWorkloadInterface{{Name: "net0", Mac: target.Mac}},
+	}}
+	if err := ApplyProxmoxImport(hypervisorMac, apiState, apiWorkloads); err != nil {
+		t.Fatalf("API apply: %v", err)
+	}
+
+	records, err = SelectInfrastructureWorkloadsByHypervisorMAC(hypervisorMac)
+	if err != nil || len(records) != 1 {
+		t.Fatalf("API records=%+v err=%v", records, err)
+	}
+	if records[0].Workload.Source != models.InfrastructureWorkloadSourceProxmoxAPI ||
+		records[0].Workload.NodeName != "pve-1" ||
+		records[0].Link == nil || records[0].Link.LinkSource != models.InfrastructureWorkloadLinkSourceManual {
+		t.Fatalf("API transition did not preserve provenance/link: %+v", records[0])
+	}
+}
