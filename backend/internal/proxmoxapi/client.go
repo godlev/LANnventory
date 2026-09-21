@@ -94,6 +94,7 @@ type ClusterStatusEntry struct {
 	Name   string `json:"name"`
 	NodeID any    `json:"nodeid"`
 	Online int    `json:"online"`
+	Local  int    `json:"local"`
 	IP     string `json:"ip"`
 }
 
