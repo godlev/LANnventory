@@ -115,6 +115,10 @@ func patchHostProxmoxAPIConfig(c *gin.Context) {
 	next := current
 
 	if request.Enabled != nil {
+		if *request.Enabled && !current.Enabled {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "API integration is enabled only after applying a reviewed sync preview"})
+			return
+		}
 		next.Enabled = *request.Enabled
 	}
 	if request.BaseURL != nil {
