@@ -128,6 +128,7 @@ requireText(homeTableRow, "device-compact-hypervisor-summary", "Compact Home row
 requireText(homeTableRow, "containerCount", "Proxmox Home summary must expose LXC/container counts.");
 requireText(homeTableRow, "vmCount", "Proxmox Home summary must expose VM counts.");
 requireText(homeBody, "apiGetInfrastructureWorkloadSummaries", "Home must load full hypervisor workload inventory counts rather than count only linked workloads.");
+requireText(read("dev/mock-api.mjs"), "/api/infrastructure/workload-summaries", "Mock backend must expose the Home workload summary endpoint.");
 requireText(homeTableRow, '_props.viewMode !== "compact"', "Comfortable-only second-line workload ancestry must be suppressed in Compact view.");
 requireText(appStyles, ".device-table-compact tbody td", "Compact Home table must reduce row density.");
 requireText(appStyles, ".device-compact-workload", "Compact Proxmox workload marker must have dedicated styling.");
