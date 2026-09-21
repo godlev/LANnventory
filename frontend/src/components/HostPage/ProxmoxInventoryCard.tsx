@@ -1,17 +1,23 @@
 import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 
 import {
+  apiApplyProxmoxAPISync,
   apiApplyProxmoxImport,
   apiClearInfrastructureWorkloadCandidateRejection,
   apiDeleteInfrastructureWorkloadLink,
   apiGetHostWorkloadMatches,
   apiGetHostWorkloads,
+  apiGetProxmoxAPIConfig,
   apiGetProxmoxSourceState,
+  apiPatchProxmoxAPIConfig,
+  apiPreviewProxmoxAPISync,
   apiPreviewProxmoxImport,
+  apiTestProxmoxAPIConnection,
   apiRejectInfrastructureWorkloadCandidate,
   apiSetInfrastructureWorkloadLink,
   type InfrastructureWorkload,
   type InfrastructureWorkloadMatch,
+  type ProxmoxAPIConfig,
   type ProxmoxImportPreview,
   type ProxmoxSnapshot,
   type WorkloadMatchCandidate,
@@ -31,6 +37,7 @@ function ProxmoxInventoryCard(props: Props) {
   const [matches, setMatches] = createSignal<InfrastructureWorkloadMatch[]>([]);
   const [loading, setLoading] = createSignal(false);
   const [loadError, setLoadError] = createSignal("");
+  const [collectionMode, setCollectionMode] = createSignal<"script" | "api">("script");
   const [importText, setImportText] = createSignal("");
   const [snapshot, setSnapshot] = createSignal<ProxmoxSnapshot | null>(null);
   const [preview, setPreview] = createSignal<ProxmoxImportPreview | null>(null);
@@ -65,6 +72,7 @@ function ProxmoxInventoryCard(props: Props) {
     setWorkloads([]);
     setMatches([]);
     setLoadError("");
+    setCollectionMode("script");
     clearImport();
     if (id < 1) return;
     void refresh(id);
@@ -76,15 +84,19 @@ function ProxmoxInventoryCard(props: Props) {
     setLoading(true);
     setLoadError("");
     try {
-      const [nextSource, nextWorkloads, nextMatches] = await Promise.all([
-        apiGetProxmoxSourceState(id),
+      const [scriptSource, apiSource, nextWorkloads, nextMatches, apiConfig] = await Promise.all([
+        apiGetProxmoxSourceState(id, "script-import"),
+        apiGetProxmoxSourceState(id, "proxmox-api"),
         apiGetHostWorkloads(id),
         apiGetHostWorkloadMatches(id),
+        apiGetProxmoxAPIConfig(id),
       ]);
       if (activeRequest !== requestID) return;
+      const nextSource = newestProxmoxSource(scriptSource, apiSource);
       setSourceState(nextSource);
       setWorkloads(nextWorkloads ?? []);
       setMatches(nextMatches ?? []);
+      if (apiConfig.enabled) setCollectionMode("api");
     } catch {
       if (activeRequest !== requestID) return;
       setLoadError("Proxmox inventory could not be loaded.");
@@ -307,6 +319,31 @@ function ProxmoxInventoryCard(props: Props) {
           when={!loading() || sourceState() !== null || workloads().length > 0}
           fallback={<div class="device-cell-muted">Loading Proxmox inventory…</div>}
         >
+          <div class="proxmox-section">
+            <div class="proxmox-section-heading">
+              <div>
+                <div class="small fw-semibold">Proxmox inventory source</div>
+                <div class="small device-cell-muted">Choose the collection method. Both paths use the same Preview/Diff and workload matching rules.</div>
+              </div>
+              <div class="btn-group btn-group-sm" role="group" aria-label="Proxmox inventory source">
+                <button
+                  type="button"
+                  class={"btn "+(collectionMode() === "script" ? "btn-primary" : "btn-outline-secondary")}
+                  onClick={() => setCollectionMode("script")}
+                >
+                  Manual / script
+                </button>
+                <button
+                  type="button"
+                  class={"btn "+(collectionMode() === "api" ? "btn-primary" : "btn-outline-secondary")}
+                  onClick={() => setCollectionMode("api")}
+                >
+                  Proxmox API
+                </button>
+              </div>
+            </div>
+          </div>
+
           <SourceSummary
             state={sourceState()}
             total={totalCount()}
@@ -367,20 +404,27 @@ function ProxmoxInventoryCard(props: Props) {
             </Show>
           </div>
 
-          <ImportSection
-            importText={importText()}
-            preview={preview()}
-            previewing={previewing()}
-            applying={applying()}
-            error={importError()}
-            status={importStatus()}
-            onText={handleImportText}
-            onFile={(file) => void handleFile(file)}
-            onClear={clearImport}
-            onPreview={() => void handlePreview()}
-            onApply={() => void handleApply()}
-            proxmoxAddress={props.host.IP}
-          />
+          <Show
+            when={collectionMode() === "api"}
+            fallback={
+              <ImportSection
+                importText={importText()}
+                preview={preview()}
+                previewing={previewing()}
+                applying={applying()}
+                error={importError()}
+                status={importStatus()}
+                onText={handleImportText}
+                onFile={(file) => void handleFile(file)}
+                onClear={clearImport}
+                onPreview={() => void handlePreview()}
+                onApply={() => void handleApply()}
+                proxmoxAddress={props.host.IP}
+              />
+            }
+          >
+            <ProxmoxAPISection hostID={props.host.ID} onApplied={() => refresh(props.host.ID)} />
+          </Show>
         </Show>
       </div>
     </section>
@@ -429,7 +473,7 @@ function SourceSummary(props: {
             <SourceMetric label="Node" value={state().nodeHostname} monospace />
             <SourceMetric label="PVE version" value={state().nodePveVersion} />
             <SourceMetric label="Cluster" value={state().nodeClusterName || "Standalone"} />
-            <SourceMetric label="Source" value="Script import" />
+            <SourceMetric label="Source" value={state().source === "proxmox-api" ? "Proxmox API" : "Script import"} />
             <SourceMetric label="Collected" value={formatTimestamp(state().collectedAt)} />
             <SourceMetric label="Imported" value={formatTimestamp(state().importedAt)} />
             <SourceMetric label="Collector" value={state().collectorVersion} />
@@ -497,7 +541,8 @@ function WorkloadRow(props: {
         </div>
         <div class="proxmox-workload-meta">
           <span class="badge text-bg-secondary">{props.workload.workloadType === "container" ? "LXC" : "VM"}</span>
-          <span>{props.workload.source === "script-import" ? "Imported" : "Manual"}</span>
+          <span>{props.workload.source === "proxmox-api" ? "API" : props.workload.source === "script-import" ? "Imported" : "Manual"}</span>
+          <Show when={props.workload.nodeName}><span>Node {props.workload.nodeName}</span></Show>
           <Show when={retired()}>
             <span>Retired {formatTimestamp(props.workload.retiredAt)}</span>
           </Show>
