@@ -584,7 +584,6 @@ func TestPhase35UAT4SelectionFromUAT3(t *testing.T) {
 	}
 }
 
-
 func TestPhase35FinalBetaReleaseSelection(t *testing.T) {
 	releases := []release{
 		{
