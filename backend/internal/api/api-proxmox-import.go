@@ -42,6 +42,7 @@ type ProxmoxImportNodeDoc struct {
 type ProxmoxImportWorkloadDoc struct {
 	NativeID     string                       `json:"nativeId"`
 	WorkloadType string                       `json:"workloadType"`
+	NodeName     string                       `json:"nodeName,omitempty"`
 	Name         string                       `json:"name"`
 	Status       string                       `json:"status"`
 	Interfaces   []ProxmoxImportInterfaceDoc `json:"interfaces"`
