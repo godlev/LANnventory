@@ -117,15 +117,26 @@ func TestProxmoxAPIConfigEnabledRequiresSecureCompleteCredentials(t *testing.T) 
 		"verifyTls": false,
 		"timeoutSeconds": 15
 	}`)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("unreviewed enable status = %d, want %d; body: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+
+	rec = patchProxmoxAPIConfig(t, router, host.ID, `{
+		"baseUrl": "https://10.4.1.6:8006",
+		"tokenId": "lannventory@pve!inventory",
+		"tokenSecret": "valid-proxmox-secret",
+		"verifyTls": false,
+		"timeoutSeconds": 15
+	}`)
 	if rec.Code != http.StatusOK {
-		t.Fatalf("complete config status = %d; body: %s", rec.Code, rec.Body.String())
+		t.Fatalf("complete disabled config status = %d; body: %s", rec.Code, rec.Body.String())
 	}
 	var got ProxmoxAPIConfigResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("json.Unmarshal: %v", err)
 	}
-	if !got.Enabled || got.VerifyTLS || !got.TokenSecretSet {
-		t.Fatalf("saved config = %+v", got)
+	if got.Enabled || got.VerifyTLS || !got.TokenSecretSet {
+		t.Fatalf("saved pre-sync config = %+v", got)
 	}
 }
 
