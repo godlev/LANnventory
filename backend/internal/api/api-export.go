@@ -16,7 +16,7 @@ import (
 
 // getBackupExport godoc
 // @Summary      Download portable data backup
-// @Description  Export a versioned logical backup containing current hosts, host history, activity events, host metadata and host lifecycle. Configuration secrets are not included.
+// @Description  Export a versioned logical backup containing current hosts, host history, activity events, host metadata, host lifecycle and managed device profiles. Configuration secrets are not included.
 // @Tags         export
 // @Produce      json
 // @Success      200  {object}  map[string]interface{}

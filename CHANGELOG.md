@@ -3,6 +3,27 @@ All notable changes to this project will be documented in this file.
 
 ## LANnventory Releases
 
+## [v0.1.0-beta.6] - 2026-09-18
+
+### Added
+- Persistent Services inventory per device address, protocol and port, including first/last detection, last check and open/closed state.
+- Opt-in per-device scheduled TCP service scanning with configurable ports and intervals.
+- IPv4/IPv6-aware service attribution through the retained Host identity/address model.
+- Conservative service hints for common TCP ports.
+
+### Changed
+- Host identity UI now separates managed inventory from discovered network identity evidence and retained address history.
+- Manual TCP port scans persist definitive service observations and emit service state Events only on real transitions.
+- Scheduled service scans use bounded concurrency, cancellation-safe execution and stale-result protection.
+- Host Recent Events show historical IP and MAC snapshots for each event.
+
+### Fixed
+- Failed, timed-out, unreachable or cancelled service probes no longer fabricate service-closed state.
+- Phase 33 identity/address and Phase 32 scanner/diagnostics regressions remain covered during release validation.
+
+### Migration
+- Services and scheduled-scan settings use additive migrations and preserve existing WatchYourLAN/LANnventory data.
+
 ## [v0.1.0-beta.3.1] - 2026-09-16
 
 ### Added

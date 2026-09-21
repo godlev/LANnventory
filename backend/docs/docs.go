@@ -710,7 +710,7 @@ const docTemplate = `{
         },
         "/export/backup": {
             "get": {
-                "description": "Export a versioned logical backup containing current hosts, host history, activity events, host metadata and host lifecycle. Configuration secrets are not included.",
+                "description": "Export a versioned logical backup containing current hosts, host history, activity events, host metadata, host lifecycle and managed device profiles. Configuration secrets are not included.",
                 "produces": [
                     "application/json"
                 ],
@@ -1542,6 +1542,506 @@ const docTemplate = `{
                 }
             }
         },
+        "/host/{id}/profile": {
+            "get": {
+                "description": "Return manually managed generic and typed device-profile information. Imported/discovered integration data is stored separately and never overwrites these fields.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Get managed device profile",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.DeviceProfileResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Partially update manually managed generic device-profile fields. Empty values clear fields; clearing all fields removes the managed base profile row.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Update managed device profile",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Managed profile payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.DeviceProfilePatchRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.DeviceProfileResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/host/{id}/profile/hypervisor": {
+            "delete": {
+                "description": "Remove only the manual Hypervisor capability/profile. The Host and its generic/system inventory remain unchanged.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Remove managed hypervisor profile",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.DeviceProfileResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Mark a Host as a managed hypervisor capability and store manually maintained platform details. This does not change Device Type and does not use credentials.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Create or update managed hypervisor profile",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Hypervisor profile payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.HypervisorProfilePatchRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.DeviceProfileResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/host/{id}/profile/network": {
+            "patch": {
+                "description": "Partially update network-device-specific managed fields. Physical port count 0 means not set.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Update managed network profile",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Network profile payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.NetworkDeviceProfilePatchRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.DeviceProfileResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/host/{id}/profile/system": {
+            "patch": {
+                "description": "Partially update lightweight Server/NAS system inventory without changing the Host Device Type.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Update managed system profile",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "System profile payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.SystemDeviceProfilePatchRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.DeviceProfileResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/host/{id}/proxmox/import/apply": {
+            "post": {
+                "description": "Revalidate a previously previewed snapshot and atomically apply it only when the preview token still matches current persisted state.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Apply confirmed Proxmox script import",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Proxmox Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Confirmed preview token and collector snapshot",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.ProxmoxImportApplyDoc"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.ProxmoxImportApplyResponseDoc"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/host/{id}/proxmox/import/preview": {
+            "post": {
+                "description": "Strictly validate a read-only collector snapshot and return a deterministic diff. This endpoint never persists the snapshot.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Preview Proxmox script import",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Proxmox Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Collector snapshot",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.ProxmoxImportSnapshotDoc"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.ProxmoxImportPreviewDoc"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/host/{id}/proxmox/source-state": {
+            "get": {
+                "description": "Return the last successfully imported script-collector node state for one Proxmox Host. Managed HypervisorProfile fields remain separate.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Get imported Proxmox source state",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Proxmox Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.ProxmoxSourceState"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/host/{id}/service-scan-settings": {
             "get": {
                 "description": "Return opt-in scheduled TCP service scan settings and runtime state for a host.",
@@ -1737,6 +2237,540 @@ const docTemplate = `{
                 }
             }
         },
+        "/host/{id}/workload-matches": {
+            "get": {
+                "description": "Return explainable workload-to-Host candidates. Exact MAC is the only automatic evidence; address and name evidence remain suggestions. This endpoint never mutates links.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Get Proxmox workload Host match candidates",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Proxmox Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/api.InfrastructureWorkloadMatchResponseDoc"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/host/{id}/workloads": {
+            "get": {
+                "description": "Return infrastructure workloads hosted by one configured hypervisor. Workloads remain separate from LANnventory Hosts.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Get hypervisor workloads",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Hypervisor Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/api.InfrastructureWorkloadResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Add or update a manual VM/LXC inventory object by native ID and type. This never creates a LANnventory Host.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Add or update a manual hypervisor workload",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Hypervisor Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Manual workload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.InfrastructureWorkloadCreateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.InfrastructureWorkloadResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/host/{id}/workloads/{workloadId}": {
+            "delete": {
+                "description": "Delete a manually maintained workload inventory object. Imported workload retirement uses snapshot reconciliation instead.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Delete a manual hypervisor workload",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Hypervisor Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Workload ID",
+                        "name": "workloadId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Update manually maintained workload fields while keeping native ID and workload type immutable.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Edit a manual hypervisor workload",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Hypervisor Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Workload ID",
+                        "name": "workloadId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Manual workload changes",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.InfrastructureWorkloadPatchRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.InfrastructureWorkloadResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/host/{id}/workloads/{workloadId}/link": {
+            "put": {
+                "description": "Create or replace the logical MATCHES relation without merging workload or Host identity/history.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Link workload to an existing Host",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Hypervisor Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Workload ID",
+                        "name": "workloadId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Target Host",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.InfrastructureWorkloadLinkRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.InfrastructureWorkloadResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Remove only the logical MATCHES relation. Workload and Host records remain unchanged.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Unlink workload from Host",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Hypervisor Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Workload ID",
+                        "name": "workloadId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.InfrastructureWorkloadResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/host/{id}/workloads/{workloadId}/match-rejections/{candidateHostId}": {
+            "put": {
+                "description": "Persist a non-destructive \"Not this Host\" decision for the current weak address/name evidence. Exact-MAC evidence cannot be rejected here, and changed evidence is re-evaluated automatically.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Reject a weak workload Host candidate",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Proxmox Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Workload ID",
+                        "name": "workloadId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Candidate Host ID",
+                        "name": "candidateHostId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Reviewed evidence",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.WorkloadCandidateRejectionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.WorkloadMatchCandidateDoc"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Remove only the explicit \"Not this Host\" decision. Workload, Host identity/history, and links remain unchanged.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Clear a workload Host candidate rejection",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Proxmox Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Workload ID",
+                        "name": "workloadId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Candidate Host ID",
+                        "name": "candidateHostId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/identity/address": {
             "get": {
                 "description": "Return every retained MAC identity observed using one IP address, including first/last seen timestamps.",
@@ -1769,6 +2803,87 @@ const docTemplate = `{
                             "type": "object",
                             "additionalProperties": {
                                 "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/infrastructure/workload-memberships": {
+            "get": {
+                "description": "Return read-only reverse projections for persisted workload MATCHES relations. Optional hostId limits the response to one current LANnventory Host.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Get workload-to-Host memberships",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Current Host ID",
+                        "name": "hostId",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/api.InfrastructureWorkloadMembershipResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/infrastructure/workload-summaries": {
+            "get": {
+                "description": "Return read-only VM/container counts from current non-retired workload inventory. Running and stopped workloads both count.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Get current workload counts by hypervisor",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/api.InfrastructureWorkloadSummaryResponse"
                             }
                         }
                     },
@@ -2255,6 +3370,37 @@ const docTemplate = `{
                 }
             }
         },
+        "api.DeviceProfilePatchRequest": {
+            "type": "object",
+            "properties": {
+                "managementAddress": {
+                    "type": "string"
+                },
+                "manufacturer": {
+                    "type": "string"
+                },
+                "model": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.DeviceProfileResponse": {
+            "type": "object",
+            "properties": {
+                "hypervisor": {
+                    "$ref": "#/definitions/models.HypervisorProfile"
+                },
+                "managed": {
+                    "$ref": "#/definitions/models.DeviceProfile"
+                },
+                "network": {
+                    "$ref": "#/definitions/models.NetworkDeviceProfile"
+                },
+                "system": {
+                    "$ref": "#/definitions/models.SystemDeviceProfile"
+                }
+            }
+        },
         "api.DiscoveryEvidenceObservation": {
             "type": "object",
             "properties": {
@@ -2474,6 +3620,23 @@ const docTemplate = `{
                 }
             }
         },
+        "api.HypervisorProfilePatchRequest": {
+            "type": "object",
+            "properties": {
+                "clusterName": {
+                    "type": "string"
+                },
+                "nodeName": {
+                    "type": "string"
+                },
+                "platform": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
         "api.IdentityCorrelationDecisionResponse": {
             "type": "object",
             "properties": {
@@ -2502,6 +3665,692 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.InfrastructureWorkloadCreateRequest": {
+            "type": "object",
+            "properties": {
+                "interfaces": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.InfrastructureWorkloadInterfaceRequest"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "nativeId": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "workloadType": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.InfrastructureWorkloadInterfaceRequest": {
+            "type": "object",
+            "properties": {
+                "bridge": {
+                    "type": "string"
+                },
+                "configuredAddress": {
+                    "type": "string"
+                },
+                "configuredNetwork": {
+                    "type": "string"
+                },
+                "mac": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "vlanTag": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.InfrastructureWorkloadLinkRequest": {
+            "type": "object",
+            "properties": {
+                "hostId": {
+                    "type": "integer"
+                }
+            }
+        },
+        "api.InfrastructureWorkloadMatchResponseDoc": {
+            "type": "object",
+            "properties": {
+                "candidates": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.WorkloadMatchCandidateDoc"
+                    }
+                },
+                "currentLink": {
+                    "$ref": "#/definitions/models.InfrastructureWorkloadHostLink"
+                },
+                "deterministicExactHostId": {
+                    "type": "integer"
+                },
+                "exactAmbiguous": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "nativeId": {
+                    "type": "string"
+                },
+                "workloadId": {
+                    "type": "integer"
+                },
+                "workloadType": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.InfrastructureWorkloadMatchedHost": {
+            "type": "object",
+            "properties": {
+                "deviceType": {
+                    "type": "string"
+                },
+                "hostId": {
+                    "type": "integer"
+                },
+                "ip": {
+                    "type": "string"
+                },
+                "mac": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.InfrastructureWorkloadMembershipResponse": {
+            "type": "object",
+            "properties": {
+                "hostId": {
+                    "type": "integer"
+                },
+                "hostMac": {
+                    "type": "string"
+                },
+                "hypervisorHostId": {
+                    "type": "integer"
+                },
+                "hypervisorIp": {
+                    "type": "string"
+                },
+                "hypervisorMac": {
+                    "type": "string"
+                },
+                "hypervisorName": {
+                    "type": "string"
+                },
+                "linkSource": {
+                    "type": "string"
+                },
+                "nativeId": {
+                    "type": "string"
+                },
+                "retiredAt": {
+                    "type": "string"
+                },
+                "workloadId": {
+                    "type": "integer"
+                },
+                "workloadName": {
+                    "type": "string"
+                },
+                "workloadStatus": {
+                    "type": "string"
+                },
+                "workloadType": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.InfrastructureWorkloadPatchRequest": {
+            "type": "object",
+            "properties": {
+                "interfaces": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.InfrastructureWorkloadInterfaceRequest"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.InfrastructureWorkloadResponse": {
+            "type": "object",
+            "properties": {
+                "firstSeen": {
+                    "type": "string"
+                },
+                "hypervisorMac": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "interfaces": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.InfrastructureWorkloadInterface"
+                    }
+                },
+                "lastSeen": {
+                    "type": "string"
+                },
+                "link": {
+                    "$ref": "#/definitions/models.InfrastructureWorkloadHostLink"
+                },
+                "matchedHost": {
+                    "$ref": "#/definitions/api.InfrastructureWorkloadMatchedHost"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "nativeId": {
+                    "type": "string"
+                },
+                "retiredAt": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "workloadType": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.InfrastructureWorkloadSummaryResponse": {
+            "type": "object",
+            "properties": {
+                "containerCount": {
+                    "type": "integer"
+                },
+                "hypervisorHostId": {
+                    "type": "integer"
+                },
+                "hypervisorIp": {
+                    "type": "string"
+                },
+                "hypervisorMac": {
+                    "type": "string"
+                },
+                "hypervisorName": {
+                    "type": "string"
+                },
+                "platform": {
+                    "type": "string"
+                },
+                "totalCount": {
+                    "type": "integer"
+                },
+                "vmCount": {
+                    "type": "integer"
+                }
+            }
+        },
+        "api.NetworkDeviceProfilePatchRequest": {
+            "type": "object",
+            "properties": {
+                "managementMode": {
+                    "type": "string"
+                },
+                "physicalPortCount": {
+                    "type": "integer"
+                },
+                "portCapabilityNotes": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.ProxmoxImportApplyDoc": {
+            "type": "object",
+            "properties": {
+                "confirmed": {
+                    "type": "boolean"
+                },
+                "previewToken": {
+                    "type": "string"
+                },
+                "snapshot": {
+                    "$ref": "#/definitions/api.ProxmoxImportSnapshotDoc"
+                }
+            }
+        },
+        "api.ProxmoxImportApplyResponseDoc": {
+            "type": "object",
+            "properties": {
+                "applied": {
+                    "type": "boolean"
+                },
+                "importedAt": {
+                    "type": "string"
+                },
+                "summary": {
+                    "$ref": "#/definitions/api.ProxmoxImportPreviewSummaryDoc"
+                }
+            }
+        },
+        "api.ProxmoxImportFieldConflictDoc": {
+            "type": "object",
+            "properties": {
+                "field": {
+                    "type": "string"
+                },
+                "imported": {
+                    "type": "string"
+                },
+                "managed": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.ProxmoxImportInterfaceDoc": {
+            "type": "object",
+            "properties": {
+                "bridge": {
+                    "type": "string"
+                },
+                "configuredAddress": {
+                    "type": "string"
+                },
+                "configuredNetwork": {
+                    "type": "string"
+                },
+                "mac": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "vlanTag": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.ProxmoxImportInterfaceViewDoc": {
+            "type": "object",
+            "properties": {
+                "bridge": {
+                    "type": "string"
+                },
+                "configuredAddress": {
+                    "type": "string"
+                },
+                "configuredNetwork": {
+                    "type": "string"
+                },
+                "mac": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "vlanTag": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.ProxmoxImportNodeDiffDoc": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "after": {
+                    "$ref": "#/definitions/api.ProxmoxImportNodeViewDoc"
+                },
+                "before": {
+                    "$ref": "#/definitions/api.ProxmoxImportNodeViewDoc"
+                }
+            }
+        },
+        "api.ProxmoxImportNodeDoc": {
+            "type": "object",
+            "properties": {
+                "clusterName": {
+                    "type": "string"
+                },
+                "hostname": {
+                    "type": "string"
+                },
+                "pveVersion": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.ProxmoxImportNodeViewDoc": {
+            "type": "object",
+            "properties": {
+                "clusterName": {
+                    "type": "string"
+                },
+                "hostname": {
+                    "type": "string"
+                },
+                "pveVersion": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.ProxmoxImportPreviewDoc": {
+            "type": "object",
+            "properties": {
+                "applyAllowed": {
+                    "type": "boolean"
+                },
+                "blockedReasons": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "collectedAt": {
+                    "type": "string"
+                },
+                "complete": {
+                    "type": "boolean"
+                },
+                "managedConflicts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.ProxmoxImportFieldConflictDoc"
+                    }
+                },
+                "node": {
+                    "$ref": "#/definitions/api.ProxmoxImportNodeDiffDoc"
+                },
+                "previewToken": {
+                    "type": "string"
+                },
+                "snapshotDigest": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "summary": {
+                    "$ref": "#/definitions/api.ProxmoxImportPreviewSummaryDoc"
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "workloads": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.ProxmoxImportWorkloadDiffDoc"
+                    }
+                }
+            }
+        },
+        "api.ProxmoxImportPreviewSummaryDoc": {
+            "type": "object",
+            "properties": {
+                "added": {
+                    "type": "integer"
+                },
+                "conflicts": {
+                    "type": "integer"
+                },
+                "retired": {
+                    "type": "integer"
+                },
+                "unchanged": {
+                    "type": "integer"
+                },
+                "updated": {
+                    "type": "integer"
+                }
+            }
+        },
+        "api.ProxmoxImportSnapshotDoc": {
+            "type": "object",
+            "properties": {
+                "collectedAt": {
+                    "type": "string"
+                },
+                "collectionErrors": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "collectorVersion": {
+                    "type": "string"
+                },
+                "complete": {
+                    "type": "boolean"
+                },
+                "node": {
+                    "$ref": "#/definitions/api.ProxmoxImportNodeDoc"
+                },
+                "schemaVersion": {
+                    "type": "integer"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "workloads": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.ProxmoxImportWorkloadDoc"
+                    }
+                }
+            }
+        },
+        "api.ProxmoxImportWorkloadDiffDoc": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "after": {
+                    "$ref": "#/definitions/api.ProxmoxImportWorkloadViewDoc"
+                },
+                "before": {
+                    "$ref": "#/definitions/api.ProxmoxImportWorkloadViewDoc"
+                },
+                "changes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "key": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.ProxmoxImportWorkloadDoc": {
+            "type": "object",
+            "properties": {
+                "interfaces": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.ProxmoxImportInterfaceDoc"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "nativeId": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "workloadType": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.ProxmoxImportWorkloadViewDoc": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "interfaces": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.ProxmoxImportInterfaceViewDoc"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "nativeId": {
+                    "type": "string"
+                },
+                "retiredAt": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "workloadType": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.SystemDeviceProfilePatchRequest": {
+            "type": "object",
+            "properties": {
+                "operatingSystem": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.WorkloadCandidateRejectionRequest": {
+            "type": "object",
+            "properties": {
+                "evidenceFingerprint": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.WorkloadMatchCandidateDoc": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean"
+                },
+                "assessment": {
+                    "type": "string"
+                },
+                "deviceType": {
+                    "type": "string"
+                },
+                "evidence": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.WorkloadMatchEvidenceDoc"
+                    }
+                },
+                "evidenceFingerprint": {
+                    "type": "string"
+                },
+                "hostId": {
+                    "type": "integer"
+                },
+                "ip": {
+                    "type": "string"
+                },
+                "mac": {
+                    "type": "string"
+                },
+                "matchedAddresses": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "possibleIpConflict": {
+                    "type": "boolean"
+                },
+                "rejected": {
+                    "type": "boolean"
+                },
+                "strength": {
+                    "type": "string"
+                },
+                "workloadMacs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "api.WorkloadMatchEvidenceDoc": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean"
+                },
+                "code": {
+                    "type": "string"
+                },
+                "detail": {
+                    "type": "string"
+                },
+                "firstSeen": {
+                    "type": "string"
+                },
+                "lastSeen": {
+                    "type": "string"
+                },
+                "matchedValue": {
+                    "type": "string"
+                },
+                "strength": {
                     "type": "string"
                 }
             }
@@ -2857,6 +4706,26 @@ const docTemplate = `{
                 }
             }
         },
+        "models.DeviceProfile": {
+            "type": "object",
+            "properties": {
+                "mac": {
+                    "type": "string"
+                },
+                "managementAddress": {
+                    "type": "string"
+                },
+                "manufacturer": {
+                    "type": "string"
+                },
+                "model": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
         "models.Host": {
             "type": "object",
             "properties": {
@@ -2963,6 +4832,84 @@ const docTemplate = `{
                 }
             }
         },
+        "models.HypervisorProfile": {
+            "type": "object",
+            "properties": {
+                "clusterName": {
+                    "type": "string"
+                },
+                "mac": {
+                    "type": "string"
+                },
+                "nodeName": {
+                    "type": "string"
+                },
+                "platform": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.InfrastructureWorkloadHostLink": {
+            "type": "object",
+            "properties": {
+                "hostId": {
+                    "type": "integer"
+                },
+                "hostMac": {
+                    "type": "string"
+                },
+                "linkSource": {
+                    "type": "string"
+                },
+                "linkedAt": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "workloadId": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.InfrastructureWorkloadInterface": {
+            "type": "object",
+            "properties": {
+                "bridge": {
+                    "type": "string"
+                },
+                "configuredAddress": {
+                    "type": "string"
+                },
+                "configuredNetwork": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "mac": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "vlanTag": {
+                    "type": "string"
+                },
+                "workloadId": {
+                    "type": "integer"
+                }
+            }
+        },
         "models.InventoryOptions": {
             "type": "object",
             "properties": {
@@ -2977,6 +4924,67 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "models.NetworkDeviceProfile": {
+            "type": "object",
+            "properties": {
+                "mac": {
+                    "type": "string"
+                },
+                "managementMode": {
+                    "type": "string"
+                },
+                "physicalPortCount": {
+                    "type": "integer"
+                },
+                "portCapabilityNotes": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.ProxmoxSourceState": {
+            "type": "object",
+            "properties": {
+                "collectedAt": {
+                    "type": "string"
+                },
+                "collectorVersion": {
+                    "type": "string"
+                },
+                "complete": {
+                    "type": "boolean"
+                },
+                "hypervisorMac": {
+                    "type": "string"
+                },
+                "importedAt": {
+                    "type": "string"
+                },
+                "nodeClusterName": {
+                    "type": "string"
+                },
+                "nodeHostname": {
+                    "type": "string"
+                },
+                "nodePveVersion": {
+                    "type": "string"
+                },
+                "nodeStatus": {
+                    "type": "string"
+                },
+                "schemaVersion": {
+                    "type": "integer"
+                },
+                "snapshotDigest": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
                 }
             }
         },
@@ -3043,13 +5051,33 @@ const docTemplate = `{
                     "type": "integer"
                 }
             }
+        },
+        "models.SystemDeviceProfile": {
+            "type": "object",
+            "properties": {
+                "mac": {
+                    "type": "string"
+                },
+                "operatingSystem": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
         }
     }
 }`
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "0.1.0-beta.6",
+	Version:          "0.1.0-beta.6.uat.4",
 	Host:             "",
 	BasePath:         "/api/",
 	Schemes:          []string{},

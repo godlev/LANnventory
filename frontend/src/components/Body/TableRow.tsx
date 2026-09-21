@@ -44,6 +44,42 @@ function TableRow(_props: any) {
   const hardwareClass = () => "device-hardware-text" + (isUnknownHardware(_props.host.Hw) ? " device-hardware-text-muted" : "");
   const deviceTypeOption = () => getDeviceTypeOption(_props.host.DeviceType);
   const mobileToggleLabel = () => (_props.mobileExpanded ? "Hide" : "Show") + " device details for " + displayName();
+  const workloadMemberships = () => (_props.workloadMemberships ?? []) as Array<{
+    nativeId: string;
+    workloadType: "vm" | "container";
+    workloadName: string;
+    hypervisorHostId: number;
+    hypervisorName: string;
+    hypervisorIp: string;
+    linkSource: "manual" | "exact-mac";
+  }>;
+  const primaryWorkloadMembership = () => workloadMemberships()[0];
+  const hypervisorWorkloadSummary = () => _props.hypervisorWorkloadSummary as {
+    platform: string;
+    vmCount: number;
+    containerCount: number;
+    totalCount: number;
+  } | undefined;
+  const isProxmoxHypervisor = () => hypervisorWorkloadSummary()?.platform === "proxmox-ve";
+  const hypervisorInventoryLabel = () => {
+    const summary = hypervisorWorkloadSummary();
+    if (!summary) return "";
+    return summary.containerCount + " LXC · " + summary.vmCount + " VM";
+  };
+  const compactWorkloadLabel = () => {
+    const item = primaryWorkloadMembership();
+    if (!item) return "";
+    return (item.workloadType === "container" ? "LXC" : "VM") + " " + item.nativeId;
+  };
+  const compactWorkloadIcon = () =>
+    primaryWorkloadMembership()?.workloadType === "container" ? "bi-box-seam" : "bi-display";
+  const hostedOnLabel = () => {
+    const item = primaryWorkloadMembership();
+    if (!item) return "";
+    const kind = item.workloadType === "container" ? "LXC" : "VM";
+    const parent = item.hypervisorName || item.hypervisorIp || "Proxmox";
+    return kind+" "+item.nativeId+" · "+parent;
+  };
 
   let nameSaveQueue: Promise<unknown> = Promise.resolve();
   let hasPendingNameChange = false;
@@ -219,6 +255,24 @@ function TableRow(_props: any) {
             <span class="device-mobile-detail-value">{_props.host.Mac}</span>
             <span class="device-mobile-detail-label">Hardware</span>
             <span class="device-mobile-detail-value">{hardwareText()}</span>
+            <Show when={isProxmoxHypervisor()}>
+              <span class="device-mobile-detail-label">Proxmox inventory</span>
+              <span class="device-mobile-detail-value">{hypervisorInventoryLabel()}</span>
+            </Show>
+            <Show when={primaryWorkloadMembership()}>
+              <span class="device-mobile-detail-label">Hosted on</span>
+              <span class="device-mobile-detail-value">
+                <Show
+                  when={(primaryWorkloadMembership()?.hypervisorHostId ?? 0) > 0}
+                  fallback={<span>{hostedOnLabel()}</span>}
+                >
+                  <a href={"/host/"+primaryWorkloadMembership()?.hypervisorHostId}>{hostedOnLabel()}</a>
+                </Show>
+                <Show when={workloadMemberships().length > 1}>
+                  <span class="device-cell-muted"> · +{workloadMemberships().length - 1} linked workload</span>
+                </Show>
+              </span>
+            </Show>
             <Show when={(_props.host.Iface ?? "").trim()}>
               <span class="device-mobile-detail-label">Interface</span>
               <span class="device-mobile-detail-value">{_props.host.Iface}</span>
@@ -295,7 +349,69 @@ function TableRow(_props: any) {
           <Show when={pinError()}>
             <span class="visually-hidden" role="status">{pinError()}</span>
           </Show>
+          <Show when={_props.viewMode === "compact" && primaryWorkloadMembership()}>
+            <a
+              class="device-compact-workload"
+              href={(primaryWorkloadMembership()?.hypervisorHostId ?? 0) > 0
+                ? "/host/" + primaryWorkloadMembership()?.hypervisorHostId
+                : undefined}
+              title={"Linked Proxmox workload · " + hostedOnLabel()}
+              aria-label={"Linked Proxmox workload " + compactWorkloadLabel()}
+            >
+              <i class={"bi " + compactWorkloadIcon()} aria-hidden="true"></i>
+              <span>{primaryWorkloadMembership()?.nativeId}</span>
+              <Show when={workloadMemberships().length > 1}>
+                <span class="device-compact-workload-more">+{workloadMemberships().length - 1}</span>
+              </Show>
+            </a>
+          </Show>
+          <Show when={_props.viewMode === "compact" && isProxmoxHypervisor()}>
+            <span
+              class="device-compact-hypervisor-summary"
+              title={"Current Proxmox inventory · " + hypervisorInventoryLabel()}
+              aria-label={"Current Proxmox inventory " + hypervisorInventoryLabel()}
+            >
+              <span><i class="bi bi-box-seam" aria-hidden="true"></i>{hypervisorWorkloadSummary()?.containerCount} LXC</span>
+              <span class="device-compact-summary-separator">·</span>
+              <span><i class="bi bi-display" aria-hidden="true"></i>{hypervisorWorkloadSummary()?.vmCount} VM</span>
+            </span>
+          </Show>
         </span>
+        <Show when={_props.viewMode !== "compact" && primaryWorkloadMembership()}>
+          <div class="device-workload-parent">
+            <Show
+              when={(primaryWorkloadMembership()?.hypervisorHostId ?? 0) > 0}
+              fallback={
+                <span class="device-workload-parent-link">
+                  <i class="bi bi-diagram-2" aria-hidden="true"></i>
+                  {hostedOnLabel()}
+                </span>
+              }
+            >
+              <a
+                class="device-workload-parent-link"
+                href={"/host/"+primaryWorkloadMembership()?.hypervisorHostId}
+                title={"Linked Proxmox workload · "+hostedOnLabel()}
+              >
+                <i class="bi bi-diagram-2" aria-hidden="true"></i>
+                {hostedOnLabel()}
+              </a>
+            </Show>
+            <Show when={workloadMemberships().length > 1}>
+              <span class="device-workload-parent-more">+{workloadMemberships().length - 1}</span>
+            </Show>
+          </div>
+        </Show>
+        <Show when={_props.viewMode !== "compact" && isProxmoxHypervisor()}>
+          <div
+            class="device-hypervisor-summary"
+            title={"Current non-retired Proxmox inventory · " + hypervisorInventoryLabel()}
+          >
+            <span><i class="bi bi-box-seam" aria-hidden="true"></i>{hypervisorWorkloadSummary()?.containerCount} LXC</span>
+            <span class="device-hypervisor-summary-separator">·</span>
+            <span><i class="bi bi-display" aria-hidden="true"></i>{hypervisorWorkloadSummary()?.vmCount} VM</span>
+          </div>
+        </Show>
       </td>
       <td class="device-table-type">
         <DeviceTypePicker

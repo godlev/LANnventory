@@ -108,6 +108,16 @@ func setHostInventory(c *gin.Context) {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	if update.DeviceType != nil && *update.DeviceType != "server" {
+		if blocked, err := hostDeviceTypeBlockedByHypervisor(host); err != nil {
+			slog.Error("Failed to validate hypervisor device type transition", "id", host.ID, "err", err)
+			c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to validate device type change"})
+			return
+		} else if blocked {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "remove hypervisor profile before changing Device Type from Server"})
+			return
+		}
+	}
 	if !hasChanges {
 		updatedHost, err := gdb.SelectHostWithMetadataByID(host.ID)
 		if err != nil {
@@ -171,6 +181,17 @@ func setHostDeviceType(c *gin.Context) {
 	if !ok || !models.IsValidDeviceType(deviceType) {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid deviceType"})
 		return
+	}
+
+	if deviceType != "server" {
+		if blocked, err := hostDeviceTypeBlockedByHypervisor(host); err != nil {
+			slog.Error("Failed to validate hypervisor device type transition", "id", host.ID, "err", err)
+			c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to validate device type change"})
+			return
+		} else if blocked {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "remove hypervisor profile before changing Device Type from Server"})
+			return
+		}
 	}
 
 	oldDeviceType := host.DeviceType
@@ -271,6 +292,14 @@ func validateHostInventoryPatch(payload HostInventoryPatchRequest) (models.HostI
 	}
 
 	return update, hasChanges, nil
+}
+
+func hostDeviceTypeBlockedByHypervisor(host models.Host) (bool, error) {
+	if host.DeviceType != "server" {
+		return false, nil
+	}
+	_, found, err := gdb.SelectHypervisorProfileByMAC(host.Mac)
+	return found, err
 }
 
 // addHost godoc

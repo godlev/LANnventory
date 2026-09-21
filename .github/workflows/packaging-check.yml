@@ -84,11 +84,18 @@ jobs:
       - name: Check mock API syntax
         run: node --check frontend/dev/mock-api.mjs
 
-      - name: Check Proxmox installer syntax and helpers
+      - name: Check Proxmox tooling
         run: |
           if [ -f proxmox/lannventory.sh ]; then
             bash -n proxmox/lannventory.sh
             bash proxmox/lannventory_test.sh
+          fi
+          if [ -f proxmox/collect_inventory.py ]; then
+            python3 -m py_compile proxmox/collect_inventory.py proxmox/collect_inventory_test.py
+            python3 -m unittest proxmox/collect_inventory_test.py
+            cmp -s proxmox/collect_inventory.py frontend/public/lannventory-proxmox-collector.py
+            test -f backend/internal/web/public/lannventory-proxmox-collector.py
+            cmp -s proxmox/collect_inventory.py backend/internal/web/public/lannventory-proxmox-collector.py
           fi
 
       - name: Set up Go

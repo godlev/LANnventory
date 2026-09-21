@@ -132,6 +132,86 @@ func TestBackupExportEndpointIncludesStableDataAndMetadata(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("UpsertHostMetadata router: %v", err)
 	}
+	profileManufacturer := "TrueNAS"
+	profileModel := "Storage Node"
+	profileAddress := "nas.local"
+	if _, found, err := gdb.UpdateDeviceProfile("AA:BB:CC:DD:EE:20", models.DeviceProfileUpdate{
+		Manufacturer:      &profileManufacturer,
+		Model:             &profileModel,
+		ManagementAddress: &profileAddress,
+	}); err != nil || !found {
+		t.Fatalf("UpdateDeviceProfile nas found=%v err=%v", found, err)
+	}
+	networkMode := "managed"
+	networkPorts := 5
+	if _, found, err := gdb.UpdateNetworkDeviceProfile("AA:BB:CC:DD:EE:01", models.NetworkDeviceProfileUpdate{
+		ManagementMode:    &networkMode,
+		PhysicalPortCount: &networkPorts,
+	}); err != nil || !found {
+		t.Fatalf("UpdateNetworkDeviceProfile router found=%v err=%v", found, err)
+	}
+	systemRole := "Storage"
+	systemOS := "TrueNAS SCALE"
+	systemVersion := "25.04"
+	if _, found, err := gdb.UpdateSystemDeviceProfile("AA:BB:CC:DD:EE:20", models.SystemDeviceProfileUpdate{
+		Role:            &systemRole,
+		OperatingSystem: &systemOS,
+		Version:         &systemVersion,
+	}); err != nil || !found {
+		t.Fatalf("UpdateSystemDeviceProfile nas found=%v err=%v", found, err)
+	}
+	hypervisorPlatform := "proxmox-ve"
+	hypervisorNode := "pve-test"
+	if _, found, err := gdb.UpdateHypervisorProfile("AA:BB:CC:DD:EE:20", models.HypervisorProfileUpdate{
+		Platform: &hypervisorPlatform,
+		NodeName: &hypervisorNode,
+	}); err != nil || !found {
+		t.Fatalf("UpdateHypervisorProfile found=%v err=%v", found, err)
+	}
+	workloadRecord, err := gdb.UpsertInfrastructureWorkload("AA:BB:CC:DD:EE:20", models.InfrastructureWorkloadUpsert{
+		NativeID:     "119",
+		WorkloadType: models.InfrastructureWorkloadTypeVM,
+		Name:         "media-vm",
+		Status:       models.InfrastructureWorkloadStatusRunning,
+		Source:       models.InfrastructureWorkloadSourceManual,
+		Interfaces: []models.InfrastructureWorkloadInterface{{
+			Name:              "net0",
+			Mac:               "AA:BB:CC:00:01:19",
+			Bridge:            "vmbr0",
+			ConfiguredAddress: "192.168.1.119",
+		}},
+	}, "2026-09-05T10:30:00Z")
+	if err != nil {
+		t.Fatalf("UpsertInfrastructureWorkload: %v", err)
+	}
+	routerHost, err := gdb.SelectHostWithMetadataByID(1)
+	if err != nil {
+		t.Fatalf("SelectHostWithMetadataByID router: %v", err)
+	}
+	if _, err := gdb.SetInfrastructureWorkloadHostLink(
+		workloadRecord.Workload.ID,
+		routerHost,
+		models.InfrastructureWorkloadLinkSourceManual,
+		"2026-09-05T10:35:00Z",
+	); err != nil {
+		t.Fatalf("SetInfrastructureWorkloadHostLink: %v", err)
+	}
+	proxmoxState := models.ProxmoxSourceState{
+		Source:           models.InfrastructureWorkloadSourceScriptImport,
+		SchemaVersion:    1,
+		CollectorVersion: "1.0.0",
+		CollectedAt:      "2026-09-05T10:40:00Z",
+		Complete:         true,
+		NodeHostname:     "pve-imported",
+		NodePVEVersion:   "pve-manager/9.2.10",
+		NodeClusterName:  "home",
+		NodeStatus:       "online",
+		SnapshotDigest:   "export-test-digest",
+		ImportedAt:       "2026-09-05T10:41:00Z",
+	}
+	if err := gdb.ApplyProxmoxScriptImport("AA:BB:CC:DD:EE:20", proxmoxState, nil); err != nil {
+		t.Fatalf("ApplyProxmoxScriptImport state-only: %v", err)
+	}
 
 	rec = getPath(router, "/api/export/backup")
 	if rec.Code != http.StatusOK {
@@ -172,6 +252,48 @@ func TestBackupExportEndpointIncludesStableDataAndMetadata(t *testing.T) {
 	assertExportEventIDs(t, document.Data.Events, []int{1, 2}, "events")
 	assertExportMetadataMACs(t, document.Data.HostMetadata, []string{"AA:BB:CC:DD:EE:01", "AA:BB:CC:DD:EE:20"})
 	assertExportLifecycleMACs(t, document.Data.HostLifecycle, []string{"AA:BB:CC:DD:EE:01", "AA:BB:CC:DD:EE:20"})
+	assertExportDeviceProfileMACs(t, document.Data.DeviceProfiles, []string{"AA:BB:CC:DD:EE:20"})
+	if len(document.Data.NetworkDeviceProfiles) != 1 || document.Data.NetworkDeviceProfiles[0].Mac != "AA:BB:CC:DD:EE:01" ||
+		document.Data.NetworkDeviceProfiles[0].ManagementMode != networkMode || document.Data.NetworkDeviceProfiles[0].PhysicalPortCount != networkPorts {
+		t.Fatalf("network device profiles = %+v", document.Data.NetworkDeviceProfiles)
+	}
+	if len(document.Data.SystemDeviceProfiles) != 1 || document.Data.SystemDeviceProfiles[0].Mac != "AA:BB:CC:DD:EE:20" ||
+		document.Data.SystemDeviceProfiles[0].Role != systemRole || document.Data.SystemDeviceProfiles[0].OperatingSystem != systemOS {
+		t.Fatalf("system device profiles = %+v", document.Data.SystemDeviceProfiles)
+	}
+	if len(document.Data.HypervisorProfiles) != 1 || document.Data.HypervisorProfiles[0].Platform != hypervisorPlatform ||
+		document.Data.HypervisorProfiles[0].NodeName != hypervisorNode {
+		t.Fatalf("hypervisor profiles = %+v", document.Data.HypervisorProfiles)
+	}
+	if len(document.Data.InfrastructureWorkloads) != 1 ||
+		document.Data.InfrastructureWorkloads[0].NativeID != "119" ||
+		document.Data.InfrastructureWorkloads[0].WorkloadType != "vm" ||
+		document.Data.InfrastructureWorkloads[0].Source != "manual" {
+		t.Fatalf("infrastructure workloads = %+v", document.Data.InfrastructureWorkloads)
+	}
+	if len(document.Data.InfrastructureWorkloadInterfaces) != 1 ||
+		document.Data.InfrastructureWorkloadInterfaces[0].WorkloadID != workloadRecord.Workload.ID ||
+		document.Data.InfrastructureWorkloadInterfaces[0].Mac != "AA:BB:CC:00:01:19" {
+		t.Fatalf("infrastructure workload interfaces = %+v", document.Data.InfrastructureWorkloadInterfaces)
+	}
+	if len(document.Data.InfrastructureWorkloadHostLinks) != 1 ||
+		document.Data.InfrastructureWorkloadHostLinks[0].WorkloadID != workloadRecord.Workload.ID ||
+		document.Data.InfrastructureWorkloadHostLinks[0].HostID != routerHost.ID ||
+		document.Data.InfrastructureWorkloadHostLinks[0].LinkSource != models.InfrastructureWorkloadLinkSourceManual {
+		t.Fatalf("infrastructure workload host links = %+v", document.Data.InfrastructureWorkloadHostLinks)
+	}
+	if len(document.Data.ProxmoxSourceStates) != 1 ||
+		document.Data.ProxmoxSourceStates[0].HypervisorMac != "AA:BB:CC:DD:EE:20" ||
+		document.Data.ProxmoxSourceStates[0].NodeHostname != "pve-imported" ||
+		document.Data.ProxmoxSourceStates[0].SnapshotDigest != "export-test-digest" {
+		t.Fatalf("Proxmox source states = %+v", document.Data.ProxmoxSourceStates)
+	}
+	if document.Data.DeviceProfiles[0].Manufacturer != profileManufacturer ||
+		document.Data.DeviceProfiles[0].Model != profileModel ||
+		document.Data.DeviceProfiles[0].ManagementAddress != profileAddress ||
+		document.Data.DeviceProfiles[0].UpdatedAt == "" {
+		t.Fatalf("device profile backup = %+v, want managed profile values", document.Data.DeviceProfiles[0])
+	}
 	assertStringSlice(t, document.Data.HostMetadata[0].Tags, routerTags, "router metadata tags")
 	assertStringSlice(t, document.Data.HostMetadata[1].Tags, nasTags, "nas metadata tags")
 	if !document.Data.HostMetadata[0].Pinned {
@@ -196,7 +318,15 @@ func TestBackupExportEndpointEmptyTablesUsesArrays(t *testing.T) {
 		!strings.Contains(rec.Body.String(), `"history": []`) ||
 		!strings.Contains(rec.Body.String(), `"events": []`) ||
 		!strings.Contains(rec.Body.String(), `"hostMetadata": []`) ||
-		!strings.Contains(rec.Body.String(), `"hostLifecycle": []`) {
+		!strings.Contains(rec.Body.String(), `"hostLifecycle": []`) ||
+		!strings.Contains(rec.Body.String(), `"deviceProfiles": []`) ||
+		!strings.Contains(rec.Body.String(), `"networkDeviceProfiles": []`) ||
+		!strings.Contains(rec.Body.String(), `"systemDeviceProfiles": []`) ||
+		!strings.Contains(rec.Body.String(), `"hypervisorProfiles": []`) ||
+		!strings.Contains(rec.Body.String(), `"infrastructureWorkloads": []`) ||
+		!strings.Contains(rec.Body.String(), `"infrastructureWorkloadInterfaces": []`) ||
+		!strings.Contains(rec.Body.String(), `"infrastructureWorkloadHostLinks": []`) ||
+		!strings.Contains(rec.Body.String(), `"proxmoxSourceStates": []`) {
 		t.Fatalf("empty backup did not encode empty arrays: %s", rec.Body.String())
 	}
 }
@@ -404,6 +534,19 @@ func assertExportMetadataMACs(t *testing.T, metadata []backup.HostMetadata, want
 	for i, mac := range want {
 		if metadata[i].Mac != mac {
 			t.Fatalf("metadata[%d].Mac = %q, want %q: %+v", i, metadata[i].Mac, mac, metadata)
+		}
+	}
+}
+
+func assertExportDeviceProfileMACs(t *testing.T, profiles []backup.DeviceProfile, want []string) {
+	t.Helper()
+
+	if len(profiles) != len(want) {
+		t.Fatalf("device profiles len = %d, want %d: %+v", len(profiles), len(want), profiles)
+	}
+	for i, mac := range want {
+		if profiles[i].Mac != mac {
+			t.Fatalf("deviceProfiles[%d].Mac = %q, want %q: %+v", i, profiles[i].Mac, mac, profiles)
 		}
 	}
 }

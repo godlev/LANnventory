@@ -16,6 +16,14 @@ func ExportData() (backup.Data, error) {
 	var events []models.HostEvent
 	var hostMetadata []models.HostMetadata
 	var hostLifecycle []models.HostLifecycle
+	var deviceProfiles []models.DeviceProfile
+	var networkProfiles []models.NetworkDeviceProfile
+	var systemProfiles []models.SystemDeviceProfile
+	var hypervisorProfiles []models.HypervisorProfile
+	var workloads []models.InfrastructureWorkload
+	var workloadInterfaces []models.InfrastructureWorkloadInterface
+	var workloadLinks []models.InfrastructureWorkloadHostLink
+	var proxmoxSourceStates []models.ProxmoxSourceState
 
 	activeDB, release, err := acquireDB()
 	if err != nil {
@@ -41,6 +49,33 @@ func ExportData() (backup.Data, error) {
 		if err := txDB.Table(hostLifecycleTable).Order(clause.OrderByColumn{Column: clause.Column{Name: "MAC"}}).Find(&hostLifecycle).Error; err != nil {
 			return err
 		}
+		if err := txDB.Table(deviceProfilesTable).Order(clause.OrderByColumn{Column: clause.Column{Name: "MAC"}}).Find(&deviceProfiles).Error; err != nil {
+			return err
+		}
+		if err := txDB.Table(networkDeviceProfilesTable).Order(clause.OrderByColumn{Column: clause.Column{Name: "MAC"}}).Find(&networkProfiles).Error; err != nil {
+			return err
+		}
+		if err := txDB.Table(systemDeviceProfilesTable).Order(clause.OrderByColumn{Column: clause.Column{Name: "MAC"}}).Find(&systemProfiles).Error; err != nil {
+			return err
+		}
+		if err := txDB.Table(hypervisorProfilesTable).Order(clause.OrderByColumn{Column: clause.Column{Name: "MAC"}}).Find(&hypervisorProfiles).Error; err != nil {
+			return err
+		}
+		if err := txDB.Table(infrastructureWorkloadsTable).Order(idAscending).Find(&workloads).Error; err != nil {
+			return err
+		}
+		if err := txDB.Table(infrastructureWorkloadInterfacesTable).Order(idAscending).Find(&workloadInterfaces).Error; err != nil {
+			return err
+		}
+		if err := txDB.Table(infrastructureWorkloadHostLinksTable).Order(clause.OrderByColumn{Column: clause.Column{Name: "WORKLOAD_ID"}}).Find(&workloadLinks).Error; err != nil {
+			return err
+		}
+		if err := txDB.Table(proxmoxSourceStatesTable).
+			Order(clause.OrderByColumn{Column: clause.Column{Name: "HYPERVISOR_MAC"}}).
+			Order(clause.OrderByColumn{Column: clause.Column{Name: "SOURCE"}}).
+			Find(&proxmoxSourceStates).Error; err != nil {
+			return err
+		}
 
 		return nil
 	})
@@ -48,7 +83,7 @@ func ExportData() (backup.Data, error) {
 		return backup.Data{}, err
 	}
 
-	return backup.DataFromModels(currentHosts, history, events, hostMetadata, hostLifecycle), nil
+	return backup.DataFromModels(currentHosts, history, events, hostMetadata, hostLifecycle, deviceProfiles, networkProfiles, systemProfiles, hypervisorProfiles, workloads, workloadInterfaces, workloadLinks, proxmoxSourceStates), nil
 }
 
 // ExportCurrentHosts returns enriched current inventory without reading history tables.

@@ -9,6 +9,14 @@ const correlation = read("src/components/HostPage/CorrelationPanel.tsx");
 const hostActivity = read("src/components/HostPage/HostActivityCard.tsx");
 const activityFeed = read("src/components/ActivityFeed.tsx");
 const hostCard = read("src/components/HostPage/HostCard.tsx");
+const deviceProfile = read("src/components/HostPage/DeviceProfileCard.tsx");
+const proxmoxInventory = read("src/components/HostPage/ProxmoxInventoryCard.tsx");
+const hostedWorkload = read("src/components/HostPage/HostedWorkloadCard.tsx");
+const homeBody = read("src/pages/Body.tsx");
+const homeCardHead = read("src/components/Body/CardHead.tsx");
+const homeTableRow = read("src/components/Body/TableRow.tsx");
+const appStyles = read("src/App.css");
+const deviceTypes = read("src/functions/deviceTypes.ts");
 
 function requireText(source, value, message) {
   if (!source.includes(value)) {
@@ -63,5 +71,69 @@ for (const label of [
   requireText(hostCard, ">" + label + "</div>", "Host Details label " + label + " must remain explicit.");
 }
 forbidText(hostCard, ">Hardware</div>", "ARP/OUI vendor text must not be labelled Hardware.");
+
+requireText(deviceProfile, "Managed inventory only.", "Device Profile must identify user-managed provenance.");
+requireText(deviceProfile, "Imported Proxmox data is kept separate", "Managed/imported profile separation must remain explicit.");
+requireText(deviceProfile, "Data source", "Device Profile must expose a data-source legend.");
+requireText(deviceProfile, 'source="manual"', "Managed Device Profile fields must carry manual provenance.");
+requireText(deviceProfile, 'source="discovered"', "Data-source legend must explain discovered provenance.");
+requireText(deviceProfile, 'source="imported"', "Data-source legend must explain imported provenance.");
+requireText(deviceProfile, "Imports will not overwrite this field.", "Manual field tooltip must state overwrite protection.");
+requireText(deviceProfile, "optional reference values", "Hypervisor reference fields must be explained as optional.");
+requireText(deviceProfile, "Capability profile; the Host remains Device Type Server.", "Hypervisor must remain a profile capability rather than a Device Type.");
+requireText(deviceProfile, '<option value="proxmox-ve">Proxmox VE</option>', "Manual Proxmox profile option must remain available.");
+
+requireText(proxmoxInventory, "How access works", "Proxmox onboarding must explain collector permissions.");
+requireText(proxmoxInventory, "uses the permissions of the shell user", "Collector access model must be explicit.");
+requireText(proxmoxInventory, "Open the Proxmox shell", "Proxmox import must be presented as a guided workflow.");
+requireText(proxmoxInventory, "Create a compact snapshot file", "Collector execution must be a dedicated wizard step.");
+requireText(proxmoxInventory, "Download collector", "Collector must be downloadable from the LANnventory UI.");
+requireText(proxmoxInventory, "/lannventory-proxmox-collector.py", "Collector download must be served by the local LANnventory instance.");
+requireText(proxmoxInventory, "Preview changes", "Preview must remain mandatory and explicit.");
+requireText(proxmoxInventory, "Nothing is written until you review and confirm the import.", "Preview/apply safety wording must remain explicit.");
+requireText(proxmoxInventory, "Imported: observed by the read-only Proxmox collector.", "Imported source-state fields must expose provenance.");
+requireText(proxmoxInventory, '--compact > "+snapshotPath', "Collector workflow must write compact output to a file instead of flooding the shell.");
+requireText(proxmoxInventory, "Recommended for larger environments:", "Large-environment file transfer guidance must remain explicit.");
+requireText(proxmoxInventory, "scp root@", "Wizard must provide an SCP file-transfer option.");
+requireText(proxmoxInventory, "Select command", "Shell commands must be manually selected rather than copied programmatically.");
+forbidText(proxmoxInventory, "navigator.clipboard.writeText", "Shell commands must not be written to the clipboard programmatically.");
+requireText(proxmoxInventory, "What Import will do in LANnventory", "Preview must explain the effect of Import before confirmation.");
+requireText(proxmoxInventory, "no fake Hosts are created", "Preview must clarify that workloads are not LANnventory Hosts.");
+requireText(proxmoxInventory, "No VM/LXC is created, changed, started, stopped, or deleted on Proxmox.", "Preview must explicitly state that Proxmox is not modified.");
+requireText(proxmoxInventory, "Managed Device Profile fields and manual workload links are not overwritten.", "Preview must state preservation guarantees.");
+requireText(proxmoxInventory, "Import into LANnventory", "Final action must be named as a LANnventory import rather than ambiguous Apply.");
+requireText(proxmoxInventory, "Possible IP conflict", "Address-only matches with conflicting MACs must be first-class diagnostics.");
+requireText(proxmoxInventory, "IP address match only", "Weak address evidence must be described explicitly.");
+requireText(proxmoxInventory, "MAC differs", "IP conflict diagnostics must expose the contradictory MAC evidence.");
+requireText(proxmoxInventory, "Link anyway", "Weak matches must require explicit manual linking.");
+requireText(proxmoxInventory, "Not this Host", "Weak matches must support explicit rejection.");
+requireText(proxmoxInventory, "Rejected suggestions", "Rejected candidates must remain recoverable without returning as active suggestions.");
+requireText(proxmoxInventory, "No MAC confirmation", "Name/address-only evidence must not imply MAC confirmation.");
+requireText(proxmoxInventory, "Linked automatically", "Persisted exact-MAC relationships must be visibly identified as already linked.");
+requireText(proxmoxInventory, "Linked manually", "Persisted manual relationships must be visibly identified as already linked.");
+requireText(proxmoxInventory, "Remove link", "The linked-state action must describe removing an existing relationship.");
+requireText(proxmoxInventory, "Historical IP reuse is kept in Host history only.", "Historical IP reuse must be explained as context rather than workload-match evidence.");
+requireText(hostedWorkload, "Hosted on Proxmox", "Linked guest Host pages must expose their Proxmox parent.");
+requireText(hostedWorkload, "Child relationship", "Guest Host relationship semantics must be explicit.");
+requireText(homeTableRow, "device-workload-parent", "Home device rows must surface linked Proxmox workload ancestry.");
+requireText(homeTableRow, "Linked Proxmox workload", "Home parent indicator must explain the relationship.");
+requireText(homeBody, "lannventory.home.tableView", "Home table view preference must persist in browser storage.");
+requireText(homeBody, 'device-table-" + tableView()', "Home table must expose the selected Comfortable/Compact mode as a CSS class.");
+requireText(homeCardHead, "Comfortable", "Home toolbar must offer Comfortable table view.");
+requireText(homeCardHead, "Compact", "Home toolbar must offer Compact table view.");
+requireText(homeTableRow, '_props.viewMode === "compact"', "Compact Home rows must have dedicated workload rendering.");
+requireText(homeTableRow, "device-compact-workload", "Compact Home rows must expose a one-line Proxmox workload marker.");
+requireText(homeTableRow, "device-hypervisor-summary", "Comfortable Home rows must expose Proxmox VM/LXC totals under the hypervisor name.");
+requireText(homeTableRow, "device-compact-hypervisor-summary", "Compact Home rows must keep Proxmox VM/LXC totals on one line.");
+requireText(homeTableRow, "containerCount", "Proxmox Home summary must expose LXC/container counts.");
+requireText(homeTableRow, "vmCount", "Proxmox Home summary must expose VM counts.");
+requireText(homeBody, "apiGetInfrastructureWorkloadSummaries", "Home must load full hypervisor workload inventory counts rather than count only linked workloads.");
+requireText(read("dev/mock-api.mjs"), "/api/infrastructure/workload-summaries", "Mock backend must expose the Home workload summary endpoint.");
+requireText(homeTableRow, '_props.viewMode !== "compact"', "Comfortable-only second-line workload ancestry must be suppressed in Compact view.");
+requireText(appStyles, ".device-table-compact tbody td", "Compact Home table must reduce row density.");
+requireText(appStyles, ".device-compact-workload", "Compact Proxmox workload marker must have dedicated styling.");
+requireText(appStyles, ".device-hypervisor-summary", "Comfortable Proxmox inventory totals must have dedicated styling.");
+requireText(appStyles, ".device-compact-hypervisor-summary", "Compact Proxmox inventory totals must have dedicated styling.");
+forbidText(deviceTypes, '| "hypervisor"', "Hypervisor must not become an exclusive Device Type.");
 
 console.log("Host UX semantic regression checks passed.");

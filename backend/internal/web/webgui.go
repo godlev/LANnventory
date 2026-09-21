@@ -38,6 +38,16 @@ func NewRouter() *gin.Engine {
 
 	router.StaticFS("/fs/", http.FS(pubFS)) // public
 
+	router.GET("/lannventory-proxmox-collector.py", func(c *gin.Context) {
+		content, err := pubFS.ReadFile("public/lannventory-proxmox-collector.py")
+		if err != nil {
+			c.Status(http.StatusNotFound)
+			return
+		}
+		c.Header("Content-Disposition", `attachment; filename="lannventory-proxmox-collector.py"`)
+		c.Data(http.StatusOK, "text/x-python; charset=utf-8", content)
+	})
+
 	router.GET("/", indexHandler)          // index.go
 	router.GET("/config", indexHandler)    // index.go
 	router.GET("/history", indexHandler)   // index.go

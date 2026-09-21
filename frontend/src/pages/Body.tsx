@@ -1,4 +1,4 @@
-import { createSignal, For, onMount, Show } from "solid-js";
+import { createMemo, createSignal, For, onMount, Show } from "solid-js";
 
 import { allHosts, bkpHosts, filterState, hasMultipleIfaces, hostsLoadError } from "../functions/exports";
 
@@ -9,13 +9,70 @@ import SummaryCards from "../components/Body/SummaryCards";
 import RecentActivityPanel from "../components/Body/RecentActivityPanel";
 import { getHosts } from "../functions/atstart";
 import { deviceTypeFilterLabel } from "../functions/deviceTypes";
+import {
+  apiGetInfrastructureWorkloadMemberships,
+  apiGetInfrastructureWorkloadSummaries,
+  type InfrastructureWorkloadMembership,
+  type InfrastructureWorkloadSummary,
+} from "../functions/api";
+
+type HomeTableView = "comfortable" | "compact";
+
+const homeTableViewStorageKey = "lannventory.home.tableView";
 
 function Body() {
   const [expandedDeviceRows, setExpandedDeviceRows] = createSignal<Record<string, boolean>>({});
+  const [workloadMemberships, setWorkloadMemberships] = createSignal<InfrastructureWorkloadMembership[]>([]);
+  const [workloadSummaries, setWorkloadSummaries] = createSignal<InfrastructureWorkloadSummary[]>([]);
+  const [tableView, setTableView] = createSignal<HomeTableView>("comfortable");
 
   onMount(() => {
+    try {
+      const savedView = window.localStorage.getItem(homeTableViewStorageKey);
+      if (savedView === "comfortable" || savedView === "compact") {
+        setTableView(savedView);
+      }
+    } catch {
+      // Browser storage is optional; Comfortable remains the safe default.
+    }
+
     getHosts();
+    void apiGetInfrastructureWorkloadMemberships()
+      .then((items) => setWorkloadMemberships(items ?? []))
+      .catch(() => setWorkloadMemberships([]));
+    void apiGetInfrastructureWorkloadSummaries()
+      .then((items) => setWorkloadSummaries(items ?? []))
+      .catch(() => setWorkloadSummaries([]));
   });
+
+  const membershipsByHost = createMemo(() => {
+    const result = new Map<number, InfrastructureWorkloadMembership[]>();
+    for (const item of workloadMemberships()) {
+      if (item.retiredAt) continue;
+      const current = result.get(item.hostId) ?? [];
+      current.push(item);
+      result.set(item.hostId, current);
+    }
+    return result;
+  });
+
+  const workloadSummaryByHypervisorHost = createMemo(() => {
+    const result = new Map<number, InfrastructureWorkloadSummary>();
+    for (const item of workloadSummaries()) {
+      if (item.hypervisorHostId < 1) continue;
+      result.set(item.hypervisorHostId, item);
+    }
+    return result;
+  });
+
+  const setHomeTableView = (next: HomeTableView) => {
+    setTableView(next);
+    try {
+      window.localStorage.setItem(homeTableViewStorageKey, next);
+    } catch {
+      // Keep the in-session view even when browser storage is unavailable.
+    }
+  };
 
   const deviceLabel = (count: number) => count === 1 ? "device" : "devices";
 
@@ -81,10 +138,10 @@ function Body() {
           <div class="device-panel-title">Devices</div>
           <div class="device-panel-subtitle">{currentSubtitle()}</div>
         </div>
-        <CardHead></CardHead>
+        <CardHead viewMode={tableView()} onViewModeChange={setHomeTableView}></CardHead>
       </div>
       <div class="card-body table-responsive device-table-wrap">
-        <table class="table table-hover device-table">
+        <table class={"table table-hover device-table device-table-" + tableView()}>
           <TableHead></TableHead>
           <tbody>
             <For each={allHosts}>{(host, index) =>
@@ -108,6 +165,9 @@ function Body() {
                 index={index() + 1}
                 mobileExpanded={isDeviceExpanded(host)}
                 onToggleMobileExpanded={() => toggleDeviceExpanded(host)}
+                workloadMemberships={membershipsByHost().get(host.ID) ?? []}
+                hypervisorWorkloadSummary={workloadSummaryByHypervisorHost().get(host.ID)}
+                viewMode={tableView()}
               ></TableRow>
             </>
             }</For>

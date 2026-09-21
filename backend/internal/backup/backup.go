@@ -12,7 +12,7 @@ import (
 
 const (
 	Format        = "lannventory-backup"
-	FormatVersion = 3
+	FormatVersion = 5
 )
 
 // Document is the stable, versioned logical backup format.
@@ -27,11 +27,19 @@ type Document struct {
 // Data contains persisted application data only. It intentionally excludes
 // configuration and secrets so exports are portable across database backends.
 type Data struct {
-	CurrentHosts  []Host          `json:"currentHosts"`
-	History       []Host          `json:"history"`
-	Events        []Event         `json:"events"`
-	HostMetadata  []HostMetadata  `json:"hostMetadata"`
-	HostLifecycle []HostLifecycle `json:"hostLifecycle"`
+	CurrentHosts                     []Host                            `json:"currentHosts"`
+	History                          []Host                            `json:"history"`
+	Events                           []Event                           `json:"events"`
+	HostMetadata                     []HostMetadata                    `json:"hostMetadata"`
+	HostLifecycle                    []HostLifecycle                   `json:"hostLifecycle"`
+	DeviceProfiles                   []DeviceProfile                   `json:"deviceProfiles"`
+	NetworkDeviceProfiles            []NetworkDeviceProfile            `json:"networkDeviceProfiles"`
+	SystemDeviceProfiles             []SystemDeviceProfile             `json:"systemDeviceProfiles"`
+	HypervisorProfiles               []HypervisorProfile               `json:"hypervisorProfiles"`
+	InfrastructureWorkloads          []InfrastructureWorkload          `json:"infrastructureWorkloads"`
+	InfrastructureWorkloadInterfaces []InfrastructureWorkloadInterface `json:"infrastructureWorkloadInterfaces"`
+	InfrastructureWorkloadHostLinks  []InfrastructureWorkloadHostLink  `json:"infrastructureWorkloadHostLinks"`
+	ProxmoxSourceStates              []ProxmoxSourceState              `json:"proxmoxSourceStates"`
 }
 
 // Host mirrors the currently persisted host columns in the now/history tables.
@@ -73,6 +81,97 @@ type HostMetadata struct {
 	Notes    string   `json:"notes"`
 	Tags     []string `json:"tags"`
 	Pinned   bool     `json:"pinned"`
+}
+
+// DeviceProfile is the portable managed device-profile backup representation.
+type DeviceProfile struct {
+	Mac               string `json:"mac"`
+	Manufacturer      string `json:"manufacturer"`
+	Model             string `json:"model"`
+	ManagementAddress string `json:"managementAddress"`
+	UpdatedAt         string `json:"updatedAt"`
+}
+
+// NetworkDeviceProfile is the portable managed network specialization.
+type NetworkDeviceProfile struct {
+	Mac                 string `json:"mac"`
+	ManagementMode      string `json:"managementMode"`
+	PhysicalPortCount   int    `json:"physicalPortCount"`
+	PortCapabilityNotes string `json:"portCapabilityNotes"`
+	UpdatedAt           string `json:"updatedAt"`
+}
+
+// SystemDeviceProfile is the portable managed system specialization.
+type SystemDeviceProfile struct {
+	Mac             string `json:"mac"`
+	Role            string `json:"role"`
+	OperatingSystem string `json:"operatingSystem"`
+	Version         string `json:"version"`
+	UpdatedAt       string `json:"updatedAt"`
+}
+
+// HypervisorProfile is the portable managed hypervisor specialization.
+type HypervisorProfile struct {
+	Mac         string `json:"mac"`
+	Platform    string `json:"platform"`
+	Version     string `json:"version"`
+	NodeName    string `json:"nodeName"`
+	ClusterName string `json:"clusterName"`
+	UpdatedAt   string `json:"updatedAt"`
+}
+
+// InfrastructureWorkload is the portable hypervisor workload representation.
+type InfrastructureWorkload struct {
+	ID            uint   `json:"id"`
+	HypervisorMac string `json:"hypervisorMac"`
+	NativeID      string `json:"nativeId"`
+	WorkloadType  string `json:"workloadType"`
+	Name          string `json:"name"`
+	Status        string `json:"status"`
+	Source        string `json:"source"`
+	FirstSeen     string `json:"firstSeen"`
+	LastSeen      string `json:"lastSeen"`
+	RetiredAt     string `json:"retiredAt"`
+	UpdatedAt     string `json:"updatedAt"`
+}
+
+// InfrastructureWorkloadInterface is the portable allowlisted workload network representation.
+type InfrastructureWorkloadInterface struct {
+	ID                uint   `json:"id"`
+	WorkloadID        uint   `json:"workloadId"`
+	Name              string `json:"name"`
+	Mac               string `json:"mac"`
+	Bridge            string `json:"bridge"`
+	VLANTag           string `json:"vlanTag"`
+	ConfiguredAddress string `json:"configuredAddress"`
+	ConfiguredNetwork string `json:"configuredNetwork"`
+	UpdatedAt         string `json:"updatedAt"`
+}
+
+// InfrastructureWorkloadHostLink is the portable logical MATCHES relation.
+type InfrastructureWorkloadHostLink struct {
+	WorkloadID uint   `json:"workloadId"`
+	HostID     int    `json:"hostId"`
+	HostMac    string `json:"hostMac"`
+	LinkSource string `json:"linkSource"`
+	LinkedAt   string `json:"linkedAt"`
+	UpdatedAt  string `json:"updatedAt"`
+}
+
+// ProxmoxSourceState is the portable imported/discovered Proxmox node state.
+type ProxmoxSourceState struct {
+	HypervisorMac    string `json:"hypervisorMac"`
+	Source           string `json:"source"`
+	SchemaVersion    int    `json:"schemaVersion"`
+	CollectorVersion string `json:"collectorVersion"`
+	CollectedAt      string `json:"collectedAt"`
+	Complete         bool   `json:"complete"`
+	NodeHostname     string `json:"nodeHostname"`
+	NodePVEVersion   string `json:"nodePveVersion"`
+	NodeClusterName  string `json:"nodeClusterName"`
+	NodeStatus       string `json:"nodeStatus"`
+	SnapshotDigest   string `json:"snapshotDigest"`
+	ImportedAt       string `json:"importedAt"`
 }
 
 // HostLifecycle is the portable lifecycle backup representation.
@@ -128,13 +227,21 @@ func NewDocument(data Data, appVersion string, createdAt time.Time) Document {
 	}
 }
 
-func DataFromModels(currentHosts, history []models.Host, events []models.HostEvent, hostMetadata []models.HostMetadata, hostLifecycle []models.HostLifecycle) Data {
+func DataFromModels(currentHosts, history []models.Host, events []models.HostEvent, hostMetadata []models.HostMetadata, hostLifecycle []models.HostLifecycle, deviceProfiles []models.DeviceProfile, networkProfiles []models.NetworkDeviceProfile, systemProfiles []models.SystemDeviceProfile, hypervisorProfiles []models.HypervisorProfile, workloads []models.InfrastructureWorkload, workloadInterfaces []models.InfrastructureWorkloadInterface, workloadLinks []models.InfrastructureWorkloadHostLink, proxmoxSourceStates []models.ProxmoxSourceState) Data {
 	data := Data{
-		CurrentHosts:  make([]Host, 0, len(currentHosts)),
-		History:       make([]Host, 0, len(history)),
-		Events:        make([]Event, 0, len(events)),
-		HostMetadata:  make([]HostMetadata, 0, len(hostMetadata)),
-		HostLifecycle: make([]HostLifecycle, 0, len(hostLifecycle)),
+		CurrentHosts:                     make([]Host, 0, len(currentHosts)),
+		History:                          make([]Host, 0, len(history)),
+		Events:                           make([]Event, 0, len(events)),
+		HostMetadata:                     make([]HostMetadata, 0, len(hostMetadata)),
+		HostLifecycle:                    make([]HostLifecycle, 0, len(hostLifecycle)),
+		DeviceProfiles:                   make([]DeviceProfile, 0, len(deviceProfiles)),
+		NetworkDeviceProfiles:            make([]NetworkDeviceProfile, 0, len(networkProfiles)),
+		SystemDeviceProfiles:             make([]SystemDeviceProfile, 0, len(systemProfiles)),
+		HypervisorProfiles:               make([]HypervisorProfile, 0, len(hypervisorProfiles)),
+		InfrastructureWorkloads:          make([]InfrastructureWorkload, 0, len(workloads)),
+		InfrastructureWorkloadInterfaces: make([]InfrastructureWorkloadInterface, 0, len(workloadInterfaces)),
+		InfrastructureWorkloadHostLinks:  make([]InfrastructureWorkloadHostLink, 0, len(workloadLinks)),
+		ProxmoxSourceStates:              make([]ProxmoxSourceState, 0, len(proxmoxSourceStates)),
 	}
 
 	for _, host := range currentHosts {
@@ -151,6 +258,30 @@ func DataFromModels(currentHosts, history []models.Host, events []models.HostEve
 	}
 	for _, lifecycle := range hostLifecycle {
 		data.HostLifecycle = append(data.HostLifecycle, HostLifecycleFromModel(lifecycle))
+	}
+	for _, profile := range deviceProfiles {
+		data.DeviceProfiles = append(data.DeviceProfiles, DeviceProfileFromModel(profile))
+	}
+	for _, profile := range networkProfiles {
+		data.NetworkDeviceProfiles = append(data.NetworkDeviceProfiles, NetworkDeviceProfileFromModel(profile))
+	}
+	for _, profile := range systemProfiles {
+		data.SystemDeviceProfiles = append(data.SystemDeviceProfiles, SystemDeviceProfileFromModel(profile))
+	}
+	for _, profile := range hypervisorProfiles {
+		data.HypervisorProfiles = append(data.HypervisorProfiles, HypervisorProfileFromModel(profile))
+	}
+	for _, workload := range workloads {
+		data.InfrastructureWorkloads = append(data.InfrastructureWorkloads, InfrastructureWorkloadFromModel(workload))
+	}
+	for _, iface := range workloadInterfaces {
+		data.InfrastructureWorkloadInterfaces = append(data.InfrastructureWorkloadInterfaces, InfrastructureWorkloadInterfaceFromModel(iface))
+	}
+	for _, link := range workloadLinks {
+		data.InfrastructureWorkloadHostLinks = append(data.InfrastructureWorkloadHostLinks, InfrastructureWorkloadHostLinkFromModel(link))
+	}
+	for _, state := range proxmoxSourceStates {
+		data.ProxmoxSourceStates = append(data.ProxmoxSourceStates, ProxmoxSourceStateFromModel(state))
 	}
 
 	return data
@@ -196,6 +327,105 @@ func HostMetadataFromModel(metadata models.HostMetadata) HostMetadata {
 		Notes:    metadata.Notes,
 		Tags:     models.DecodeMetadataTags(metadata.TagsJSON),
 		Pinned:   metadata.Pinned,
+	}
+}
+
+func DeviceProfileFromModel(profile models.DeviceProfile) DeviceProfile {
+	return DeviceProfile{
+		Mac:               profile.Mac,
+		Manufacturer:      profile.Manufacturer,
+		Model:             profile.Model,
+		ManagementAddress: profile.ManagementAddress,
+		UpdatedAt:         profile.UpdatedAt,
+	}
+}
+
+func NetworkDeviceProfileFromModel(profile models.NetworkDeviceProfile) NetworkDeviceProfile {
+	return NetworkDeviceProfile{
+		Mac:                 profile.Mac,
+		ManagementMode:      profile.ManagementMode,
+		PhysicalPortCount:   profile.PhysicalPortCount,
+		PortCapabilityNotes: profile.PortCapabilityNotes,
+		UpdatedAt:           profile.UpdatedAt,
+	}
+}
+
+func SystemDeviceProfileFromModel(profile models.SystemDeviceProfile) SystemDeviceProfile {
+	return SystemDeviceProfile{
+		Mac:             profile.Mac,
+		Role:            profile.Role,
+		OperatingSystem: profile.OperatingSystem,
+		Version:         profile.Version,
+		UpdatedAt:       profile.UpdatedAt,
+	}
+}
+
+func HypervisorProfileFromModel(profile models.HypervisorProfile) HypervisorProfile {
+	return HypervisorProfile{
+		Mac:         profile.Mac,
+		Platform:    profile.Platform,
+		Version:     profile.Version,
+		NodeName:    profile.NodeName,
+		ClusterName: profile.ClusterName,
+		UpdatedAt:   profile.UpdatedAt,
+	}
+}
+
+func InfrastructureWorkloadFromModel(workload models.InfrastructureWorkload) InfrastructureWorkload {
+	return InfrastructureWorkload{
+		ID:            workload.ID,
+		HypervisorMac: workload.HypervisorMac,
+		NativeID:      workload.NativeID,
+		WorkloadType:  workload.WorkloadType,
+		Name:          workload.Name,
+		Status:        workload.Status,
+		Source:        workload.Source,
+		FirstSeen:     workload.FirstSeen,
+		LastSeen:      workload.LastSeen,
+		RetiredAt:     workload.RetiredAt,
+		UpdatedAt:     workload.UpdatedAt,
+	}
+}
+
+func InfrastructureWorkloadInterfaceFromModel(iface models.InfrastructureWorkloadInterface) InfrastructureWorkloadInterface {
+	return InfrastructureWorkloadInterface{
+		ID:                iface.ID,
+		WorkloadID:        iface.WorkloadID,
+		Name:              iface.Name,
+		Mac:               iface.Mac,
+		Bridge:            iface.Bridge,
+		VLANTag:           iface.VLANTag,
+		ConfiguredAddress: iface.ConfiguredAddress,
+		ConfiguredNetwork: iface.ConfiguredNetwork,
+		UpdatedAt:         iface.UpdatedAt,
+	}
+}
+
+func InfrastructureWorkloadHostLinkFromModel(link models.InfrastructureWorkloadHostLink) InfrastructureWorkloadHostLink {
+	return InfrastructureWorkloadHostLink{
+		WorkloadID: link.WorkloadID,
+		HostID:     link.HostID,
+		HostMac:    link.HostMac,
+		LinkSource: link.LinkSource,
+		LinkedAt:   link.LinkedAt,
+		UpdatedAt:  link.UpdatedAt,
+	}
+}
+
+func ProxmoxSourceStateFromModel(state models.ProxmoxSourceState) ProxmoxSourceState {
+	return ProxmoxSourceState{
+		HypervisorMac:    state.HypervisorMac,
+		Source:           state.Source,
+		SchemaVersion:    state.SchemaVersion,
+		CollectorVersion: state.CollectorVersion,
+		CollectedAt:      state.CollectedAt,
+		Complete:         state.Complete,
+		NodeHostname:     state.NodeHostname,
+		NodePVEVersion:   state.NodePVEVersion,
+		NodeClusterName:  state.NodeClusterName,
+		NodeStatus:       state.NodeStatus,
+		SnapshotDigest:   state.SnapshotDigest,
+		ImportedAt:       state.ImportedAt,
 	}
 }
 
@@ -273,6 +503,30 @@ func normalizeData(data Data) Data {
 	}
 	if data.HostLifecycle == nil {
 		data.HostLifecycle = []HostLifecycle{}
+	}
+	if data.DeviceProfiles == nil {
+		data.DeviceProfiles = []DeviceProfile{}
+	}
+	if data.NetworkDeviceProfiles == nil {
+		data.NetworkDeviceProfiles = []NetworkDeviceProfile{}
+	}
+	if data.SystemDeviceProfiles == nil {
+		data.SystemDeviceProfiles = []SystemDeviceProfile{}
+	}
+	if data.HypervisorProfiles == nil {
+		data.HypervisorProfiles = []HypervisorProfile{}
+	}
+	if data.InfrastructureWorkloads == nil {
+		data.InfrastructureWorkloads = []InfrastructureWorkload{}
+	}
+	if data.InfrastructureWorkloadInterfaces == nil {
+		data.InfrastructureWorkloadInterfaces = []InfrastructureWorkloadInterface{}
+	}
+	if data.InfrastructureWorkloadHostLinks == nil {
+		data.InfrastructureWorkloadHostLinks = []InfrastructureWorkloadHostLink{}
+	}
+	if data.ProxmoxSourceStates == nil {
+		data.ProxmoxSourceStates = []ProxmoxSourceState{}
 	}
 
 	return data

@@ -128,6 +128,33 @@ func migrate(candidate *gorm.DB) error {
 	if err := candidate.Table("host_metadata").AutoMigrate(&models.HostMetadata{}); err != nil {
 		return err
 	}
+	if err := candidate.Table(deviceProfilesTable).AutoMigrate(&models.DeviceProfile{}); err != nil {
+		return err
+	}
+	if err := candidate.Table(networkDeviceProfilesTable).AutoMigrate(&models.NetworkDeviceProfile{}); err != nil {
+		return err
+	}
+	if err := candidate.Table(systemDeviceProfilesTable).AutoMigrate(&models.SystemDeviceProfile{}); err != nil {
+		return err
+	}
+	if err := candidate.Table(hypervisorProfilesTable).AutoMigrate(&models.HypervisorProfile{}); err != nil {
+		return err
+	}
+	if err := candidate.Table(infrastructureWorkloadsTable).AutoMigrate(&models.InfrastructureWorkload{}); err != nil {
+		return err
+	}
+	if err := candidate.Table(infrastructureWorkloadInterfacesTable).AutoMigrate(&models.InfrastructureWorkloadInterface{}); err != nil {
+		return err
+	}
+	if err := candidate.Table(infrastructureWorkloadHostLinksTable).AutoMigrate(&models.InfrastructureWorkloadHostLink{}); err != nil {
+		return err
+	}
+	if err := candidate.Table(infrastructureWorkloadCandidateRejectionsTable).AutoMigrate(&models.InfrastructureWorkloadCandidateRejection{}); err != nil {
+		return err
+	}
+	if err := candidate.Table(proxmoxSourceStatesTable).AutoMigrate(&models.ProxmoxSourceState{}); err != nil {
+		return err
+	}
 	if err := candidate.Table(hostLifecycleTable).AutoMigrate(&models.HostLifecycle{}); err != nil {
 		return err
 	}

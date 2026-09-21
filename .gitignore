@@ -2,3 +2,7 @@
 data/
 tmp/
 
+
+# Ignore Python bytecode/cache
+__pycache__/
+*.py[cod]

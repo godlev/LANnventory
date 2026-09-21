@@ -1,10 +1,13 @@
 import { useBeforeLeave, useLocation, useNavigate, useParams } from "@solidjs/router";
 import { createEffect, createSignal, onCleanup, Show } from "solid-js";
 
-import { apiGetHost } from "../functions/api";
+import { apiGetHost, type DeviceProfileResponse } from "../functions/api";
 import { deviceDisplayName } from "../functions/deviceIdentity";
 
 import HostCard from "../components/HostPage/HostCard";
+import HostedWorkloadCard from "../components/HostPage/HostedWorkloadCard";
+import DeviceProfileCard from "../components/HostPage/DeviceProfileCard";
+import ProxmoxInventoryCard from "../components/HostPage/ProxmoxInventoryCard";
 import IdentityCard from "../components/HostPage/IdentityCard";
 import Ping from "../components/HostPage/Ping";
 import ServicesCard from "../components/HostPage/ServicesCard";
@@ -16,6 +19,7 @@ function HostPage() {
 
   const [currentHost, setCurrentHost] = createSignal<Host>(emptyHost);
   const [loadError, setLoadError] = createSignal("");
+  const [deviceProfile, setDeviceProfile] = createSignal<DeviceProfileResponse | null>(null);
   const [hasUnsavedHostChanges, setHasUnsavedHostChanges] = createSignal(false);
   const [serviceRefreshKey, setServiceRefreshKey] = createSignal(0);
   const params = useParams();
@@ -66,6 +70,7 @@ function HostPage() {
 
     const activeRequest = ++requestId;
     setLoadError("");
+    setDeviceProfile(null);
     setCurrentHost(emptyHost);
     setPageContext({ kind: "host", hostName: "" });
     document.title = "Host · LANnventory";
@@ -137,6 +142,23 @@ function HostPage() {
           ></Ping>
         </div>
       </div>
+      <div class="row g-3 mx-0 mt-1 host-page-row">
+        <div class="col-md">
+          <HostedWorkloadCard host={currentHost()}></HostedWorkloadCard>
+        </div>
+      </div>
+      <div class="row g-3 mx-0 mt-1 host-page-row">
+        <div class="col-md">
+          <DeviceProfileCard host={currentHost()} onProfileChange={setDeviceProfile}></DeviceProfileCard>
+        </div>
+      </div>
+      <Show when={deviceProfile()?.hypervisor?.platform === "proxmox-ve"}>
+        <div class="row g-3 mx-0 mt-1 host-page-row">
+          <div class="col-md">
+            <ProxmoxInventoryCard host={currentHost()}></ProxmoxInventoryCard>
+          </div>
+        </div>
+      </Show>
       <div class="row g-3 mx-0 mt-1 host-page-row">
         <div class="col-md">
           <ServicesCard host={currentHost()} refreshKey={serviceRefreshKey()}></ServicesCard>

@@ -10,7 +10,7 @@ LANnventory is an independent project originally based on [WatchYourLAN by acebe
 
 Current repository: [godlev/LANnventory](https://github.com/godlev/LANnventory)
 
-Current beta release: `0.1.0-beta.6`
+Current beta release: `0.1.0-beta.7`
 
 The original WatchYourLAN scanning/backend foundation is preserved and credited. LANnventory adds a substantially expanded interface, persistent event model, device classification, configurable retention, migration hardening, safer configuration handling and other reliability improvements.
 
@@ -53,6 +53,28 @@ Source icon and screenshot assets live in `assets/`. Runtime UI icons are served
 - Host page defaults to read mode.
 - Explicit Host edit mode for editable properties.
 - Wake-on-LAN and port-scan actions remain available where supported.
+
+
+### Device identity and discovery
+
+LANnventory keeps managed inventory separate from discovered network identity evidence.
+
+- Retained IP/address history per MAC identity, including first/last observation timestamps.
+- Reverse DNS, mDNS and SSDP discovery evidence is shown as discovered data rather than silently replacing managed Host fields.
+- IP reuse is visible by showing other MAC identities historically observed on the same address.
+- Explicit user-confirmed/rejected identity-correlation decisions do not destructively merge Host history.
+- Locally administered MAC assessment helps distinguish randomized, virtual or manually assigned addresses from globally administered hardware addresses.
+
+### Services inventory
+
+LANnventory can retain service observations without becoming a full monitoring platform.
+
+- Persistent TCP service state per exact device address, protocol and port.
+- First Detected, Last Detected, Last Checked and current open/closed state.
+- Manual port scans persist only definitive observations; failed or indeterminate probes do not fabricate closures.
+- Optional per-device scheduled service scans with configurable ports and intervals.
+- Service-opened/service-closed Events are emitted only on real state transitions.
+- Common-port service hints are labels only; LANnventory does not claim protocol fingerprinting.
 
 ### Presence
 

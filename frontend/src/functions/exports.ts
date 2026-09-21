@@ -28,6 +28,39 @@ export interface Host {
 	FirstSeenEstimated: boolean;
 };
 
+export interface DeviceProfile {
+	mac: string;
+	manufacturer: string;
+	model: string;
+	managementAddress: string;
+	updatedAt: string;
+};
+
+export interface NetworkDeviceProfile {
+	mac: string;
+	managementMode: "" | "managed" | "unmanaged";
+	physicalPortCount: number;
+	portCapabilityNotes: string;
+	updatedAt: string;
+};
+
+export interface SystemDeviceProfile {
+	mac: string;
+	role: string;
+	operatingSystem: string;
+	version: string;
+	updatedAt: string;
+};
+
+export interface HypervisorProfile {
+	mac: string;
+	platform: "proxmox-ve" | "vmware-esxi" | "hyper-v" | "other";
+	version: string;
+	nodeName: string;
+	clusterName: string;
+	updatedAt: string;
+};
+
 export interface Service {
 	id: number;
 	mac: string;

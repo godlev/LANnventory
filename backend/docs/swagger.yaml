@@ -52,6 +52,26 @@ definitions:
       weight:
         type: integer
     type: object
+  api.DeviceProfilePatchRequest:
+    properties:
+      managementAddress:
+        type: string
+      manufacturer:
+        type: string
+      model:
+        type: string
+    type: object
+  api.DeviceProfileResponse:
+    properties:
+      hypervisor:
+        $ref: '#/definitions/models.HypervisorProfile'
+      managed:
+        $ref: '#/definitions/models.DeviceProfile'
+      network:
+        $ref: '#/definitions/models.NetworkDeviceProfile'
+      system:
+        $ref: '#/definitions/models.SystemDeviceProfile'
+    type: object
   api.DiscoveryEvidenceObservation:
     properties:
       active:
@@ -195,6 +215,17 @@ definitions:
           type: string
         type: array
     type: object
+  api.HypervisorProfilePatchRequest:
+    properties:
+      clusterName:
+        type: string
+      nodeName:
+        type: string
+      platform:
+        type: string
+      version:
+        type: string
+    type: object
   api.IdentityCorrelationDecisionResponse:
     properties:
       active:
@@ -214,6 +245,454 @@ definitions:
       name:
         type: string
       updatedAt:
+        type: string
+    type: object
+  api.InfrastructureWorkloadCreateRequest:
+    properties:
+      interfaces:
+        items:
+          $ref: '#/definitions/api.InfrastructureWorkloadInterfaceRequest'
+        type: array
+      name:
+        type: string
+      nativeId:
+        type: string
+      status:
+        type: string
+      workloadType:
+        type: string
+    type: object
+  api.InfrastructureWorkloadInterfaceRequest:
+    properties:
+      bridge:
+        type: string
+      configuredAddress:
+        type: string
+      configuredNetwork:
+        type: string
+      mac:
+        type: string
+      name:
+        type: string
+      vlanTag:
+        type: string
+    type: object
+  api.InfrastructureWorkloadLinkRequest:
+    properties:
+      hostId:
+        type: integer
+    type: object
+  api.InfrastructureWorkloadMatchResponseDoc:
+    properties:
+      candidates:
+        items:
+          $ref: '#/definitions/api.WorkloadMatchCandidateDoc'
+        type: array
+      currentLink:
+        $ref: '#/definitions/models.InfrastructureWorkloadHostLink'
+      deterministicExactHostId:
+        type: integer
+      exactAmbiguous:
+        type: boolean
+      name:
+        type: string
+      nativeId:
+        type: string
+      workloadId:
+        type: integer
+      workloadType:
+        type: string
+    type: object
+  api.InfrastructureWorkloadMatchedHost:
+    properties:
+      deviceType:
+        type: string
+      hostId:
+        type: integer
+      ip:
+        type: string
+      mac:
+        type: string
+      name:
+        type: string
+    type: object
+  api.InfrastructureWorkloadMembershipResponse:
+    properties:
+      hostId:
+        type: integer
+      hostMac:
+        type: string
+      hypervisorHostId:
+        type: integer
+      hypervisorIp:
+        type: string
+      hypervisorMac:
+        type: string
+      hypervisorName:
+        type: string
+      linkSource:
+        type: string
+      nativeId:
+        type: string
+      retiredAt:
+        type: string
+      workloadId:
+        type: integer
+      workloadName:
+        type: string
+      workloadStatus:
+        type: string
+      workloadType:
+        type: string
+    type: object
+  api.InfrastructureWorkloadPatchRequest:
+    properties:
+      interfaces:
+        items:
+          $ref: '#/definitions/api.InfrastructureWorkloadInterfaceRequest'
+        type: array
+      name:
+        type: string
+      status:
+        type: string
+    type: object
+  api.InfrastructureWorkloadResponse:
+    properties:
+      firstSeen:
+        type: string
+      hypervisorMac:
+        type: string
+      id:
+        type: integer
+      interfaces:
+        items:
+          $ref: '#/definitions/models.InfrastructureWorkloadInterface'
+        type: array
+      lastSeen:
+        type: string
+      link:
+        $ref: '#/definitions/models.InfrastructureWorkloadHostLink'
+      matchedHost:
+        $ref: '#/definitions/api.InfrastructureWorkloadMatchedHost'
+      name:
+        type: string
+      nativeId:
+        type: string
+      retiredAt:
+        type: string
+      source:
+        type: string
+      status:
+        type: string
+      updatedAt:
+        type: string
+      workloadType:
+        type: string
+    type: object
+  api.InfrastructureWorkloadSummaryResponse:
+    properties:
+      containerCount:
+        type: integer
+      hypervisorHostId:
+        type: integer
+      hypervisorIp:
+        type: string
+      hypervisorMac:
+        type: string
+      hypervisorName:
+        type: string
+      platform:
+        type: string
+      totalCount:
+        type: integer
+      vmCount:
+        type: integer
+    type: object
+  api.NetworkDeviceProfilePatchRequest:
+    properties:
+      managementMode:
+        type: string
+      physicalPortCount:
+        type: integer
+      portCapabilityNotes:
+        type: string
+    type: object
+  api.ProxmoxImportApplyDoc:
+    properties:
+      confirmed:
+        type: boolean
+      previewToken:
+        type: string
+      snapshot:
+        $ref: '#/definitions/api.ProxmoxImportSnapshotDoc'
+    type: object
+  api.ProxmoxImportApplyResponseDoc:
+    properties:
+      applied:
+        type: boolean
+      importedAt:
+        type: string
+      summary:
+        $ref: '#/definitions/api.ProxmoxImportPreviewSummaryDoc'
+    type: object
+  api.ProxmoxImportFieldConflictDoc:
+    properties:
+      field:
+        type: string
+      imported:
+        type: string
+      managed:
+        type: string
+    type: object
+  api.ProxmoxImportInterfaceDoc:
+    properties:
+      bridge:
+        type: string
+      configuredAddress:
+        type: string
+      configuredNetwork:
+        type: string
+      mac:
+        type: string
+      name:
+        type: string
+      vlanTag:
+        type: string
+    type: object
+  api.ProxmoxImportInterfaceViewDoc:
+    properties:
+      bridge:
+        type: string
+      configuredAddress:
+        type: string
+      configuredNetwork:
+        type: string
+      mac:
+        type: string
+      name:
+        type: string
+      vlanTag:
+        type: string
+    type: object
+  api.ProxmoxImportNodeDiffDoc:
+    properties:
+      action:
+        type: string
+      after:
+        $ref: '#/definitions/api.ProxmoxImportNodeViewDoc'
+      before:
+        $ref: '#/definitions/api.ProxmoxImportNodeViewDoc'
+    type: object
+  api.ProxmoxImportNodeDoc:
+    properties:
+      clusterName:
+        type: string
+      hostname:
+        type: string
+      pveVersion:
+        type: string
+      status:
+        type: string
+    type: object
+  api.ProxmoxImportNodeViewDoc:
+    properties:
+      clusterName:
+        type: string
+      hostname:
+        type: string
+      pveVersion:
+        type: string
+      status:
+        type: string
+    type: object
+  api.ProxmoxImportPreviewDoc:
+    properties:
+      applyAllowed:
+        type: boolean
+      blockedReasons:
+        items:
+          type: string
+        type: array
+      collectedAt:
+        type: string
+      complete:
+        type: boolean
+      managedConflicts:
+        items:
+          $ref: '#/definitions/api.ProxmoxImportFieldConflictDoc'
+        type: array
+      node:
+        $ref: '#/definitions/api.ProxmoxImportNodeDiffDoc'
+      previewToken:
+        type: string
+      snapshotDigest:
+        type: string
+      source:
+        type: string
+      summary:
+        $ref: '#/definitions/api.ProxmoxImportPreviewSummaryDoc'
+      warnings:
+        items:
+          type: string
+        type: array
+      workloads:
+        items:
+          $ref: '#/definitions/api.ProxmoxImportWorkloadDiffDoc'
+        type: array
+    type: object
+  api.ProxmoxImportPreviewSummaryDoc:
+    properties:
+      added:
+        type: integer
+      conflicts:
+        type: integer
+      retired:
+        type: integer
+      unchanged:
+        type: integer
+      updated:
+        type: integer
+    type: object
+  api.ProxmoxImportSnapshotDoc:
+    properties:
+      collectedAt:
+        type: string
+      collectionErrors:
+        items:
+          type: string
+        type: array
+      collectorVersion:
+        type: string
+      complete:
+        type: boolean
+      node:
+        $ref: '#/definitions/api.ProxmoxImportNodeDoc'
+      schemaVersion:
+        type: integer
+      source:
+        type: string
+      workloads:
+        items:
+          $ref: '#/definitions/api.ProxmoxImportWorkloadDoc'
+        type: array
+    type: object
+  api.ProxmoxImportWorkloadDiffDoc:
+    properties:
+      action:
+        type: string
+      after:
+        $ref: '#/definitions/api.ProxmoxImportWorkloadViewDoc'
+      before:
+        $ref: '#/definitions/api.ProxmoxImportWorkloadViewDoc'
+      changes:
+        items:
+          type: string
+        type: array
+      key:
+        type: string
+    type: object
+  api.ProxmoxImportWorkloadDoc:
+    properties:
+      interfaces:
+        items:
+          $ref: '#/definitions/api.ProxmoxImportInterfaceDoc'
+        type: array
+      name:
+        type: string
+      nativeId:
+        type: string
+      status:
+        type: string
+      workloadType:
+        type: string
+    type: object
+  api.ProxmoxImportWorkloadViewDoc:
+    properties:
+      id:
+        type: integer
+      interfaces:
+        items:
+          $ref: '#/definitions/api.ProxmoxImportInterfaceViewDoc'
+        type: array
+      name:
+        type: string
+      nativeId:
+        type: string
+      retiredAt:
+        type: string
+      source:
+        type: string
+      status:
+        type: string
+      workloadType:
+        type: string
+    type: object
+  api.SystemDeviceProfilePatchRequest:
+    properties:
+      operatingSystem:
+        type: string
+      role:
+        type: string
+      version:
+        type: string
+    type: object
+  api.WorkloadCandidateRejectionRequest:
+    properties:
+      evidenceFingerprint:
+        type: string
+    type: object
+  api.WorkloadMatchCandidateDoc:
+    properties:
+      active:
+        type: boolean
+      assessment:
+        type: string
+      deviceType:
+        type: string
+      evidence:
+        items:
+          $ref: '#/definitions/api.WorkloadMatchEvidenceDoc'
+        type: array
+      evidenceFingerprint:
+        type: string
+      hostId:
+        type: integer
+      ip:
+        type: string
+      mac:
+        type: string
+      matchedAddresses:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      possibleIpConflict:
+        type: boolean
+      rejected:
+        type: boolean
+      strength:
+        type: string
+      workloadMacs:
+        items:
+          type: string
+        type: array
+    type: object
+  api.WorkloadMatchEvidenceDoc:
+    properties:
+      active:
+        type: boolean
+      code:
+        type: string
+      detail:
+        type: string
+      firstSeen:
+        type: string
+      lastSeen:
+        type: string
+      matchedValue:
+        type: string
+      strength:
         type: string
     type: object
   api.colorRequest:
@@ -449,6 +928,19 @@ definitions:
       version:
         type: string
     type: object
+  models.DeviceProfile:
+    properties:
+      mac:
+        type: string
+      managementAddress:
+        type: string
+      manufacturer:
+        type: string
+      model:
+        type: string
+      updatedAt:
+        type: string
+    type: object
   models.Host:
     properties:
       date:
@@ -519,6 +1011,57 @@ definitions:
       oldValue:
         type: string
     type: object
+  models.HypervisorProfile:
+    properties:
+      clusterName:
+        type: string
+      mac:
+        type: string
+      nodeName:
+        type: string
+      platform:
+        type: string
+      updatedAt:
+        type: string
+      version:
+        type: string
+    type: object
+  models.InfrastructureWorkloadHostLink:
+    properties:
+      hostId:
+        type: integer
+      hostMac:
+        type: string
+      linkSource:
+        type: string
+      linkedAt:
+        type: string
+      updatedAt:
+        type: string
+      workloadId:
+        type: integer
+    type: object
+  models.InfrastructureWorkloadInterface:
+    properties:
+      bridge:
+        type: string
+      configuredAddress:
+        type: string
+      configuredNetwork:
+        type: string
+      id:
+        type: integer
+      mac:
+        type: string
+      name:
+        type: string
+      updatedAt:
+        type: string
+      vlanTag:
+        type: string
+      workloadId:
+        type: integer
+    type: object
   models.InventoryOptions:
     properties:
       locations:
@@ -529,6 +1072,46 @@ definitions:
         items:
           type: string
         type: array
+    type: object
+  models.NetworkDeviceProfile:
+    properties:
+      mac:
+        type: string
+      managementMode:
+        type: string
+      physicalPortCount:
+        type: integer
+      portCapabilityNotes:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  models.ProxmoxSourceState:
+    properties:
+      collectedAt:
+        type: string
+      collectorVersion:
+        type: string
+      complete:
+        type: boolean
+      hypervisorMac:
+        type: string
+      importedAt:
+        type: string
+      nodeClusterName:
+        type: string
+      nodeHostname:
+        type: string
+      nodePveVersion:
+        type: string
+      nodeStatus:
+        type: string
+      schemaVersion:
+        type: integer
+      snapshotDigest:
+        type: string
+      source:
+        type: string
     type: object
   models.Service:
     properties:
@@ -572,6 +1155,19 @@ definitions:
       unknown:
         type: integer
     type: object
+  models.SystemDeviceProfile:
+    properties:
+      mac:
+        type: string
+      operatingSystem:
+        type: string
+      role:
+        type: string
+      updatedAt:
+        type: string
+      version:
+        type: string
+    type: object
 info:
   contact:
     url: https://github.com/godlev/LANnventory
@@ -580,7 +1176,7 @@ info:
     name: MIT
     url: https://opensource.org/licenses/MIT
   title: LANnventory API
-  version: 0.1.0-beta.6
+  version: 0.1.0-beta.6.uat.4
 paths:
   /activity:
     get:
@@ -1057,8 +1653,8 @@ paths:
   /export/backup:
     get:
       description: Export a versioned logical backup containing current hosts, host
-        history, activity events, host metadata and host lifecycle. Configuration
-        secrets are not included.
+        history, activity events, host metadata, host lifecycle and managed device
+        profiles. Configuration secrets are not included.
       produces:
       - application/json
       responses:
@@ -1591,6 +2187,349 @@ paths:
       summary: Scan one port for a host
       tags:
       - network
+  /host/{id}/profile:
+    get:
+      description: Return manually managed generic and typed device-profile information.
+        Imported/discovered integration data is stored separately and never overwrites
+        these fields.
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.DeviceProfileResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get managed device profile
+      tags:
+      - hosts
+    patch:
+      consumes:
+      - application/json
+      description: Partially update manually managed generic device-profile fields.
+        Empty values clear fields; clearing all fields removes the managed base profile
+        row.
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Managed profile payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.DeviceProfilePatchRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.DeviceProfileResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update managed device profile
+      tags:
+      - hosts
+  /host/{id}/profile/hypervisor:
+    delete:
+      description: Remove only the manual Hypervisor capability/profile. The Host
+        and its generic/system inventory remain unchanged.
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.DeviceProfileResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Remove managed hypervisor profile
+      tags:
+      - hosts
+    patch:
+      consumes:
+      - application/json
+      description: Mark a Host as a managed hypervisor capability and store manually
+        maintained platform details. This does not change Device Type and does not
+        use credentials.
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Hypervisor profile payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.HypervisorProfilePatchRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.DeviceProfileResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create or update managed hypervisor profile
+      tags:
+      - hosts
+  /host/{id}/profile/network:
+    patch:
+      consumes:
+      - application/json
+      description: Partially update network-device-specific managed fields. Physical
+        port count 0 means not set.
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Network profile payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.NetworkDeviceProfilePatchRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.DeviceProfileResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update managed network profile
+      tags:
+      - hosts
+  /host/{id}/profile/system:
+    patch:
+      consumes:
+      - application/json
+      description: Partially update lightweight Server/NAS system inventory without
+        changing the Host Device Type.
+      parameters:
+      - description: Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: System profile payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.SystemDeviceProfilePatchRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.DeviceProfileResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update managed system profile
+      tags:
+      - hosts
+  /host/{id}/proxmox/import/apply:
+    post:
+      consumes:
+      - application/json
+      description: Revalidate a previously previewed snapshot and atomically apply
+        it only when the preview token still matches current persisted state.
+      parameters:
+      - description: Proxmox Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Confirmed preview token and collector snapshot
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.ProxmoxImportApplyDoc'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.ProxmoxImportApplyResponseDoc'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Apply confirmed Proxmox script import
+      tags:
+      - hosts
+  /host/{id}/proxmox/import/preview:
+    post:
+      consumes:
+      - application/json
+      description: Strictly validate a read-only collector snapshot and return a deterministic
+        diff. This endpoint never persists the snapshot.
+      parameters:
+      - description: Proxmox Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Collector snapshot
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.ProxmoxImportSnapshotDoc'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.ProxmoxImportPreviewDoc'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Preview Proxmox script import
+      tags:
+      - hosts
+  /host/{id}/proxmox/source-state:
+    get:
+      description: Return the last successfully imported script-collector node state
+        for one Proxmox Host. Managed HypervisorProfile fields remain separate.
+      parameters:
+      - description: Proxmox Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ProxmoxSourceState'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get imported Proxmox source state
+      tags:
+      - hosts
   /host/{id}/service-scan-settings:
     get:
       description: Return opt-in scheduled TCP service scan settings and runtime state
@@ -1724,6 +2663,374 @@ paths:
       summary: Set host device type
       tags:
       - hosts
+  /host/{id}/workload-matches:
+    get:
+      description: Return explainable workload-to-Host candidates. Exact MAC is the
+        only automatic evidence; address and name evidence remain suggestions. This
+        endpoint never mutates links.
+      parameters:
+      - description: Proxmox Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/api.InfrastructureWorkloadMatchResponseDoc'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get Proxmox workload Host match candidates
+      tags:
+      - hosts
+  /host/{id}/workloads:
+    get:
+      description: Return infrastructure workloads hosted by one configured hypervisor.
+        Workloads remain separate from LANnventory Hosts.
+      parameters:
+      - description: Hypervisor Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/api.InfrastructureWorkloadResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get hypervisor workloads
+      tags:
+      - hosts
+    post:
+      consumes:
+      - application/json
+      description: Add or update a manual VM/LXC inventory object by native ID and
+        type. This never creates a LANnventory Host.
+      parameters:
+      - description: Hypervisor Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Manual workload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.InfrastructureWorkloadCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.InfrastructureWorkloadResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Add or update a manual hypervisor workload
+      tags:
+      - hosts
+  /host/{id}/workloads/{workloadId}:
+    delete:
+      description: Delete a manually maintained workload inventory object. Imported
+        workload retirement uses snapshot reconciliation instead.
+      parameters:
+      - description: Hypervisor Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Workload ID
+        in: path
+        name: workloadId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete a manual hypervisor workload
+      tags:
+      - hosts
+    patch:
+      consumes:
+      - application/json
+      description: Update manually maintained workload fields while keeping native
+        ID and workload type immutable.
+      parameters:
+      - description: Hypervisor Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Workload ID
+        in: path
+        name: workloadId
+        required: true
+        type: string
+      - description: Manual workload changes
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.InfrastructureWorkloadPatchRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.InfrastructureWorkloadResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Edit a manual hypervisor workload
+      tags:
+      - hosts
+  /host/{id}/workloads/{workloadId}/link:
+    delete:
+      description: Remove only the logical MATCHES relation. Workload and Host records
+        remain unchanged.
+      parameters:
+      - description: Hypervisor Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Workload ID
+        in: path
+        name: workloadId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.InfrastructureWorkloadResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Unlink workload from Host
+      tags:
+      - hosts
+    put:
+      consumes:
+      - application/json
+      description: Create or replace the logical MATCHES relation without merging
+        workload or Host identity/history.
+      parameters:
+      - description: Hypervisor Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Workload ID
+        in: path
+        name: workloadId
+        required: true
+        type: string
+      - description: Target Host
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.InfrastructureWorkloadLinkRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.InfrastructureWorkloadResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Link workload to an existing Host
+      tags:
+      - hosts
+  /host/{id}/workloads/{workloadId}/match-rejections/{candidateHostId}:
+    delete:
+      description: Remove only the explicit "Not this Host" decision. Workload, Host
+        identity/history, and links remain unchanged.
+      parameters:
+      - description: Proxmox Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Workload ID
+        in: path
+        name: workloadId
+        required: true
+        type: string
+      - description: Candidate Host ID
+        in: path
+        name: candidateHostId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Clear a workload Host candidate rejection
+      tags:
+      - hosts
+    put:
+      consumes:
+      - application/json
+      description: Persist a non-destructive "Not this Host" decision for the current
+        weak address/name evidence. Exact-MAC evidence cannot be rejected here, and
+        changed evidence is re-evaluated automatically.
+      parameters:
+      - description: Proxmox Host ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Workload ID
+        in: path
+        name: workloadId
+        required: true
+        type: string
+      - description: Candidate Host ID
+        in: path
+        name: candidateHostId
+        required: true
+        type: string
+      - description: Reviewed evidence
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/api.WorkloadCandidateRejectionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.WorkloadMatchCandidateDoc'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Reject a weak workload Host candidate
+      tags:
+      - hosts
   /host/add/{mac}:
     get:
       description: |-
@@ -1806,6 +3113,62 @@ paths:
               type: string
             type: object
       summary: Get address identity observations
+      tags:
+      - hosts
+  /infrastructure/workload-memberships:
+    get:
+      description: Return read-only reverse projections for persisted workload MATCHES
+        relations. Optional hostId limits the response to one current LANnventory
+        Host.
+      parameters:
+      - description: Current Host ID
+        in: query
+        name: hostId
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/api.InfrastructureWorkloadMembershipResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get workload-to-Host memberships
+      tags:
+      - hosts
+  /infrastructure/workload-summaries:
+    get:
+      description: Return read-only VM/container counts from current non-retired workload
+        inventory. Running and stopped workloads both count.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/api.InfrastructureWorkloadSummaryResponse'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get current workload counts by hypervisor
       tags:
       - hosts
   /inventory/options:
