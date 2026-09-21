@@ -206,7 +206,7 @@ func nodeSnapshotFromAPI(endpointHost, pveVersion string, entries []ClusterStatu
 		case "node":
 			name := strings.TrimSpace(entry.Name)
 			if name == "" {
-				name = strings.TrimSpace(entry.NodeID)
+				name = strings.TrimSpace(stringValue(entry.NodeID))
 			}
 			if name != "" {
 				nodes = append(nodes, nodeInfo{name: name, ip: strings.TrimSpace(entry.IP)})
