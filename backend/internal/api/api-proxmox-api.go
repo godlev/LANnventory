@@ -104,7 +104,7 @@ func previewHostProxmoxAPISync(c *gin.Context) {
 		return
 	}
 
-	client, _, err := configuredProxmoxAPIClient(host.Mac, true)
+	client, _, err := configuredProxmoxAPIClient(host.Mac, false)
 	if err != nil {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
