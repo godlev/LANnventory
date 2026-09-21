@@ -16,9 +16,20 @@ import (
 	"github.com/godlev/LANnventory/internal/proxmoxsnapshot"
 )
 
+type ProxmoxAPIConnectionTestResultDoc struct {
+	ConnectionOK bool   `json:"connectionOk"`
+	PVEVersion   string `json:"pveVersion"`
+	NodeAccess   bool   `json:"nodeAccess"`
+	VMInventory  bool   `json:"vmInventory"`
+	LXCInventory bool   `json:"lxcInventory"`
+	NodeCount    int    `json:"nodeCount"`
+	VMCount      int    `json:"vmCount"`
+	LXCCount     int    `json:"lxcCount"`
+}
+
 type ProxmoxAPITestConnectionResponse struct {
-	Status string                          `json:"status"`
-	Result proxmoxapi.ConnectionTestResult `json:"result"`
+	Status string                              `json:"status"`
+	Result ProxmoxAPIConnectionTestResultDoc  `json:"result"`
 }
 
 type ProxmoxAPISyncPreviewResponse struct {
@@ -59,7 +70,16 @@ func testHostProxmoxAPIConnection(c *gin.Context) {
 	recordProxmoxAPIStatus(host.Mac, "connected", attemptedAt, "", "")
 	c.IndentedJSON(http.StatusOK, ProxmoxAPITestConnectionResponse{
 		Status: "connected",
-		Result: result,
+		Result: ProxmoxAPIConnectionTestResultDoc{
+			ConnectionOK: result.ConnectionOK,
+			PVEVersion:   result.PVEVersion,
+			NodeAccess:   result.NodeAccess,
+			VMInventory:  result.VMInventory,
+			LXCInventory: result.LXCInventory,
+			NodeCount:    result.NodeCount,
+			VMCount:      result.VMCount,
+			LXCCount:     result.LXCCount,
+		},
 	})
 }
 
