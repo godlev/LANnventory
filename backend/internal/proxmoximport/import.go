@@ -119,10 +119,12 @@ func ValidateAndNormalize(input proxmoxsnapshot.Snapshot) (proxmoxsnapshot.Snaps
 	if snapshot.CollectorVersion == "" || utf8.RuneCountInString(snapshot.CollectorVersion) > maxCollectorVersionRunes || hasUnsafeControl(snapshot.CollectorVersion) {
 		return snapshot, errors.New("invalid collectorVersion")
 	}
-	if strings.TrimSpace(snapshot.Source) != proxmoxsnapshot.SourceScriptImport {
-		return snapshot, errors.New("source must be script-import")
+	snapshot.Source = strings.TrimSpace(snapshot.Source)
+	switch snapshot.Source {
+	case proxmoxsnapshot.SourceScriptImport, proxmoxsnapshot.SourceProxmoxAPI:
+	default:
+		return snapshot, errors.New("source must be script-import or proxmox-api")
 	}
-	snapshot.Source = proxmoxsnapshot.SourceScriptImport
 
 	collectedAt, err := time.Parse(time.RFC3339, strings.TrimSpace(snapshot.CollectedAt))
 	if err != nil {
@@ -254,7 +256,7 @@ func BuildPreview(hypervisorMac string, snapshot proxmoxsnapshot.Snapshot, curre
 	for _, workload := range snapshot.Workloads {
 		key := workloadKey(workload.WorkloadType, workload.NativeID)
 		incoming[key] = struct{}{}
-		after := workloadViewFromSnapshot(workload)
+		after := workloadViewFromSnapshot(workload, snapshot.Source)
 
 		record, exists := currentByKey[key]
 		if !exists {
@@ -269,7 +271,7 @@ func BuildPreview(hypervisorMac string, snapshot proxmoxsnapshot.Snapshot, curre
 		}
 
 		before := workloadViewFromRecord(record)
-		if record.Workload.Source != models.InfrastructureWorkloadSourceScriptImport {
+		if !isManagedProxmoxSource(record.Workload.Source) {
 			preview.Summary.Conflicts++
 			preview.ApplyAllowed = false
 			preview.Workloads = append(preview.Workloads, WorkloadDiff{
@@ -309,7 +311,7 @@ func BuildPreview(hypervisorMac string, snapshot proxmoxsnapshot.Snapshot, curre
 	}
 
 	for key, record := range currentByKey {
-		if record.Workload.Source != models.InfrastructureWorkloadSourceScriptImport ||
+		if !isManagedProxmoxSource(record.Workload.Source) ||
 			record.Workload.RetiredAt != "" {
 			continue
 		}
@@ -371,6 +373,10 @@ func SnapshotWorkloadInputs(snapshot proxmoxsnapshot.Snapshot) ([]models.Infrast
 	if err != nil {
 		return nil, err
 	}
+	source, err := workloadSourceForSnapshotSource(snapshot.Source)
+	if err != nil {
+		return nil, err
+	}
 	inputs := make([]models.InfrastructureWorkloadUpsert, 0, len(snapshot.Workloads))
 	for _, workload := range snapshot.Workloads {
 		interfaces := make([]models.InfrastructureWorkloadInterface, 0, len(workload.Interfaces))
@@ -389,7 +395,7 @@ func SnapshotWorkloadInputs(snapshot proxmoxsnapshot.Snapshot) ([]models.Infrast
 			WorkloadType: workload.WorkloadType,
 			Name:         workload.Name,
 			Status:       workload.Status,
-			Source:       models.InfrastructureWorkloadSourceScriptImport,
+			Source:       source,
 			Interfaces:   interfaces,
 		})
 	}
@@ -405,9 +411,13 @@ func SourceStateFromSnapshot(hypervisorMac string, snapshot proxmoxsnapshot.Snap
 	if err != nil {
 		return models.ProxmoxSourceState{}, err
 	}
+	source, err := workloadSourceForSnapshotSource(snapshot.Source)
+	if err != nil {
+		return models.ProxmoxSourceState{}, err
+	}
 	return models.ProxmoxSourceState{
 		HypervisorMac:    canonicalMac,
-		Source:           models.InfrastructureWorkloadSourceScriptImport,
+		Source:           source,
 		SchemaVersion:    snapshot.SchemaVersion,
 		CollectorVersion: snapshot.CollectorVersion,
 		CollectedAt:      snapshot.CollectedAt,
@@ -602,13 +612,33 @@ func workloadKey(workloadType, nativeID string) string {
 	return workloadType + ":" + nativeID
 }
 
-func workloadViewFromSnapshot(workload proxmoxsnapshot.WorkloadSnapshot) WorkloadView {
+func isManagedProxmoxSource(source string) bool {
+	switch strings.TrimSpace(source) {
+	case models.InfrastructureWorkloadSourceScriptImport, models.InfrastructureWorkloadSourceProxmoxAPI:
+		return true
+	default:
+		return false
+	}
+}
+
+func workloadSourceForSnapshotSource(source string) (string, error) {
+	switch strings.TrimSpace(source) {
+	case proxmoxsnapshot.SourceScriptImport:
+		return models.InfrastructureWorkloadSourceScriptImport, nil
+	case proxmoxsnapshot.SourceProxmoxAPI:
+		return models.InfrastructureWorkloadSourceProxmoxAPI, nil
+	default:
+		return "", errors.New("unsupported Proxmox snapshot source")
+	}
+}
+
+func workloadViewFromSnapshot(workload proxmoxsnapshot.WorkloadSnapshot, source string) WorkloadView {
 	view := WorkloadView{
 		NativeID:     workload.NativeID,
 		WorkloadType: workload.WorkloadType,
 		Name:         workload.Name,
 		Status:       workload.Status,
-		Source:       models.InfrastructureWorkloadSourceScriptImport,
+		Source:       source,
 		Interfaces:   make([]InterfaceView, 0, len(workload.Interfaces)),
 	}
 	for _, iface := range workload.Interfaces {
@@ -658,6 +688,9 @@ func workloadChanges(before, after WorkloadView) []string {
 	}
 	if before.Status != after.Status {
 		changes = append(changes, "status")
+	}
+	if before.Source != after.Source {
+		changes = append(changes, "source")
 	}
 	if !interfacesEqual(before.Interfaces, after.Interfaces) {
 		changes = append(changes, "interfaces")
