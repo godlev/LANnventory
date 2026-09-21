@@ -20,6 +20,7 @@ func Routes(router *gin.Engine) {
 		r0.GET("/export/inventory.csv", getInventoryCSVExport)
 		r0.GET("/inventory/options", getInventoryOptions)
 		r0.GET("/infrastructure/workload-memberships", getInfrastructureWorkloadMemberships)
+		r0.GET("/infrastructure/workload-summaries", getInfrastructureWorkloadSummaries)
 		r0.GET("/edit/:id/:name/*known", editHost) // api-hosts.go
 		r0.GET("/host/:id/activity", getHostActivity)
 		r0.GET("/host/:id/profile", getHostDeviceProfile)
