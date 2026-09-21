@@ -106,8 +106,9 @@ API sync deliberately remains user-triggered in Phase 35.8:
 1. **Sync now** performs a read-only collection.
 2. The result is normalized to the same Snapshot contract as script import.
 3. LANnventory shows the existing Preview/Diff semantics: additions, updates, retirements, Host matches, ambiguous candidates, IP conflicts and managed-field differences.
-4. Nothing is written until the user confirms **Apply to LANnventory**.
-5. Apply revalidates the Snapshot and stale-preview token and commits through the same atomic persistence path.
+4. Nothing is written and the API source is not enabled until the user confirms **Apply to LANnventory**.
+5. Apply revalidates the Snapshot and stale-preview token, commits through the same atomic persistence path, and enables the API inventory source only after the reviewed sync succeeds.
+6. The API source can later be disabled without deleting its stored connection settings or last good inventory.
 
 Timeouts, TLS failures, authentication failures, permission failures, malformed responses and partial guest-configuration failures never retire or remove the last good inventory. A partial collection is returned as `complete: false`, can be inspected, and is blocked from Apply.
 
