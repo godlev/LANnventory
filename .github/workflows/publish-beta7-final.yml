@@ -1,0 +1,38 @@
+name: Publish beta.7 final tag
+
+on:
+  push:
+    branches:
+      - phase35-device-profiles-proxmox
+    paths:
+      - .github/workflows/publish-beta7-final.yml
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Tag exact merged beta.7 commit
+        env:
+          RELEASE_TAG: v0.1.0-beta.7
+          RELEASE_SHA: 0e4c07e2cfce511d3f3671505f00e4852cfa465b
+        run: |
+          set -euo pipefail
+          git fetch origin main --tags --force
+          test "$(git rev-parse "origin/main^{commit}")" = "${RELEASE_SHA}"
+          test "$(git show "${RELEASE_SHA}:backend/internal/version/version.go" | grep -c 'var Version = "0.1.0-beta.7"')" = "1"
+          test "$(git show "${RELEASE_SHA}:docs/releases/v0.1.0-beta.7.md" | grep -c '^# LANnventory v0.1.0-beta.7$')" = "1"
+          if git rev-parse -q --verify "refs/tags/${RELEASE_TAG}" >/dev/null; then
+            echo "Tag already exists; refusing to move it."
+            exit 1
+          fi
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git tag -a "${RELEASE_TAG}" "${RELEASE_SHA}" -m "LANnventory ${RELEASE_TAG}"
+          git push origin "refs/tags/${RELEASE_TAG}"
