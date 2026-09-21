@@ -106,6 +106,9 @@ func DeleteCurrentHostWithMetadata(host models.Host) error {
 		if err := deleteProxmoxSourceStatesByMAC(txDB, host.Mac); err != nil {
 			return err
 		}
+		if err := deleteProxmoxAPIConfigByMAC(txDB, host.Mac); err != nil {
+			return err
+		}
 		return deleteHostLifecycleByMAC(txDB, host.Mac)
 	})
 }
