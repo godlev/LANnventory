@@ -92,7 +92,7 @@ type VersionInfo struct {
 type ClusterStatusEntry struct {
 	Type   string `json:"type"`
 	Name   string `json:"name"`
-	NodeID string `json:"nodeid"`
+	NodeID any    `json:"nodeid"`
 	Online int    `json:"online"`
 	IP     string `json:"ip"`
 }
