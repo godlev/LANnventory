@@ -6,11 +6,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/godlev/LANnventory/internal/gdb"
 	"github.com/godlev/LANnventory/internal/models"
-	"github.com/godlev/LANnventory/internal/proxmoximport"
 	"github.com/godlev/LANnventory/internal/proxmoxsnapshot"
 )
 
@@ -268,5 +266,3 @@ func postJSON(t *testing.T, router http.Handler, path string, value any) *httpte
 	return rec
 }
 
-var _ = proxmoximport.Preview{}
-var _ = time.Second
