@@ -93,14 +93,17 @@ func UpdateProxmoxAPIStatus(hypervisorMac, status, lastAttemptAt, lastSuccessful
 	}
 	defer release()
 
+	updates := map[string]any{
+		"LAST_ATTEMPT_AT": strings.TrimSpace(lastAttemptAt),
+		"LAST_ERROR":      strings.TrimSpace(lastError),
+		"STATUS":          strings.TrimSpace(status),
+	}
+	if success := strings.TrimSpace(lastSuccessfulSync); success != "" {
+		updates["LAST_SUCCESSFUL_SYNC"] = success
+	}
 	return activeDB.Table(proxmoxAPIConfigsTable).
 		Where(`"HYPERVISOR_MAC" = ?`, canonical).
-		Updates(map[string]any{
-			"LAST_ATTEMPT_AT":      strings.TrimSpace(lastAttemptAt),
-			"LAST_SUCCESSFUL_SYNC": strings.TrimSpace(lastSuccessfulSync),
-			"LAST_ERROR":           strings.TrimSpace(lastError),
-			"STATUS":               strings.TrimSpace(status),
-		}).Error
+		Updates(updates).Error
 }
 
 func deleteProxmoxAPIConfigByMAC(txDB *gorm.DB, mac string) error {
