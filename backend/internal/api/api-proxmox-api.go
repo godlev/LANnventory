@@ -37,6 +37,11 @@ type ProxmoxAPISyncPreviewResponse struct {
 	Preview  proxmoximport.Preview     `json:"preview"`
 }
 
+type ProxmoxAPISyncPreviewDoc struct {
+	Snapshot ProxmoxImportSnapshotDoc `json:"snapshot"`
+	Preview  ProxmoxImportPreviewDoc  `json:"preview"`
+}
+
 // testHostProxmoxAPIConnection godoc
 // @Summary      Test Proxmox API connection
 // @Description  Authenticate and verify read-only node and guest inventory access. This never imports or changes LANnventory inventory.
@@ -89,7 +94,7 @@ func testHostProxmoxAPIConnection(c *gin.Context) {
 // @Tags         proxmox
 // @Produce      json
 // @Param        id   path      string  true  "Proxmox Host ID"
-// @Success      200  {object}  ProxmoxAPISyncPreviewResponse
+// @Success      200  {object}  ProxmoxAPISyncPreviewDoc
 // @Failure      400  {object}  map[string]string
 // @Failure      502  {object}  map[string]string
 // @Router       /host/{id}/proxmox/api/sync-preview [post]
