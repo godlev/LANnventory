@@ -96,8 +96,8 @@ The token secret is write-only through the LANnventory API:
 - GET configuration responses only report whether a secret is configured.
 - an omitted or blank secret keeps the existing value;
 - a new non-empty secret replaces it;
-- **Clear stored token secret** removes it explicitly;
-- the secret is not included in LANnventory backup export, Events, diagnostics or connection error text.
+- **Clear stored token secret** removes it explicitly and disables the API source so an enabled integration is never left without credentials;
+- the secret is not included in LANnventory backup export, Events, diagnostics, database query parameters in logs, or connection error text.
 
 ### Manual Sync now safety flow
 
