@@ -64,7 +64,10 @@ func getInfrastructureWorkloadSummaries(c *gin.Context) {
 		}
 
 		platform := ""
-		profile, found, err := gdb.SelectHypervisorProfileByMAC(mac)
+		// Managed profiles are keyed by the Host MAC as stored in the current
+		// Host record. Workload inventory uses a canonical MAC, so use the
+		// resolved Host's original MAC here to avoid case-sensitive misses.
+		profile, found, err := gdb.SelectHypervisorProfileByMAC(host.Mac)
 		if err != nil {
 			slog.Error("Failed to load hypervisor profile for workload summary", "mac", mac, "err", err)
 			c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to load hypervisor profile"})
