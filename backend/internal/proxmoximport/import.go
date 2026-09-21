@@ -467,6 +467,10 @@ func normalizeWorkload(workload proxmoxsnapshot.WorkloadSnapshot) (proxmoxsnapsh
 		workload.WorkloadType != models.InfrastructureWorkloadTypeContainer {
 		return workload, errors.New("workloadType must be vm or container")
 	}
+	workload.NodeName, err = safeText("nodeName", workload.NodeName, maxNodeTextRunes, false)
+	if err != nil {
+		return workload, err
+	}
 	workload.Name, err = safeText("name", workload.Name, maxNameRunes, false)
 	if err != nil {
 		return workload, err
