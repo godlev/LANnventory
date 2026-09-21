@@ -240,6 +240,17 @@ export type InfrastructureWorkloadMembership = {
   hypervisorIp: string;
 };
 
+export type InfrastructureWorkloadSummary = {
+  hypervisorHostId: number;
+  hypervisorMac: string;
+  hypervisorName: string;
+  hypervisorIp: string;
+  platform: "proxmox-ve" | "vmware-esxi" | "hyper-v" | "other" | "";
+  vmCount: number;
+  containerCount: number;
+  totalCount: number;
+};
+
 export type ProxmoxSnapshotInterface = {
   name: string;
   mac?: string;
@@ -667,6 +678,11 @@ export const apiGetInfrastructureWorkloadMemberships = async (
   const query = params.toString();
   const url = apiPath+'/api/infrastructure/workload-memberships'+(query ? '?'+query : '');
   return await apiJSON<InfrastructureWorkloadMembership[]>(url);
+};
+
+export const apiGetInfrastructureWorkloadSummaries = async (): Promise<InfrastructureWorkloadSummary[]> => {
+  const url = apiPath+'/api/infrastructure/workload-summaries';
+  return await apiJSON<InfrastructureWorkloadSummary[]>(url);
 };
 
 export const apiPreviewProxmoxImport = async (
