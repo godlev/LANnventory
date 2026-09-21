@@ -129,6 +129,7 @@ func patchHostProxmoxAPIConfig(c *gin.Context) {
 	}
 	if request.ClearTokenSecret {
 		next.TokenSecret = ""
+		next.Enabled = false
 	} else if request.TokenSecret != nil && *request.TokenSecret != "" {
 		next.TokenSecret = *request.TokenSecret
 	}
