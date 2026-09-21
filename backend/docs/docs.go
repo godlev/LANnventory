@@ -1868,6 +1868,272 @@ const docTemplate = `{
                 }
             }
         },
+        "/host/{id}/proxmox/api-config": {
+            "get": {
+                "description": "Return the non-secret API connection configuration for one Proxmox Host. The stored token secret is never returned.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "proxmox"
+                ],
+                "summary": "Get Proxmox API configuration",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Proxmox Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.ProxmoxAPIConfigResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "description": "Update one Proxmox Host API connection. tokenSecret is write-only: omit or send blank to keep it, send a non-empty value to replace it, or clearTokenSecret=true to remove it.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "proxmox"
+                ],
+                "summary": "Save Proxmox API configuration",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Proxmox Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "API connection settings",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.ProxmoxAPIConfigPatchRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.ProxmoxAPIConfigResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/host/{id}/proxmox/api/sync-apply": {
+            "post": {
+                "description": "Revalidate the API Snapshot and stale-preview token, then apply it through the existing atomic Proxmox import pipeline.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "proxmox"
+                ],
+                "summary": "Apply confirmed Proxmox API inventory preview",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Proxmox Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Confirmed API snapshot preview",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.ProxmoxImportApplyDoc"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.ProxmoxImportApplyResponseDoc"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/host/{id}/proxmox/api/sync-preview": {
+            "post": {
+                "description": "Perform a read-only API collection and feed the normalized Snapshot into the existing Preview/Diff pipeline. No inventory changes are applied.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "proxmox"
+                ],
+                "summary": "Collect and preview Proxmox API inventory",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Proxmox Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.ProxmoxAPISyncPreviewDoc"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/host/{id}/proxmox/api/test": {
+            "post": {
+                "description": "Authenticate and verify read-only node and guest inventory access. This never imports or changes LANnventory inventory.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "proxmox"
+                ],
+                "summary": "Test Proxmox API connection",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Proxmox Host ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.ProxmoxAPITestConnectionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/host/{id}/proxmox/import/apply": {
             "post": {
                 "description": "Revalidate a previously previewed snapshot and atomically apply it only when the preview token still matches current persisted state.",
@@ -1997,7 +2263,7 @@ const docTemplate = `{
         },
         "/host/{id}/proxmox/source-state": {
             "get": {
-                "description": "Return the last successfully imported script-collector node state for one Proxmox Host. Managed HypervisorProfile fields remain separate.",
+                "description": "Return the last successfully applied Proxmox node state for one source. source defaults to script-import and may also be proxmox-api. Managed HypervisorProfile fields remain separate.",
                 "produces": [
                     "application/json"
                 ],
@@ -2012,6 +2278,16 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "enum": [
+                            "script-import",
+                            "proxmox-api"
+                        ],
+                        "type": "string",
+                        "description": "Source provenance",
+                        "name": "source",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -3869,6 +4145,9 @@ const docTemplate = `{
                 "nativeId": {
                     "type": "string"
                 },
+                "nodeName": {
+                    "type": "string"
+                },
                 "retiredAt": {
                     "type": "string"
                 },
@@ -3925,6 +4204,124 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "portCapabilityNotes": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.ProxmoxAPIConfigPatchRequest": {
+            "type": "object",
+            "properties": {
+                "baseUrl": {
+                    "type": "string"
+                },
+                "clearTokenSecret": {
+                    "type": "boolean"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "timeoutSeconds": {
+                    "type": "integer"
+                },
+                "tokenId": {
+                    "type": "string"
+                },
+                "tokenSecret": {
+                    "type": "string"
+                },
+                "verifyTls": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "api.ProxmoxAPIConfigResponse": {
+            "type": "object",
+            "properties": {
+                "baseUrl": {
+                    "type": "string"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "hypervisorMac": {
+                    "type": "string"
+                },
+                "lastAttemptAt": {
+                    "type": "string"
+                },
+                "lastError": {
+                    "type": "string"
+                },
+                "lastSuccessfulSync": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "timeoutSeconds": {
+                    "type": "integer"
+                },
+                "tokenId": {
+                    "type": "string"
+                },
+                "tokenSecretConfigured": {
+                    "type": "boolean"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "verifyTls": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "api.ProxmoxAPIConnectionTestResultDoc": {
+            "type": "object",
+            "properties": {
+                "connectionOk": {
+                    "type": "boolean"
+                },
+                "lxcCount": {
+                    "type": "integer"
+                },
+                "lxcInventory": {
+                    "type": "boolean"
+                },
+                "nodeAccess": {
+                    "type": "boolean"
+                },
+                "nodeCount": {
+                    "type": "integer"
+                },
+                "pveVersion": {
+                    "type": "string"
+                },
+                "vmCount": {
+                    "type": "integer"
+                },
+                "vmInventory": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "api.ProxmoxAPISyncPreviewDoc": {
+            "type": "object",
+            "properties": {
+                "preview": {
+                    "$ref": "#/definitions/api.ProxmoxImportPreviewDoc"
+                },
+                "snapshot": {
+                    "$ref": "#/definitions/api.ProxmoxImportSnapshotDoc"
+                }
+            }
+        },
+        "api.ProxmoxAPITestConnectionResponse": {
+            "type": "object",
+            "properties": {
+                "result": {
+                    "$ref": "#/definitions/api.ProxmoxAPIConnectionTestResultDoc"
+                },
+                "status": {
                     "type": "string"
                 }
             }
@@ -4209,6 +4606,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "nativeId": {
+                    "type": "string"
+                },
+                "nodeName": {
                     "type": "string"
                 },
                 "status": {
