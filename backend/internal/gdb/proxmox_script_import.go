@@ -90,6 +90,7 @@ func ApplyProxmoxImport(hypervisorMac string, state models.ProxmoxSourceState, w
 				return ErrInfrastructureWorkloadSourceConflict
 			}
 
+			workload.NodeName = strings.TrimSpace(input.NodeName)
 			workload.Name = strings.TrimSpace(input.Name)
 			workload.Status = status
 			workload.Source = state.Source
