@@ -389,6 +389,25 @@ definitions:
       workloadType:
         type: string
     type: object
+  api.InfrastructureWorkloadSummaryResponse:
+    properties:
+      containerCount:
+        type: integer
+      hypervisorHostId:
+        type: integer
+      hypervisorIp:
+        type: string
+      hypervisorMac:
+        type: string
+      hypervisorName:
+        type: string
+      platform:
+        type: string
+      totalCount:
+        type: integer
+      vmCount:
+        type: integer
+    type: object
   api.NetworkDeviceProfilePatchRequest:
     properties:
       managementMode:
@@ -3128,6 +3147,28 @@ paths:
               type: string
             type: object
       summary: Get workload-to-Host memberships
+      tags:
+      - hosts
+  /infrastructure/workload-summaries:
+    get:
+      description: Return read-only VM/container counts from current non-retired workload
+        inventory. Running and stopped workloads both count.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/api.InfrastructureWorkloadSummaryResponse'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get current workload counts by hypervisor
       tags:
       - hosts
   /inventory/options:

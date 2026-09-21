@@ -263,7 +263,6 @@ func TestInfrastructureWorkloadMembershipsExposeReverseParentRelation(t *testing
 	}
 }
 
-
 func TestInfrastructureWorkloadSummariesCountCurrentInventoryByHypervisor(t *testing.T) {
 	router := setupTestRouter(t)
 	hypervisor := seedHost(t, models.Host{Name: "PROXMOX", Mac: "AA:BB:CC:DD:F2:10", IP: "10.4.1.6", DeviceType: "server"})

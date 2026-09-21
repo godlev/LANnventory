@@ -85,7 +85,7 @@ type InfrastructureWorkloadMembershipRecord struct {
 // InfrastructureWorkloadSummary is a read-only count projection for current
 // (non-retired) workloads owned by one hypervisor identity.
 type InfrastructureWorkloadSummary struct {
-	HypervisorMac string
-	VMCount       int
+	HypervisorMac  string
+	VMCount        int
 	ContainerCount int
 }

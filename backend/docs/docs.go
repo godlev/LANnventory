@@ -2867,6 +2867,38 @@ const docTemplate = `{
                 }
             }
         },
+        "/infrastructure/workload-summaries": {
+            "get": {
+                "description": "Return read-only VM/container counts from current non-retired workload inventory. Running and stopped workloads both count.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "hosts"
+                ],
+                "summary": "Get current workload counts by hypervisor",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/api.InfrastructureWorkloadSummaryResponse"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/inventory/options": {
             "get": {
                 "description": "Retrieve distinct owner and location values from current host metadata for lightweight autocomplete.",
@@ -3851,6 +3883,35 @@ const docTemplate = `{
                 },
                 "workloadType": {
                     "type": "string"
+                }
+            }
+        },
+        "api.InfrastructureWorkloadSummaryResponse": {
+            "type": "object",
+            "properties": {
+                "containerCount": {
+                    "type": "integer"
+                },
+                "hypervisorHostId": {
+                    "type": "integer"
+                },
+                "hypervisorIp": {
+                    "type": "string"
+                },
+                "hypervisorMac": {
+                    "type": "string"
+                },
+                "hypervisorName": {
+                    "type": "string"
+                },
+                "platform": {
+                    "type": "string"
+                },
+                "totalCount": {
+                    "type": "integer"
+                },
+                "vmCount": {
+                    "type": "integer"
                 }
             }
         },
