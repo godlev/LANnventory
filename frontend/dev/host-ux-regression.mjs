@@ -123,9 +123,16 @@ requireText(homeCardHead, "Comfortable", "Home toolbar must offer Comfortable ta
 requireText(homeCardHead, "Compact", "Home toolbar must offer Compact table view.");
 requireText(homeTableRow, '_props.viewMode === "compact"', "Compact Home rows must have dedicated workload rendering.");
 requireText(homeTableRow, "device-compact-workload", "Compact Home rows must expose a one-line Proxmox workload marker.");
+requireText(homeTableRow, "device-hypervisor-summary", "Comfortable Home rows must expose Proxmox VM/LXC totals under the hypervisor name.");
+requireText(homeTableRow, "device-compact-hypervisor-summary", "Compact Home rows must keep Proxmox VM/LXC totals on one line.");
+requireText(homeTableRow, "containerCount", "Proxmox Home summary must expose LXC/container counts.");
+requireText(homeTableRow, "vmCount", "Proxmox Home summary must expose VM counts.");
+requireText(homeBody, "apiGetInfrastructureWorkloadSummaries", "Home must load full hypervisor workload inventory counts rather than count only linked workloads.");
 requireText(homeTableRow, '_props.viewMode !== "compact"', "Comfortable-only second-line workload ancestry must be suppressed in Compact view.");
 requireText(appStyles, ".device-table-compact tbody td", "Compact Home table must reduce row density.");
 requireText(appStyles, ".device-compact-workload", "Compact Proxmox workload marker must have dedicated styling.");
+requireText(appStyles, ".device-hypervisor-summary", "Comfortable Proxmox inventory totals must have dedicated styling.");
+requireText(appStyles, ".device-compact-hypervisor-summary", "Compact Proxmox inventory totals must have dedicated styling.");
 forbidText(deviceTypes, '| "hypervisor"', "Hypervisor must not become an exclusive Device Type.");
 
 console.log("Host UX semantic regression checks passed.");
