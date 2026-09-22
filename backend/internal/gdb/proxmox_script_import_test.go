@@ -181,6 +181,71 @@ func TestApplyProxmoxScriptImportRejectsIncompleteSnapshot(t *testing.T) {
 }
 
 
+
+func TestApplyProxmoxScriptImportDoesNotRetireAPIScopeWorkloads(t *testing.T) {
+	startSelectTestDB(t)
+	hypervisorMac := "AA:BB:CC:DD:EE:84"
+
+	apiState := models.ProxmoxSourceState{
+		Source: models.InfrastructureWorkloadSourceProxmoxAPI,
+		SchemaVersion: 1, CollectorVersion: "1.0.0", CollectedAt: "2026-09-22T08:00:00Z",
+		Complete: true, NodeHostname: "pve-1", NodePVEVersion: "pve-manager/9.2.20",
+		NodeStatus: "online", SnapshotDigest: "api-scope", ImportedAt: "2026-09-22T08:01:00Z",
+	}
+	apiWorkloads := []models.InfrastructureWorkloadUpsert{
+		{
+			NativeID: "119", WorkloadType: models.InfrastructureWorkloadTypeVM, NodeName: "pve-1",
+			Name: "local-vm", Status: models.InfrastructureWorkloadStatusRunning,
+			Source: models.InfrastructureWorkloadSourceProxmoxAPI,
+		},
+		{
+			NativeID: "220", WorkloadType: models.InfrastructureWorkloadTypeVM, NodeName: "pve-2",
+			Name: "remote-node-vm", Status: models.InfrastructureWorkloadStatusRunning,
+			Source: models.InfrastructureWorkloadSourceProxmoxAPI,
+		},
+	}
+	if err := ApplyProxmoxImport(hypervisorMac, apiState, apiWorkloads); err != nil {
+		t.Fatalf("seed API inventory: %v", err)
+	}
+
+	scriptState := apiState
+	scriptState.Source = models.InfrastructureWorkloadSourceScriptImport
+	scriptState.CollectedAt = "2026-09-22T09:00:00Z"
+	scriptState.ImportedAt = "2026-09-22T09:01:00Z"
+	scriptState.SnapshotDigest = "script-local"
+	scriptWorkloads := []models.InfrastructureWorkloadUpsert{{
+		NativeID: "119", WorkloadType: models.InfrastructureWorkloadTypeVM, NodeName: "pve-1",
+		Name: "local-vm", Status: models.InfrastructureWorkloadStatusRunning,
+		Source: models.InfrastructureWorkloadSourceScriptImport,
+	}}
+	if err := ApplyProxmoxScriptImport(hypervisorMac, scriptState, scriptWorkloads); err != nil {
+		t.Fatalf("script apply: %v", err)
+	}
+
+	records, err := SelectInfrastructureWorkloadsByHypervisorMAC(hypervisorMac)
+	if err != nil {
+		t.Fatalf("reload workloads: %v", err)
+	}
+	if len(records) != 2 {
+		t.Fatalf("workload count = %d, want 2: %+v", len(records), records)
+	}
+	for _, record := range records {
+		switch record.Workload.NativeID {
+		case "119":
+			if record.Workload.Source != models.InfrastructureWorkloadSourceScriptImport || record.Workload.RetiredAt != "" {
+				t.Fatalf("local workload transition = %+v", record.Workload)
+			}
+		case "220":
+			if record.Workload.Source != models.InfrastructureWorkloadSourceProxmoxAPI || record.Workload.RetiredAt != "" {
+				t.Fatalf("API cluster workload was retired or re-sourced by node-local script: %+v", record.Workload)
+			}
+		default:
+			t.Fatalf("unexpected workload: %+v", record.Workload)
+		}
+	}
+}
+
+
 func TestApplyProxmoxImportTransitionsScriptToAPIAndPreservesManualLink(t *testing.T) {
 	startSelectTestDB(t)
 	hypervisorMac := "AA:BB:CC:DD:EE:83"
