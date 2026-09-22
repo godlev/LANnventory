@@ -161,6 +161,9 @@ func ApplyProxmoxImport(hypervisorMac string, state models.ProxmoxSourceState, w
 			if _, present := incoming[key]; present || workload.RetiredAt != "" {
 				continue
 			}
+			if !shouldRetireMissingImportedWorkload(state.Source, workload.Source) {
+				continue
+			}
 			if err := txDB.Table(infrastructureWorkloadsTable).
 				Where(`"ID" = ?`, workload.ID).
 				Updates(map[string]any{
@@ -207,6 +210,23 @@ func isManagedProxmoxWorkloadSource(source string) bool {
 	switch strings.TrimSpace(source) {
 	case models.InfrastructureWorkloadSourceScriptImport, models.InfrastructureWorkloadSourceProxmoxAPI:
 		return true
+	default:
+		return false
+	}
+}
+
+func shouldRetireMissingImportedWorkload(incomingSource, currentSource string) bool {
+	incomingSource = strings.TrimSpace(incomingSource)
+	currentSource = strings.TrimSpace(currentSource)
+	switch incomingSource {
+	case models.InfrastructureWorkloadSourceProxmoxAPI:
+		// API inventory is cluster-aware and authoritative across the managed
+		// Proxmox inventory scope, including migration from script imports.
+		return isManagedProxmoxWorkloadSource(currentSource)
+	case models.InfrastructureWorkloadSourceScriptImport:
+		// Script imports are node-local. They may retire their own prior script
+		// rows, but must not retire API-managed rows from another cluster node.
+		return currentSource == models.InfrastructureWorkloadSourceScriptImport
 	default:
 		return false
 	}
