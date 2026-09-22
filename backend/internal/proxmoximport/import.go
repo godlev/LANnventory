@@ -319,6 +319,9 @@ func BuildPreview(hypervisorMac string, snapshot proxmoxsnapshot.Snapshot, curre
 		if _, exists := incoming[key]; exists {
 			continue
 		}
+		if !shouldRetireMissingWorkload(snapshot.Source, record.Workload.Source) {
+			continue
+		}
 		before := workloadViewFromRecord(record)
 		preview.Summary.Retired++
 		preview.Workloads = append(preview.Workloads, WorkloadDiff{
@@ -627,6 +630,23 @@ func isManagedProxmoxSource(source string) bool {
 	}
 }
 
+func shouldRetireMissingWorkload(snapshotSource, currentSource string) bool {
+	currentSource = strings.TrimSpace(currentSource)
+	switch strings.TrimSpace(snapshotSource) {
+	case proxmoxsnapshot.SourceProxmoxAPI:
+		// API inventory is cluster-aware and authoritative across both managed
+		// collection modes. This also makes first script -> API migration retire
+		// genuinely missing workloads.
+		return isManagedProxmoxSource(currentSource)
+	case proxmoxsnapshot.SourceScriptImport:
+		// The script collector is node-local. Never let a node-local snapshot
+		// retire API-managed workloads that may belong to another cluster node.
+		return currentSource == models.InfrastructureWorkloadSourceScriptImport
+	default:
+		return false
+	}
+}
+
 func workloadSourceForSnapshotSource(source string) (string, error) {
 	switch strings.TrimSpace(source) {
 	case proxmoxsnapshot.SourceScriptImport:
@@ -745,9 +765,15 @@ func managedNodeConflicts(managed models.HypervisorProfile, imported NodeView) [
 		{"nodeName", managed.NodeName, imported.Hostname},
 		{"clusterName", managed.ClusterName, imported.ClusterName},
 	} {
-		if strings.TrimSpace(item.managed) != "" &&
-			strings.TrimSpace(item.imported) != "" &&
-			strings.TrimSpace(item.managed) != strings.TrimSpace(item.imported) {
+		managed := strings.TrimSpace(item.managed)
+		imported := strings.TrimSpace(item.imported)
+		if managed == "" || imported == "" {
+			continue
+		}
+		if item.field == "version" && equivalentPVEVersion(managed, imported) {
+			continue
+		}
+		if managed != imported {
 			conflicts = append(conflicts, FieldConflict{
 				Field:    item.field,
 				Managed:  item.managed,
@@ -756,6 +782,19 @@ func managedNodeConflicts(managed models.HypervisorProfile, imported NodeView) [
 		}
 	}
 	return conflicts
+}
+
+func equivalentPVEVersion(left, right string) bool {
+	return canonicalPVEVersion(left) == canonicalPVEVersion(right)
+}
+
+func canonicalPVEVersion(value string) string {
+	value = strings.TrimSpace(value)
+	const prefix = "pve-manager/"
+	if len(value) >= len(prefix) && strings.EqualFold(value[:len(prefix)], prefix) {
+		return strings.TrimSpace(value[len(prefix):])
+	}
+	return value
 }
 
 func normalizeCurrentStateForToken(current CurrentState) CurrentState {
