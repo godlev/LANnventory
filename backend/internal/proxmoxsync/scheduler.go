@@ -106,6 +106,13 @@ func (s *Scheduler) run(ctx context.Context) {
 			}
 			continue
 		}
+		if delay == 0 && len(s.sem) >= cap(s.sem) {
+			if !s.waitWithoutTimer(ctx) {
+				s.wg.Wait()
+				return
+			}
+			continue
+		}
 		if !s.wait(ctx, delay) {
 			s.wg.Wait()
 			return
