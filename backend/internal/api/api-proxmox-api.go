@@ -192,6 +192,7 @@ func applyHostProxmoxAPISync(c *gin.Context) {
 		return
 	}
 
+	notifyProxmoxSyncSchedulerConfigChanged()
 	c.IndentedJSON(http.StatusOK, ProxmoxImportApplyResponse{
 		Applied:    true,
 		ImportedAt: result.ImportedAt,

@@ -91,6 +91,8 @@ func GuiContext(ctx context.Context) error {
 	}
 
 	api.StartUpdateScheduler(ctx)
+	stopProxmoxScheduler := api.StartProxmoxSyncScheduler(ctx)
+	defer stopProxmoxScheduler()
 
 	go func() {
 		<-ctx.Done()

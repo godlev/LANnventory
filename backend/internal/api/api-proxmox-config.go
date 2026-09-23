@@ -201,6 +201,7 @@ func patchHostProxmoxAPIConfig(c *gin.Context) {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to persist Proxmox API configuration"})
 		return
 	}
+	notifyProxmoxSyncSchedulerConfigChanged()
 
 	sourceState, sourceFound, err := gdb.SelectProxmoxSourceState(host.Mac, models.InfrastructureWorkloadSourceProxmoxAPI)
 	if err != nil {
