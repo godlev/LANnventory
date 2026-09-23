@@ -125,6 +125,42 @@ func UpdateProxmoxAPIStatus(hypervisorMac, status, lastAttemptAt, lastSuccessful
 		Updates(updates).Error
 }
 
+func SelectAutomaticProxmoxAPIConfigs() ([]models.ProxmoxAPIConfig, error) {
+	activeDB, release, err := acquireDB()
+	if err != nil {
+		return nil, err
+	}
+	defer release()
+
+	var configs []models.ProxmoxAPIConfig
+	if err := activeDB.Table(proxmoxAPIConfigsTable).
+		Where(`"ENABLED" = ? AND "AUTOMATIC_SYNC" = ?`, true, true).
+		Order(`"HYPERVISOR_MAC" ASC`).
+		Find(&configs).Error; err != nil {
+		return nil, err
+	}
+	return configs, nil
+}
+
+func UpdateProxmoxAPINextSyncIfRevision(hypervisorMac string, configRevision uint64, nextSyncAt string) (bool, error) {
+	canonical, err := identity.NormalizeMAC(hypervisorMac)
+	if err != nil {
+		return false, err
+	}
+
+	activeDB, release, err := acquireDB()
+	if err != nil {
+		return false, err
+	}
+	defer release()
+
+	result := activeDB.Table(proxmoxAPIConfigsTable).
+		Where(`"HYPERVISOR_MAC" = ? AND "CONFIG_REVISION" = ? AND "ENABLED" = ? AND "AUTOMATIC_SYNC" = ?`,
+			canonical, configRevision, true, true).
+		Update("NEXT_SYNC_AT", strings.TrimSpace(nextSyncAt))
+	return result.RowsAffected == 1, result.Error
+}
+
 func deleteProxmoxAPIConfigByMAC(txDB *gorm.DB, mac string) error {
 	canonical, err := identity.NormalizeMAC(mac)
 	if err != nil {

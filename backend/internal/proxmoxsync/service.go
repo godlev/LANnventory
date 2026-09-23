@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/godlev/LANnventory/internal/gdb"
@@ -32,6 +33,7 @@ const (
 	ErrorConflict     ErrorKind = "conflict"
 	ErrorPersistence  ErrorKind = "persistence"
 	ErrorStaleConfig  ErrorKind = "stale-config"
+	ErrorBusy         ErrorKind = "busy"
 )
 
 type ServiceError struct {
@@ -85,10 +87,16 @@ type ApplyResult struct {
 
 type Service struct {
 	now func() time.Time
+
+	inFlightMu sync.Mutex
+	inFlight   map[string]struct{}
 }
 
 func NewService() *Service {
-	return &Service{now: time.Now}
+	return &Service{
+		now:      time.Now,
+		inFlight: make(map[string]struct{}),
+	}
 }
 
 func (s *Service) TestConnection(ctx context.Context, hypervisorMac string) (proxmoxapi.ConnectionTestResult, error) {
@@ -109,6 +117,15 @@ func (s *Service) TestConnection(ctx context.Context, hypervisorMac string) (pro
 }
 
 func (s *Service) CollectPreview(ctx context.Context, hypervisorMac string, options CollectOptions) (PreviewResult, error) {
+	release, ok := s.tryBegin(hypervisorMac)
+	if !ok {
+		return PreviewResult{}, &ServiceError{Kind: ErrorBusy, Err: errors.New("sync already in progress")}
+	}
+	defer release()
+	return s.collectPreview(ctx, hypervisorMac, options)
+}
+
+func (s *Service) collectPreview(ctx context.Context, hypervisorMac string, options CollectOptions) (PreviewResult, error) {
 	client, config, err := s.configuredClient(hypervisorMac, options.RequireEnabled)
 	if err != nil {
 		return PreviewResult{}, err
@@ -149,6 +166,15 @@ func (s *Service) CollectPreview(ctx context.Context, hypervisorMac string, opti
 }
 
 func (s *Service) ApplyPreview(ctx context.Context, hypervisorMac string, snapshot proxmoxsnapshot.Snapshot, previewToken string, options ApplyOptions) (ApplyResult, error) {
+	release, ok := s.tryBegin(hypervisorMac)
+	if !ok {
+		return ApplyResult{}, &ServiceError{Kind: ErrorBusy, Err: errors.New("sync already in progress")}
+	}
+	defer release()
+	return s.applyPreview(ctx, hypervisorMac, snapshot, previewToken, options)
+}
+
+func (s *Service) applyPreview(ctx context.Context, hypervisorMac string, snapshot proxmoxsnapshot.Snapshot, previewToken string, options ApplyOptions) (ApplyResult, error) {
 	_ = ctx
 
 	if strings.TrimSpace(snapshot.Source) != proxmoxsnapshot.SourceProxmoxAPI {
@@ -215,6 +241,41 @@ func (s *Service) ApplyPreview(ctx context.Context, hypervisorMac string, snapsh
 		ImportedAt: importedAt,
 		Summary:    preview.Summary,
 	}, nil
+}
+
+func (s *Service) IsRunning(hypervisorMac string) bool {
+	key := syncKey(hypervisorMac)
+	s.inFlightMu.Lock()
+	defer s.inFlightMu.Unlock()
+	_, exists := s.inFlight[key]
+	return exists
+}
+
+func (s *Service) tryBegin(hypervisorMac string) (func(), bool) {
+	key := syncKey(hypervisorMac)
+	s.inFlightMu.Lock()
+	if s.inFlight == nil {
+		s.inFlight = make(map[string]struct{})
+	}
+	if _, exists := s.inFlight[key]; exists {
+		s.inFlightMu.Unlock()
+		return nil, false
+	}
+	s.inFlight[key] = struct{}{}
+	s.inFlightMu.Unlock()
+
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			s.inFlightMu.Lock()
+			delete(s.inFlight, key)
+			s.inFlightMu.Unlock()
+		})
+	}, true
+}
+
+func syncKey(value string) string {
+	return strings.ToUpper(strings.TrimSpace(value))
 }
 
 func (s *Service) configuredClient(hypervisorMac string, requireEnabled bool) (*proxmoxapi.Client, models.ProxmoxAPIConfig, error) {

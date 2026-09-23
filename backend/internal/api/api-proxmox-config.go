@@ -98,7 +98,9 @@ func getHostProxmoxAPIConfig(c *gin.Context) {
 		return
 	}
 
-	c.IndentedJSON(http.StatusOK, publicProxmoxAPIConfig(config, sourceState, sourceFound))
+	response := publicProxmoxAPIConfig(config, sourceState, sourceFound)
+	response.Syncing = proxmoxSyncService.IsRunning(host.Mac)
+	c.IndentedJSON(http.StatusOK, response)
 }
 
 // patchHostProxmoxAPIConfig godoc
@@ -178,6 +180,7 @@ func patchHostProxmoxAPIConfig(c *gin.Context) {
 	next.HypervisorMac = host.Mac
 	if materialProxmoxAPIConfigChanged(current, next) {
 		next.ConfigRevision = current.ConfigRevision + 1
+		next.NextSyncAt = ""
 	}
 	next.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
 	if next.Enabled {
@@ -206,7 +209,9 @@ func patchHostProxmoxAPIConfig(c *gin.Context) {
 		return
 	}
 
-	c.IndentedJSON(http.StatusOK, publicProxmoxAPIConfig(next, sourceState, sourceFound))
+	response := publicProxmoxAPIConfig(next, sourceState, sourceFound)
+	response.Syncing = proxmoxSyncService.IsRunning(host.Mac)
+	c.IndentedJSON(http.StatusOK, response)
 }
 
 func defaultProxmoxAPIConfig(hypervisorMac string) models.ProxmoxAPIConfig {

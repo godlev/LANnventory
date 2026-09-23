@@ -25,3 +25,42 @@ func TestTriggerValuesAreStable(t *testing.T) {
 		t.Fatalf("unexpected trigger values manual=%q automatic=%q", TriggerManual, TriggerAutomatic)
 	}
 }
+
+
+func TestServiceSameHostOwnershipIsExclusive(t *testing.T) {
+	service := NewService()
+	release, ok := service.tryBegin("AA:BB:CC:DD:EE:F1")
+	if !ok {
+		t.Fatal("first ownership acquisition failed")
+	}
+	if !service.IsRunning("aa:bb:cc:dd:ee:f1") {
+		t.Fatal("IsRunning did not normalize host identity")
+	}
+	if secondRelease, ok := service.tryBegin("AA:BB:CC:DD:EE:F1"); ok {
+		secondRelease()
+		t.Fatal("second same-host ownership acquisition unexpectedly succeeded")
+	}
+	release()
+	if service.IsRunning("AA:BB:CC:DD:EE:F1") {
+		t.Fatal("ownership remained after release")
+	}
+	if releaseAgain, ok := service.tryBegin("AA:BB:CC:DD:EE:F1"); !ok {
+		t.Fatal("ownership could not be reacquired after release")
+	} else {
+		releaseAgain()
+	}
+}
+
+func TestServiceDifferentHostsMayRunConcurrently(t *testing.T) {
+	service := NewService()
+	releaseA, ok := service.tryBegin("AA:BB:CC:DD:EE:F2")
+	if !ok {
+		t.Fatal("host A acquisition failed")
+	}
+	defer releaseA()
+	releaseB, ok := service.tryBegin("AA:BB:CC:DD:EE:F3")
+	if !ok {
+		t.Fatal("host B acquisition failed")
+	}
+	defer releaseB()
+}

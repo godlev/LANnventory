@@ -106,6 +106,8 @@ func previewHostProxmoxAPISync(c *gin.Context) {
 		switch proxmoxsync.KindOf(err) {
 		case proxmoxsync.ErrorConfig:
 			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		case proxmoxsync.ErrorBusy:
+			c.IndentedJSON(http.StatusConflict, gin.H{"error": "Sync already in progress"})
 		case proxmoxsync.ErrorState:
 			slog.Error("Failed to load Proxmox API preview state", "hostID", host.ID, "mac", host.Mac, "err", err)
 			c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to load Proxmox inventory state"})
@@ -167,6 +169,8 @@ func applyHostProxmoxAPISync(c *gin.Context) {
 		switch proxmoxsync.KindOf(err) {
 		case proxmoxsync.ErrorValidation:
 			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		case proxmoxsync.ErrorBusy:
+			c.IndentedJSON(http.StatusConflict, gin.H{"error": "Sync already in progress"})
 		case proxmoxsync.ErrorState:
 			slog.Error("Failed to load current Proxmox API state", "hostID", host.ID, "mac", host.Mac, "err", err)
 			c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to load Proxmox inventory state"})
