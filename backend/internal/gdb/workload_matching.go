@@ -40,7 +40,7 @@ func reconcileExactMACWorkloadLinksTx(txDB *gorm.DB, hypervisorMac, changedAt st
 	}
 
 	for _, record := range records {
-		if record.Workload.Source != models.InfrastructureWorkloadSourceScriptImport {
+		if !isManagedProxmoxWorkloadSource(record.Workload.Source) {
 			continue
 		}
 		if record.Link != nil && record.Link.LinkSource == models.InfrastructureWorkloadLinkSourceManual {

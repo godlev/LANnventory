@@ -110,6 +110,7 @@ func UpsertInfrastructureWorkload(hypervisorMac string, input models.Infrastruct
 			return err
 		}
 
+		workload.NodeName = strings.TrimSpace(input.NodeName)
 		workload.Name = strings.TrimSpace(input.Name)
 		workload.Status = status
 		workload.Source = source

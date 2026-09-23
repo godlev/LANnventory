@@ -4,6 +4,7 @@ const (
 	SchemaVersion     = 1
 	CollectorVersion  = "1.0.0"
 	SourceScriptImport = "script-import"
+	SourceProxmoxAPI  = "proxmox-api"
 )
 
 // Snapshot is the normalized contract shared by the read-only script collector
@@ -32,6 +33,7 @@ type NodeSnapshot struct {
 type WorkloadSnapshot struct {
 	NativeID     string              `json:"nativeId"`
 	WorkloadType string              `json:"workloadType"`
+	NodeName     string              `json:"nodeName,omitempty"`
 	Name         string              `json:"name"`
 	Status       string              `json:"status"`
 	Interfaces   []InterfaceSnapshot `json:"interfaces"`

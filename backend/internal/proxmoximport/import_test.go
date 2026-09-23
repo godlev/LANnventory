@@ -1,6 +1,8 @@
 package proxmoximport
 
 import (
+	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/godlev/LANnventory/internal/models"
@@ -225,6 +227,179 @@ func TestBuildPreviewBlocksIncompleteSnapshotAndTokenChangesWithState(t *testing
 	}
 	if incomplete.ApplyAllowed || len(incomplete.BlockedReasons) == 0 {
 		t.Fatalf("incomplete preview = %+v", incomplete)
+	}
+}
+
+func TestScriptAndAPISnapshotsNormalizeSemanticallyEquivalent(t *testing.T) {
+	script := validSnapshot()
+	script.Workloads[0].NodeName = "pve-1"
+	api := script
+	api.Source = proxmoxsnapshot.SourceProxmoxAPI
+	api.Workloads = append([]proxmoxsnapshot.WorkloadSnapshot(nil), script.Workloads...)
+	api.Workloads[0].Interfaces = append([]proxmoxsnapshot.InterfaceSnapshot(nil), script.Workloads[0].Interfaces...)
+
+	scriptNormalized, err := ValidateAndNormalize(script)
+	if err != nil {
+		t.Fatalf("normalize script snapshot: %v", err)
+	}
+	apiNormalized, err := ValidateAndNormalize(api)
+	if err != nil {
+		t.Fatalf("normalize API snapshot: %v", err)
+	}
+
+	if scriptNormalized.Source != proxmoxsnapshot.SourceScriptImport || apiNormalized.Source != proxmoxsnapshot.SourceProxmoxAPI {
+		t.Fatalf("source provenance script=%q api=%q", scriptNormalized.Source, apiNormalized.Source)
+	}
+	scriptNormalized.Source = ""
+	apiNormalized.Source = ""
+	if scriptNormalized.CollectorVersion != apiNormalized.CollectorVersion {
+		t.Fatalf("collector version differs script=%q api=%q", scriptNormalized.CollectorVersion, apiNormalized.CollectorVersion)
+	}
+	if !reflect.DeepEqual(scriptNormalized, apiNormalized) {
+		t.Fatalf("normalized semantic snapshots differ:\nscript=%+v\napi=%+v", scriptNormalized, apiNormalized)
+	}
+}
+
+func TestAPISnapshotTransitionsExistingScriptWorkloadWithoutConflict(t *testing.T) {
+	snapshot := validSnapshot()
+	snapshot.Source = proxmoxsnapshot.SourceProxmoxAPI
+	snapshot.Workloads[0].NodeName = "pve-1"
+
+	current := CurrentState{
+		Workloads: []models.InfrastructureWorkloadRecord{{
+			Workload: models.InfrastructureWorkload{
+				ID: 1, NativeID: "119", WorkloadType: "vm", NodeName: "pve-1",
+				Name: "media", Status: "running", Source: models.InfrastructureWorkloadSourceScriptImport,
+			},
+			Interfaces: []models.InfrastructureWorkloadInterface{{
+				Name: "net0", Mac: "AA:BB:CC:DD:EE:19", Bridge: "vmbr0", VLANTag: "20",
+				ConfiguredAddress: "10.4.1.19/24", ConfiguredNetwork: "10.4.1.0/24",
+			}},
+		}},
+	}
+
+	preview, err := BuildPreview("AA:BB:CC:DD:EE:10", snapshot, current)
+	if err != nil {
+		t.Fatalf("BuildPreview: %v", err)
+	}
+	if !preview.ApplyAllowed || preview.Summary.Conflicts != 0 || preview.Summary.Updated != 1 {
+		t.Fatalf("API transition preview = %+v", preview)
+	}
+	if len(preview.Workloads) != 1 || !slices.Contains(preview.Workloads[0].Changes, "source") {
+		t.Fatalf("API transition workload diff = %+v", preview.Workloads)
+	}
+
+	inputs, err := SnapshotWorkloadInputs(snapshot)
+	if err != nil {
+		t.Fatalf("SnapshotWorkloadInputs: %v", err)
+	}
+	if len(inputs) != 1 || inputs[0].Source != models.InfrastructureWorkloadSourceProxmoxAPI ||
+		inputs[0].NodeName != "pve-1" {
+		t.Fatalf("API workload inputs = %+v", inputs)
+	}
+}
+
+func TestScriptPreviewDoesNotRetireAPIScopeWorkloads(t *testing.T) {
+	snapshot := validSnapshot()
+	snapshot.Workloads[0].NodeName = "pve-1"
+
+	current := CurrentState{
+		Workloads: []models.InfrastructureWorkloadRecord{
+			{
+				Workload: models.InfrastructureWorkload{
+					ID: 1, NativeID: "119", WorkloadType: "vm", NodeName: "pve-1",
+					Name: "media", Status: "running", Source: models.InfrastructureWorkloadSourceProxmoxAPI,
+				},
+				Interfaces: []models.InfrastructureWorkloadInterface{{
+					Name: "net0", Mac: "AA:BB:CC:DD:EE:19", Bridge: "vmbr0", VLANTag: "20",
+					ConfiguredAddress: "10.4.1.19/24", ConfiguredNetwork: "10.4.1.0/24",
+				}},
+			},
+			{
+				Workload: models.InfrastructureWorkload{
+					ID: 2, NativeID: "220", WorkloadType: "vm", NodeName: "pve-2",
+					Name: "remote-node-vm", Status: "running", Source: models.InfrastructureWorkloadSourceProxmoxAPI,
+				},
+			},
+		},
+	}
+
+	preview, err := BuildPreview("AA:BB:CC:DD:EE:10", snapshot, current)
+	if err != nil {
+		t.Fatalf("BuildPreview: %v", err)
+	}
+	if preview.Summary.Updated != 1 || preview.Summary.Retired != 0 || preview.Summary.Conflicts != 0 {
+		t.Fatalf("script scope preview = %+v", preview.Summary)
+	}
+	for _, diff := range preview.Workloads {
+		if diff.Key == "vm:220" && diff.Action == "retire" {
+			t.Fatalf("node-local script preview retired API-managed cluster workload: %+v", diff)
+		}
+	}
+}
+
+func TestAPIPreviewRetiresMissingScriptWorkloadDuringMigration(t *testing.T) {
+	snapshot := validSnapshot()
+	snapshot.Source = proxmoxsnapshot.SourceProxmoxAPI
+	snapshot.Workloads[0].NodeName = "pve-1"
+
+	current := CurrentState{
+		Workloads: []models.InfrastructureWorkloadRecord{
+			{
+				Workload: models.InfrastructureWorkload{
+					ID: 1, NativeID: "119", WorkloadType: "vm",
+					Name: "media", Status: "running", Source: models.InfrastructureWorkloadSourceScriptImport,
+				},
+				Interfaces: []models.InfrastructureWorkloadInterface{{
+					Name: "net0", Mac: "AA:BB:CC:DD:EE:19", Bridge: "vmbr0", VLANTag: "20",
+					ConfiguredAddress: "10.4.1.19/24", ConfiguredNetwork: "10.4.1.0/24",
+				}},
+			},
+			{
+				Workload: models.InfrastructureWorkload{
+					ID: 2, NativeID: "109", WorkloadType: "container",
+					Name: "removed-lxc", Status: "stopped", Source: models.InfrastructureWorkloadSourceScriptImport,
+				},
+			},
+		},
+	}
+
+	preview, err := BuildPreview("AA:BB:CC:DD:EE:10", snapshot, current)
+	if err != nil {
+		t.Fatalf("BuildPreview: %v", err)
+	}
+	if preview.Summary.Updated != 1 || preview.Summary.Retired != 1 || preview.Summary.Conflicts != 0 {
+		t.Fatalf("API migration preview = %+v", preview.Summary)
+	}
+	foundRetire := false
+	for _, diff := range preview.Workloads {
+		if diff.Key == "container:109" && diff.Action == "retire" {
+			foundRetire = true
+		}
+	}
+	if !foundRetire {
+		t.Fatalf("API migration did not retire genuinely missing script workload: %+v", preview.Workloads)
+	}
+}
+
+func TestManagedVersionComparisonIgnoresPVEManagerPrefix(t *testing.T) {
+	snapshot := validSnapshot()
+	current := CurrentState{
+		ManagedHypervisor: &models.HypervisorProfile{
+			Mac:      "AA:BB:CC:DD:EE:10",
+			Platform: "proxmox-ve",
+			Version:  "9.2.10",
+		},
+	}
+
+	preview, err := BuildPreview("AA:BB:CC:DD:EE:10", snapshot, current)
+	if err != nil {
+		t.Fatalf("BuildPreview: %v", err)
+	}
+	for _, conflict := range preview.ManagedConflicts {
+		if conflict.Field == "version" {
+			t.Fatalf("equivalent PVE versions reported as conflict: %+v", conflict)
+		}
 	}
 }
 

@@ -126,7 +126,7 @@ export type HypervisorProfilePayload = {
 
 export type ProxmoxSourceState = {
   hypervisorMac: string;
-  source: "script-import";
+  source: "script-import" | "proxmox-api";
   schemaVersion: number;
   collectorVersion: string;
   collectedAt: string;
@@ -173,9 +173,10 @@ export type InfrastructureWorkload = {
   hypervisorMac: string;
   nativeId: string;
   workloadType: "vm" | "container";
+  nodeName?: string;
   name: string;
   status: "unknown" | "running" | "stopped";
-  source: "manual" | "script-import";
+  source: "manual" | "script-import" | "proxmox-api";
   firstSeen: string;
   lastSeen: string;
   retiredAt: string;
@@ -263,6 +264,7 @@ export type ProxmoxSnapshotInterface = {
 export type ProxmoxSnapshotWorkload = {
   nativeId: string;
   workloadType: "vm" | "container";
+  nodeName?: string;
   name: string;
   status: "unknown" | "running" | "stopped";
   interfaces: ProxmoxSnapshotInterface[];
@@ -271,7 +273,7 @@ export type ProxmoxSnapshotWorkload = {
 export type ProxmoxSnapshot = {
   schemaVersion: number;
   collectorVersion: string;
-  source: "script-import";
+  source: "script-import" | "proxmox-api";
   collectedAt: string;
   complete: boolean;
   collectionErrors?: string[];
@@ -303,6 +305,7 @@ export type ProxmoxImportWorkloadView = {
   id?: number;
   nativeId: string;
   workloadType: string;
+  nodeName?: string;
   name: string;
   status: string;
   source: string;
@@ -350,6 +353,51 @@ export type ProxmoxImportApplyResponse = {
   applied: boolean;
   importedAt: string;
   summary: ProxmoxImportPreviewSummary;
+};
+
+
+export type ProxmoxAPIConfig = {
+  hypervisorMac: string;
+  enabled: boolean;
+  baseUrl: string;
+  tokenId: string;
+  tokenSecretConfigured: boolean;
+  verifyTls: boolean;
+  timeoutSeconds: number;
+  lastAttemptAt?: string;
+  lastSuccessfulSync?: string;
+  lastError?: string;
+  status: string;
+  updatedAt?: string;
+};
+
+export type ProxmoxAPIConfigPatch = {
+  enabled?: boolean;
+  baseUrl?: string;
+  tokenId?: string;
+  tokenSecret?: string;
+  clearTokenSecret?: boolean;
+  verifyTls?: boolean;
+  timeoutSeconds?: number;
+};
+
+export type ProxmoxAPITestConnectionResponse = {
+  status: string;
+  result: {
+    connectionOk: boolean;
+    pveVersion: string;
+    nodeAccess: boolean;
+    vmInventory: boolean;
+    lxcInventory: boolean;
+    nodeCount: number;
+    vmCount: number;
+    lxcCount: number;
+  };
+};
+
+export type ProxmoxAPISyncPreviewResponse = {
+  snapshot: ProxmoxSnapshot;
+  preview: ProxmoxImportPreview;
 };
 
 const apiFetch = async (url: string, init?: RequestInit): Promise<Response> => {
@@ -622,9 +670,56 @@ export const apiDeleteHostHypervisorProfile = async (
 
 export const apiGetProxmoxSourceState = async (
   id: number | string,
+  source: "script-import" | "proxmox-api" = "script-import",
 ): Promise<ProxmoxSourceState | null> => {
-  const url = apiPath+'/api/host/'+encodeURIComponent(String(id))+'/proxmox/source-state';
+  const url = apiPath+'/api/host/'+encodeURIComponent(String(id))+'/proxmox/source-state?source='+encodeURIComponent(source);
   return await apiJSON<ProxmoxSourceState | null>(url);
+};
+
+export const apiGetProxmoxAPIConfig = async (
+  id: number | string,
+): Promise<ProxmoxAPIConfig> => {
+  const url = apiPath+'/api/host/'+encodeURIComponent(String(id))+'/proxmox/api-config';
+  return await apiJSON<ProxmoxAPIConfig>(url);
+};
+
+export const apiPatchProxmoxAPIConfig = async (
+  id: number | string,
+  patch: ProxmoxAPIConfigPatch,
+): Promise<ProxmoxAPIConfig> => {
+  const url = apiPath+'/api/host/'+encodeURIComponent(String(id))+'/proxmox/api-config';
+  return await apiJSON<ProxmoxAPIConfig>(url, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(patch),
+  });
+};
+
+export const apiTestProxmoxAPIConnection = async (
+  id: number | string,
+): Promise<ProxmoxAPITestConnectionResponse> => {
+  const url = apiPath+'/api/host/'+encodeURIComponent(String(id))+'/proxmox/api/test';
+  return await apiJSON<ProxmoxAPITestConnectionResponse>(url, { method: 'POST' });
+};
+
+export const apiPreviewProxmoxAPISync = async (
+  id: number | string,
+): Promise<ProxmoxAPISyncPreviewResponse> => {
+  const url = apiPath+'/api/host/'+encodeURIComponent(String(id))+'/proxmox/api/sync-preview';
+  return await apiJSON<ProxmoxAPISyncPreviewResponse>(url, { method: 'POST' });
+};
+
+export const apiApplyProxmoxAPISync = async (
+  id: number | string,
+  previewToken: string,
+  snapshot: ProxmoxSnapshot,
+): Promise<ProxmoxImportApplyResponse> => {
+  const url = apiPath+'/api/host/'+encodeURIComponent(String(id))+'/proxmox/api/sync-apply';
+  return await apiJSON<ProxmoxImportApplyResponse>(url, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ previewToken, confirmed: true, snapshot }),
+  });
 };
 
 export const apiGetHostWorkloads = async (

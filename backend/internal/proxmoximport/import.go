@@ -72,6 +72,7 @@ type WorkloadView struct {
 	ID           uint            `json:"id,omitempty"`
 	NativeID     string          `json:"nativeId"`
 	WorkloadType string          `json:"workloadType"`
+	NodeName     string          `json:"nodeName,omitempty"`
 	Name         string          `json:"name"`
 	Status       string          `json:"status"`
 	Source       string          `json:"source"`
@@ -119,10 +120,12 @@ func ValidateAndNormalize(input proxmoxsnapshot.Snapshot) (proxmoxsnapshot.Snaps
 	if snapshot.CollectorVersion == "" || utf8.RuneCountInString(snapshot.CollectorVersion) > maxCollectorVersionRunes || hasUnsafeControl(snapshot.CollectorVersion) {
 		return snapshot, errors.New("invalid collectorVersion")
 	}
-	if strings.TrimSpace(snapshot.Source) != proxmoxsnapshot.SourceScriptImport {
-		return snapshot, errors.New("source must be script-import")
+	snapshot.Source = strings.TrimSpace(snapshot.Source)
+	switch snapshot.Source {
+	case proxmoxsnapshot.SourceScriptImport, proxmoxsnapshot.SourceProxmoxAPI:
+	default:
+		return snapshot, errors.New("source must be script-import or proxmox-api")
 	}
-	snapshot.Source = proxmoxsnapshot.SourceScriptImport
 
 	collectedAt, err := time.Parse(time.RFC3339, strings.TrimSpace(snapshot.CollectedAt))
 	if err != nil {
@@ -254,7 +257,7 @@ func BuildPreview(hypervisorMac string, snapshot proxmoxsnapshot.Snapshot, curre
 	for _, workload := range snapshot.Workloads {
 		key := workloadKey(workload.WorkloadType, workload.NativeID)
 		incoming[key] = struct{}{}
-		after := workloadViewFromSnapshot(workload)
+		after := workloadViewFromSnapshot(workload, snapshot.Source)
 
 		record, exists := currentByKey[key]
 		if !exists {
@@ -269,7 +272,7 @@ func BuildPreview(hypervisorMac string, snapshot proxmoxsnapshot.Snapshot, curre
 		}
 
 		before := workloadViewFromRecord(record)
-		if record.Workload.Source != models.InfrastructureWorkloadSourceScriptImport {
+		if !isManagedProxmoxSource(record.Workload.Source) {
 			preview.Summary.Conflicts++
 			preview.ApplyAllowed = false
 			preview.Workloads = append(preview.Workloads, WorkloadDiff{
@@ -309,11 +312,14 @@ func BuildPreview(hypervisorMac string, snapshot proxmoxsnapshot.Snapshot, curre
 	}
 
 	for key, record := range currentByKey {
-		if record.Workload.Source != models.InfrastructureWorkloadSourceScriptImport ||
+		if !isManagedProxmoxSource(record.Workload.Source) ||
 			record.Workload.RetiredAt != "" {
 			continue
 		}
 		if _, exists := incoming[key]; exists {
+			continue
+		}
+		if !shouldRetireMissingWorkload(snapshot.Source, record.Workload.Source) {
 			continue
 		}
 		before := workloadViewFromRecord(record)
@@ -371,6 +377,10 @@ func SnapshotWorkloadInputs(snapshot proxmoxsnapshot.Snapshot) ([]models.Infrast
 	if err != nil {
 		return nil, err
 	}
+	source, err := workloadSourceForSnapshotSource(snapshot.Source)
+	if err != nil {
+		return nil, err
+	}
 	inputs := make([]models.InfrastructureWorkloadUpsert, 0, len(snapshot.Workloads))
 	for _, workload := range snapshot.Workloads {
 		interfaces := make([]models.InfrastructureWorkloadInterface, 0, len(workload.Interfaces))
@@ -387,9 +397,10 @@ func SnapshotWorkloadInputs(snapshot proxmoxsnapshot.Snapshot) ([]models.Infrast
 		inputs = append(inputs, models.InfrastructureWorkloadUpsert{
 			NativeID:     workload.NativeID,
 			WorkloadType: workload.WorkloadType,
+			NodeName:     workload.NodeName,
 			Name:         workload.Name,
 			Status:       workload.Status,
-			Source:       models.InfrastructureWorkloadSourceScriptImport,
+			Source:       source,
 			Interfaces:   interfaces,
 		})
 	}
@@ -405,9 +416,13 @@ func SourceStateFromSnapshot(hypervisorMac string, snapshot proxmoxsnapshot.Snap
 	if err != nil {
 		return models.ProxmoxSourceState{}, err
 	}
+	source, err := workloadSourceForSnapshotSource(snapshot.Source)
+	if err != nil {
+		return models.ProxmoxSourceState{}, err
+	}
 	return models.ProxmoxSourceState{
 		HypervisorMac:    canonicalMac,
-		Source:           models.InfrastructureWorkloadSourceScriptImport,
+		Source:           source,
 		SchemaVersion:    snapshot.SchemaVersion,
 		CollectorVersion: snapshot.CollectorVersion,
 		CollectedAt:      snapshot.CollectedAt,
@@ -454,6 +469,10 @@ func normalizeWorkload(workload proxmoxsnapshot.WorkloadSnapshot) (proxmoxsnapsh
 	if workload.WorkloadType != models.InfrastructureWorkloadTypeVM &&
 		workload.WorkloadType != models.InfrastructureWorkloadTypeContainer {
 		return workload, errors.New("workloadType must be vm or container")
+	}
+	workload.NodeName, err = safeText("nodeName", workload.NodeName, maxNodeTextRunes, false)
+	if err != nil {
+		return workload, err
 	}
 	workload.Name, err = safeText("name", workload.Name, maxNameRunes, false)
 	if err != nil {
@@ -602,13 +621,51 @@ func workloadKey(workloadType, nativeID string) string {
 	return workloadType + ":" + nativeID
 }
 
-func workloadViewFromSnapshot(workload proxmoxsnapshot.WorkloadSnapshot) WorkloadView {
+func isManagedProxmoxSource(source string) bool {
+	switch strings.TrimSpace(source) {
+	case models.InfrastructureWorkloadSourceScriptImport, models.InfrastructureWorkloadSourceProxmoxAPI:
+		return true
+	default:
+		return false
+	}
+}
+
+func shouldRetireMissingWorkload(snapshotSource, currentSource string) bool {
+	currentSource = strings.TrimSpace(currentSource)
+	switch strings.TrimSpace(snapshotSource) {
+	case proxmoxsnapshot.SourceProxmoxAPI:
+		// API inventory is cluster-aware and authoritative across both managed
+		// collection modes. This also makes first script -> API migration retire
+		// genuinely missing workloads.
+		return isManagedProxmoxSource(currentSource)
+	case proxmoxsnapshot.SourceScriptImport:
+		// The script collector is node-local. Never let a node-local snapshot
+		// retire API-managed workloads that may belong to another cluster node.
+		return currentSource == models.InfrastructureWorkloadSourceScriptImport
+	default:
+		return false
+	}
+}
+
+func workloadSourceForSnapshotSource(source string) (string, error) {
+	switch strings.TrimSpace(source) {
+	case proxmoxsnapshot.SourceScriptImport:
+		return models.InfrastructureWorkloadSourceScriptImport, nil
+	case proxmoxsnapshot.SourceProxmoxAPI:
+		return models.InfrastructureWorkloadSourceProxmoxAPI, nil
+	default:
+		return "", errors.New("unsupported Proxmox snapshot source")
+	}
+}
+
+func workloadViewFromSnapshot(workload proxmoxsnapshot.WorkloadSnapshot, source string) WorkloadView {
 	view := WorkloadView{
 		NativeID:     workload.NativeID,
 		WorkloadType: workload.WorkloadType,
+		NodeName:     workload.NodeName,
 		Name:         workload.Name,
 		Status:       workload.Status,
-		Source:       models.InfrastructureWorkloadSourceScriptImport,
+		Source:       source,
 		Interfaces:   make([]InterfaceView, 0, len(workload.Interfaces)),
 	}
 	for _, iface := range workload.Interfaces {
@@ -629,6 +686,7 @@ func workloadViewFromRecord(record models.InfrastructureWorkloadRecord) Workload
 		ID:           record.Workload.ID,
 		NativeID:     record.Workload.NativeID,
 		WorkloadType: record.Workload.WorkloadType,
+		NodeName:     record.Workload.NodeName,
 		Name:         record.Workload.Name,
 		Status:       record.Workload.Status,
 		Source:       record.Workload.Source,
@@ -653,11 +711,17 @@ func workloadViewFromRecord(record models.InfrastructureWorkloadRecord) Workload
 
 func workloadChanges(before, after WorkloadView) []string {
 	changes := []string{}
+	if before.NodeName != after.NodeName {
+		changes = append(changes, "nodeName")
+	}
 	if before.Name != after.Name {
 		changes = append(changes, "name")
 	}
 	if before.Status != after.Status {
 		changes = append(changes, "status")
+	}
+	if before.Source != after.Source {
+		changes = append(changes, "source")
 	}
 	if !interfacesEqual(before.Interfaces, after.Interfaces) {
 		changes = append(changes, "interfaces")
@@ -701,9 +765,15 @@ func managedNodeConflicts(managed models.HypervisorProfile, imported NodeView) [
 		{"nodeName", managed.NodeName, imported.Hostname},
 		{"clusterName", managed.ClusterName, imported.ClusterName},
 	} {
-		if strings.TrimSpace(item.managed) != "" &&
-			strings.TrimSpace(item.imported) != "" &&
-			strings.TrimSpace(item.managed) != strings.TrimSpace(item.imported) {
+		managed := strings.TrimSpace(item.managed)
+		imported := strings.TrimSpace(item.imported)
+		if managed == "" || imported == "" {
+			continue
+		}
+		if item.field == "version" && equivalentPVEVersion(managed, imported) {
+			continue
+		}
+		if managed != imported {
 			conflicts = append(conflicts, FieldConflict{
 				Field:    item.field,
 				Managed:  item.managed,
@@ -712,6 +782,19 @@ func managedNodeConflicts(managed models.HypervisorProfile, imported NodeView) [
 		}
 	}
 	return conflicts
+}
+
+func equivalentPVEVersion(left, right string) bool {
+	return canonicalPVEVersion(left) == canonicalPVEVersion(right)
+}
+
+func canonicalPVEVersion(value string) string {
+	value = strings.TrimSpace(value)
+	const prefix = "pve-manager/"
+	if len(value) >= len(prefix) && strings.EqualFold(value[:len(prefix)], prefix) {
+		return strings.TrimSpace(value[len(prefix):])
+	}
+	return value
 }
 
 func normalizeCurrentStateForToken(current CurrentState) CurrentState {

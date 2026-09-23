@@ -126,6 +126,7 @@ type InfrastructureWorkload struct {
 	HypervisorMac string `json:"hypervisorMac"`
 	NativeID      string `json:"nativeId"`
 	WorkloadType  string `json:"workloadType"`
+	NodeName      string `json:"nodeName,omitempty"`
 	Name          string `json:"name"`
 	Status        string `json:"status"`
 	Source        string `json:"source"`
@@ -377,6 +378,7 @@ func InfrastructureWorkloadFromModel(workload models.InfrastructureWorkload) Inf
 		HypervisorMac: workload.HypervisorMac,
 		NativeID:      workload.NativeID,
 		WorkloadType:  workload.WorkloadType,
+		NodeName:      workload.NodeName,
 		Name:          workload.Name,
 		Status:        workload.Status,
 		Source:        workload.Source,

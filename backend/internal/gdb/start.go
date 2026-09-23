@@ -89,6 +89,7 @@ func newGormConfig() *gorm.Config {
 			SlowThreshold:             5 * time.Second,
 			LogLevel:                  logger.Warn,
 			IgnoreRecordNotFoundError: true,
+			ParameterizedQueries:      true,
 			Colorful:                  true,
 		},
 	)
@@ -153,6 +154,9 @@ func migrate(candidate *gorm.DB) error {
 		return err
 	}
 	if err := candidate.Table(proxmoxSourceStatesTable).AutoMigrate(&models.ProxmoxSourceState{}); err != nil {
+		return err
+	}
+	if err := candidate.Table(proxmoxAPIConfigsTable).AutoMigrate(&models.ProxmoxAPIConfig{}); err != nil {
 		return err
 	}
 	if err := candidate.Table(hostLifecycleTable).AutoMigrate(&models.HostLifecycle{}); err != nil {

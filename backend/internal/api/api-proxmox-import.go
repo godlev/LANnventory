@@ -42,6 +42,7 @@ type ProxmoxImportNodeDoc struct {
 type ProxmoxImportWorkloadDoc struct {
 	NativeID     string                       `json:"nativeId"`
 	WorkloadType string                       `json:"workloadType"`
+	NodeName     string                       `json:"nodeName,omitempty"`
 	Name         string                       `json:"name"`
 	Status       string                       `json:"status"`
 	Interfaces   []ProxmoxImportInterfaceDoc `json:"interfaces"`
@@ -173,7 +174,7 @@ func previewProxmoxScriptImport(c *gin.Context) {
 		return
 	}
 
-	current, err := loadProxmoxImportCurrentState(host.Mac)
+	current, err := loadProxmoxImportCurrentState(host.Mac, models.InfrastructureWorkloadSourceScriptImport)
 	if err != nil {
 		slog.Error("Failed to load Proxmox import state", "hostID", host.ID, "mac", host.Mac, "err", err)
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to load Proxmox import state"})
@@ -227,7 +228,7 @@ func applyProxmoxScriptImport(c *gin.Context) {
 		return
 	}
 
-	current, err := loadProxmoxImportCurrentState(host.Mac)
+	current, err := loadProxmoxImportCurrentState(host.Mac, models.InfrastructureWorkloadSourceScriptImport)
 	if err != nil {
 		slog.Error("Failed to load current Proxmox import state", "hostID", host.ID, "mac", host.Mac, "err", err)
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to load Proxmox import state"})
@@ -293,10 +294,10 @@ func proxmoxHypervisorHostFromRequest(c *gin.Context) (models.Host, bool) {
 	return host, true
 }
 
-func loadProxmoxImportCurrentState(mac string) (proxmoximport.CurrentState, error) {
+func loadProxmoxImportCurrentState(mac, source string) (proxmoximport.CurrentState, error) {
 	var current proxmoximport.CurrentState
 
-	state, found, err := gdb.SelectProxmoxSourceState(mac, models.InfrastructureWorkloadSourceScriptImport)
+	state, found, err := gdb.SelectProxmoxSourceState(mac, source)
 	if err != nil {
 		return current, err
 	}

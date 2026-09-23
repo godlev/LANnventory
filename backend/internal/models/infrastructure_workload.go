@@ -10,6 +10,7 @@ const (
 
 	InfrastructureWorkloadSourceManual       = "manual"
 	InfrastructureWorkloadSourceScriptImport = "script-import"
+	InfrastructureWorkloadSourceProxmoxAPI   = "proxmox-api"
 
 	InfrastructureWorkloadLinkSourceManual   = "manual"
 	InfrastructureWorkloadLinkSourceExactMAC = "exact-mac"
@@ -22,6 +23,7 @@ type InfrastructureWorkload struct {
 	HypervisorMac string `gorm:"column:HYPERVISOR_MAC;not null;index;uniqueIndex:idx_infrastructure_workload_identity,priority:1" json:"hypervisorMac"`
 	NativeID      string `gorm:"column:NATIVE_ID;not null;uniqueIndex:idx_infrastructure_workload_identity,priority:2" json:"nativeId"`
 	WorkloadType  string `gorm:"column:WORKLOAD_TYPE;not null;uniqueIndex:idx_infrastructure_workload_identity,priority:3" json:"workloadType"`
+	NodeName      string `gorm:"column:NODE_NAME;index" json:"nodeName,omitempty"`
 	Name          string `gorm:"column:NAME" json:"name"`
 	Status        string `gorm:"column:STATUS;index" json:"status"`
 	Source        string `gorm:"column:SOURCE;index" json:"source"`
@@ -68,6 +70,7 @@ type InfrastructureWorkloadRecord struct {
 type InfrastructureWorkloadUpsert struct {
 	NativeID     string
 	WorkloadType string
+	NodeName     string
 	Name         string
 	Status       string
 	Source       string

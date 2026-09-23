@@ -253,7 +253,7 @@ def collect_interfaces(workload_type: str, native_id: str) -> list[dict[str, str
     return parse_lxc_interfaces(lines)
 
 
-def collect_workload_type(command: list[str], workload_type: str, errors: list[str]) -> list[dict[str, object]]:
+def collect_workload_type(command: list[str], workload_type: str, node_name: str, errors: list[str]) -> list[dict[str, object]]:
     label = "qemu guest list" if workload_type == "vm" else "lxc guest list"
     try:
         output = run_command(command, label)
@@ -272,6 +272,7 @@ def collect_workload_type(command: list[str], workload_type: str, errors: list[s
         workloads.append(
             {
                 **item,
+                "nodeName": node_name,
                 "interfaces": interfaces,
             }
         )
@@ -294,8 +295,9 @@ def collect_snapshot() -> dict[str, object]:
         errors.append("node identity unavailable")
 
     workloads: list[dict[str, object]] = []
-    workloads.extend(collect_workload_type(["qm", "list"], "vm", errors))
-    workloads.extend(collect_workload_type(["pct", "list"], "container", errors))
+    node_name = str(node.get("hostname", ""))
+    workloads.extend(collect_workload_type(["qm", "list"], "vm", node_name, errors))
+    workloads.extend(collect_workload_type(["pct", "list"], "container", node_name, errors))
     workloads.sort(key=lambda item: (str(item["workloadType"]), int(str(item["nativeId"]))))
 
     return {

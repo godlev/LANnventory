@@ -1,17 +1,23 @@
 import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 
 import {
+  apiApplyProxmoxAPISync,
   apiApplyProxmoxImport,
   apiClearInfrastructureWorkloadCandidateRejection,
   apiDeleteInfrastructureWorkloadLink,
   apiGetHostWorkloadMatches,
   apiGetHostWorkloads,
+  apiGetProxmoxAPIConfig,
   apiGetProxmoxSourceState,
+  apiPatchProxmoxAPIConfig,
+  apiPreviewProxmoxAPISync,
   apiPreviewProxmoxImport,
+  apiTestProxmoxAPIConnection,
   apiRejectInfrastructureWorkloadCandidate,
   apiSetInfrastructureWorkloadLink,
   type InfrastructureWorkload,
   type InfrastructureWorkloadMatch,
+  type ProxmoxAPIConfig,
   type ProxmoxImportPreview,
   type ProxmoxSnapshot,
   type WorkloadMatchCandidate,
@@ -31,6 +37,7 @@ function ProxmoxInventoryCard(props: Props) {
   const [matches, setMatches] = createSignal<InfrastructureWorkloadMatch[]>([]);
   const [loading, setLoading] = createSignal(false);
   const [loadError, setLoadError] = createSignal("");
+  const [collectionMode, setCollectionMode] = createSignal<"script" | "api">("script");
   const [importText, setImportText] = createSignal("");
   const [snapshot, setSnapshot] = createSignal<ProxmoxSnapshot | null>(null);
   const [preview, setPreview] = createSignal<ProxmoxImportPreview | null>(null);
@@ -65,6 +72,7 @@ function ProxmoxInventoryCard(props: Props) {
     setWorkloads([]);
     setMatches([]);
     setLoadError("");
+    setCollectionMode("script");
     clearImport();
     if (id < 1) return;
     void refresh(id);
@@ -76,15 +84,19 @@ function ProxmoxInventoryCard(props: Props) {
     setLoading(true);
     setLoadError("");
     try {
-      const [nextSource, nextWorkloads, nextMatches] = await Promise.all([
-        apiGetProxmoxSourceState(id),
+      const [scriptSource, apiSource, nextWorkloads, nextMatches, apiConfig] = await Promise.all([
+        apiGetProxmoxSourceState(id, "script-import"),
+        apiGetProxmoxSourceState(id, "proxmox-api"),
         apiGetHostWorkloads(id),
         apiGetHostWorkloadMatches(id),
+        apiGetProxmoxAPIConfig(id),
       ]);
       if (activeRequest !== requestID) return;
+      const nextSource = newestProxmoxSource(scriptSource, apiSource);
       setSourceState(nextSource);
       setWorkloads(nextWorkloads ?? []);
       setMatches(nextMatches ?? []);
+      if (apiConfig.enabled) setCollectionMode("api");
     } catch {
       if (activeRequest !== requestID) return;
       setLoadError("Proxmox inventory could not be loaded.");
@@ -307,6 +319,31 @@ function ProxmoxInventoryCard(props: Props) {
           when={!loading() || sourceState() !== null || workloads().length > 0}
           fallback={<div class="device-cell-muted">Loading Proxmox inventory…</div>}
         >
+          <div class="proxmox-section">
+            <div class="proxmox-section-heading">
+              <div>
+                <div class="small fw-semibold">Proxmox inventory source</div>
+                <div class="small device-cell-muted">Choose the collection method. Both paths use the same Preview/Diff and workload matching rules.</div>
+              </div>
+              <div class="btn-group btn-group-sm" role="group" aria-label="Proxmox inventory source">
+                <button
+                  type="button"
+                  class={"btn "+(collectionMode() === "script" ? "btn-primary" : "btn-outline-secondary")}
+                  onClick={() => setCollectionMode("script")}
+                >
+                  Manual / script
+                </button>
+                <button
+                  type="button"
+                  class={"btn "+(collectionMode() === "api" ? "btn-primary" : "btn-outline-secondary")}
+                  onClick={() => setCollectionMode("api")}
+                >
+                  Proxmox API
+                </button>
+              </div>
+            </div>
+          </div>
+
           <SourceSummary
             state={sourceState()}
             total={totalCount()}
@@ -367,20 +404,27 @@ function ProxmoxInventoryCard(props: Props) {
             </Show>
           </div>
 
-          <ImportSection
-            importText={importText()}
-            preview={preview()}
-            previewing={previewing()}
-            applying={applying()}
-            error={importError()}
-            status={importStatus()}
-            onText={handleImportText}
-            onFile={(file) => void handleFile(file)}
-            onClear={clearImport}
-            onPreview={() => void handlePreview()}
-            onApply={() => void handleApply()}
-            proxmoxAddress={props.host.IP}
-          />
+          <Show
+            when={collectionMode() === "api"}
+            fallback={
+              <ImportSection
+                importText={importText()}
+                preview={preview()}
+                previewing={previewing()}
+                applying={applying()}
+                error={importError()}
+                status={importStatus()}
+                onText={handleImportText}
+                onFile={(file) => void handleFile(file)}
+                onClear={clearImport}
+                onPreview={() => void handlePreview()}
+                onApply={() => void handleApply()}
+                proxmoxAddress={props.host.IP}
+              />
+            }
+          >
+            <ProxmoxAPISection hostID={props.host.ID} onApplied={() => refresh(props.host.ID)} />
+          </Show>
         </Show>
       </div>
     </section>
@@ -429,7 +473,7 @@ function SourceSummary(props: {
             <SourceMetric label="Node" value={state().nodeHostname} monospace />
             <SourceMetric label="PVE version" value={state().nodePveVersion} />
             <SourceMetric label="Cluster" value={state().nodeClusterName || "Standalone"} />
-            <SourceMetric label="Source" value="Script import" />
+            <SourceMetric label="Source" value={state().source === "proxmox-api" ? "Proxmox API" : "Script import"} />
             <SourceMetric label="Collected" value={formatTimestamp(state().collectedAt)} />
             <SourceMetric label="Imported" value={formatTimestamp(state().importedAt)} />
             <SourceMetric label="Collector" value={state().collectorVersion} />
@@ -497,7 +541,8 @@ function WorkloadRow(props: {
         </div>
         <div class="proxmox-workload-meta">
           <span class="badge text-bg-secondary">{props.workload.workloadType === "container" ? "LXC" : "VM"}</span>
-          <span>{props.workload.source === "script-import" ? "Imported" : "Manual"}</span>
+          <span>{props.workload.source === "proxmox-api" ? "API" : props.workload.source === "script-import" ? "Imported" : "Manual"}</span>
+          <Show when={props.workload.nodeName}><span>Node {props.workload.nodeName}</span></Show>
           <Show when={retired()}>
             <span>Retired {formatTimestamp(props.workload.retiredAt)}</span>
           </Show>
@@ -846,6 +891,465 @@ function formatEvidenceWindow(firstSeen?: string, lastSeen?: string) {
   if (lastSeen) return "Observed "+formatTimestamp(lastSeen);
   if (firstSeen) return "First observed "+formatTimestamp(firstSeen);
   return "";
+}
+
+
+function ProxmoxAPISection(props: { hostID: number; onApplied: () => void | Promise<void> }) {
+  const [config, setConfig] = createSignal<ProxmoxAPIConfig | null>(null);
+  const [baseUrl, setBaseUrl] = createSignal("");
+  const [tokenId, setTokenId] = createSignal("");
+  const [tokenSecret, setTokenSecret] = createSignal("");
+  const [clearTokenSecret, setClearTokenSecret] = createSignal(false);
+  const [verifyTls, setVerifyTls] = createSignal(true);
+  const [timeoutSeconds, setTimeoutSeconds] = createSignal(10);
+  const [dirty, setDirty] = createSignal(false);
+  const [loadingConfig, setLoadingConfig] = createSignal(false);
+  const [saving, setSaving] = createSignal(false);
+  const [testing, setTesting] = createSignal(false);
+  const [syncing, setSyncing] = createSignal(false);
+  const [applyingAPI, setApplyingAPI] = createSignal(false);
+  const [error, setError] = createSignal("");
+  const [status, setStatus] = createSignal("");
+  const [testResult, setTestResult] = createSignal<Awaited<ReturnType<typeof apiTestProxmoxAPIConnection>> | null>(null);
+  const [apiSnapshot, setAPISnapshot] = createSignal<ProxmoxSnapshot | null>(null);
+  const [apiPreview, setAPIPreview] = createSignal<ProxmoxImportPreview | null>(null);
+
+  const applyConfig = (next: ProxmoxAPIConfig) => {
+    setConfig(next);
+    setBaseUrl(next.baseUrl || "");
+    setTokenId(next.tokenId || "");
+    setTokenSecret("");
+    setClearTokenSecret(false);
+    setVerifyTls(next.verifyTls);
+    setTimeoutSeconds(next.timeoutSeconds || 10);
+    setDirty(false);
+  };
+
+  const loadConfig = async (id: number) => {
+    setLoadingConfig(true);
+    setError("");
+    try {
+      applyConfig(await apiGetProxmoxAPIConfig(id));
+    } catch (loadError) {
+      setError(apiErrorMessage(loadError, "Proxmox API configuration could not be loaded."));
+    } finally {
+      setLoadingConfig(false);
+    }
+  };
+
+  createEffect(() => {
+    const id = props.hostID;
+    setConfig(null);
+    setError("");
+    setStatus("");
+    setTestResult(null);
+    setAPISnapshot(null);
+    setAPIPreview(null);
+    if (id > 0) void loadConfig(id);
+  });
+
+  const markDirty = () => {
+    setDirty(true);
+    setTestResult(null);
+    setAPISnapshot(null);
+    setAPIPreview(null);
+    setStatus("");
+  };
+
+  const saveConfig = async () => {
+    if (props.hostID < 1 || saving()) return;
+    setSaving(true);
+    setError("");
+    setStatus("");
+    try {
+      const patch = {
+        baseUrl: baseUrl().trim(),
+        tokenId: tokenId().trim(),
+        verifyTls: verifyTls(),
+        timeoutSeconds: timeoutSeconds(),
+        ...(tokenSecret() ? { tokenSecret: tokenSecret() } : {}),
+        ...(clearTokenSecret() ? { clearTokenSecret: true } : {}),
+      };
+      const next = await apiPatchProxmoxAPIConfig(props.hostID, patch);
+      applyConfig(next);
+      setStatus("API settings saved. The token secret remains write-only.");
+    } catch (saveError) {
+      setError(apiErrorMessage(saveError, "Proxmox API settings could not be saved."));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const disableIntegration = async () => {
+    if (props.hostID < 1 || saving() || !config()?.enabled) return;
+    setSaving(true);
+    setError("");
+    setStatus("");
+    try {
+      const next = await apiPatchProxmoxAPIConfig(props.hostID, { enabled: false });
+      applyConfig(next);
+      setStatus("Proxmox API inventory source disabled. Stored credentials were kept.");
+    } catch (disableError) {
+      setError(apiErrorMessage(disableError, "Proxmox API integration could not be disabled."));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const testConnection = async () => {
+    if (props.hostID < 1 || testing()) return;
+    if (dirty()) {
+      setError("Save the API settings before testing the connection.");
+      return;
+    }
+    setTesting(true);
+    setError("");
+    setStatus("");
+    setTestResult(null);
+    try {
+      const result = await apiTestProxmoxAPIConnection(props.hostID);
+      setTestResult(result);
+      setStatus("Connection verified. No LANnventory inventory was changed.");
+      applyConfig(await apiGetProxmoxAPIConfig(props.hostID));
+    } catch (testError) {
+      setError(apiErrorMessage(testError, "Proxmox API connection test failed."));
+      try {
+        applyConfig(await apiGetProxmoxAPIConfig(props.hostID));
+      } catch {
+        // Keep the connection error as the user-facing result.
+      }
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const syncNow = async () => {
+    if (props.hostID < 1 || syncing()) return;
+    if (dirty()) {
+      setError("Save the API settings before syncing.");
+      return;
+    }
+    setSyncing(true);
+    setError("");
+    setStatus("");
+    setAPISnapshot(null);
+    setAPIPreview(null);
+    try {
+      const result = await apiPreviewProxmoxAPISync(props.hostID);
+      setAPISnapshot(result.snapshot);
+      setAPIPreview(result.preview);
+      setStatus(result.preview.applyAllowed
+        ? (config()?.enabled
+          ? "Sync preview ready. No inventory changes have been written yet."
+          : "First sync preview ready. Review it and Apply to enable the API inventory source.")
+        : "Sync preview is blocked. Review the reasons below; existing inventory is unchanged.");
+      applyConfig(await apiGetProxmoxAPIConfig(props.hostID));
+    } catch (syncError) {
+      setError(apiErrorMessage(syncError, "Proxmox API sync failed. Existing inventory was preserved."));
+      try {
+        applyConfig(await apiGetProxmoxAPIConfig(props.hostID));
+      } catch {
+        // Keep the sync failure visible even if status reload also fails.
+      }
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const applyAPIPreview = async () => {
+    const currentPreview = apiPreview();
+    const currentSnapshot = apiSnapshot();
+    if (!currentPreview || !currentSnapshot || !currentPreview.applyAllowed || applyingAPI() || props.hostID < 1) return;
+    const s = currentPreview.summary;
+    const accepted = window.confirm(
+      "Apply this reviewed Proxmox API snapshot to LANnventory?\n\n"+
+      "New: "+s.added+" · Update: "+s.updated+" · Retire: "+s.retired+" · Unchanged: "+s.unchanged+
+      "\n\nThis changes LANnventory inventory only. The integration has no VM/LXC control actions."
+    );
+    if (!accepted) return;
+
+    setApplyingAPI(true);
+    setError("");
+    setStatus("");
+    try {
+      const result = await apiApplyProxmoxAPISync(props.hostID, currentPreview.previewToken, currentSnapshot);
+      setAPISnapshot(null);
+      setAPIPreview(null);
+      setStatus("API snapshot applied at "+formatTimestamp(result.importedAt)+". The API inventory source is now enabled.");
+      applyConfig(await apiGetProxmoxAPIConfig(props.hostID));
+      await props.onApplied();
+    } catch (applyError) {
+      setError(apiErrorMessage(applyError, "Proxmox API snapshot could not be applied."));
+    } finally {
+      setApplyingAPI(false);
+    }
+  };
+
+  return (
+    <div class="proxmox-section proxmox-import-section">
+      <div class="proxmox-section-heading">
+        <div>
+          <div class="small fw-semibold">Proxmox API</div>
+          <div class="small device-cell-muted">
+            Optional read-only source. The first Sync always previews changes; the integration becomes enabled only after you explicitly Apply the reviewed preview.
+          </div>
+        </div>
+        <span class={"host-detail-section-badge"+(config()?.enabled ? " is-active" : "")}>
+          {config()?.enabled ? "Enabled" : "Not enabled"}
+        </span>
+      </div>
+
+      <Show when={!loadingConfig()} fallback={<div class="device-cell-muted">Loading API configuration…</div>}>
+        <div class="proxmox-permission-note">
+          <i class="bi bi-shield-lock" aria-hidden="true"></i>
+          <div>
+            <div class="fw-semibold">Use a dedicated read-only API token</div>
+            <div>
+              Prefer a privilege-separated token with read-only audit permissions. Do not use root credentials.
+              LANnventory stores the token secret write-only and never returns it through this page.
+            </div>
+          </div>
+        </div>
+
+        <div class="row g-3 mt-1">
+          <div class="col-12 col-lg-7">
+            <label class="form-label small fw-semibold">Base URL</label>
+            <input
+              type="url"
+              class="form-control form-control-sm wyl-control"
+              placeholder="https://10.4.1.6:8006"
+              value={baseUrl()}
+              onInput={(event) => { setBaseUrl(event.currentTarget.value); markDirty(); }}
+            />
+            <div class="form-text">HTTPS only. Do not include <span class="font-monospace">/api2/json</span>.</div>
+          </div>
+          <div class="col-12 col-lg-5">
+            <label class="form-label small fw-semibold">API Token ID</label>
+            <input
+              type="text"
+              class="form-control form-control-sm wyl-control font-monospace"
+              placeholder="lannventory@pve!inventory"
+              value={tokenId()}
+              onInput={(event) => { setTokenId(event.currentTarget.value); markDirty(); }}
+            />
+          </div>
+          <div class="col-12 col-lg-7">
+            <label class="form-label small fw-semibold">API Token Secret</label>
+            <input
+              type="password"
+              autocomplete="new-password"
+              class="form-control form-control-sm wyl-control font-monospace"
+              placeholder={config()?.tokenSecretConfigured ? "Stored secret — leave blank to keep" : "Enter token secret"}
+              disabled={clearTokenSecret()}
+              value={tokenSecret()}
+              onInput={(event) => { setTokenSecret(event.currentTarget.value); markDirty(); }}
+            />
+            <Show when={config()?.tokenSecretConfigured}>
+              <div class="form-text">A secret is already stored. Leaving this blank keeps the existing value.</div>
+            </Show>
+          </div>
+          <div class="col-12 col-lg-5">
+            <label class="form-label small fw-semibold">Connection timeout</label>
+            <div class="input-group input-group-sm">
+              <input
+                type="number"
+                min="1"
+                max="60"
+                class="form-control wyl-control"
+                value={timeoutSeconds()}
+                onInput={(event) => { setTimeoutSeconds(Number(event.currentTarget.value) || 10); markDirty(); }}
+              />
+              <span class="input-group-text">seconds</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex flex-wrap gap-3 align-items-center mt-3">
+          <label class="form-check mb-0">
+            <input
+              class="form-check-input"
+              type="checkbox"
+              checked={verifyTls()}
+              onChange={(event) => { setVerifyTls(event.currentTarget.checked); markDirty(); }}
+            />
+            <span class="form-check-label">Verify TLS certificate</span>
+          </label>
+          <Show when={config()?.tokenSecretConfigured}>
+            <label class="form-check mb-0">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                checked={clearTokenSecret()}
+                onChange={(event) => { setClearTokenSecret(event.currentTarget.checked); markDirty(); }}
+              />
+              <span class="form-check-label">Clear stored token secret</span>
+            </label>
+          </Show>
+        </div>
+
+        <Show when={!verifyTls()}>
+          <div class="alert alert-warning py-2 px-3 mt-3 mb-0 small">
+            <i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i>
+            TLS certificate verification is disabled explicitly. LANnventory will not disable it automatically or silently.
+          </div>
+        </Show>
+
+        <div class="d-flex flex-wrap gap-2 align-items-center mt-3">
+          <button type="button" class="btn btn-sm btn-outline-secondary" disabled={saving()} onClick={() => void saveConfig()}>
+            <i class={saving() ? "bi bi-arrow-repeat proxmox-spin me-1" : "bi bi-floppy me-1"} aria-hidden="true"></i>
+            {saving() ? "Saving…" : "Save"}
+          </button>
+          <button type="button" class="btn btn-sm btn-outline-primary" disabled={testing() || dirty() || !config()?.tokenSecretConfigured} onClick={() => void testConnection()}>
+            <i class={testing() ? "bi bi-arrow-repeat proxmox-spin me-1" : "bi bi-plug me-1"} aria-hidden="true"></i>
+            {testing() ? "Testing…" : "Test connection"}
+          </button>
+          <button type="button" class="btn btn-sm btn-primary" disabled={syncing() || dirty() || !config()?.tokenSecretConfigured} onClick={() => void syncNow()}>
+            <i class={syncing() ? "bi bi-arrow-repeat proxmox-spin me-1" : "bi bi-arrow-repeat me-1"} aria-hidden="true"></i>
+            {syncing() ? "Collecting…" : "Sync now"}
+          </button>
+          <Show when={config()?.enabled}>
+            <button type="button" class="btn btn-sm btn-outline-danger" disabled={saving() || dirty()} onClick={() => void disableIntegration()}>
+              <i class="bi bi-pause-circle me-1" aria-hidden="true"></i>
+              Disable API source
+            </button>
+          </Show>
+          <Show when={dirty()}><span class="small text-warning">Unsaved changes</span></Show>
+        </div>
+
+        <Show when={config()}>
+          {(current) => (
+            <div class="proxmox-source-grid mt-3">
+              <SourceMetric label="Status" value={capitalize(current().status || "not-configured")} />
+              <SourceMetric label="Last attempt" value={current().lastAttemptAt ? formatTimestamp(current().lastAttemptAt!) : "Never"} />
+              <SourceMetric label="Last successful sync" value={current().lastSuccessfulSync ? formatTimestamp(current().lastSuccessfulSync!) : "Never"} />
+              <SourceMetric label="TLS verification" value={current().verifyTls ? "On" : "Off"} />
+            </div>
+          )}
+        </Show>
+
+        <Show when={testResult()}>
+          {(result) => (
+            <div class="proxmox-preview mt-3">
+              <div class="proxmox-preview-header">
+                <div>
+                  <div class="fw-semibold">Connection test</div>
+                  <div class="small device-cell-muted">{result().result.pveVersion}</div>
+                </div>
+                <span class="badge text-bg-success">Connected</span>
+              </div>
+              <div class="proxmox-preview-summary">
+                <PreviewMetric label="Nodes" value={result().result.nodeCount} />
+                <PreviewMetric label="VMs" value={result().result.vmCount} />
+                <PreviewMetric label="LXCs" value={result().result.lxcCount} />
+                <div><strong>{result().result.vmInventory ? "OK" : "No"}</strong><span>VM access</span></div>
+                <div><strong>{result().result.lxcInventory ? "OK" : "No"}</strong><span>LXC access</span></div>
+              </div>
+            </div>
+          )}
+        </Show>
+
+        <Show when={error()}>
+          <div class="host-inline-error mt-3" role="alert">{error()}</div>
+        </Show>
+        <Show when={status()}>
+          <div class="small text-success mt-2">{status()}</div>
+        </Show>
+
+        <Show when={apiPreview()}>
+          {(preview) => (
+            <div class="proxmox-preview">
+              <div class="proxmox-preview-header">
+                <div>
+                  <div class="fw-semibold">API sync preview</div>
+                  <div class="small device-cell-muted">
+                    Collected {formatTimestamp(preview().collectedAt)} · node {preview().node.after.hostname || "unknown"}
+                  </div>
+                </div>
+                <span class={"badge "+(preview().applyAllowed ? "text-bg-success" : "text-bg-warning")}>
+                  {preview().applyAllowed ? "Ready to apply" : "Blocked"}
+                </span>
+              </div>
+
+              <div class="proxmox-preview-summary">
+                <PreviewMetric label="Add" value={preview().summary.added} />
+                <PreviewMetric label="Update" value={preview().summary.updated} />
+                <PreviewMetric label="Unchanged" value={preview().summary.unchanged} />
+                <PreviewMetric label="Retire" value={preview().summary.retired} />
+                <PreviewMetric label="Conflicts" value={preview().summary.conflicts} />
+              </div>
+
+              <ApplyImpact preview={preview()} />
+
+              <Show when={preview().blockedReasons.length > 0}>
+                <div class="proxmox-preview-alert is-blocked">
+                  <For each={preview().blockedReasons}>{(item) => <div><i class="bi bi-x-circle-fill me-1" aria-hidden="true"></i>{item}</div>}</For>
+                </div>
+              </Show>
+              <Show when={preview().warnings.length > 0}>
+                <div class="proxmox-preview-alert">
+                  <For each={preview().warnings}>{(item) => <div><i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i>{item}</div>}</For>
+                </div>
+              </Show>
+              <Show when={preview().managedConflicts.length > 0}>
+                <div class="proxmox-managed-conflicts">
+                  <div class="small fw-semibold mb-1">Managed vs imported differences</div>
+                  <For each={preview().managedConflicts}>
+                    {(item) => (
+                      <div class="proxmox-conflict-row">
+                        <span>{managedFieldLabel(item.field)}</span>
+                        <span class="font-monospace">{item.managed || "—"}</span>
+                        <i class="bi bi-arrow-left-right" aria-hidden="true"></i>
+                        <span class="font-monospace">{item.imported || "—"}</span>
+                      </div>
+                    )}
+                  </For>
+                  <div class="small device-cell-muted mt-1">Managed values will not be overwritten.</div>
+                </div>
+              </Show>
+
+              <Show when={preview().workloads.length > 0}>
+                <div class="table-responsive mt-2">
+                  <table class="table table-sm align-middle mb-0 proxmox-preview-table">
+                    <thead><tr><th>Action</th><th>Workload</th><th>What changes in LANnventory</th></tr></thead>
+                    <tbody>
+                      <For each={preview().workloads}>
+                        {(item) => (
+                          <tr>
+                            <td><span class={"badge "+previewActionClass(item.action)}>{capitalize(item.action)}</span></td>
+                            <td>
+                              <span class="font-monospace me-2">{item.after?.nativeId ?? item.before?.nativeId ?? item.key}</span>
+                              <span>{item.after?.name ?? item.before?.name ?? ""}</span>
+                            </td>
+                            <td>{previewChangeDescription(item.action, item.changes)}</td>
+                          </tr>
+                        )}
+                      </For>
+                    </tbody>
+                  </table>
+                </div>
+              </Show>
+
+              <div class="proxmox-preview-footer">
+                <div class="small device-cell-muted">
+                  Apply revalidates this Snapshot and its stale-preview token before writing anything.
+                  {!config()?.enabled ? " The first successful Apply also enables this API inventory source." : ""}
+                </div>
+                <button
+                  type="button"
+                  class="btn btn-sm btn-success"
+                  disabled={!preview().applyAllowed || applyingAPI()}
+                  onClick={() => void applyAPIPreview()}
+                >
+                  <i class={applyingAPI() ? "bi bi-arrow-repeat proxmox-spin me-1" : "bi bi-check2-circle me-1"} aria-hidden="true"></i>
+                  {applyingAPI() ? "Applying…" : "Apply to LANnventory"}
+                </button>
+              </div>
+            </div>
+          )}
+        </Show>
+      </Show>
+    </div>
+  );
 }
 
 function ImportSection(props: {
@@ -1252,6 +1756,17 @@ function capitalize(value: string) {
 function formatTimestamp(value: string) {
   if (!value) return "—";
   return formatLastSeen(value);
+}
+
+function newestProxmoxSource(
+  scriptState: Awaited<ReturnType<typeof apiGetProxmoxSourceState>>,
+  apiState: Awaited<ReturnType<typeof apiGetProxmoxSourceState>>,
+) {
+  if (!scriptState) return apiState;
+  if (!apiState) return scriptState;
+  const scriptTime = Date.parse(scriptState.importedAt || scriptState.collectedAt || "") || 0;
+  const apiTime = Date.parse(apiState.importedAt || apiState.collectedAt || "") || 0;
+  return apiTime >= scriptTime ? apiState : scriptState;
 }
 
 function apiErrorMessage(error: unknown, fallback: string) {
