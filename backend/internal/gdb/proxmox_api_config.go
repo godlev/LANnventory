@@ -46,7 +46,16 @@ func UpsertProxmoxAPIConfig(config models.ProxmoxAPIConfig) error {
 	config.TokenID = strings.TrimSpace(config.TokenID)
 	config.Status = strings.TrimSpace(config.Status)
 	config.LastError = strings.TrimSpace(config.LastError)
+	config.LastSyncAttemptAt = strings.TrimSpace(config.LastSyncAttemptAt)
+	config.LastSuccessfulCollectionAt = strings.TrimSpace(config.LastSuccessfulCollectionAt)
+	config.NextSyncAt = strings.TrimSpace(config.NextSyncAt)
+	config.LastSyncStatus = strings.TrimSpace(config.LastSyncStatus)
+	config.LastSyncError = strings.TrimSpace(config.LastSyncError)
+	config.LastSyncTrigger = strings.TrimSpace(config.LastSyncTrigger)
 	config.UpdatedAt = strings.TrimSpace(config.UpdatedAt)
+	if config.SyncIntervalMinutes == 0 {
+		config.SyncIntervalMinutes = 60
+	}
 
 	activeDB, release, err := acquireDB()
 	if err != nil {
@@ -72,12 +81,21 @@ func UpsertProxmoxAPIConfig(config models.ProxmoxAPIConfig) error {
 			"TOKEN_ID":             config.TokenID,
 			"TOKEN_SECRET":         config.TokenSecret,
 			"VERIFY_TLS":           config.VerifyTLS,
-			"TIMEOUT_SECONDS":      config.TimeoutSeconds,
-			"LAST_ATTEMPT_AT":      config.LastAttemptAt,
-			"LAST_SUCCESSFUL_SYNC": config.LastSuccessfulSync,
-			"LAST_ERROR":           config.LastError,
-			"STATUS":               config.Status,
-			"UPDATED_AT":           config.UpdatedAt,
+			"TIMEOUT_SECONDS":                 config.TimeoutSeconds,
+			"AUTOMATIC_SYNC":                  config.AutomaticSync,
+			"SYNC_INTERVAL_MINUTES":            config.SyncIntervalMinutes,
+			"CONFIG_REVISION":                  config.ConfigRevision,
+			"LAST_SYNC_ATTEMPT_AT":             config.LastSyncAttemptAt,
+			"LAST_SUCCESSFUL_COLLECTION_AT":    config.LastSuccessfulCollectionAt,
+			"NEXT_SYNC_AT":                     config.NextSyncAt,
+			"LAST_SYNC_STATUS":                 config.LastSyncStatus,
+			"LAST_SYNC_ERROR":                  config.LastSyncError,
+			"LAST_SYNC_TRIGGER":                config.LastSyncTrigger,
+			"LAST_ATTEMPT_AT":                  config.LastAttemptAt,
+			"LAST_SUCCESSFUL_SYNC":             config.LastSuccessfulSync,
+			"LAST_ERROR":                       config.LastError,
+			"STATUS":                           config.Status,
+			"UPDATED_AT":                       config.UpdatedAt,
 		}).Error
 }
 
