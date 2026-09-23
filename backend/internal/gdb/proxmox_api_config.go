@@ -99,6 +99,74 @@ func UpsertProxmoxAPIConfig(config models.ProxmoxAPIConfig) error {
 		}).Error
 }
 
+type ProxmoxAPISyncRuntimeUpdate struct {
+	LastSyncAttemptAt          *string
+	LastSuccessfulCollectionAt *string
+	LastSyncStatus             *string
+	LastSyncError              *string
+	LastSyncTrigger            *string
+}
+
+func UpdateProxmoxAPISyncRuntime(hypervisorMac string, update ProxmoxAPISyncRuntimeUpdate) error {
+	canonical, err := identity.NormalizeMAC(hypervisorMac)
+	if err != nil {
+		return err
+	}
+	updates := proxmoxAPISyncRuntimeUpdates(update)
+	if len(updates) == 0 {
+		return nil
+	}
+	activeDB, release, err := acquireDB()
+	if err != nil {
+		return err
+	}
+	defer release()
+	return activeDB.Table(proxmoxAPIConfigsTable).
+		Where(`"HYPERVISOR_MAC" = ?`, canonical).
+		Updates(updates).Error
+}
+
+func UpdateProxmoxAPISyncRuntimeIfRevision(hypervisorMac string, revision uint64, update ProxmoxAPISyncRuntimeUpdate) (bool, error) {
+	canonical, err := identity.NormalizeMAC(hypervisorMac)
+	if err != nil {
+		return false, err
+	}
+	updates := proxmoxAPISyncRuntimeUpdates(update)
+	if len(updates) == 0 {
+		return true, nil
+	}
+	activeDB, release, err := acquireDB()
+	if err != nil {
+		return false, err
+	}
+	defer release()
+	result := activeDB.Table(proxmoxAPIConfigsTable).
+		Where(`"HYPERVISOR_MAC" = ? AND "CONFIG_REVISION" = ? AND "ENABLED" = ? AND "AUTOMATIC_SYNC" = ?`,
+			canonical, revision, true, true).
+		Updates(updates)
+	return result.RowsAffected == 1, result.Error
+}
+
+func proxmoxAPISyncRuntimeUpdates(update ProxmoxAPISyncRuntimeUpdate) map[string]any {
+	updates := map[string]any{}
+	if update.LastSyncAttemptAt != nil {
+		updates["LAST_SYNC_ATTEMPT_AT"] = strings.TrimSpace(*update.LastSyncAttemptAt)
+	}
+	if update.LastSuccessfulCollectionAt != nil {
+		updates["LAST_SUCCESSFUL_COLLECTION_AT"] = strings.TrimSpace(*update.LastSuccessfulCollectionAt)
+	}
+	if update.LastSyncStatus != nil {
+		updates["LAST_SYNC_STATUS"] = strings.TrimSpace(*update.LastSyncStatus)
+	}
+	if update.LastSyncError != nil {
+		updates["LAST_SYNC_ERROR"] = strings.TrimSpace(*update.LastSyncError)
+	}
+	if update.LastSyncTrigger != nil {
+		updates["LAST_SYNC_TRIGGER"] = strings.TrimSpace(*update.LastSyncTrigger)
+	}
+	return updates
+}
+
 func UpdateProxmoxAPIStatus(hypervisorMac, status, lastAttemptAt, lastSuccessfulSync, lastError string) error {
 	canonical, err := identity.NormalizeMAC(hypervisorMac)
 	if err != nil {
@@ -158,6 +226,32 @@ func UpdateProxmoxAPINextSyncIfRevision(hypervisorMac string, configRevision uin
 		Where(`"HYPERVISOR_MAC" = ? AND "CONFIG_REVISION" = ? AND "ENABLED" = ? AND "AUTOMATIC_SYNC" = ?`,
 			canonical, configRevision, true, true).
 		Update("NEXT_SYNC_AT", strings.TrimSpace(nextSyncAt))
+	return result.RowsAffected == 1, result.Error
+}
+
+func UpdateProxmoxAPIStatusIfRevision(hypervisorMac string, revision uint64, status, lastAttemptAt, lastSuccessfulSync, lastError string) (bool, error) {
+	canonical, err := identity.NormalizeMAC(hypervisorMac)
+	if err != nil {
+		return false, err
+	}
+	activeDB, release, err := acquireDB()
+	if err != nil {
+		return false, err
+	}
+	defer release()
+
+	updates := map[string]any{
+		"LAST_ATTEMPT_AT": strings.TrimSpace(lastAttemptAt),
+		"LAST_ERROR":      strings.TrimSpace(lastError),
+		"STATUS":          strings.TrimSpace(status),
+	}
+	if success := strings.TrimSpace(lastSuccessfulSync); success != "" {
+		updates["LAST_SUCCESSFUL_SYNC"] = success
+	}
+	result := activeDB.Table(proxmoxAPIConfigsTable).
+		Where(`"HYPERVISOR_MAC" = ? AND "CONFIG_REVISION" = ? AND "ENABLED" = ? AND "AUTOMATIC_SYNC" = ?`,
+			canonical, revision, true, true).
+		Updates(updates)
 	return result.RowsAffected == 1, result.Error
 }
 

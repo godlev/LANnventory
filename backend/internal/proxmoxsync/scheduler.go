@@ -56,8 +56,13 @@ func NewGDBScheduler(run ScheduledRunFunc) *Scheduler {
 	return NewScheduler(gdbScheduleStore{}, run)
 }
 
-func (s *Scheduler) Start(ctx context.Context) {
-	go s.run(ctx)
+func (s *Scheduler) Start(ctx context.Context) <-chan struct{} {
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		s.run(ctx)
+	}()
+	return done
 }
 
 func (s *Scheduler) NotifyConfigChanged() {
