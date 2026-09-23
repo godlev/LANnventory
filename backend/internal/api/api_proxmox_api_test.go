@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -266,3 +267,102 @@ func postJSON(t *testing.T, router http.Handler, path string, value any) *httpte
 	return rec
 }
 
+
+
+func TestProxmoxAutomaticSyncSafeSnapshotApplies(t *testing.T) {
+	router := setupTestRouter(t)
+	host := seedHost(t, models.Host{Name: "pve-auto-safe", Mac: "AA:BB:CC:DD:EE:E1", DeviceType: "server"})
+	enableTestHypervisor(t, router, host.ID)
+	server := newAPIIntegrationTestServer(t, false, false)
+	defer server.Close()
+
+	config := models.ProxmoxAPIConfig{
+		HypervisorMac: host.Mac, Enabled: true, AutomaticSync: true,
+		BaseURL: server.URL, TokenID: "u@pve!t", TokenSecret: "secret",
+		VerifyTLS: false, TimeoutSeconds: 5, SyncIntervalMinutes: 15, ConfigRevision: 3,
+	}
+	if err := gdb.UpsertProxmoxAPIConfig(config); err != nil {
+		t.Fatalf("UpsertProxmoxAPIConfig: %v", err)
+	}
+	if err := proxmoxSyncService.RunAutomatic(context.Background(), config); err != nil {
+		t.Fatalf("RunAutomatic: %v", err)
+	}
+
+	records, err := gdb.SelectInfrastructureWorkloadsByHypervisorMAC(host.Mac)
+	if err != nil || len(records) != 2 {
+		t.Fatalf("automatic apply records=%+v err=%v", records, err)
+	}
+	stored, found, err := gdb.SelectProxmoxAPIConfig(host.Mac)
+	if err != nil || !found {
+		t.Fatalf("SelectProxmoxAPIConfig found=%v err=%v", found, err)
+	}
+	if stored.LastSyncStatus != "healthy" || stored.LastSyncAttemptAt == "" ||
+		stored.LastSuccessfulCollectionAt == "" || stored.LastSyncTrigger != "automatic" ||
+		stored.LastSyncError != "" {
+		t.Fatalf("automatic runtime state = %+v", stored)
+	}
+	if _, found, err := gdb.SelectProxmoxSourceState(host.Mac, models.InfrastructureWorkloadSourceProxmoxAPI); err != nil || !found {
+		t.Fatalf("automatic apply source state found=%v err=%v", found, err)
+	}
+}
+
+func TestProxmoxAutomaticSyncIPConflictRequiresReviewAndPreservesInventory(t *testing.T) {
+	router := setupTestRouter(t)
+	host := seedHost(t, models.Host{Name: "pve-auto-review", Mac: "AA:BB:CC:DD:EE:E2", DeviceType: "server"})
+	enableTestHypervisor(t, router, host.ID)
+	seedHost(t, models.Host{Name: "reused-ip", Mac: "AA:BB:CC:DD:EE:99", IP: "10.4.1.27", Now: 1, DeviceType: "server"})
+	server := newAPIIntegrationTestServer(t, false, false)
+	defer server.Close()
+
+	config := models.ProxmoxAPIConfig{
+		HypervisorMac: host.Mac, Enabled: true, AutomaticSync: true,
+		BaseURL: server.URL, TokenID: "u@pve!t", TokenSecret: "secret",
+		VerifyTLS: false, TimeoutSeconds: 5, SyncIntervalMinutes: 15, ConfigRevision: 4,
+	}
+	if err := gdb.UpsertProxmoxAPIConfig(config); err != nil {
+		t.Fatalf("UpsertProxmoxAPIConfig: %v", err)
+	}
+	if err := proxmoxSyncService.RunAutomatic(context.Background(), config); err != nil {
+		t.Fatalf("review-required automatic run returned error: %v", err)
+	}
+	records, err := gdb.SelectInfrastructureWorkloadsByHypervisorMAC(host.Mac)
+	if err != nil || len(records) != 0 {
+		t.Fatalf("review-required run changed inventory records=%+v err=%v", records, err)
+	}
+	stored, _, _ := gdb.SelectProxmoxAPIConfig(host.Mac)
+	if stored.LastSyncStatus != "review-required" ||
+		stored.LastSuccessfulCollectionAt == "" ||
+		stored.LastSuccessfulSync != "" {
+		t.Fatalf("review-required runtime state = %+v", stored)
+	}
+}
+
+func TestProxmoxAutomaticPartialSnapshotNeverRetiresLastGood(t *testing.T) {
+	router := setupTestRouter(t)
+	host := seedHost(t, models.Host{Name: "pve-auto-partial", Mac: "AA:BB:CC:DD:EE:E3", DeviceType: "server"})
+	enableTestHypervisor(t, router, host.ID)
+	server := newAPIIntegrationTestServer(t, true, false)
+	defer server.Close()
+
+	config := models.ProxmoxAPIConfig{
+		HypervisorMac: host.Mac, Enabled: true, AutomaticSync: true,
+		BaseURL: server.URL, TokenID: "u@pve!t", TokenSecret: "secret",
+		VerifyTLS: false, TimeoutSeconds: 5, SyncIntervalMinutes: 15, ConfigRevision: 5,
+	}
+	if err := gdb.UpsertProxmoxAPIConfig(config); err != nil {
+		t.Fatalf("UpsertProxmoxAPIConfig: %v", err)
+	}
+	seedGoodAPIWorkload(t, host.Mac)
+
+	if err := proxmoxSyncService.RunAutomatic(context.Background(), config); err == nil {
+		t.Fatal("partial automatic sync unexpectedly reported success")
+	}
+	records, err := gdb.SelectInfrastructureWorkloadsByHypervisorMAC(host.Mac)
+	if err != nil || len(records) != 1 || records[0].Workload.NativeID != "900" || records[0].Workload.RetiredAt != "" {
+		t.Fatalf("partial automatic sync changed last-good inventory records=%+v err=%v", records, err)
+	}
+	stored, _, _ := gdb.SelectProxmoxAPIConfig(host.Mac)
+	if stored.LastSyncStatus != "error" || stored.LastSuccessfulCollectionAt != "" {
+		t.Fatalf("partial automatic runtime state = %+v", stored)
+	}
+}

@@ -256,6 +256,7 @@ func deleteHostHypervisorProfile(c *gin.Context) {
 		profileWriteError(c, "hypervisor", host, err)
 		return
 	}
+	notifyProxmoxSyncSchedulerConfigChanged()
 	writeDeviceProfileResponse(c, host)
 }
 

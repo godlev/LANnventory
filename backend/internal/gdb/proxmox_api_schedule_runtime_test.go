@@ -64,3 +64,55 @@ func TestProxmoxAPIScheduleQueryAndRevisionGuard(t *testing.T) {
 		t.Fatalf("stored schedule found=%v err=%v config=%+v", found, err, stored)
 	}
 }
+
+
+func TestProxmoxAPISyncRuntimeRevisionGuardRejectsStaleResult(t *testing.T) {
+	oldConfig := conf.GetAppConfig()
+	conf.SetAppConfigForTest(models.Conf{
+		UseDB:  "sqlite",
+		DBPath: filepath.Join(t.TempDir(), "proxmox-runtime-guard.db"),
+	})
+	t.Cleanup(func() {
+		if err := Close(); err != nil {
+			t.Errorf("Close: %v", err)
+		}
+		conf.SetAppConfigForTest(oldConfig)
+	})
+	if err := StartErr(); err != nil {
+		t.Fatalf("StartErr: %v", err)
+	}
+
+	config := models.ProxmoxAPIConfig{
+		HypervisorMac: "AA:BB:CC:DD:EE:D3", Enabled: true, AutomaticSync: true,
+		BaseURL: "https://pve.example:8006", TokenID: "u@pve!t", TokenSecret: "secret",
+		VerifyTLS: true, TimeoutSeconds: 10, SyncIntervalMinutes: 60, ConfigRevision: 9,
+	}
+	if err := UpsertProxmoxAPIConfig(config); err != nil {
+		t.Fatalf("Upsert config: %v", err)
+	}
+
+	status := "healthy"
+	attempt := "2026-09-23T18:00:00Z"
+	updated, err := UpdateProxmoxAPISyncRuntimeIfRevision(config.HypervisorMac, 8, ProxmoxAPISyncRuntimeUpdate{
+		LastSyncAttemptAt: &attempt,
+		LastSyncStatus:    &status,
+	})
+	if err != nil {
+		t.Fatalf("stale runtime update: %v", err)
+	}
+	if updated {
+		t.Fatal("stale runtime update unexpectedly matched")
+	}
+
+	updated, err = UpdateProxmoxAPISyncRuntimeIfRevision(config.HypervisorMac, 9, ProxmoxAPISyncRuntimeUpdate{
+		LastSyncAttemptAt: &attempt,
+		LastSyncStatus:    &status,
+	})
+	if err != nil || !updated {
+		t.Fatalf("current runtime update updated=%v err=%v", updated, err)
+	}
+	stored, found, err := SelectProxmoxAPIConfig(config.HypervisorMac)
+	if err != nil || !found || stored.LastSyncAttemptAt != attempt || stored.LastSyncStatus != status {
+		t.Fatalf("stored runtime found=%v err=%v config=%+v", found, err, stored)
+	}
+}
