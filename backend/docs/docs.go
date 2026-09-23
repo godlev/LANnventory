@@ -4211,6 +4211,9 @@ const docTemplate = `{
         "api.ProxmoxAPIConfigPatchRequest": {
             "type": "object",
             "properties": {
+                "automaticSync": {
+                    "type": "boolean"
+                },
                 "baseUrl": {
                     "type": "string"
                 },
@@ -4219,6 +4222,9 @@ const docTemplate = `{
                 },
                 "enabled": {
                     "type": "boolean"
+                },
+                "syncIntervalMinutes": {
+                    "type": "integer"
                 },
                 "timeoutSeconds": {
                     "type": "integer"
@@ -4237,13 +4243,22 @@ const docTemplate = `{
         "api.ProxmoxAPIConfigResponse": {
             "type": "object",
             "properties": {
+                "automaticSync": {
+                    "type": "boolean"
+                },
                 "baseUrl": {
                     "type": "string"
+                },
+                "configRevision": {
+                    "type": "integer"
                 },
                 "enabled": {
                     "type": "boolean"
                 },
                 "hypervisorMac": {
+                    "type": "string"
+                },
+                "lastAppliedAt": {
                     "type": "string"
                 },
                 "lastAttemptAt": {
@@ -4252,11 +4267,35 @@ const docTemplate = `{
                 "lastError": {
                     "type": "string"
                 },
+                "lastSuccessfulCollectionAt": {
+                    "type": "string"
+                },
                 "lastSuccessfulSync": {
+                    "type": "string"
+                },
+                "lastSyncAttemptAt": {
+                    "type": "string"
+                },
+                "lastSyncError": {
+                    "type": "string"
+                },
+                "lastSyncTrigger": {
+                    "type": "string"
+                },
+                "nextSyncAt": {
                     "type": "string"
                 },
                 "status": {
                     "type": "string"
+                },
+                "syncIntervalMinutes": {
+                    "type": "integer"
+                },
+                "syncStatus": {
+                    "type": "string"
+                },
+                "syncing": {
+                    "type": "boolean"
                 },
                 "timeoutSeconds": {
                     "type": "integer"
