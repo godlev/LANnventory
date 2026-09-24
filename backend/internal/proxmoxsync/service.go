@@ -131,26 +131,34 @@ func (s *Service) collectPreview(ctx context.Context, hypervisorMac string, opti
 	if err != nil {
 		return PreviewResult{}, err
 	}
-	if options.ExpectedConfigRevision != nil && config.ConfigRevision != *options.ExpectedConfigRevision {
+	expectedRevision := options.ExpectedConfigRevision
+	if expectedRevision == nil {
+		revision := config.ConfigRevision
+		expectedRevision = &revision
+	}
+	if config.ConfigRevision != *expectedRevision {
 		return PreviewResult{}, staleConfigError()
 	}
 
 	attemptedAt := s.nowUTC()
 	attemptedValue := attemptedAt.Format(time.RFC3339)
 	trigger := normalizedTrigger(options.Trigger)
-	s.recordRuntime(hypervisorMac, options.ExpectedConfigRevision, gdb.ProxmoxAPISyncRuntimeUpdate{
+	s.recordRuntime(hypervisorMac, expectedRevision, gdb.ProxmoxAPISyncRuntimeUpdate{
 		LastSyncAttemptAt: ptrString(attemptedValue),
 		LastSyncTrigger:   ptrString(string(trigger)),
 	})
 
 	snapshot, err := proxmoxapi.CollectSnapshot(ctx, client, attemptedAt)
 	if err != nil {
-		s.recordLegacyStatus(hypervisorMac, "error", attemptedValue, "", err.Error(), options.ExpectedConfigRevision)
-		s.recordRuntime(hypervisorMac, options.ExpectedConfigRevision, gdb.ProxmoxAPISyncRuntimeUpdate{
+		s.recordLegacyStatus(hypervisorMac, "error", attemptedValue, "", err.Error(), expectedRevision)
+		s.recordRuntime(hypervisorMac, expectedRevision, gdb.ProxmoxAPISyncRuntimeUpdate{
 			LastSyncStatus:  ptrString("error"),
 			LastSyncError:   ptrString(err.Error()),
 			LastSyncTrigger: ptrString(string(trigger)),
 		})
+		return PreviewResult{}, err
+	}
+	if err := s.ensureConfigRevision(hypervisorMac, expectedRevision); err != nil {
 		return PreviewResult{}, err
 	}
 
@@ -162,9 +170,12 @@ func (s *Service) collectPreview(ctx context.Context, hypervisorMac string, opti
 
 	preview, err := proxmoximport.BuildPreview(hypervisorMac, snapshot, current)
 	if err != nil {
-		s.recordLegacyStatus(hypervisorMac, "error", attemptedValue, "", "collected Proxmox data failed validation", options.ExpectedConfigRevision)
+		s.recordLegacyStatus(hypervisorMac, "error", attemptedValue, "", "collected Proxmox data failed validation", expectedRevision)
 		s.recordRuntimeError(hypervisorMac, options.ExpectedConfigRevision, trigger, err)
 		return PreviewResult{}, &ServiceError{Kind: ErrorValidation, Err: err}
+	}
+	if err := s.ensureConfigRevision(hypervisorMac, expectedRevision); err != nil {
+		return PreviewResult{}, err
 	}
 
 	legacyStatus := "preview-ready"
@@ -185,8 +196,8 @@ func (s *Service) collectPreview(ctx context.Context, hypervisorMac string, opti
 		}
 	}
 
-	s.recordLegacyStatus(hypervisorMac, legacyStatus, attemptedValue, "", legacyError, options.ExpectedConfigRevision)
-	s.recordRuntime(hypervisorMac, options.ExpectedConfigRevision, gdb.ProxmoxAPISyncRuntimeUpdate{
+	s.recordLegacyStatus(hypervisorMac, legacyStatus, attemptedValue, "", legacyError, expectedRevision)
+	s.recordRuntime(hypervisorMac, expectedRevision, gdb.ProxmoxAPISyncRuntimeUpdate{
 		LastSuccessfulCollectionAt: successfulCollection,
 		LastSyncStatus:              ptrString(runtimeStatus),
 		LastSyncError:               ptrString(runtimeError),
@@ -221,7 +232,7 @@ func (s *Service) applyPreview(ctx context.Context, hypervisorMac string, snapsh
 	}
 	previewToken = strings.TrimSpace(previewToken)
 
-	if err := s.ensureConfigRevision(hypervisorMac, options.ExpectedConfigRevision); err != nil {
+	if err := s.ensureConfigRevision(hypervisorMac, expectedRevision); err != nil {
 		return ApplyResult{}, err
 	}
 
@@ -262,21 +273,36 @@ func (s *Service) applyPreview(ctx context.Context, hypervisorMac string, snapsh
 		return ApplyResult{}, &ServiceError{Kind: ErrorValidation, Err: err}
 	}
 
-	if err := s.ensureConfigRevision(hypervisorMac, options.ExpectedConfigRevision); err != nil {
+	if err := s.ensureConfigRevision(hypervisorMac, expectedRevision); err != nil {
 		return ApplyResult{}, err
 	}
 
-	if err := gdb.ApplyProxmoxImport(hypervisorMac, state, inputs); err != nil {
-		if errors.Is(err, gdb.ErrInfrastructureWorkloadSourceConflict) {
-			s.recordRuntimeReview(hypervisorMac, options.ExpectedConfigRevision, trigger)
-			return ApplyResult{}, &ServiceError{Kind: ErrorConflict, Err: err}
+	var applyErr error
+	if options.ExpectedConfigRevision != nil {
+		applyErr = gdb.ApplyProxmoxAPIImportIfRevision(
+			hypervisorMac,
+			state,
+			inputs,
+			*options.ExpectedConfigRevision,
+			trigger == TriggerAutomatic,
+		)
+	} else {
+		applyErr = gdb.ApplyProxmoxImport(hypervisorMac, state, inputs)
+	}
+	if applyErr != nil {
+		if errors.Is(applyErr, gdb.ErrProxmoxAPIConfigChanged) {
+			return ApplyResult{}, staleConfigError()
 		}
-		s.recordRuntimeError(hypervisorMac, options.ExpectedConfigRevision, trigger, err)
-		return ApplyResult{}, &ServiceError{Kind: ErrorPersistence, Err: err}
+		if errors.Is(applyErr, gdb.ErrInfrastructureWorkloadSourceConflict) {
+			s.recordRuntimeReview(hypervisorMac, options.ExpectedConfigRevision, trigger)
+			return ApplyResult{}, &ServiceError{Kind: ErrorConflict, Err: applyErr}
+		}
+		s.recordRuntimeError(hypervisorMac, options.ExpectedConfigRevision, trigger, applyErr)
+		return ApplyResult{}, &ServiceError{Kind: ErrorPersistence, Err: applyErr}
 	}
 
-	s.recordLegacyStatus(hypervisorMac, "connected", importedAt, importedAt, "", options.ExpectedConfigRevision)
-	s.recordRuntime(hypervisorMac, options.ExpectedConfigRevision, gdb.ProxmoxAPISyncRuntimeUpdate{
+	s.recordLegacyStatus(hypervisorMac, "connected", importedAt, importedAt, "", expectedRevision)
+	s.recordRuntime(hypervisorMac, expectedRevision, gdb.ProxmoxAPISyncRuntimeUpdate{
 		LastSyncStatus:  ptrString("healthy"),
 		LastSyncError:   ptrString(""),
 		LastSyncTrigger: ptrString(string(trigger)),

@@ -7,10 +7,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/godlev/LANnventory/internal/gdb"
 	"github.com/godlev/LANnventory/internal/models"
 	"github.com/godlev/LANnventory/internal/proxmoxsnapshot"
+	"github.com/godlev/LANnventory/internal/proxmoxsync"
 )
 
 func TestProxmoxAPITestConnectionNeverMutatesInventory(t *testing.T) {
@@ -364,5 +366,83 @@ func TestProxmoxAutomaticPartialSnapshotNeverRetiresLastGood(t *testing.T) {
 	stored, _, _ := gdb.SelectProxmoxAPIConfig(host.Mac)
 	if stored.LastSyncStatus != "error" || stored.LastSuccessfulCollectionAt != "" {
 		t.Fatalf("partial automatic runtime state = %+v", stored)
+	}
+}
+
+
+func TestProxmoxAutomaticSyncRejectsConfigChangedDuringCollection(t *testing.T) {
+	router := setupTestRouter(t)
+	host := seedHost(t, models.Host{Name: "pve-auto-config-race", Mac: "AA:BB:CC:DD:EE:EA", DeviceType: "server"})
+	enableTestHypervisor(t, router, host.ID)
+
+	reached := make(chan struct{}, 1)
+	release := make(chan struct{})
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/api2/json/version":
+			_, _ = w.Write([]byte(`{"data":{"version":"9.2.10","release":"9.2"}}`))
+		case "/api2/json/cluster/status":
+			_, _ = w.Write([]byte(`{"data":[{"type":"cluster","name":"lab"},{"type":"node","name":"pve-1","online":1}]}`))
+		case "/api2/json/cluster/resources":
+			select {
+			case reached <- struct{}{}:
+			default:
+			}
+			<-release
+			_, _ = w.Write([]byte(`{"data":[{"type":"qemu","vmid":119,"node":"pve-1","name":"media","status":"running"}]}`))
+		case "/api2/json/nodes/pve-1/qemu/119/config":
+			_, _ = w.Write([]byte(`{"data":{"name":"media","net0":"virtio=BC:24:11:A2:40:12,bridge=vmbr0","ipconfig0":"ip=10.4.1.27/24"}}`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	config := models.ProxmoxAPIConfig{
+		HypervisorMac: host.Mac, Enabled: true, AutomaticSync: true,
+		BaseURL: server.URL, TokenID: "u@pve!t", TokenSecret: "secret",
+		VerifyTLS: false, TimeoutSeconds: 5, SyncIntervalMinutes: 15, ConfigRevision: 3,
+	}
+	if err := gdb.UpsertProxmoxAPIConfig(config); err != nil {
+		t.Fatalf("UpsertProxmoxAPIConfig: %v", err)
+	}
+
+	done := make(chan error, 1)
+	go func() {
+		done <- proxmoxSyncService.RunAutomatic(context.Background(), config)
+	}()
+	select {
+	case <-reached:
+	case <-time.After(2 * time.Second):
+		t.Fatal("automatic collection did not reach blocking API call")
+	}
+
+	config.TokenSecret = "replacement-secret"
+	config.ConfigRevision = 4
+	if err := gdb.UpsertProxmoxAPIConfig(config); err != nil {
+		t.Fatalf("replace config during collection: %v", err)
+	}
+	close(release)
+
+	select {
+	case err := <-done:
+		if proxmoxsync.KindOf(err) != proxmoxsync.ErrorStaleConfig {
+			t.Fatalf("automatic run error = %v kind=%q, want stale-config", err, proxmoxsync.KindOf(err))
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("automatic run did not finish after releasing API call")
+	}
+
+	records, err := gdb.SelectInfrastructureWorkloadsByHypervisorMAC(host.Mac)
+	if err != nil || len(records) != 0 {
+		t.Fatalf("stale automatic run changed inventory records=%+v err=%v", records, err)
+	}
+	if _, found, err := gdb.SelectProxmoxSourceState(host.Mac, models.InfrastructureWorkloadSourceProxmoxAPI); err != nil || found {
+		t.Fatalf("stale automatic run persisted source state found=%v err=%v", found, err)
+	}
+	stored, found, err := gdb.SelectProxmoxAPIConfig(host.Mac)
+	if err != nil || !found || stored.ConfigRevision != 4 || stored.TokenSecret != "replacement-secret" {
+		t.Fatalf("current config was not preserved found=%v err=%v config=%+v", found, err, stored)
 	}
 }

@@ -90,6 +90,7 @@ func testHostProxmoxAPIConnection(c *gin.Context) {
 // @Param        id   path      string  true  "Proxmox Host ID"
 // @Success      200  {object}  ProxmoxAPISyncPreviewDoc
 // @Failure      400  {object}  map[string]string
+// @Failure      409  {object}  map[string]string
 // @Failure      502  {object}  map[string]string
 // @Router       /host/{id}/proxmox/api/sync-preview [post]
 func previewHostProxmoxAPISync(c *gin.Context) {
@@ -113,6 +114,8 @@ func previewHostProxmoxAPISync(c *gin.Context) {
 			c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to load Proxmox inventory state"})
 		case proxmoxsync.ErrorValidation:
 			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		case proxmoxsync.ErrorStaleConfig:
+			c.IndentedJSON(http.StatusConflict, gin.H{"error": "Proxmox API configuration changed during sync; run Sync now again"})
 		default:
 			writeProxmoxAPIError(c, err)
 		}

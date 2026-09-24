@@ -250,3 +250,60 @@ func TestNextScheduledAfterPreservesCadence(t *testing.T) {
 		t.Fatalf("next = %s, want %s", got, want)
 	}
 }
+
+
+func TestSchedulerStartupPreservesFutureNextRun(t *testing.T) {
+	now := time.Date(2026, 9, 24, 12, 0, 0, 0, time.UTC)
+	future := now.Add(37 * time.Minute)
+	config := models.ProxmoxAPIConfig{
+		HypervisorMac: "AA:BB:CC:DD:EE:31", Enabled: true, AutomaticSync: true,
+		SyncIntervalMinutes: 60, ConfigRevision: 2, NextSyncAt: future.Format(time.RFC3339),
+	}
+	store := newFakeScheduleStore(config)
+	scheduler := NewScheduler(store, nil)
+
+	if _, err := scheduler.reconcileSchedules(now, true); err != nil {
+		t.Fatalf("reconcileSchedules: %v", err)
+	}
+	if got := store.config(config.HypervisorMac).NextSyncAt; got != config.NextSyncAt {
+		t.Fatalf("future NextSyncAt changed on restart: got %q want %q", got, config.NextSyncAt)
+	}
+}
+
+func TestSchedulerCancellationReleasesInFlightWorker(t *testing.T) {
+	now := time.Date(2026, 9, 24, 12, 0, 0, 0, time.UTC)
+	config := models.ProxmoxAPIConfig{
+		HypervisorMac: "AA:BB:CC:DD:EE:32", Enabled: true, AutomaticSync: true,
+		SyncIntervalMinutes: 15, ConfigRevision: 1, NextSyncAt: now.Format(time.RFC3339),
+	}
+	store := newFakeScheduleStore(config)
+	started := make(chan struct{})
+	finished := make(chan struct{})
+	scheduler := NewScheduler(store, func(ctx context.Context, _ models.ProxmoxAPIConfig) error {
+		close(started)
+		<-ctx.Done()
+		close(finished)
+		return ctx.Err()
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	configs, _ := store.ListAutomatic()
+	if launched := scheduler.dispatchDue(ctx, configs, now); launched != 1 {
+		t.Fatalf("launched = %d, want 1", launched)
+	}
+	select {
+	case <-started:
+	case <-time.After(time.Second):
+		t.Fatal("scheduled worker did not start")
+	}
+	cancel()
+	scheduler.wg.Wait()
+	select {
+	case <-finished:
+	case <-time.After(time.Second):
+		t.Fatal("scheduled worker did not stop after context cancellation")
+	}
+	if len(scheduler.sem) != 0 {
+		t.Fatalf("worker slot leaked after cancellation: %d", len(scheduler.sem))
+	}
+}
