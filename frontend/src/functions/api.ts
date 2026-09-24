@@ -364,6 +364,17 @@ export type ProxmoxAPIConfig = {
   tokenSecretConfigured: boolean;
   verifyTls: boolean;
   timeoutSeconds: number;
+  automaticSync: boolean;
+  syncIntervalMinutes: number;
+  configRevision: number;
+  syncing: boolean;
+  lastSyncAttemptAt?: string;
+  lastSuccessfulCollectionAt?: string;
+  lastAppliedAt?: string;
+  nextSyncAt?: string;
+  syncStatus: string;
+  lastSyncError?: string;
+  lastSyncTrigger?: "manual" | "automatic" | string;
   lastAttemptAt?: string;
   lastSuccessfulSync?: string;
   lastError?: string;
@@ -379,6 +390,8 @@ export type ProxmoxAPIConfigPatch = {
   clearTokenSecret?: boolean;
   verifyTls?: boolean;
   timeoutSeconds?: number;
+  automaticSync?: boolean;
+  syncIntervalMinutes?: number;
 };
 
 export type ProxmoxAPITestConnectionResponse = {

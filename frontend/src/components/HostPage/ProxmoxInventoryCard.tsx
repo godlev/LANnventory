@@ -522,6 +522,15 @@ function SummaryMetric(props: { label: string; value: number }) {
   );
 }
 
+function SyncRuntimeMetric(props: { label: string; value: string }) {
+  return (
+    <div class="proxmox-sync-runtime-metric">
+      <div class="proxmox-sync-runtime-label">{props.label}</div>
+      <div class="proxmox-sync-runtime-value">{props.value || "—"}</div>
+    </div>
+  );
+}
+
 function WorkloadRow(props: {
   workload: InfrastructureWorkload;
   match?: InfrastructureWorkloadMatch;
@@ -902,6 +911,8 @@ function ProxmoxAPISection(props: { hostID: number; onApplied: () => void | Prom
   const [clearTokenSecret, setClearTokenSecret] = createSignal(false);
   const [verifyTls, setVerifyTls] = createSignal(true);
   const [timeoutSeconds, setTimeoutSeconds] = createSignal(10);
+  const [automaticSync, setAutomaticSync] = createSignal(false);
+  const [syncIntervalMinutes, setSyncIntervalMinutes] = createSignal(60);
   const [dirty, setDirty] = createSignal(false);
   const [loadingConfig, setLoadingConfig] = createSignal(false);
   const [saving, setSaving] = createSignal(false);
@@ -922,6 +933,8 @@ function ProxmoxAPISection(props: { hostID: number; onApplied: () => void | Prom
     setClearTokenSecret(false);
     setVerifyTls(next.verifyTls);
     setTimeoutSeconds(next.timeoutSeconds || 10);
+    setAutomaticSync(Boolean(next.enabled && next.automaticSync));
+    setSyncIntervalMinutes(next.syncIntervalMinutes || 60);
     setDirty(false);
   };
 
@@ -956,6 +969,8 @@ function ProxmoxAPISection(props: { hostID: number; onApplied: () => void | Prom
     setStatus("");
   };
 
+  const syncBusy = () => syncing() || Boolean(config()?.syncing);
+
   const saveConfig = async () => {
     if (props.hostID < 1 || saving()) return;
     setSaving(true);
@@ -967,12 +982,16 @@ function ProxmoxAPISection(props: { hostID: number; onApplied: () => void | Prom
         tokenId: tokenId().trim(),
         verifyTls: verifyTls(),
         timeoutSeconds: timeoutSeconds(),
+        automaticSync: Boolean(config()?.enabled && automaticSync()),
+        syncIntervalMinutes: syncIntervalMinutes(),
         ...(tokenSecret() ? { tokenSecret: tokenSecret() } : {}),
         ...(clearTokenSecret() ? { clearTokenSecret: true } : {}),
       };
       const next = await apiPatchProxmoxAPIConfig(props.hostID, patch);
       applyConfig(next);
-      setStatus("API settings saved. The token secret remains write-only.");
+      setStatus(next.automaticSync
+        ? "API settings saved. Automatic sync is enabled; enabling it does not trigger an immediate sync."
+        : "API settings saved. Automatic sync is off. The token secret remains write-only.");
     } catch (saveError) {
       setError(apiErrorMessage(saveError, "Proxmox API settings could not be saved."));
     } finally {
@@ -986,7 +1005,7 @@ function ProxmoxAPISection(props: { hostID: number; onApplied: () => void | Prom
     setError("");
     setStatus("");
     try {
-      const next = await apiPatchProxmoxAPIConfig(props.hostID, { enabled: false });
+      const next = await apiPatchProxmoxAPIConfig(props.hostID, { enabled: false, automaticSync: false });
       applyConfig(next);
       setStatus("Proxmox API inventory source disabled. Stored credentials were kept.");
     } catch (disableError) {
@@ -1024,7 +1043,7 @@ function ProxmoxAPISection(props: { hostID: number; onApplied: () => void | Prom
   };
 
   const syncNow = async () => {
-    if (props.hostID < 1 || syncing()) return;
+    if (props.hostID < 1 || syncBusy()) return;
     if (dirty()) {
       setError("Save the API settings before syncing.");
       return;
@@ -1194,6 +1213,99 @@ function ProxmoxAPISection(props: { hostID: number; onApplied: () => void | Prom
           </div>
         </Show>
 
+        <Show when={config()}>
+          {(current) => (
+            <div class="proxmox-auto-sync-panel">
+              <div class="proxmox-auto-sync-header">
+                <div>
+                  <div class="small fw-semibold">Automatic inventory sync</div>
+                  <div class="small device-cell-muted">
+                    Periodically collect the same read-only Proxmox API inventory and apply it only when the safety checks allow it.
+                  </div>
+                </div>
+                <span class={"badge "+syncStatusBadgeClass(current())}>
+                  {syncStatusLabel(current())}
+                </span>
+              </div>
+
+              <div class="proxmox-auto-sync-controls">
+                <label class="form-check form-switch mb-0">
+                  <input
+                    class="form-check-input"
+                    type="checkbox"
+                    checked={automaticSync()}
+                    disabled={!current().enabled}
+                    onChange={(event) => { setAutomaticSync(event.currentTarget.checked); markDirty(); }}
+                  />
+                  <span class="form-check-label fw-semibold">Automatic Sync</span>
+                </label>
+
+                <label class="proxmox-sync-interval">
+                  <span class="small fw-semibold">Interval</span>
+                  <select
+                    class="form-select form-select-sm wyl-control"
+                    value={String(syncIntervalMinutes())}
+                    disabled={!current().enabled || !automaticSync()}
+                    onChange={(event) => { setSyncIntervalMinutes(Number(event.currentTarget.value)); markDirty(); }}
+                  >
+                    <option value="15">Every 15 minutes</option>
+                    <option value="30">Every 30 minutes</option>
+                    <option value="60">Every 1 hour</option>
+                    <option value="360">Every 6 hours</option>
+                    <option value="720">Every 12 hours</option>
+                    <option value="1440">Every 24 hours</option>
+                  </select>
+                </label>
+              </div>
+
+              <div class="small device-cell-muted mt-2">
+                {!current().enabled
+                  ? "Automatic Sync becomes available after the first reviewed Apply enables this API inventory source."
+                  : automaticSync()
+                    ? "Saving this setting schedules the next collection after the selected interval; it does not start an immediate sync."
+                    : "Automatic Sync is off. Manual Sync now remains available."}
+              </div>
+
+              <div class="proxmox-sync-runtime-grid">
+                <SyncRuntimeMetric label="Last attempt" value={current().lastSyncAttemptAt ? formatTimestamp(current().lastSyncAttemptAt!) : "Never"} />
+                <SyncRuntimeMetric label="Last successful collection" value={current().lastSuccessfulCollectionAt ? formatTimestamp(current().lastSuccessfulCollectionAt!) : "Never"} />
+                <SyncRuntimeMetric label="Last applied" value={current().lastAppliedAt ? formatTimestamp(current().lastAppliedAt!) : "Never"} />
+                <SyncRuntimeMetric
+                  label="Next sync"
+                  value={current().automaticSync
+                    ? (current().nextSyncAt ? formatTimestamp(current().nextSyncAt!) : "Scheduling…")
+                    : "Not scheduled"}
+                />
+              </div>
+
+              <Show when={current().lastSyncTrigger}>
+                <div class="small device-cell-muted mt-2">
+                  Last trigger: <strong>{capitalize(current().lastSyncTrigger || "")}</strong>
+                </div>
+              </Show>
+
+              <Show when={current().syncStatus === "review-required"}>
+                <div class="proxmox-sync-notice is-review mt-2">
+                  <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+                  <div>
+                    <strong>Review required.</strong> Automatic collection completed, but LANnventory did not auto-apply it.
+                    Use <strong>Sync now</strong> to collect a manual preview and review the current changes.
+                  </div>
+                </div>
+              </Show>
+
+              <Show when={current().syncStatus === "error" && current().lastSyncError}>
+                <div class="proxmox-sync-notice is-error mt-2" role="alert">
+                  <i class="bi bi-x-circle-fill" aria-hidden="true"></i>
+                  <div>
+                    <strong>Last automatic sync error:</strong> {current().lastSyncError}
+                  </div>
+                </div>
+              </Show>
+            </div>
+          )}
+        </Show>
+
         <div class="d-flex flex-wrap gap-2 align-items-center mt-3">
           <button type="button" class="btn btn-sm btn-outline-secondary" disabled={saving()} onClick={() => void saveConfig()}>
             <i class={saving() ? "bi bi-arrow-repeat proxmox-spin me-1" : "bi bi-floppy me-1"} aria-hidden="true"></i>
@@ -1203,9 +1315,9 @@ function ProxmoxAPISection(props: { hostID: number; onApplied: () => void | Prom
             <i class={testing() ? "bi bi-arrow-repeat proxmox-spin me-1" : "bi bi-plug me-1"} aria-hidden="true"></i>
             {testing() ? "Testing…" : "Test connection"}
           </button>
-          <button type="button" class="btn btn-sm btn-primary" disabled={syncing() || dirty() || !config()?.tokenSecretConfigured} onClick={() => void syncNow()}>
-            <i class={syncing() ? "bi bi-arrow-repeat proxmox-spin me-1" : "bi bi-arrow-repeat me-1"} aria-hidden="true"></i>
-            {syncing() ? "Collecting…" : "Sync now"}
+          <button type="button" class="btn btn-sm btn-primary" disabled={syncBusy() || dirty() || !config()?.tokenSecretConfigured} onClick={() => void syncNow()}>
+            <i class={syncBusy() ? "bi bi-arrow-repeat proxmox-spin me-1" : "bi bi-arrow-repeat me-1"} aria-hidden="true"></i>
+            {syncing() ? "Collecting…" : config()?.syncing ? "Sync in progress…" : "Sync now"}
           </button>
           <Show when={config()?.enabled}>
             <button type="button" class="btn btn-sm btn-outline-danger" disabled={saving() || dirty()} onClick={() => void disableIntegration()}>
@@ -1215,17 +1327,6 @@ function ProxmoxAPISection(props: { hostID: number; onApplied: () => void | Prom
           </Show>
           <Show when={dirty()}><span class="small text-warning">Unsaved changes</span></Show>
         </div>
-
-        <Show when={config()}>
-          {(current) => (
-            <div class="proxmox-source-grid mt-3">
-              <SourceMetric label="Status" value={capitalize(current().status || "not-configured")} />
-              <SourceMetric label="Last attempt" value={current().lastAttemptAt ? formatTimestamp(current().lastAttemptAt!) : "Never"} />
-              <SourceMetric label="Last successful sync" value={current().lastSuccessfulSync ? formatTimestamp(current().lastSuccessfulSync!) : "Never"} />
-              <SourceMetric label="TLS verification" value={current().verifyTls ? "On" : "Off"} />
-            </div>
-          )}
-        </Show>
 
         <Show when={testResult()}>
           {(result) => (
@@ -1746,6 +1847,27 @@ function managedFieldLabel(field: string) {
   if (field === "clusterName") return "Cluster";
   if (field === "version") return "Version";
   return field;
+}
+
+function syncStatusLabel(config: ProxmoxAPIConfig) {
+  if (config.syncing) return "Syncing";
+  switch (config.syncStatus) {
+    case "healthy": return "Healthy";
+    case "review-required": return "Review required";
+    case "error": return "Error";
+    case "disabled": return "Disabled";
+    default: return capitalize(config.syncStatus || "disabled");
+  }
+}
+
+function syncStatusBadgeClass(config: ProxmoxAPIConfig) {
+  if (config.syncing) return "text-bg-info";
+  switch (config.syncStatus) {
+    case "healthy": return "text-bg-success";
+    case "review-required": return "text-bg-warning";
+    case "error": return "text-bg-danger";
+    default: return "text-bg-secondary";
+  }
 }
 
 function capitalize(value: string) {

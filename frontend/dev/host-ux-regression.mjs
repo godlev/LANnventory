@@ -123,6 +123,15 @@ requireText(proxmoxInventory, "TLS certificate verification is disabled explicit
 requireText(proxmoxInventory, "Test connection", "Proxmox API setup must provide a non-mutating connection test.");
 requireText(proxmoxInventory, "Connection verified. No LANnventory inventory was changed.", "Connection test must state its non-mutating behavior.");
 requireText(proxmoxInventory, "Sync now", "Proxmox API setup must expose manual sync.");
+requireText(proxmoxInventory, "Automatic Sync", "Proxmox API setup must expose per-host automatic sync.");
+requireText(proxmoxInventory, "Every 15 minutes", "Automatic sync must expose the supported interval selector.");
+requireText(proxmoxInventory, "Every 24 hours", "Automatic sync must expose the full supported interval range.");
+requireText(proxmoxInventory, "Last attempt", "Automatic sync status must expose the last attempt.");
+requireText(proxmoxInventory, "Last successful collection", "Automatic sync status must separate successful collection from apply.");
+requireText(proxmoxInventory, "Last applied", "Automatic sync status must expose the last applied snapshot.");
+requireText(proxmoxInventory, "Next sync", "Automatic sync status must expose the next scheduled run.");
+requireText(proxmoxInventory, "Review required.", "Automatic safety blocks must be visible and actionable.");
+requireText(proxmoxInventory, "does not start an immediate sync", "Enabling automatic sync must not imply an immediate run.");
 requireText(proxmoxInventory, "First sync preview ready.", "First API sync must remain a preview before enablement.");
 requireText(proxmoxInventory, "The first successful Apply also enables this API inventory source.", "API source enablement must follow reviewed Apply.");
 requireText(proxmoxInventory, "Disable API source", "An enabled Proxmox API source must be explicitly disableable.");
