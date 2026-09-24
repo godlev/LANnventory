@@ -171,7 +171,7 @@ func (s *Service) collectPreview(ctx context.Context, hypervisorMac string, opti
 	preview, err := proxmoximport.BuildPreview(hypervisorMac, snapshot, current)
 	if err != nil {
 		s.recordLegacyStatus(hypervisorMac, "error", attemptedValue, "", "collected Proxmox data failed validation", expectedRevision)
-		s.recordRuntimeError(hypervisorMac, options.ExpectedConfigRevision, trigger, err)
+		s.recordRuntimeError(hypervisorMac, expectedRevision, trigger, err)
 		return PreviewResult{}, &ServiceError{Kind: ErrorValidation, Err: err}
 	}
 	if err := s.ensureConfigRevision(hypervisorMac, expectedRevision); err != nil {
@@ -232,7 +232,7 @@ func (s *Service) applyPreview(ctx context.Context, hypervisorMac string, snapsh
 	}
 	previewToken = strings.TrimSpace(previewToken)
 
-	if err := s.ensureConfigRevision(hypervisorMac, expectedRevision); err != nil {
+	if err := s.ensureConfigRevision(hypervisorMac, options.ExpectedConfigRevision); err != nil {
 		return ApplyResult{}, err
 	}
 
@@ -273,7 +273,7 @@ func (s *Service) applyPreview(ctx context.Context, hypervisorMac string, snapsh
 		return ApplyResult{}, &ServiceError{Kind: ErrorValidation, Err: err}
 	}
 
-	if err := s.ensureConfigRevision(hypervisorMac, expectedRevision); err != nil {
+	if err := s.ensureConfigRevision(hypervisorMac, options.ExpectedConfigRevision); err != nil {
 		return ApplyResult{}, err
 	}
 
@@ -301,8 +301,8 @@ func (s *Service) applyPreview(ctx context.Context, hypervisorMac string, snapsh
 		return ApplyResult{}, &ServiceError{Kind: ErrorPersistence, Err: applyErr}
 	}
 
-	s.recordLegacyStatus(hypervisorMac, "connected", importedAt, importedAt, "", expectedRevision)
-	s.recordRuntime(hypervisorMac, expectedRevision, gdb.ProxmoxAPISyncRuntimeUpdate{
+	s.recordLegacyStatus(hypervisorMac, "connected", importedAt, importedAt, "", options.ExpectedConfigRevision)
+	s.recordRuntime(hypervisorMac, options.ExpectedConfigRevision, gdb.ProxmoxAPISyncRuntimeUpdate{
 		LastSyncStatus:  ptrString("healthy"),
 		LastSyncError:   ptrString(""),
 		LastSyncTrigger: ptrString(string(trigger)),
