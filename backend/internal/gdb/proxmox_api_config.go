@@ -141,8 +141,7 @@ func UpdateProxmoxAPISyncRuntimeIfRevision(hypervisorMac string, revision uint64
 	}
 	defer release()
 	result := activeDB.Table(proxmoxAPIConfigsTable).
-		Where(`"HYPERVISOR_MAC" = ? AND "CONFIG_REVISION" = ? AND "ENABLED" = ? AND "AUTOMATIC_SYNC" = ?`,
-			canonical, revision, true, true).
+		Where(`"HYPERVISOR_MAC" = ? AND "CONFIG_REVISION" = ?`, canonical, revision).
 		Updates(updates)
 	return result.RowsAffected == 1, result.Error
 }
@@ -249,8 +248,7 @@ func UpdateProxmoxAPIStatusIfRevision(hypervisorMac string, revision uint64, sta
 		updates["LAST_SUCCESSFUL_SYNC"] = success
 	}
 	result := activeDB.Table(proxmoxAPIConfigsTable).
-		Where(`"HYPERVISOR_MAC" = ? AND "CONFIG_REVISION" = ? AND "ENABLED" = ? AND "AUTOMATIC_SYNC" = ?`,
-			canonical, revision, true, true).
+		Where(`"HYPERVISOR_MAC" = ? AND "CONFIG_REVISION" = ?`, canonical, revision).
 		Updates(updates)
 	return result.RowsAffected == 1, result.Error
 }
