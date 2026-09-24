@@ -2660,6 +2660,12 @@ paths:
             additionalProperties:
               type: string
             type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
         "502":
           description: Bad Gateway
           schema:
