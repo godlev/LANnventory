@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { formatLastSeen } from "../src/functions/dateFormat.ts";
 
 const root = resolve(import.meta.dirname, "..");
 const read = (path) => readFileSync(resolve(root, path), "utf8");
@@ -159,5 +160,23 @@ requireText(appStyles, ".device-compact-workload", "Compact Proxmox workload mar
 requireText(appStyles, ".device-hypervisor-summary", "Comfortable Proxmox inventory totals must have dedicated styling.");
 requireText(appStyles, ".device-compact-hypervisor-summary", "Compact Proxmox inventory totals must have dedicated styling.");
 forbidText(deviceTypes, '| "hypervisor"', "Hypervisor must not become an exclusive Device Type.");
+
+const originalTZ = process.env.TZ;
+process.env.TZ = "Europe/Sofia";
+const currentYear = new Date().getFullYear();
+if (formatLastSeen(`${currentYear}-09-24T18:16:00Z`) !== "24 Sep 21:16") {
+  throw new Error("RFC3339 UTC timestamps must be rendered in the browser-local timezone.");
+}
+if (formatLastSeen(`${currentYear}-09-24T18:16:00+00:00`) !== "24 Sep 21:16") {
+  throw new Error("RFC3339 offset timestamps must be rendered in the browser-local timezone.");
+}
+if (formatLastSeen(`${currentYear}-09-24 18:16:00`) !== "24 Sep 18:16") {
+  throw new Error("Legacy timestamps without timezone information must preserve their displayed clock time.");
+}
+if (originalTZ === undefined) {
+  delete process.env.TZ;
+} else {
+  process.env.TZ = originalTZ;
+}
 
 console.log("Host UX semantic regression checks passed.");
