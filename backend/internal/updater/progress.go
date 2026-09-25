@@ -5,12 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
 )
 
 const defaultProgressPath = "/var/lib/lannventory/update-progress.json"
+
+const staleRunningProgressGrace = 30 * time.Second
 
 const (
 	ProgressStatusIdle     = "idle"
@@ -81,7 +84,48 @@ func (s *Service) Progress() (Progress, error) {
 	if strings.TrimSpace(progress.Stage) == "" {
 		return Progress{}, errors.New("decode update progress: stage is required")
 	}
+	if progress.Status != ProgressStatusIdle {
+		if _, err := time.Parse(time.RFC3339, progress.UpdatedAt); err != nil {
+			return Progress{}, fmt.Errorf("decode update progress: invalid updatedAt %q", progress.UpdatedAt)
+		}
+	}
+	return s.reconcileProgress(progress)
+}
+
+func (s *Service) reconcileProgress(progress Progress) (Progress, error) {
+	if progress.Status != ProgressStatusRunning || s.isUpdating() {
+		return progress, nil
+	}
+
+	updatedAt, err := time.Parse(time.RFC3339, progress.UpdatedAt)
+	if err != nil {
+		return Progress{}, fmt.Errorf("decode update progress: invalid updatedAt %q", progress.UpdatedAt)
+	}
+	if s.now().UTC().Sub(updatedAt) < staleRunningProgressGrace {
+		return progress, nil
+	}
+
+	if progress.SystemdUnit != "" && systemdUnitActive(progress.SystemdUnit) {
+		return progress, nil
+	}
+
+	progress.Status = ProgressStatusFailed
+	progress.FailedStage = progress.Stage
+	progress.Error = "Previous update attempt was interrupted before completion."
+	progress.CompletedAt = s.now().UTC().Format(time.RFC3339)
+	progress.ServiceRestored = lannventoryServiceActive()
+	if err := s.persistProgress(progress); err != nil {
+		return Progress{}, fmt.Errorf("persist interrupted update progress: %w", err)
+	}
 	return progress, nil
+}
+
+func systemdUnitActive(unit string) bool {
+	return exec.Command("systemctl", "is-active", "--quiet", unit).Run() == nil
+}
+
+func lannventoryServiceActive() bool {
+	return exec.Command("systemctl", "is-active", "--quiet", "lannventory").Run() == nil
 }
 
 func (s *Service) persistProgress(progress Progress) error {
