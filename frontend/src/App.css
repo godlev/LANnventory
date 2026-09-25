@@ -4178,6 +4178,21 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     min-height: 3.25rem;
     line-height: 1.05;
 }
+.host-history-disclosure > summary {
+    list-style: none;
+    cursor: pointer;
+}
+.host-history-disclosure > summary::-webkit-details-marker {
+    display: none;
+}
+.host-history-disclosure[open] > summary {
+    border-bottom: 1px solid var(--wyl-panel-border);
+}
+.host-history-controls {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 0.7rem;
+}
 .host-loading {
     color: var(--wyl-muted);
     font-size: 0.86rem;
@@ -4545,6 +4560,9 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     .host-history-date-control {
         align-items: flex-start;
         flex-direction: column;
+    }
+    .host-history-controls {
+        justify-content: flex-start;
     }
     .activity-row {
         grid-template-columns: 2rem minmax(0, 1fr);
