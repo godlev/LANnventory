@@ -3296,6 +3296,28 @@ html[data-bs-theme] .config-panel table > tbody > tr > td {
     border-color: var(--wyl-danger-control-border);
     color: var(--wyl-danger-control-text);
 }
+
+.host-section-error {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.65rem;
+    margin-bottom: 0.7rem;
+    padding: 0.55rem 0.62rem;
+    border: 1px solid var(--wyl-danger-control-border);
+    border-radius: 7px;
+    color: var(--wyl-danger-control-text);
+    font-size: 0.78rem;
+}
+@media (max-width: 575.98px) {
+    .host-section-error {
+        align-items: stretch;
+        flex-direction: column;
+    }
+    .host-section-error .btn {
+        align-self: flex-start;
+    }
+}
 .config-secondary-action {
     float: none;
 }
