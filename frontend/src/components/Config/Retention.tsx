@@ -28,8 +28,15 @@ function Retention() {
 
   return (
     <div class="card wyl-panel config-panel">
-      <div class="card-header">Data retention</div>
+      <div class="card-header config-panel-heading">
+        <span>Data retention</span>
+        <span class="settings-behavior-badge">Save required</span>
+      </div>
       <div class="card-body table-responsive">
+        <div class="settings-behavior-note">
+          <i class="bi bi-floppy" aria-hidden="true"></i>
+          <span>Retention changes are staged until you choose <strong>Save retention</strong>.</span>
+        </div>
         <form onSubmit={handleSubmit}>
           <table class="table table-borderless">
             <tbody>
