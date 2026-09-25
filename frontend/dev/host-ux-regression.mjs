@@ -47,8 +47,10 @@ requireText(identity, '<details class="host-identity-history">', "Historical ide
 requireText(identity, "Previous addresses and names are historical observations.", "Identity history must explicitly distinguish history from current state.");
 requireText(appStyles, ".host-identity-history", "Identity history must have dedicated secondary styling.");
 
-requireText(correlation, "Possible same device", "Correlation section must remain separate.");
+requireText(correlation, "Possible identity matches", "Possible identity matches must remain separate from IP reuse history.");
 requireText(correlation, "Shared IP history alone is not a same-device conclusion.", "Correlation must remain separate from address reuse.");
+requireText(correlation, "Confirmed same-device identities", "Confirmed user decisions must use user-facing identity terminology.");
+forbidText(correlation, "Read only projection", "Implementation-oriented correlation terminology must not be exposed to users.");
 requireText(
   correlation,
   "No evidence currently suggests that another MAC belongs to this same physical device.",
