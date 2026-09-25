@@ -113,6 +113,11 @@ requireText(deviceProfile, "optional reference values", "Hypervisor reference fi
 requireText(deviceProfile, "Capability profile; the Host remains Device Type Server.", "Hypervisor must remain a profile capability rather than a Device Type.");
 requireText(deviceProfile, '<option value="proxmox-ve">Proxmox VE</option>', "Manual Proxmox profile option must remain available.");
 
+requireText(deviceProfile, "No device profile configured", "Empty Device Profiles must collapse into a useful compact state.");
+requireText(deviceProfile, "hasAnyProfile", "Device Profile must distinguish meaningful profile data from empty typed sections.");
+requireText(deviceProfile, "props.editing || props.value", "Unset profile fields must stay hidden until editing.");
+requireText(appStyles, ".profile-empty-state", "Empty Device Profile state must have dedicated compact styling.");
+
 requireText(proxmoxInventory, "How access works", "Proxmox onboarding must explain collector permissions.");
 requireText(proxmoxInventory, "uses the permissions of the shell user", "Collector access model must be explicit.");
 requireText(proxmoxInventory, "Open the Proxmox shell", "Proxmox import must be presented as a guided workflow.");
