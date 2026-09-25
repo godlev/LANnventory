@@ -781,3 +781,45 @@ func TestPhase359FinalBeta10SupersedesUAT3(t *testing.T) {
 		t.Fatalf("Stable channel exposed beta.10 prerelease: status=%+v selected=%+v ok=%v", stableStatus, selected, ok)
 	}
 }
+
+
+func TestPhase3510UAT1SelectionFromBeta10(t *testing.T) {
+	releases := []release{
+		{TagName: "v0.1.0-beta.10.uat.1", Prerelease: true, Draft: false},
+		{TagName: "v0.1.0-beta.10", Prerelease: true, Draft: false},
+		{TagName: "v0.1.0-beta.9.uat.3", Prerelease: true, Draft: false},
+	}
+
+	status, selected, ok := buildStatus(
+		"v0.1.0-beta.10",
+		BetaChannel,
+		releases,
+		time.Time{},
+		false,
+	)
+	if !ok || selected.TagName != "v0.1.0-beta.10.uat.1" {
+		t.Fatalf("Beta selected %+v ok=%v, want Phase 35.10 UAT1", selected, ok)
+	}
+	if !status.Available || status.LatestVersion != "0.1.0-beta.10.uat.1" {
+		t.Fatalf("Beta status = %+v, want Phase 35.10 UAT1 available", status)
+	}
+
+	stableStatus, stableSelected, stableOK := buildStatus(
+		"v0.1.0-beta.10",
+		StableChannel,
+		releases,
+		time.Time{},
+		false,
+	)
+	if stableOK || stableStatus.Available || stableSelected.TagName != "" {
+		t.Fatalf("Stable channel exposed Phase 35.10 UAT1: status=%+v selected=%+v ok=%v", stableStatus, stableSelected, stableOK)
+	}
+
+	future := append([]release{
+		{TagName: "v0.1.0-beta.11", Prerelease: true, Draft: false},
+	}, releases...)
+	next, ok := selectLatestRelease(future, BetaChannel)
+	if !ok || next.TagName != "v0.1.0-beta.11" {
+		t.Fatalf("future beta.11 should supersede Phase 35.10 UAT1, got %+v ok=%v", next, ok)
+	}
+}
