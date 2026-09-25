@@ -60,6 +60,19 @@ forbidText(hostActivity, "activityHostName", "Host Recent Events must not repeat
 
 requireText(activityFeed, '<A href={"/host/" + event.HostID}', "Global Activity Host links must remain available.");
 
+requireText(hostCard, 'class="host-overview-main"', "Host must expose a first-class Device Overview hierarchy.");
+requireText(hostCard, '{overviewName()}', "Device Overview must lead with the device display name.");
+requireText(hostCard, '{currentDeviceType().label}', "Device Overview must expose device type.");
+requireText(hostCard, '{statusText()}', "Device Overview must expose current online/offline state.");
+requireText(hostCard, '{_props.host.IP || "No IP"}', "Device Overview must expose current IP.");
+requireText(hostCard, '{_props.host.Mac || "No MAC"}', "Device Overview must expose current MAC.");
+requireText(hostCard, '>Managed information</span>', "User-controlled Host fields must be labelled Managed information.");
+requireText(hostCard, '>Current network</span>', "Observed current network fields must be grouped separately.");
+requireText(hostCard, '>Discovered · Read only</span>', "Discovered network data must expose read-only provenance.");
+forbidText(hostCard, '>Host details</div>', "Legacy feature-card title must not remain the primary Host hierarchy.");
+requireText(appStyles, ".host-overview-header", "Device Overview must have dedicated responsive styling.");
+requireText(appStyles, ".host-overview-network", "Current network identity must have dedicated summary styling.");
+
 for (const label of [
   "Current IP",
   "Current MAC",
