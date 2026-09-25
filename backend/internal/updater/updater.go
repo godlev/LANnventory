@@ -95,6 +95,8 @@ type Service struct {
 	releaseNotesBaseURL string
 	progressPath        string
 	now                 func() time.Time
+	unitActive          func(string) bool
+	serviceActive       func() bool
 
 	mu               sync.Mutex
 	cached           []release
@@ -124,6 +126,8 @@ func NewServiceWithURLAndProgressPath(client *http.Client, releasesURL, progress
 		progressPath:     progressPath,
 		releaseSummaries: make(map[string]string),
 		now:              time.Now,
+		unitActive:       systemdUnitActive,
+		serviceActive:    lannventoryServiceActive,
 	}
 }
 
