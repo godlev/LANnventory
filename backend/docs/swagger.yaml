@@ -1845,6 +1845,10 @@ paths:
         name: num
         required: true
         type: integer
+      - description: IANA browser time zone used to render DATE values
+        in: query
+        name: timeZone
+        type: string
       produces:
       - application/json
       responses:
@@ -1854,6 +1858,12 @@ paths:
             items:
               $ref: '#/definitions/models.Host'
             type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
       summary: Get history by MAC
       tags:
       - history
@@ -1862,6 +1872,7 @@ paths:
       description: |-
         Retrieve history for a specific host on a given date
         Inventory metadata fields are not included on history rows.
+        Legacy callers may filter by DATE prefix. Browser clients can provide an explicit UTC range so the selected date represents the browser-local calendar day.
         The date format is flexible and can be:
         - Year only: `2025`
         - Year + month: `2025-09`
@@ -1878,6 +1889,18 @@ paths:
         name: date
         required: true
         type: string
+      - description: Browser-local day start as RFC3339 UTC instant
+        in: query
+        name: from
+        type: string
+      - description: Next browser-local day start as RFC3339 UTC instant
+        in: query
+        name: to
+        type: string
+      - description: IANA browser time zone used to render DATE values
+        in: query
+        name: timeZone
+        type: string
       produces:
       - application/json
       responses:
@@ -1887,6 +1910,18 @@ paths:
             items:
               $ref: '#/definitions/models.Host'
             type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
       summary: Get history by date
       tags:
       - history
