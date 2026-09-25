@@ -373,34 +373,73 @@ func (s *Service) Schedule(ctx context.Context, currentVersion, channel, expecte
 		return ApplyResult{}, fmt.Errorf("%w: %s", ErrUnsupportedInstall, reason)
 	}
 
+	startedAt := s.now().UTC()
+	progress := Progress{
+		AttemptID:       fmt.Sprintf("update-%d", startedAt.UnixNano()),
+		Status:          ProgressStatusRunning,
+		Stage:           UpdateStagePreparing,
+		PreviousVersion: currentVersion,
+		TargetVersion:   targetVersion,
+		StartedAt:       startedAt.Format(time.RFC3339),
+	}
+	if err := s.persistProgress(progress); err != nil {
+		return ApplyResult{}, fmt.Errorf("initialize update progress: %w", err)
+	}
+	progressActive := true
+
+	fail := func(updateErr error) (ApplyResult, error) {
+		if progressActive {
+			progress.Status = ProgressStatusFailed
+			progress.FailedStage = progress.Stage
+			progress.Error = updateErr.Error()
+			progress.CompletedAt = s.now().UTC().Format(time.RFC3339)
+			_ = s.persistProgress(progress)
+		}
+		return ApplyResult{}, updateErr
+	}
+	setStage := func(stage string) error {
+		progress.Status = ProgressStatusRunning
+		progress.Stage = stage
+		progress.FailedStage = ""
+		progress.Error = ""
+		progress.CompletedAt = ""
+		return s.persistProgress(progress)
+	}
+
+	if err := setStage(UpdateStageDownloading); err != nil {
+		return fail(fmt.Errorf("persist download progress: %w", err))
+	}
 	checksumData, err := s.download(ctx, checksumAsset.BrowserDownloadURL, maxChecksumBody)
 	if err != nil {
-		return ApplyResult{}, fmt.Errorf("download checksums: %w", err)
+		return fail(fmt.Errorf("download checksums: %w", err))
+	}
+	debData, err := s.download(ctx, debAsset.BrowserDownloadURL, maxPackageBody)
+	if err != nil {
+		return fail(fmt.Errorf("download package: %w", err))
+	}
+
+	if err := setStage(UpdateStageVerifying); err != nil {
+		return fail(fmt.Errorf("persist verification progress: %w", err))
 	}
 	expectedHash, err := checksumForFile(checksumData, debAsset.Name)
 	if err != nil {
-		return ApplyResult{}, err
-	}
-
-	debData, err := s.download(ctx, debAsset.BrowserDownloadURL, maxPackageBody)
-	if err != nil {
-		return ApplyResult{}, fmt.Errorf("download package: %w", err)
+		return fail(err)
 	}
 	actualHash := sha256.Sum256(debData)
 	actualHashHex := hex.EncodeToString(actualHash[:])
 	if !strings.EqualFold(expectedHash, actualHashHex) {
-		return ApplyResult{}, errors.New("downloaded package checksum does not match checksums.txt")
+		return fail(errors.New("downloaded package checksum does not match checksums.txt"))
 	}
 	if digest := strings.TrimSpace(debAsset.Digest); digest != "" {
 		digest = strings.TrimPrefix(strings.ToLower(digest), "sha256:")
 		if len(digest) == 64 && !strings.EqualFold(digest, actualHashHex) {
-			return ApplyResult{}, errors.New("downloaded package checksum does not match GitHub asset digest")
+			return fail(errors.New("downloaded package checksum does not match GitHub asset digest"))
 		}
 	}
 
 	updateDir, err := os.MkdirTemp("/var/tmp", "lannventory-update-")
 	if err != nil {
-		return ApplyResult{}, fmt.Errorf("create update directory: %w", err)
+		return fail(fmt.Errorf("create update directory: %w", err))
 	}
 	cleanup := true
 	defer func() {
@@ -411,7 +450,7 @@ func (s *Service) Schedule(ctx context.Context, currentVersion, channel, expecte
 
 	debPath := filepath.Join(updateDir, filepath.Base(debAsset.Name))
 	if err := os.WriteFile(debPath, debData, 0o600); err != nil {
-		return ApplyResult{}, fmt.Errorf("write package: %w", err)
+		return fail(fmt.Errorf("write package: %w", err))
 	}
 
 	healthURL = strings.TrimSpace(healthURL)
@@ -445,13 +484,19 @@ func (s *Service) Schedule(ctx context.Context, currentVersion, channel, expecte
 		"trap - EXIT\n" +
 		"rm -rf " + shellQuote(updateDir) + "\n"
 	if err := os.WriteFile(scriptPath, []byte(script), 0o700); err != nil {
-		return ApplyResult{}, fmt.Errorf("write update helper: %w", err)
+		return fail(fmt.Errorf("write update helper: %w", err))
 	}
 
-	unitName := fmt.Sprintf("lannventory-update-%d", time.Now().UnixNano())
+	unitName := fmt.Sprintf("lannventory-update-%d", s.now().UnixNano())
+	progress.BackupPath = backupDir
+	progress.SystemdUnit = unitName
+	if err := setStage(UpdateStageBackup); err != nil {
+		return fail(fmt.Errorf("persist backup progress: %w", err))
+	}
+
 	output, err := exec.Command("systemd-run", "--unit="+unitName, "--collect", "--no-block", "/bin/sh", scriptPath).CombinedOutput()
 	if err != nil {
-		return ApplyResult{}, fmt.Errorf("schedule update: %w: %s", err, strings.TrimSpace(string(output)))
+		return fail(fmt.Errorf("schedule update: %w: %s", err, strings.TrimSpace(string(output))))
 	}
 
 	scheduled = true
