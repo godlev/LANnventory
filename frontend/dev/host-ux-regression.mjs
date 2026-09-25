@@ -32,7 +32,7 @@ function forbidText(source, value, message) {
   }
 }
 
-requireText(identity, "Network identity history", "Identity section title must clarify history.");
+requireText(identity, "Network identity", "Identity section title must describe the current device identity.");
 requireText(identity, "This IP was also used by", "Shared IP wording must make the IP the grammatical subject.");
 requireText(
   identity,
@@ -41,6 +41,11 @@ requireText(
 );
 requireText(identity, '<MACObservation address={props.address.address}', "Historical MAC rows must retain explicit address context.");
 forbidText(identity, "Also observed with", "Ambiguous shared-IP wording must not return.");
+
+requireText(identity, "Current network identity", "Current identity observations must have visual priority.");
+requireText(identity, '<details class="host-identity-history">', "Historical identity observations must use progressive disclosure.");
+requireText(identity, "Previous addresses and names are historical observations.", "Identity history must explicitly distinguish history from current state.");
+requireText(appStyles, ".host-identity-history", "Identity history must have dedicated secondary styling.");
 
 requireText(correlation, "Possible same device", "Correlation section must remain separate.");
 requireText(correlation, "Shared IP history alone is not a same-device conclusion.", "Correlation must remain separate from address reuse.");
