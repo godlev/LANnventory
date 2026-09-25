@@ -5,6 +5,7 @@ import type { Host } from "../../functions/exports";
 type PingProps = {
   host: Host;
   onScanComplete?: () => void;
+  embedded?: boolean;
 };
 
 function Ping(props: PingProps) {
@@ -81,6 +82,75 @@ function Ping(props: PingProps) {
     return "Last scanned port: " + curPort();
   };
 
+  const scanContent = () => (
+    <>
+      <form class="host-port-controls">
+        <label class="host-port-field">
+          <span>Start port</span>
+          <input
+            type="text"
+            class="form-control form-control-sm wyl-control host-port-input"
+            placeholder="1"
+            onInput={e => setBegin(e.target.value)}
+          ></input>
+        </label>
+        <label class="host-port-field">
+          <span>End port</span>
+          <input
+            type="text"
+            class="form-control form-control-sm wyl-control host-port-input"
+            placeholder="65535"
+            onInput={e => setEnd(e.target.value)}
+          ></input>
+        </label>
+        <button
+          type="button"
+          onClick={handleScan}
+          class="btn btn-sm wyl-button host-scan-button"
+          disabled={props.host.ID < 1 || !props.host.IP || isRunning()}
+        >
+          <i class="bi bi-search" aria-hidden="true"></i>
+          <span>Scan</span>
+        </button>
+      </form>
+
+      {curPort() !== ""
+        ? <div class="host-scan-state">
+            {isRunning() || isStopped()
+              ? <button type="button" onClick={handleStop} class="btn btn-sm wyl-button host-stop-button">
+                  {isStopped() ? "Continue" : "Stop"}
+                </button>
+              : <></>
+            }
+            <div class="host-scan-status">{scanStatus()}</div>
+          </div>
+        : <></>
+      }
+
+      {scanError()
+        ? <div class="host-inline-error" role="alert">{scanError()}</div>
+        : <></>
+      }
+
+      <div class="host-found-ports">
+        <For each={foundPorts()}>{(port) =>
+          <a class="host-port-chip" href={"http://" + props.host.IP + ":" + port} target="_blank" rel="noreferrer">{port}</a>
+        }</For>
+      </div>
+    </>
+  );
+
+  if (props.embedded) {
+    return (
+      <div class="host-manual-scan">
+        <div class="small device-cell-muted mb-2">
+          Scan a TCP port range on the current device address ({props.host.IP || "no current IP"}). Results are added to the service inventory.
+        </div>
+        {scanContent()}
+      </div>
+    );
+  }
+
   return (
     <div class="card wyl-panel host-panel">
       <div class="card-header host-panel-header">
@@ -90,59 +160,7 @@ function Ping(props: PingProps) {
         </div>
       </div>
       <div class="card-body host-port-body">
-        <form class="host-port-controls">
-          <label class="host-port-field">
-            <span>Start port</span>
-            <input
-              type="text"
-              class="form-control form-control-sm wyl-control host-port-input"
-              placeholder="1"
-              onInput={e => setBegin(e.target.value)}
-            ></input>
-          </label>
-          <label class="host-port-field">
-            <span>End port</span>
-            <input
-              type="text"
-              class="form-control form-control-sm wyl-control host-port-input"
-              placeholder="65535"
-              onInput={e => setEnd(e.target.value)}
-            ></input>
-          </label>
-          <button
-            type="button"
-            onClick={handleScan}
-            class="btn btn-sm wyl-button host-scan-button"
-            disabled={props.host.ID < 1 || !props.host.IP || isRunning()}
-          >
-            <i class="bi bi-search" aria-hidden="true"></i>
-            <span>Scan</span>
-          </button>
-        </form>
-
-        {curPort() !== ""
-          ? <div class="host-scan-state">
-              {isRunning() || isStopped()
-                ? <button type="button" onClick={handleStop} class="btn btn-sm wyl-button host-stop-button">
-                    {isStopped() ? "Continue" : "Stop"}
-                  </button>
-                : <></>
-              }
-              <div class="host-scan-status">{scanStatus()}</div>
-            </div>
-          : <></>
-        }
-
-        {scanError()
-          ? <div class="host-inline-error" role="alert">{scanError()}</div>
-          : <></>
-        }
-
-        <div class="host-found-ports">
-          <For each={foundPorts()}>{(port) =>
-            <a class="host-port-chip" href={"http://" + props.host.IP + ":" + port} target="_blank" rel="noreferrer">{port}</a>
-          }</For>
-        </div>
+        {scanContent()}
       </div>
     </div>
   );
