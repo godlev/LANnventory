@@ -3655,6 +3655,52 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     align-self: flex-start;
 }
 
+.host-overview-more {
+    position: relative;
+}
+.host-overview-more > summary {
+    list-style: none;
+}
+.host-overview-more > summary::-webkit-details-marker {
+    display: none;
+}
+.host-overview-more[open] > summary {
+    border-color: var(--wyl-link);
+}
+.host-overview-more-menu {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + 0.35rem);
+    right: 0;
+    min-width: 11.5rem;
+    padding: 0.35rem;
+    border: 1px solid var(--wyl-panel-border);
+    border-radius: 8px;
+    background: var(--wyl-panel-bg);
+    box-shadow: 0 0.45rem 1.2rem rgba(0, 0, 0, 0.16);
+}
+.host-overview-danger-action {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    width: 100%;
+    padding: 0.45rem 0.55rem;
+    border: 0;
+    border-radius: 6px;
+    color: var(--wyl-danger-control-text);
+    background: transparent;
+    font-size: 0.78rem;
+    font-weight: 750;
+    text-align: left;
+}
+.host-overview-danger-action:hover,
+.host-overview-danger-action:focus-visible {
+    background: color-mix(in srgb, var(--bs-danger) 10%, transparent);
+}
+.host-overview-danger-action:disabled {
+    opacity: 0.55;
+}
+
 .host-details-body,
 .host-port-body,
 .host-history-body {
@@ -4445,6 +4491,10 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     .host-overview-actions {
         justify-content: flex-start;
         width: 100%;
+    }
+    .host-overview-more-menu {
+        right: auto;
+        left: 0;
     }
     .host-overview-network,
     .host-overview-managed-meta {
