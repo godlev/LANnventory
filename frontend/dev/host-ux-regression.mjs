@@ -157,6 +157,11 @@ requireText(proxmoxInventory, "Remove link", "The linked-state action must descr
 requireText(proxmoxInventory, "Historical IP reuse is kept in Host history only.", "Historical IP reuse must be explained as context rather than workload-match evidence.");
 requireText(proxmoxInventory, "Manual / script", "Proxmox inventory must retain the existing script source selector.");
 requireText(proxmoxInventory, "Proxmox API", "Proxmox inventory must offer the optional API source.");
+requireText(proxmoxInventory, "Connection &amp; collection", "Proxmox connection and collection controls must be secondary disclosure.");
+requireText(proxmoxInventory, "Source details", "Technical Proxmox collector metadata must remain accessible without dominating the summary.");
+requireText(proxmoxInventory, "Current LANnventory view of the last successfully applied read-only inventory snapshot.", "Proxmox summary must describe current inventory state.");
+requireText(proxmoxInventory, 'data-label="Guest"', "Proxmox workloads must expose mobile row labels.");
+requireText(appStyles, ".proxmox-workload-table td::before", "Proxmox workload table must transform into labelled rows on narrow screens.");
 requireText(proxmoxInventory, "API Token Secret", "Proxmox API setup must expose a dedicated token-secret field.");
 requireText(proxmoxInventory, "Stored secret — leave blank to keep", "Stored Proxmox token secrets must remain write-only in the UI.");
 requireText(proxmoxInventory, "Clear stored token secret", "Proxmox API setup must provide explicit secret clearing.");
