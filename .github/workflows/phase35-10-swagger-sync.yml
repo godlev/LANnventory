@@ -1,0 +1,41 @@
+name: Phase 35.10 Swagger Sync
+
+on:
+  push:
+    branches:
+      - phase35.10-host-overview
+
+permissions:
+  contents: write
+
+jobs:
+  sync-swagger:
+    if: ${{ !contains(github.event.head_commit.message, '[swagger-sync]') }}
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v7
+        with:
+          ref: phase35.10-host-overview
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Regenerate Swagger
+        working-directory: backend
+        run: go run github.com/swaggo/swag/cmd/swag@v1.16.6 init -g main.go --dir cmd/LANnventory,internal/api,internal/models
+
+      - name: Commit generated docs
+        run: |
+          if git diff --quiet -- backend/docs; then
+            echo "Swagger docs are already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/docs
+          git commit -m "Phase 35.10: refresh Swagger docs [swagger-sync]"
+          git push origin HEAD:phase35.10-host-overview
