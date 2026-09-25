@@ -25,8 +25,15 @@ const settingsSections: Array<{ id: SettingsSection; label: string; icon: string
 
 function sectionFromHash(): SettingsSection {
   const value = window.location.hash.replace(/^#/, "");
-  return settingsSections.some((section) => section.id === value)
-    ? value as SettingsSection
+  const legacyAliases: Record<string, SettingsSection> = {
+    scanning: "network",
+    "data-retention": "data",
+    "data-export": "data",
+  };
+  const normalized = legacyAliases[value] ?? value;
+
+  return settingsSections.some((section) => section.id === normalized)
+    ? normalized as SettingsSection
     : "general";
 }
 
@@ -77,7 +84,10 @@ function Config() {
                   href={"#" + section.id}
                   class={"settings-nav-link" + (activeSection() === section.id ? " is-active" : "")}
                   aria-current={activeSection() === section.id ? "page" : undefined}
-                  onClick={() => selectSection(section.id)}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    selectSection(section.id);
+                  }}
                 >
                   <i class={"bi " + section.icon} aria-hidden="true"></i>
                   <span>{section.label}</span>
