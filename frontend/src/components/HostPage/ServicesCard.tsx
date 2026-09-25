@@ -232,7 +232,7 @@ function ServicesCard(props: ServicesCardProps) {
         <Show when={!loading()} fallback={<div class="device-cell-muted">Loading services…</div>}>
           <Show when={!loadError()} fallback={<div class="host-inline-error" role="alert">{loadError()}</div>}>
             <section class="host-services-current" aria-labelledby="host-current-services-title">
-              <div class="host-services-section-heading">
+              <div class="host-section-summary-heading">
                 <div>
                   <div id="host-current-services-title" class="small fw-semibold">Current open services</div>
                   <div class="small device-cell-muted">Services reported open on the most recent check for each exact device address.</div>
