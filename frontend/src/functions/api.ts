@@ -912,15 +912,34 @@ export const apiScanHostPort = async (id:number, port:number): Promise<HostPortS
   });
 };
 
-export const apiGetHistory = async (mac:string) => {
-  const url = apiPath+'/api/history/'+mac+'/?num=210';
+export type HistoryDateRange = {
+  from: string;
+  to: string;
+  timeZone?: string;
+};
+
+export const apiGetHistory = async (mac:string, timeZone = "") => {
+  const params = new URLSearchParams({ num: "210" });
+  if (timeZone) {
+    params.set("timeZone", timeZone);
+  }
+  const url = apiPath+'/api/history/'+mac+'/?'+params.toString();
   const hosts = await apiJSON<Host[]>(url);
 
   return hosts;
 };
 
-export const apiGetHistoryByDate = async (mac:string, date: string) => {
-  const url = apiPath+'/api/history/'+mac+'/'+date;
+export const apiGetHistoryByDate = async (mac:string, date: string, range?: HistoryDateRange) => {
+  const params = new URLSearchParams();
+  if (range) {
+    params.set("from", range.from);
+    params.set("to", range.to);
+    if (range.timeZone) {
+      params.set("timeZone", range.timeZone);
+    }
+  }
+  const query = params.toString();
+  const url = apiPath+'/api/history/'+mac+'/'+date+(query ? '?'+query : '');
   const hosts = await apiJSON<Host[]>(url);
 
   return hosts;
