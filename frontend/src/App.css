@@ -3244,6 +3244,62 @@ html[data-bs-theme] .activity-table > tbody > tr.activity-group-row:hover > td {
 .config-panel {
     margin-bottom: 0;
 }
+.config-panel-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.65rem;
+}
+.settings-behavior-badge {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+    min-height: 1.3rem;
+    padding: 0.1rem 0.4rem;
+    border: 1px solid var(--wyl-panel-border);
+    border-radius: 999px;
+    color: var(--wyl-muted);
+    font-size: 0.64rem;
+    font-weight: 850;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+.settings-behavior-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.45rem;
+    margin-bottom: 0.7rem;
+    padding: 0.5rem 0.58rem;
+    border: 1px solid var(--wyl-panel-border);
+    border-radius: 7px;
+    color: var(--wyl-muted);
+    background: var(--wyl-control-bg);
+    font-size: 0.74rem;
+    line-height: 1.35;
+}
+.settings-behavior-note i {
+    flex: 0 0 auto;
+    margin-top: 0.04rem;
+    color: var(--wyl-link);
+}
+.config-secret-state {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.32rem;
+    margin-bottom: 0.38rem;
+    padding: 0.12rem 0.4rem;
+    border: 1px solid var(--wyl-panel-border);
+    border-radius: 999px;
+    color: var(--wyl-muted);
+    font-size: 0.68rem;
+    font-weight: 750;
+}
+.config-secret-state.is-stored {
+    color: var(--bs-success);
+}
+.config-secret-state.is-empty {
+    color: var(--wyl-muted);
+}
 .config-panel .card-body {
     padding: 0.95rem;
 }
