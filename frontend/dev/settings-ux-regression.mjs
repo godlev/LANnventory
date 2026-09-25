@@ -45,9 +45,13 @@ requireText(scan, "Save scan settings", "Scan/database save domain must remain e
 requireText(scan, 'action={apiPath + \'/api/config_settings/\'}', "Network scanning must keep its existing independent save domain.");
 requireText(scan, "Saving these settings restarts network scanning.", "Scanner restart side effect must remain visible.");
 
-requireText(basic, "Configured - leave blank to keep current value", "Stored Shoutrrr secret must remain write-only.");
+requireText(basic, "Stored securely · value hidden", "Stored Shoutrrr secret must expose configured state without revealing the value.");
+requireText(basic, "Leave blank to keep the stored URL", "Stored Shoutrrr secret replacement behavior must remain explicit.");
+requireText(basic, "write-only and are never displayed after saving", "Stored Shoutrrr secret must remain write-only.");
 requireText(basic, "Clear stored Shoutrrr URL", "Shoutrrr secret must retain explicit clearing.");
-requireText(scan, "Configured - leave blank to keep current value", "Stored PostgreSQL secret must remain write-only.");
+requireText(scan, "Stored securely · value hidden", "Stored PostgreSQL secret must expose configured state without revealing the value.");
+requireText(scan, "Leave blank to keep the stored connection URL", "Stored PostgreSQL secret replacement behavior must remain explicit.");
+requireText(scan, "write-only and are never displayed after saving", "Stored PostgreSQL secret must remain write-only.");
 requireText(scan, "Clear stored PostgreSQL connection URL", "PostgreSQL secret must retain explicit clearing.");
 requireText(influx, "Configured - leave blank to keep current value", "Stored Influx token must remain write-only.");
 requireText(influx, "Clear stored InfluxDB token", "Influx secret must retain explicit clearing.");
