@@ -457,10 +457,10 @@ function SourceSummary(props: {
     <div class="proxmox-source-block">
       <div class="proxmox-section-heading">
         <div>
-          <div class="small fw-semibold">Source state</div>
-          <div class="small device-cell-muted">Last successfully applied read-only collector snapshot.</div>
+          <div class="small fw-semibold">Proxmox VE</div>
+          <div class="small device-cell-muted">Current LANnventory view of the last successfully applied read-only inventory snapshot.</div>
         </div>
-        <Show when={props.state} fallback={<span class="badge text-bg-secondary">Not imported</span>}>
+        <Show when={props.state} fallback={<span class="badge text-bg-secondary">Not connected</span>}>
           {(state) => (
             <span class={"badge "+(state().nodeStatus === "online" ? "text-bg-success" : state().nodeStatus === "offline" ? "text-bg-danger" : "text-bg-secondary")}>
               {capitalize(state().nodeStatus)}
@@ -475,23 +475,31 @@ function SourceSummary(props: {
           <div class="proxmox-empty proxmox-empty-source">
             <i class="bi bi-box-arrow-in-down" aria-hidden="true"></i>
             <div>
-              <div class="fw-semibold">No collector snapshot has been applied.</div>
-              <div class="small device-cell-muted">Use the import workflow below to preview the read-only collector output first.</div>
+              <div class="fw-semibold">No Proxmox inventory has been applied yet.</div>
+              <div class="small device-cell-muted">Open Connection &amp; collection below to configure a read-only API source or use the guided script import.</div>
             </div>
           </div>
         }
       >
         {(state) => (
-          <div class="proxmox-source-grid">
-            <SourceMetric label="Node" value={state().nodeHostname} monospace />
-            <SourceMetric label="PVE version" value={state().nodePveVersion} />
-            <SourceMetric label="Cluster" value={state().nodeClusterName || "Standalone"} />
-            <SourceMetric label="Source" value={state().source === "proxmox-api" ? "Proxmox API" : "Script import"} />
-            <SourceMetric label="Collected" value={formatTimestamp(state().collectedAt)} />
-            <SourceMetric label="Imported" value={formatTimestamp(state().importedAt)} />
-            <SourceMetric label="Collector" value={state().collectorVersion} />
-            <SourceMetric label="Schema" value={"v"+state().schemaVersion} />
-          </div>
+          <>
+            <div class="proxmox-source-grid proxmox-node-overview-grid">
+              <SourceMetric label="Node" value={state().nodeHostname} monospace />
+              <SourceMetric label="PVE version" value={state().nodePveVersion} />
+              <SourceMetric label="Cluster" value={state().nodeClusterName || "Standalone"} />
+              <SourceMetric label="Inventory source" value={state().source === "proxmox-api" ? "Proxmox API" : "Script import"} />
+            </div>
+
+            <details class="proxmox-source-details">
+              <summary>Source details</summary>
+              <div class="proxmox-source-grid">
+                <SourceMetric label="Collected" value={formatTimestamp(state().collectedAt)} />
+                <SourceMetric label="Imported" value={formatTimestamp(state().importedAt)} />
+                <SourceMetric label="Collector" value={state().collectorVersion} />
+                <SourceMetric label="Schema" value={"v"+state().schemaVersion} />
+              </div>
+            </details>
+          </>
         )}
       </Show>
 
@@ -500,7 +508,7 @@ function SourceSummary(props: {
         <SummaryMetric label="Running" value={props.running} />
         <SummaryMetric label="Stopped" value={props.stopped} />
         <SummaryMetric label="Matched" value={props.matched} />
-        <SummaryMetric label="IP conflicts" value={props.conflicts} />
+        <SummaryMetric label="Review" value={props.conflicts} />
         <SummaryMetric label="Retired" value={props.retired} />
       </div>
     </div>
