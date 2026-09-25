@@ -72,6 +72,7 @@ func Routes(router *gin.Engine) {
 		r0.GET("/scanner/status", getScannerStatus)
 		r0.GET("/diagnostics", getDiagnostics)
 		r0.GET("/update/status", getUpdateStatus)
+	r0.GET("/update/progress", getUpdateProgress)
 		r0.POST("/update/channel", saveUpdateChannel)
 		r0.POST("/update/settings", saveUpdateSettings)
 		r0.POST("/update/apply", applyUpdate)
