@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { formatLastSeen } from "../src/functions/dateFormat.ts";
+import { localDayUTCRange } from "../src/functions/history.ts";
 
 const root = resolve(import.meta.dirname, "..");
 const read = (path) => readFileSync(resolve(root, path), "utf8");
@@ -9,6 +10,8 @@ const identity = read("src/components/HostPage/IdentityCard.tsx");
 const correlation = read("src/components/HostPage/CorrelationPanel.tsx");
 const hostActivity = read("src/components/HostPage/HostActivityCard.tsx");
 const hostHistory = read("src/components/HostPage/HistCard.tsx");
+const macHistory = read("src/components/MacHistory.tsx");
+const historyApi = read("src/functions/api.ts");
 const servicesCard = read("src/components/HostPage/ServicesCard.tsx");
 const activityFeed = read("src/components/ActivityFeed.tsx");
 const hostPage = read("src/pages/HostPage.tsx");
@@ -80,6 +83,13 @@ requireText(hostHistory, 'class="card wyl-panel host-history-panel host-history-
 requireText(hostHistory, '<Show when={expanded()}>', "Presence history content must load only after the user opens it.");
 requireText(hostHistory, '>History</span>', "Presence history must be labelled as historical context.");
 requireText(appStyles, ".host-history-disclosure", "Presence history disclosure must have dedicated styling.");
+requireText(macHistory, "createEffect", "Presence history must refetch when Host/date inputs change.");
+requireText(macHistory, "Presence history could not be loaded.", "Presence history must expose API failures.");
+requireText(macHistory, "No presence data recorded for this date.", "Presence history must distinguish a valid empty day from an API failure.");
+requireText(macHistory, "Retry", "Presence history must expose a local retry action.");
+requireText(historyApi, 'params.set("from", range.from)', "Dated presence queries must send an explicit browser-local UTC range.");
+requireText(historyApi, 'params.set("timeZone", range.timeZone)', "Dated presence queries must send browser timezone context.");
+forbidText(hostHistory, 'setToday("");', "Presence date changes must not rely on forced unmount/remount behavior.");
 
 requireText(servicesCard, "Current open services", "Services must prioritize current open state.");
 requireText(servicesCard, "Manual service scan", "Manual port scanning must live with service inventory.");
@@ -227,6 +237,14 @@ forbidText(deviceTypes, '| "hypervisor"', "Hypervisor must not become an exclusi
 
 const originalTZ = process.env.TZ;
 process.env.TZ = "Europe/Sofia";
+const sofiaLocalDay = localDayUTCRange("2026-09-26");
+if (sofiaLocalDay?.from !== "2026-09-25T21:00:00.000Z" || sofiaLocalDay?.to !== "2026-09-26T21:00:00.000Z") {
+  throw new Error("Presence local-day range must map Sofia midnight boundaries to UTC.");
+}
+const sofiaDSTDay = localDayUTCRange("2026-10-25");
+if (sofiaDSTDay?.from !== "2026-10-24T21:00:00.000Z" || sofiaDSTDay?.to !== "2026-10-25T22:00:00.000Z") {
+  throw new Error("Presence local-day range must preserve a 25-hour DST transition day.");
+}
 const currentYear = new Date().getFullYear();
 if (formatLastSeen(`${currentYear}-09-24T18:16:00Z`) !== "24 Sep 21:16") {
   throw new Error("RFC3339 UTC timestamps must be rendered in the browser-local timezone.");
