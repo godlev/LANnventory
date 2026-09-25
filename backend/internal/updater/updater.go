@@ -338,6 +338,21 @@ func (s *Service) Schedule(ctx context.Context, currentVersion, channel, expecte
 		s.mu.Unlock()
 		return ApplyResult{}, ErrUpdateInProgress
 	}
+	s.mu.Unlock()
+
+	existingProgress, err := s.Progress()
+	if err != nil {
+		return ApplyResult{}, fmt.Errorf("read existing update progress: %w", err)
+	}
+	if existingProgress.Status == ProgressStatusRunning {
+		return ApplyResult{}, ErrUpdateInProgress
+	}
+
+	s.mu.Lock()
+	if s.updating {
+		s.mu.Unlock()
+		return ApplyResult{}, ErrUpdateInProgress
+	}
 	s.updating = true
 	s.mu.Unlock()
 
