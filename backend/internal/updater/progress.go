@@ -105,7 +105,7 @@ func (s *Service) reconcileProgress(progress Progress) (Progress, error) {
 		return progress, nil
 	}
 
-	if progress.SystemdUnit != "" && systemdUnitActive(progress.SystemdUnit) {
+	if progress.SystemdUnit != "" && s.unitActive != nil && s.unitActive(progress.SystemdUnit) {
 		return progress, nil
 	}
 
@@ -113,7 +113,9 @@ func (s *Service) reconcileProgress(progress Progress) (Progress, error) {
 	progress.FailedStage = progress.Stage
 	progress.Error = "Previous update attempt was interrupted before completion."
 	progress.CompletedAt = s.now().UTC().Format(time.RFC3339)
-	progress.ServiceRestored = lannventoryServiceActive()
+	if s.serviceActive != nil {
+		progress.ServiceRestored = s.serviceActive()
+	}
 	if err := s.persistProgress(progress); err != nil {
 		return Progress{}, fmt.Errorf("persist interrupted update progress: %w", err)
 	}
