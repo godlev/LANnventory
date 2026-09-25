@@ -8,6 +8,7 @@ const read = (path) => readFileSync(resolve(root, path), "utf8");
 const identity = read("src/components/HostPage/IdentityCard.tsx");
 const correlation = read("src/components/HostPage/CorrelationPanel.tsx");
 const hostActivity = read("src/components/HostPage/HostActivityCard.tsx");
+const servicesCard = read("src/components/HostPage/ServicesCard.tsx");
 const activityFeed = read("src/components/ActivityFeed.tsx");
 const hostCard = read("src/components/HostPage/HostCard.tsx");
 const deviceProfile = read("src/components/HostPage/DeviceProfileCard.tsx");
@@ -59,6 +60,14 @@ forbidText(hostActivity, 'href={"/host/"', "Host Recent Events must not link bac
 forbidText(hostActivity, "activityHostName", "Host Recent Events must not repeat the Host name.");
 
 requireText(activityFeed, '<A href={"/host/" + event.HostID}', "Global Activity Host links must remain available.");
+
+requireText(servicesCard, "Current open services", "Services must prioritize current open state.");
+requireText(servicesCard, "Previously observed services", "Closed services must remain available as explicit history.");
+requireText(servicesCard, "Closed services are retained as history.", "Historical service state must not imply a current open service.");
+requireText(servicesCard, '<details class="host-services-secondary">', "Historical services and scan settings must use progressive disclosure.");
+requireText(servicesCard, "Scheduled scanning", "Per-host scheduled scan controls must remain available.");
+requireText(servicesCard, 'data-label="Service"', "Services table must expose mobile row labels.");
+requireText(appStyles, ".host-services-table td::before", "Services must transform into labelled rows on narrow screens.");
 
 requireText(hostCard, 'class="host-overview-main"', "Host must expose a first-class Device Overview hierarchy.");
 requireText(hostCard, '{overviewName()}', "Device Overview must lead with the device display name.");
