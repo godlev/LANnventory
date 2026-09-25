@@ -8,6 +8,7 @@ const read = (path) => readFileSync(resolve(root, path), "utf8");
 const identity = read("src/components/HostPage/IdentityCard.tsx");
 const correlation = read("src/components/HostPage/CorrelationPanel.tsx");
 const hostActivity = read("src/components/HostPage/HostActivityCard.tsx");
+const hostHistory = read("src/components/HostPage/HistCard.tsx");
 const servicesCard = read("src/components/HostPage/ServicesCard.tsx");
 const activityFeed = read("src/components/ActivityFeed.tsx");
 const hostCard = read("src/components/HostPage/HostCard.tsx");
@@ -72,6 +73,11 @@ requireText(hostActivity, 'class="host-section-error"', "Secondary Host section 
 requireText(appStyles, ".host-section-error", "Partial Host section errors must have dedicated styling.");
 
 requireText(activityFeed, '<A href={"/host/" + event.HostID}', "Global Activity Host links must remain available.");
+
+requireText(hostHistory, 'class="card wyl-panel host-history-panel host-history-disclosure"', "Presence history must be secondary progressive disclosure.");
+requireText(hostHistory, '<Show when={expanded()}>', "Presence history content must load only after the user opens it.");
+requireText(hostHistory, '>History</span>', "Presence history must be labelled as historical context.");
+requireText(appStyles, ".host-history-disclosure", "Presence history disclosure must have dedicated styling.");
 
 requireText(servicesCard, "Current open services", "Services must prioritize current open state.");
 requireText(servicesCard, "Previously observed services", "Closed services must remain available as explicit history.");
