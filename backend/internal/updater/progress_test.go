@@ -72,6 +72,109 @@ func TestProgressRejectsMalformedState(t *testing.T) {
 	}
 }
 
+func TestProgressKeepsActiveRestartAttemptRunning(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "progress.json")
+	service := NewServiceWithURLAndProgressPath(nil, "http://example.invalid/releases", path)
+	base := time.Date(2026, 9, 25, 18, 0, 0, 0, time.UTC)
+	service.now = func() time.Time { return base }
+	service.unitActive = func(unit string) bool { return unit == "lannventory-update-1" }
+	service.serviceActive = func() bool { return true }
+
+	progress := Progress{
+		AttemptID:     "update-1",
+		Status:        ProgressStatusRunning,
+		Stage:         UpdateStageHealth,
+		StartedAt:     base.Add(-time.Minute).Format(time.RFC3339),
+		SystemdUnit:   "lannventory-update-1",
+		TargetVersion: "0.1.0-beta.11",
+	}
+	if err := service.persistProgress(progress); err != nil {
+		t.Fatalf("persistProgress() error = %v", err)
+	}
+
+	service.now = func() time.Time { return base.Add(2 * time.Minute) }
+	got, err := service.Progress()
+	if err != nil {
+		t.Fatalf("Progress() error = %v", err)
+	}
+	if got.Status != ProgressStatusRunning || got.Stage != UpdateStageHealth {
+		t.Fatalf("Progress() = %+v, want active running attempt", got)
+	}
+}
+
+func TestProgressMarksInactiveRestartAttemptFailed(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "progress.json")
+	service := NewServiceWithURLAndProgressPath(nil, "http://example.invalid/releases", path)
+	base := time.Date(2026, 9, 25, 18, 0, 0, 0, time.UTC)
+	service.now = func() time.Time { return base }
+	service.unitActive = func(string) bool { return false }
+	service.serviceActive = func() bool { return true }
+
+	progress := Progress{
+		AttemptID:     "update-2",
+		Status:        ProgressStatusRunning,
+		Stage:         UpdateStageRestarting,
+		StartedAt:     base.Add(-time.Minute).Format(time.RFC3339),
+		SystemdUnit:   "lannventory-update-2",
+		TargetVersion: "0.1.0-beta.11",
+		BackupCreated: true,
+	}
+	if err := service.persistProgress(progress); err != nil {
+		t.Fatalf("persistProgress() error = %v", err)
+	}
+
+	service.now = func() time.Time { return base.Add(2 * time.Minute) }
+	got, err := service.Progress()
+	if err != nil {
+		t.Fatalf("Progress() error = %v", err)
+	}
+	if got.Status != ProgressStatusFailed || got.FailedStage != UpdateStageRestarting {
+		t.Fatalf("Progress() = %+v, want interrupted failure", got)
+	}
+	if got.Error != "Previous update attempt was interrupted before completion." {
+		t.Fatalf("Error = %q", got.Error)
+	}
+	if !got.ServiceRestored {
+		t.Fatal("ServiceRestored = false, want true")
+	}
+
+	reloaded, err := service.Progress()
+	if err != nil {
+		t.Fatalf("reloaded Progress() error = %v", err)
+	}
+	if reloaded.Status != ProgressStatusFailed {
+		t.Fatalf("reloaded Progress() = %+v, want persisted failure", reloaded)
+	}
+}
+
+func TestProgressLeavesFreshPreJobAttemptRunning(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "progress.json")
+	service := NewServiceWithURLAndProgressPath(nil, "http://example.invalid/releases", path)
+	base := time.Date(2026, 9, 25, 18, 0, 0, 0, time.UTC)
+	service.now = func() time.Time { return base }
+	service.unitActive = func(string) bool { return false }
+
+	progress := Progress{
+		AttemptID:     "update-3",
+		Status:        ProgressStatusRunning,
+		Stage:         UpdateStageDownloading,
+		StartedAt:     base.Format(time.RFC3339),
+		TargetVersion: "0.1.0-beta.11",
+	}
+	if err := service.persistProgress(progress); err != nil {
+		t.Fatalf("persistProgress() error = %v", err)
+	}
+
+	service.now = func() time.Time { return base.Add(10 * time.Second) }
+	got, err := service.Progress()
+	if err != nil {
+		t.Fatalf("Progress() error = %v", err)
+	}
+	if got.Status != ProgressStatusRunning || got.Stage != UpdateStageDownloading {
+		t.Fatalf("Progress() = %+v, want fresh running state", got)
+	}
+}
+
 func TestPersistProgressRejectsInvalidState(t *testing.T) {
 	service := NewServiceWithURLAndProgressPath(nil, "http://example.invalid/releases", filepath.Join(t.TempDir(), "progress.json"))
 
