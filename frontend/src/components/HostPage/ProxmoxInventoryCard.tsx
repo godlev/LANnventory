@@ -319,31 +319,6 @@ function ProxmoxInventoryCard(props: Props) {
           when={!loading() || sourceState() !== null || workloads().length > 0}
           fallback={<div class="device-cell-muted">Loading Proxmox inventory…</div>}
         >
-          <div class="proxmox-section">
-            <div class="proxmox-section-heading">
-              <div>
-                <div class="small fw-semibold">Proxmox inventory source</div>
-                <div class="small device-cell-muted">Choose the collection method. Both paths use the same Preview/Diff and workload matching rules.</div>
-              </div>
-              <div class="btn-group btn-group-sm" role="group" aria-label="Proxmox inventory source">
-                <button
-                  type="button"
-                  class={"btn "+(collectionMode() === "script" ? "btn-primary" : "btn-outline-secondary")}
-                  onClick={() => setCollectionMode("script")}
-                >
-                  Manual / script
-                </button>
-                <button
-                  type="button"
-                  class={"btn "+(collectionMode() === "api" ? "btn-primary" : "btn-outline-secondary")}
-                  onClick={() => setCollectionMode("api")}
-                >
-                  Proxmox API
-                </button>
-              </div>
-            </div>
-          </div>
-
           <SourceSummary
             state={sourceState()}
             total={totalCount()}
@@ -404,27 +379,65 @@ function ProxmoxInventoryCard(props: Props) {
             </Show>
           </div>
 
-          <Show
-            when={collectionMode() === "api"}
-            fallback={
-              <ImportSection
-                importText={importText()}
-                preview={preview()}
-                previewing={previewing()}
-                applying={applying()}
-                error={importError()}
-                status={importStatus()}
-                onText={handleImportText}
-                onFile={(file) => void handleFile(file)}
-                onClear={clearImport}
-                onPreview={() => void handlePreview()}
-                onApply={() => void handleApply()}
-                proxmoxAddress={props.host.IP}
-              />
-            }
-          >
-            <ProxmoxAPISection hostID={props.host.ID} onApplied={() => refresh(props.host.ID)} />
-          </Show>
+          <details class="proxmox-collection-settings">
+            <summary>
+              <span>
+                <i class="bi bi-sliders" aria-hidden="true"></i>
+                Connection &amp; collection
+              </span>
+              <span class="badge text-bg-secondary">
+                {collectionMode() === "api" ? "Proxmox API" : "Manual / script"}
+              </span>
+            </summary>
+            <div class="proxmox-collection-settings-body">
+              <div class="proxmox-section">
+                <div class="proxmox-section-heading">
+                  <div>
+                    <div class="small fw-semibold">Inventory source</div>
+                    <div class="small device-cell-muted">Choose how LANnventory receives read-only Proxmox inventory. Both methods use the same Preview/Diff and workload matching safety rules.</div>
+                  </div>
+                  <div class="btn-group btn-group-sm" role="group" aria-label="Proxmox inventory source">
+                    <button
+                      type="button"
+                      class={"btn "+(collectionMode() === "script" ? "btn-primary" : "btn-outline-secondary")}
+                      onClick={() => setCollectionMode("script")}
+                    >
+                      Manual / script
+                    </button>
+                    <button
+                      type="button"
+                      class={"btn "+(collectionMode() === "api" ? "btn-primary" : "btn-outline-secondary")}
+                      onClick={() => setCollectionMode("api")}
+                    >
+                      Proxmox API
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <Show
+                when={collectionMode() === "api"}
+                fallback={
+                  <ImportSection
+                    importText={importText()}
+                    preview={preview()}
+                    previewing={previewing()}
+                    applying={applying()}
+                    error={importError()}
+                    status={importStatus()}
+                    onText={handleImportText}
+                    onFile={(file) => void handleFile(file)}
+                    onClear={clearImport}
+                    onPreview={() => void handlePreview()}
+                    onApply={() => void handleApply()}
+                    proxmoxAddress={props.host.IP}
+                  />
+                }
+              >
+                <ProxmoxAPISection hostID={props.host.ID} onApplied={() => refresh(props.host.ID)} />
+              </Show>
+            </div>
+          </details>
         </Show>
       </div>
     </section>
@@ -543,7 +556,7 @@ function WorkloadRow(props: {
   const retired = () => Boolean(props.workload.retiredAt);
   return (
     <tr class={retired() ? "proxmox-workload-retired" : ""}>
-      <td>
+      <td data-label="Guest">
         <div class="proxmox-workload-title">
           <span class="font-monospace proxmox-vmid">{props.workload.nativeId}</span>
           <span class="fw-semibold">{props.workload.name || "Unnamed workload"}</span>
@@ -557,13 +570,13 @@ function WorkloadRow(props: {
           </Show>
         </div>
       </td>
-      <td>
+      <td data-label="Status">
         <span class={"proxmox-status "+statusClass(props.workload.status)}>
           <i class={props.workload.status === "running" ? "bi bi-play-circle-fill" : props.workload.status === "stopped" ? "bi bi-stop-circle-fill" : "bi bi-question-circle-fill"} aria-hidden="true"></i>
           {capitalize(props.workload.status)}
         </span>
       </td>
-      <td>
+      <td data-label="Network identity">
         <Show
           when={props.workload.interfaces.length > 0}
           fallback={<span class="device-cell-muted">No network identity</span>}
@@ -582,7 +595,7 @@ function WorkloadRow(props: {
           </div>
         </Show>
       </td>
-      <td>
+      <td data-label="LANnventory match">
         <MatchCell
           workload={props.workload}
           match={props.match}
