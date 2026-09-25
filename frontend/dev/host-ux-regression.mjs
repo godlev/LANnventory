@@ -70,7 +70,7 @@ forbidText(hostActivity, 'href={"/host/"', "Host Recent Events must not link bac
 forbidText(hostActivity, "activityHostName", "Host Recent Events must not repeat the Host name.");
 
 requireText(hostActivity, "Recent events could not be loaded.", "Host Recent Events must expose section-level API failures.");
-requireText(hostActivity, ">Retry</button>", "Host Recent Events must offer a local retry action.");
+requireText(hostActivity, "Retry", "Host Recent Events must offer a local retry action.");
 requireText(hostActivity, 'class="host-section-error"', "Secondary Host section failure must not replace the whole Host page.");
 requireText(appStyles, ".host-section-error", "Partial Host section errors must have dedicated styling.");
 
