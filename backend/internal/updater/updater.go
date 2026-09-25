@@ -93,6 +93,7 @@ type Service struct {
 	client              *http.Client
 	releasesURL         string
 	releaseNotesBaseURL string
+	progressPath        string
 	now                 func() time.Time
 
 	mu               sync.Mutex
@@ -104,18 +105,23 @@ type Service struct {
 }
 
 func NewService() *Service {
-	service := NewServiceWithURL(&http.Client{Timeout: 30 * time.Second}, defaultReleasesURL)
+	service := NewServiceWithURLAndProgressPath(&http.Client{Timeout: 30 * time.Second}, defaultReleasesURL, defaultProgressPath)
 	service.releaseNotesBaseURL = defaultReleaseNotesBaseURL
 	return service
 }
 
 func NewServiceWithURL(client *http.Client, releasesURL string) *Service {
+	return NewServiceWithURLAndProgressPath(client, releasesURL, defaultProgressPath)
+}
+
+func NewServiceWithURLAndProgressPath(client *http.Client, releasesURL, progressPath string) *Service {
 	if client == nil {
 		client = &http.Client{Timeout: 30 * time.Second}
 	}
 	return &Service{
 		client:           client,
 		releasesURL:      releasesURL,
+		progressPath:     progressPath,
 		releaseSummaries: make(map[string]string),
 		now:              time.Now,
 	}
