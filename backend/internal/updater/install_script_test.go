@@ -56,7 +56,12 @@ func TestBuildApplyUpdateScriptPreservesExistingSafetyFlow(t *testing.T) {
 	checksumIndex := strings.Index(script, "sha256sum -c -")
 	stopIndex := strings.Index(script, "systemctl stop lannventory")
 	installIndex := strings.Index(script, "dpkg -i")
-	startIndex := strings.Index(script, "systemctl start lannventory")
+	startIndex := -1
+	if installIndex >= 0 {
+		if offset := strings.Index(script[installIndex:], "systemctl start lannventory"); offset >= 0 {
+			startIndex = installIndex + offset
+		}
+	}
 	healthIndex := strings.Index(script, "curl -fsS --max-time 3")
 	if checksumIndex < 0 || stopIndex < 0 || installIndex < 0 || startIndex < 0 || healthIndex < 0 {
 		t.Fatalf("script is missing one or more safety operations:\n%s", script)
