@@ -164,6 +164,18 @@ function HostCard(_props: HostCardProps) {
   };
 
   const handleDel = async () => {
+    if (_props.host.ID === 0) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Delete " + overviewName() + " from LANnventory?\n\n" +
+      "This removes the device record from LANnventory. This action cannot be undone.",
+    );
+    if (!confirmed) {
+      return;
+    }
+
     await apiDelHost(_props.host.ID);
     window.location.href = '/';
   };
@@ -458,6 +470,27 @@ function HostCard(_props: HostCardProps) {
               </Show>
             </button>
           </ActionTooltip>
+
+          <details class="host-overview-more">
+            <summary
+              class="btn btn-sm wyl-button host-icon-button"
+              title="More device actions"
+              aria-label="More device actions"
+            >
+              <i class="bi bi-three-dots" aria-hidden="true"></i>
+            </summary>
+            <div class="host-overview-more-menu">
+              <button
+                type="button"
+                class="host-overview-danger-action"
+                disabled={_props.host.ID === 0}
+                onClick={handleDel}
+              >
+                <i class="bi bi-trash-fill" aria-hidden="true"></i>
+                <span>Delete device</span>
+              </button>
+            </div>
+          </details>
         </div>
       </div>
 
@@ -722,22 +755,6 @@ function HostCard(_props: HostCardProps) {
           <div class="host-inline-error" role="alert">{pinError() || knownError()}</div>
         </Show>
 
-        <Show when={_props.editMode}>
-          <div class="host-actions">
-            <ActionTooltip title="Delete" detail="Remove this device from LANnventory.">
-              <button
-                type="button"
-                onClick={handleDel}
-                class="btn btn-sm wyl-button device-delete-button host-delete-button"
-                title="Delete"
-                aria-label="Delete device"
-              >
-                <i class="bi bi-trash-fill" aria-hidden="true"></i>
-                <span>Delete</span>
-              </button>
-            </ActionTooltip>
-          </div>
-        </Show>
       </div>
     </div>
   )
