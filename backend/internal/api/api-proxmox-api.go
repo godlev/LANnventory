@@ -1,20 +1,19 @@
 package api
 
 import (
-	"errors"
 	"log/slog"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/godlev/LANnventory/internal/gdb"
-	"github.com/godlev/LANnventory/internal/models"
 	"github.com/godlev/LANnventory/internal/proxmoxapi"
 	"github.com/godlev/LANnventory/internal/proxmoximport"
 	"github.com/godlev/LANnventory/internal/proxmoxsnapshot"
+	"github.com/godlev/LANnventory/internal/proxmoxsync"
 )
+
+var proxmoxSyncService = proxmoxsync.NewService()
 
 type ProxmoxAPIConnectionTestResultDoc struct {
 	ConnectionOK bool   `json:"connectionOk"`
@@ -58,21 +57,16 @@ func testHostProxmoxAPIConnection(c *gin.Context) {
 		return
 	}
 
-	client, _, err := configuredProxmoxAPIClient(host.Mac, false)
+	result, err := proxmoxSyncService.TestConnection(c.Request.Context(), host.Mac)
 	if err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	attemptedAt := time.Now().UTC().Format(time.RFC3339)
-	result, err := proxmoxapi.TestConnection(c.Request.Context(), client)
-	if err != nil {
-		recordProxmoxAPIStatus(host.Mac, "error", attemptedAt, "", err.Error())
+		if proxmoxsync.KindOf(err) == proxmoxsync.ErrorConfig {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 		writeProxmoxAPIError(c, err)
 		return
 	}
 
-	recordProxmoxAPIStatus(host.Mac, "connected", attemptedAt, "", "")
 	c.IndentedJSON(http.StatusOK, ProxmoxAPITestConnectionResponse{
 		Status: "connected",
 		Result: ProxmoxAPIConnectionTestResultDoc{
@@ -96,6 +90,7 @@ func testHostProxmoxAPIConnection(c *gin.Context) {
 // @Param        id   path      string  true  "Proxmox Host ID"
 // @Success      200  {object}  ProxmoxAPISyncPreviewDoc
 // @Failure      400  {object}  map[string]string
+// @Failure      409  {object}  map[string]string
 // @Failure      502  {object}  map[string]string
 // @Router       /host/{id}/proxmox/api/sync-preview [post]
 func previewHostProxmoxAPISync(c *gin.Context) {
@@ -104,44 +99,32 @@ func previewHostProxmoxAPISync(c *gin.Context) {
 		return
 	}
 
-	client, _, err := configuredProxmoxAPIClient(host.Mac, false)
+	result, err := proxmoxSyncService.CollectPreview(c.Request.Context(), host.Mac, proxmoxsync.CollectOptions{
+		RequireEnabled: false,
+		Trigger:        proxmoxsync.TriggerManual,
+	})
 	if err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		switch proxmoxsync.KindOf(err) {
+		case proxmoxsync.ErrorConfig:
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		case proxmoxsync.ErrorBusy:
+			c.IndentedJSON(http.StatusConflict, gin.H{"error": "Sync already in progress"})
+		case proxmoxsync.ErrorState:
+			slog.Error("Failed to load Proxmox API preview state", "hostID", host.ID, "mac", host.Mac, "err", err)
+			c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to load Proxmox inventory state"})
+		case proxmoxsync.ErrorValidation:
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		case proxmoxsync.ErrorStaleConfig:
+			c.IndentedJSON(http.StatusConflict, gin.H{"error": "Proxmox API configuration changed during sync; run Sync now again"})
+		default:
+			writeProxmoxAPIError(c, err)
+		}
 		return
 	}
-
-	attemptedAt := time.Now().UTC()
-	snapshot, err := proxmoxapi.CollectSnapshot(c.Request.Context(), client, attemptedAt)
-	if err != nil {
-		recordProxmoxAPIStatus(host.Mac, "error", attemptedAt.Format(time.RFC3339), "", err.Error())
-		writeProxmoxAPIError(c, err)
-		return
-	}
-
-	current, err := loadProxmoxImportCurrentState(host.Mac, models.InfrastructureWorkloadSourceProxmoxAPI)
-	if err != nil {
-		slog.Error("Failed to load Proxmox API preview state", "hostID", host.ID, "mac", host.Mac, "err", err)
-		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to load Proxmox inventory state"})
-		return
-	}
-	preview, err := proxmoximport.BuildPreview(host.Mac, snapshot, current)
-	if err != nil {
-		recordProxmoxAPIStatus(host.Mac, "error", attemptedAt.Format(time.RFC3339), "", "collected Proxmox data failed validation")
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	status := "preview-ready"
-	lastError := ""
-	if !snapshot.Complete {
-		status = "degraded"
-		lastError = strings.Join(snapshot.CollectionErrors, "; ")
-	}
-	recordProxmoxAPIStatus(host.Mac, status, attemptedAt.Format(time.RFC3339), "", lastError)
 
 	c.IndentedJSON(http.StatusOK, ProxmoxAPISyncPreviewResponse{
-		Snapshot: snapshot,
-		Preview:  preview,
+		Snapshot: result.Snapshot,
+		Preview:  result.Preview,
 	})
 }
 
@@ -177,97 +160,47 @@ func applyHostProxmoxAPISync(c *gin.Context) {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "valid previewToken is required"})
 		return
 	}
-	if strings.TrimSpace(payload.Snapshot.Source) != proxmoxsnapshot.SourceProxmoxAPI {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "Proxmox API sync requires a proxmox-api snapshot"})
-		return
-	}
 
-	normalized, err := proxmoximport.ValidateAndNormalize(payload.Snapshot)
+	result, err := proxmoxSyncService.ApplyPreview(
+		c.Request.Context(),
+		host.Mac,
+		payload.Snapshot,
+		payload.PreviewToken,
+		proxmoxsync.ApplyOptions{Trigger: proxmoxsync.TriggerManual},
+	)
 	if err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	current, err := loadProxmoxImportCurrentState(host.Mac, models.InfrastructureWorkloadSourceProxmoxAPI)
-	if err != nil {
-		slog.Error("Failed to load current Proxmox API state", "hostID", host.ID, "mac", host.Mac, "err", err)
-		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to load Proxmox inventory state"})
-		return
-	}
-	preview, err := proxmoximport.BuildPreview(host.Mac, normalized, current)
-	if err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	if payload.PreviewToken != preview.PreviewToken {
-		c.IndentedJSON(http.StatusConflict, gin.H{"error": "preview is stale; run Sync now again before applying"})
-		return
-	}
-	if !preview.ApplyAllowed {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "preview cannot be applied until blocking issues are resolved"})
-		return
-	}
-
-	inputs, err := proxmoximport.SnapshotWorkloadInputs(normalized)
-	if err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	importedAt := time.Now().UTC().Format(time.RFC3339)
-	state, err := proxmoximport.SourceStateFromSnapshot(host.Mac, normalized, preview.SnapshotDigest, importedAt)
-	if err != nil {
-		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	if err := gdb.ApplyProxmoxImport(host.Mac, state, inputs); err != nil {
-		if errors.Is(err, gdb.ErrInfrastructureWorkloadSourceConflict) {
+		switch proxmoxsync.KindOf(err) {
+		case proxmoxsync.ErrorValidation:
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		case proxmoxsync.ErrorBusy:
+			c.IndentedJSON(http.StatusConflict, gin.H{"error": "Sync already in progress"})
+		case proxmoxsync.ErrorState:
+			slog.Error("Failed to load current Proxmox API state", "hostID", host.ID, "mac", host.Mac, "err", err)
+			c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to load Proxmox inventory state"})
+		case proxmoxsync.ErrorStalePreview:
+			c.IndentedJSON(http.StatusConflict, gin.H{"error": "preview is stale; run Sync now again before applying"})
+		case proxmoxsync.ErrorApplyBlocked:
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "preview cannot be applied until blocking issues are resolved"})
+		case proxmoxsync.ErrorConflict:
 			c.IndentedJSON(http.StatusConflict, gin.H{"error": "workload state changed since preview; run Sync now again"})
-			return
+		case proxmoxsync.ErrorStaleConfig:
+			c.IndentedJSON(http.StatusConflict, gin.H{"error": "Proxmox API configuration changed; run Sync now again"})
+		case proxmoxsync.ErrorPersistence:
+			slog.Error("Failed to apply Proxmox API inventory", "hostID", host.ID, "mac", host.Mac, "err", err)
+			c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to apply Proxmox inventory"})
+		default:
+			slog.Error("Unexpected Proxmox API apply failure", "hostID", host.ID, "mac", host.Mac, "err", err)
+			c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to apply Proxmox inventory"})
 		}
-		slog.Error("Failed to apply Proxmox API inventory", "hostID", host.ID, "mac", host.Mac, "err", err)
-		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to apply Proxmox inventory"})
 		return
 	}
 
-	recordProxmoxAPIStatus(host.Mac, "connected", importedAt, importedAt, "")
+	notifyProxmoxSyncSchedulerConfigChanged()
 	c.IndentedJSON(http.StatusOK, ProxmoxImportApplyResponse{
 		Applied:    true,
-		ImportedAt: importedAt,
-		Summary:    preview.Summary,
+		ImportedAt: result.ImportedAt,
+		Summary:    result.Summary,
 	})
-}
-
-func configuredProxmoxAPIClient(hypervisorMac string, requireEnabled bool) (*proxmoxapi.Client, models.ProxmoxAPIConfig, error) {
-	config, found, err := gdb.SelectProxmoxAPIConfig(hypervisorMac)
-	if err != nil {
-		return nil, models.ProxmoxAPIConfig{}, errors.New("failed to load Proxmox API configuration")
-	}
-	if !found {
-		return nil, models.ProxmoxAPIConfig{}, errors.New("Proxmox API is not configured")
-	}
-	if requireEnabled && !config.Enabled {
-		return nil, config, errors.New("Proxmox API integration is disabled")
-	}
-	if strings.TrimSpace(config.BaseURL) == "" || strings.TrimSpace(config.TokenID) == "" || config.TokenSecret == "" {
-		return nil, config, errors.New("Proxmox API credentials are incomplete")
-	}
-	timeout := time.Duration(config.TimeoutSeconds) * time.Second
-	client, err := proxmoxapi.New(proxmoxapi.Config{
-		BaseURL:     config.BaseURL,
-		TokenID:     config.TokenID,
-		TokenSecret: config.TokenSecret,
-		VerifyTLS:   config.VerifyTLS,
-		Timeout:     timeout,
-	})
-	if err != nil {
-		return nil, config, err
-	}
-	return client, config, nil
-}
-
-func recordProxmoxAPIStatus(mac, status, lastAttempt, lastSuccess, lastError string) {
-	if err := gdb.UpdateProxmoxAPIStatus(mac, status, lastAttempt, lastSuccess, lastError); err != nil {
-		slog.Warn("Failed to persist Proxmox API source status", "mac", mac, "status", status, "err", err)
-	}
 }
 
 func writeProxmoxAPIError(c *gin.Context, err error) {

@@ -241,6 +241,7 @@ func delHost(c *gin.Context) {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "failed to delete host"})
 		return
 	}
+	notifyProxmoxSyncSchedulerConfigChanged()
 	slog.Info("Deleting from DB", "host", host)
 	c.IndentedJSON(http.StatusOK, "OK")
 }

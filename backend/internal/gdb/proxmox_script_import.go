@@ -9,7 +9,15 @@ import (
 	"gorm.io/gorm"
 )
 
-var ErrInfrastructureWorkloadSourceConflict = errors.New("infrastructure workload source conflict")
+var (
+	ErrInfrastructureWorkloadSourceConflict = errors.New("infrastructure workload source conflict")
+	ErrProxmoxAPIConfigChanged              = errors.New("Proxmox API configuration changed")
+)
+
+type proxmoxAPIImportGuard struct {
+	ConfigRevision   uint64
+	RequireAutomatic bool
+}
 
 // ApplyProxmoxScriptImport preserves the Phase 35A script-import entry point.
 func ApplyProxmoxScriptImport(hypervisorMac string, state models.ProxmoxSourceState, workloads []models.InfrastructureWorkloadUpsert) error {
@@ -24,6 +32,30 @@ func ApplyProxmoxScriptImport(hypervisorMac string, state models.ProxmoxSourceSt
 // provenance can transition because they are two collection modes for the same
 // canonical infrastructure workload inventory.
 func ApplyProxmoxImport(hypervisorMac string, state models.ProxmoxSourceState, workloads []models.InfrastructureWorkloadUpsert) error {
+	return applyProxmoxImport(hypervisorMac, state, workloads, nil)
+}
+
+// ApplyProxmoxAPIImportIfRevision atomically verifies that the API integration
+// still has the expected configuration revision before applying the snapshot.
+// The guard is acquired inside the same transaction as the inventory write so
+// a concurrent configuration change cannot slip between validation and apply.
+func ApplyProxmoxAPIImportIfRevision(
+	hypervisorMac string,
+	state models.ProxmoxSourceState,
+	workloads []models.InfrastructureWorkloadUpsert,
+	configRevision uint64,
+	requireAutomatic bool,
+) error {
+	if state.Source != models.InfrastructureWorkloadSourceProxmoxAPI {
+		return errors.New("revision-guarded Proxmox import requires proxmox-api source")
+	}
+	return applyProxmoxImport(hypervisorMac, state, workloads, &proxmoxAPIImportGuard{
+		ConfigRevision:   configRevision,
+		RequireAutomatic: requireAutomatic,
+	})
+}
+
+func applyProxmoxImport(hypervisorMac string, state models.ProxmoxSourceState, workloads []models.InfrastructureWorkloadUpsert, guard *proxmoxAPIImportGuard) error {
 	canonical, err := identity.NormalizeMAC(hypervisorMac)
 	if err != nil {
 		return err
@@ -47,6 +79,22 @@ func ApplyProxmoxImport(hypervisorMac string, state models.ProxmoxSourceState, w
 	defer release()
 
 	return activeDB.Transaction(func(txDB *gorm.DB) error {
+		if guard != nil {
+			query := txDB.Table(proxmoxAPIConfigsTable).
+				Where(`"HYPERVISOR_MAC" = ? AND "CONFIG_REVISION" = ? AND "ENABLED" = ?`,
+					canonical, guard.ConfigRevision, true)
+			if guard.RequireAutomatic {
+				query = query.Where(`"AUTOMATIC_SYNC" = ?`, true)
+			}
+			result := query.Update("CONFIG_REVISION", guard.ConfigRevision)
+			if result.Error != nil {
+				return result.Error
+			}
+			if result.RowsAffected != 1 {
+				return ErrProxmoxAPIConfigChanged
+			}
+		}
+
 		incoming := make(map[string]struct{}, len(workloads))
 		for _, input := range workloads {
 			if input.Source != state.Source || !isManagedProxmoxWorkloadSource(input.Source) {

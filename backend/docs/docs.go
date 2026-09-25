@@ -2075,6 +2075,15 @@ const docTemplate = `{
                             }
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
                     "502": {
                         "description": "Bad Gateway",
                         "schema": {
@@ -4211,6 +4220,9 @@ const docTemplate = `{
         "api.ProxmoxAPIConfigPatchRequest": {
             "type": "object",
             "properties": {
+                "automaticSync": {
+                    "type": "boolean"
+                },
                 "baseUrl": {
                     "type": "string"
                 },
@@ -4219,6 +4231,9 @@ const docTemplate = `{
                 },
                 "enabled": {
                     "type": "boolean"
+                },
+                "syncIntervalMinutes": {
+                    "type": "integer"
                 },
                 "timeoutSeconds": {
                     "type": "integer"
@@ -4237,13 +4252,22 @@ const docTemplate = `{
         "api.ProxmoxAPIConfigResponse": {
             "type": "object",
             "properties": {
+                "automaticSync": {
+                    "type": "boolean"
+                },
                 "baseUrl": {
                     "type": "string"
+                },
+                "configRevision": {
+                    "type": "integer"
                 },
                 "enabled": {
                     "type": "boolean"
                 },
                 "hypervisorMac": {
+                    "type": "string"
+                },
+                "lastAppliedAt": {
                     "type": "string"
                 },
                 "lastAttemptAt": {
@@ -4252,11 +4276,35 @@ const docTemplate = `{
                 "lastError": {
                     "type": "string"
                 },
+                "lastSuccessfulCollectionAt": {
+                    "type": "string"
+                },
                 "lastSuccessfulSync": {
+                    "type": "string"
+                },
+                "lastSyncAttemptAt": {
+                    "type": "string"
+                },
+                "lastSyncError": {
+                    "type": "string"
+                },
+                "lastSyncTrigger": {
+                    "type": "string"
+                },
+                "nextSyncAt": {
                     "type": "string"
                 },
                 "status": {
                     "type": "string"
+                },
+                "syncIntervalMinutes": {
+                    "type": "integer"
+                },
+                "syncStatus": {
+                    "type": "string"
+                },
+                "syncing": {
+                    "type": "boolean"
                 },
                 "timeoutSeconds": {
                     "type": "integer"
@@ -5477,7 +5525,7 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "0.1.0-beta.9",
+	Version:          "0.1.0-beta.9.uat.3",
 	Host:             "",
 	BasePath:         "/api/",
 	Schemes:          []string{},

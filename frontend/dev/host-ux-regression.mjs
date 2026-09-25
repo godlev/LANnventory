@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { formatLastSeen } from "../src/functions/dateFormat.ts";
 
 const root = resolve(import.meta.dirname, "..");
 const read = (path) => readFileSync(resolve(root, path), "utf8");
@@ -123,6 +124,15 @@ requireText(proxmoxInventory, "TLS certificate verification is disabled explicit
 requireText(proxmoxInventory, "Test connection", "Proxmox API setup must provide a non-mutating connection test.");
 requireText(proxmoxInventory, "Connection verified. No LANnventory inventory was changed.", "Connection test must state its non-mutating behavior.");
 requireText(proxmoxInventory, "Sync now", "Proxmox API setup must expose manual sync.");
+requireText(proxmoxInventory, "Automatic Sync", "Proxmox API setup must expose per-host automatic sync.");
+requireText(proxmoxInventory, "Every 15 minutes", "Automatic sync must expose the supported interval selector.");
+requireText(proxmoxInventory, "Every 24 hours", "Automatic sync must expose the full supported interval range.");
+requireText(proxmoxInventory, "Last attempt", "Automatic sync status must expose the last attempt.");
+requireText(proxmoxInventory, "Last successful collection", "Automatic sync status must separate successful collection from apply.");
+requireText(proxmoxInventory, "Last applied", "Automatic sync status must expose the last applied snapshot.");
+requireText(proxmoxInventory, "Next sync", "Automatic sync status must expose the next scheduled run.");
+requireText(proxmoxInventory, "Review required.", "Automatic safety blocks must be visible and actionable.");
+requireText(proxmoxInventory, "does not start an immediate sync", "Enabling automatic sync must not imply an immediate run.");
 requireText(proxmoxInventory, "First sync preview ready.", "First API sync must remain a preview before enablement.");
 requireText(proxmoxInventory, "The first successful Apply also enables this API inventory source.", "API source enablement must follow reviewed Apply.");
 requireText(proxmoxInventory, "Disable API source", "An enabled Proxmox API source must be explicitly disableable.");
@@ -150,5 +160,23 @@ requireText(appStyles, ".device-compact-workload", "Compact Proxmox workload mar
 requireText(appStyles, ".device-hypervisor-summary", "Comfortable Proxmox inventory totals must have dedicated styling.");
 requireText(appStyles, ".device-compact-hypervisor-summary", "Compact Proxmox inventory totals must have dedicated styling.");
 forbidText(deviceTypes, '| "hypervisor"', "Hypervisor must not become an exclusive Device Type.");
+
+const originalTZ = process.env.TZ;
+process.env.TZ = "Europe/Sofia";
+const currentYear = new Date().getFullYear();
+if (formatLastSeen(`${currentYear}-09-24T18:16:00Z`) !== "24 Sep 21:16") {
+  throw new Error("RFC3339 UTC timestamps must be rendered in the browser-local timezone.");
+}
+if (formatLastSeen(`${currentYear}-09-24T18:16:00+00:00`) !== "24 Sep 21:16") {
+  throw new Error("RFC3339 offset timestamps must be rendered in the browser-local timezone.");
+}
+if (formatLastSeen(`${currentYear}-09-24 18:16:00`) !== "24 Sep 18:16") {
+  throw new Error("Legacy timestamps without timezone information must preserve their displayed clock time.");
+}
+if (originalTZ === undefined) {
+  delete process.env.TZ;
+} else {
+  process.env.TZ = originalTZ;
+}
 
 console.log("Host UX semantic regression checks passed.");

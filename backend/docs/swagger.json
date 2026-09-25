@@ -10,7 +10,7 @@
             "name": "MIT",
             "url": "https://opensource.org/licenses/MIT"
         },
-        "version": "0.1.0-beta.9"
+        "version": "0.1.0-beta.9.uat.3"
     },
     "basePath": "/api/",
     "paths": {
@@ -2061,6 +2061,15 @@
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -4204,6 +4213,9 @@
         "api.ProxmoxAPIConfigPatchRequest": {
             "type": "object",
             "properties": {
+                "automaticSync": {
+                    "type": "boolean"
+                },
                 "baseUrl": {
                     "type": "string"
                 },
@@ -4212,6 +4224,9 @@
                 },
                 "enabled": {
                     "type": "boolean"
+                },
+                "syncIntervalMinutes": {
+                    "type": "integer"
                 },
                 "timeoutSeconds": {
                     "type": "integer"
@@ -4230,13 +4245,22 @@
         "api.ProxmoxAPIConfigResponse": {
             "type": "object",
             "properties": {
+                "automaticSync": {
+                    "type": "boolean"
+                },
                 "baseUrl": {
                     "type": "string"
+                },
+                "configRevision": {
+                    "type": "integer"
                 },
                 "enabled": {
                     "type": "boolean"
                 },
                 "hypervisorMac": {
+                    "type": "string"
+                },
+                "lastAppliedAt": {
                     "type": "string"
                 },
                 "lastAttemptAt": {
@@ -4245,11 +4269,35 @@
                 "lastError": {
                     "type": "string"
                 },
+                "lastSuccessfulCollectionAt": {
+                    "type": "string"
+                },
                 "lastSuccessfulSync": {
+                    "type": "string"
+                },
+                "lastSyncAttemptAt": {
+                    "type": "string"
+                },
+                "lastSyncError": {
+                    "type": "string"
+                },
+                "lastSyncTrigger": {
+                    "type": "string"
+                },
+                "nextSyncAt": {
                     "type": "string"
                 },
                 "status": {
                     "type": "string"
+                },
+                "syncIntervalMinutes": {
+                    "type": "integer"
+                },
+                "syncStatus": {
+                    "type": "string"
+                },
+                "syncing": {
+                    "type": "boolean"
                 },
                 "timeoutSeconds": {
                     "type": "integer"

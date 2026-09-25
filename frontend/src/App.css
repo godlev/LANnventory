@@ -5616,3 +5616,109 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
         grid-template-columns: 1fr;
     }
 }
+
+
+/* Phase 35.9 scheduled Proxmox sync */
+.proxmox-auto-sync-panel {
+    margin-top: 0.8rem;
+    padding: 0.68rem 0.72rem;
+    border: 1px solid var(--wyl-panel-border);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--wyl-table-row-bg) 90%, transparent);
+}
+.proxmox-auto-sync-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.7rem;
+}
+.proxmox-auto-sync-header .badge {
+    flex: 0 0 auto;
+}
+.proxmox-auto-sync-controls {
+    display: flex;
+    align-items: flex-end;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-top: 0.68rem;
+}
+.proxmox-auto-sync-controls .form-switch {
+    min-width: 10rem;
+    padding-bottom: 0.3rem;
+}
+.proxmox-sync-interval {
+    display: grid;
+    gap: 0.25rem;
+    min-width: 12.5rem;
+}
+.proxmox-sync-runtime-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.45rem;
+    margin-top: 0.65rem;
+}
+.proxmox-sync-runtime-metric {
+    min-width: 0;
+    padding: 0.48rem 0.54rem;
+    border: 1px solid var(--wyl-panel-border);
+    border-radius: 7px;
+    background: var(--wyl-control-bg);
+}
+.proxmox-sync-runtime-label {
+    color: var(--wyl-muted);
+    font-size: 0.64rem;
+    font-weight: 850;
+    line-height: 1.15;
+    text-transform: uppercase;
+}
+.proxmox-sync-runtime-value {
+    margin-top: 0.2rem;
+    overflow-wrap: anywhere;
+    color: var(--bs-body-color);
+    font-size: 0.76rem;
+    font-weight: 750;
+}
+.proxmox-sync-notice {
+    display: grid;
+    grid-template-columns: 1rem minmax(0, 1fr);
+    gap: 0.42rem;
+    align-items: start;
+    padding: 0.5rem 0.58rem;
+    border: 1px solid var(--wyl-panel-border);
+    border-radius: 7px;
+    font-size: 0.74rem;
+    line-height: 1.4;
+}
+.proxmox-sync-notice.is-review {
+    color: var(--bs-warning-text-emphasis);
+    background: color-mix(in srgb, var(--bs-warning) 8%, transparent);
+    border-color: color-mix(in srgb, var(--bs-warning) 38%, var(--wyl-panel-border));
+}
+.proxmox-sync-notice.is-error {
+    color: var(--bs-danger-text-emphasis);
+    background: color-mix(in srgb, var(--bs-danger) 7%, transparent);
+    border-color: color-mix(in srgb, var(--bs-danger) 38%, var(--wyl-panel-border));
+}
+@media (max-width: 991.98px) {
+    .proxmox-sync-runtime-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+@media (max-width: 575.98px) {
+    .proxmox-auto-sync-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+    .proxmox-auto-sync-controls {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 0.55rem;
+    }
+    .proxmox-sync-interval {
+        min-width: 0;
+        width: 100%;
+    }
+    .proxmox-sync-runtime-grid {
+        grid-template-columns: 1fr;
+    }
+}
