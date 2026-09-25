@@ -5677,6 +5677,22 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     border-radius: 7px;
     background: var(--wyl-table-row-bg);
 }
+
+.profile-empty-state {
+    display: grid;
+    grid-template-columns: 1.5rem minmax(0, 1fr);
+    gap: 0.58rem;
+    align-items: start;
+    padding: 0.68rem 0.72rem;
+    border: 1px dashed var(--wyl-panel-border);
+    border-radius: 8px;
+    color: var(--bs-body-color);
+}
+.profile-empty-state > i {
+    margin-top: 0.05rem;
+    color: var(--wyl-muted);
+    font-size: 1rem;
+}
 .profile-source-legend-title {
     margin-right: 0.12rem;
     color: var(--wyl-muted);
