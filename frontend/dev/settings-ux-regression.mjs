@@ -12,6 +12,10 @@ const influx = read("src/components/Config/Influx.tsx");
 const prometheus = read("src/components/Config/Prometheus.tsx");
 const retention = read("src/components/Config/Retention.tsx");
 const appStyles = read("src/App.css");
+const updateApi = read("src/functions/updateApi.ts");
+const updateFlow = read("src/functions/updateFlow.ts");
+const updateProgressPanel = read("src/components/Config/UpdateProgressPanel.tsx");
+const updateStyles = read("src/components/Config/Updates.css");
 
 function requireText(source, value, message) {
   if (!source.includes(value)) {
@@ -71,6 +75,26 @@ requireText(updates, "Update preferences save immediately.", "Update preferences
 requireText(updates, 'onChange={(event) => void saveSettings', "Update controls must retain immediate-save behavior.");
 requireText(updates, "Install updates automatically", "Automatic-install setting must remain explicit.");
 requireText(updates, "Check automatically", "Automatic-check-only setting must remain explicit.");
+
+requireText(updateApi, '"/api/update/progress"', "Frontend must read authoritative persisted updater progress.");
+requireText(updateApi, 'sharedUpdateProgress', "Updater progress must be shareable across UI surfaces.");
+requireText(updateFlow, "resumeUpdateFlow", "A browser refresh must be able to resume a running update.");
+requireText(updateFlow, "apiGetVersion", "Update completion must verify the installed backend version.");
+requireText(updateFlow, "temporary connection loss is expected", "Restart disconnect must be treated as an expected update stage.");
+requireText(updateFlow, "Downloading package…", "Downloader progress must come from a real backend stage.");
+requireText(updateFlow, "Verifying package…", "Verification progress must come from a real backend stage.");
+requireText(updateFlow, "Creating recovery backup…", "Backup progress must come from a real backend stage.");
+requireText(updateFlow, "Installing package…", "Install progress must come from a real backend stage.");
+requireText(updateFlow, "Restarting LANnventory…", "Restart progress must come from a real backend stage.");
+requireText(updateFlow, "Verifying LANnventory health…", "Health progress must come from a real backend stage.");
+forbidText(updateFlow, "Math.round", "Updater flow must not invent percentage completion.");
+requireText(updateProgressPanel, "Previous version", "Successful update result must show the previous version.");
+requireText(updateProgressPanel, "Installed version", "Successful update result must show the installed version.");
+requireText(updateProgressPanel, "Recovery backup", "Update result must report recovery backup state.");
+requireText(updateProgressPanel, "Service recovery", "Failure state must report service recovery.");
+requireText(updateProgressPanel, "Retry update", "Failure state must provide an explicit retry action when safe.");
+requireText(updateStyles, ".update-progress-stages", "Update stages must have dedicated responsive styling.");
+requireText(updateStyles, ".update-progress-panel.is-failed", "Update failures must have dedicated visual treatment.");
 
 requireText(appStyles, ".settings-shell", "Settings shell must have dedicated layout styling.");
 requireText(appStyles, ".settings-nav-link.is-active", "Active Settings navigation must be visually distinct.");
