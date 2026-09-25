@@ -9,6 +9,8 @@ const basic = read("src/components/Config/Basic.tsx");
 const scan = read("src/components/Config/Scan.tsx");
 const updates = read("src/components/Config/Updates.tsx");
 const influx = read("src/components/Config/Influx.tsx");
+const prometheus = read("src/components/Config/Prometheus.tsx");
+const retention = read("src/components/Config/Retention.tsx");
 const appStyles = read("src/App.css");
 
 function requireText(source, value, message) {
@@ -53,8 +55,18 @@ requireText(scan, "Stored securely · value hidden", "Stored PostgreSQL secret m
 requireText(scan, "Leave blank to keep the stored connection URL", "Stored PostgreSQL secret replacement behavior must remain explicit.");
 requireText(scan, "write-only and are never displayed after saving", "Stored PostgreSQL secret must remain write-only.");
 requireText(scan, "Clear stored PostgreSQL connection URL", "PostgreSQL secret must retain explicit clearing.");
-requireText(influx, "Configured - leave blank to keep current value", "Stored Influx token must remain write-only.");
+requireText(influx, "Stored securely · value hidden", "Stored Influx token must expose configured state without revealing the value.");
+requireText(influx, "Leave blank to keep the stored token", "Stored Influx token replacement behavior must remain explicit.");
+requireText(influx, "write-only and are never displayed after saving", "Stored Influx token must remain write-only.");
 requireText(influx, "Clear stored InfluxDB token", "Influx secret must retain explicit clearing.");
+
+requireText(retention, "Save required", "Retention must identify its explicit-save behavior.");
+requireText(retention, "staged until you choose", "Retention staged-save behavior must remain explicit.");
+requireText(influx, "Save required", "InfluxDB must identify its explicit-save behavior.");
+requireText(influx, "staged until you choose", "InfluxDB staged-save behavior must remain explicit.");
+requireText(prometheus, "Save required", "Prometheus must identify its explicit-save behavior.");
+requireText(prometheus, "staged until you choose", "Prometheus staged-save behavior must remain explicit.");
+requireText(updates, "Update preferences save immediately.", "Update preferences must identify immediate-save behavior.");
 
 requireText(updates, 'onChange={(event) => void saveSettings', "Update controls must retain immediate-save behavior.");
 requireText(updates, "Install updates automatically", "Automatic-install setting must remain explicit.");
