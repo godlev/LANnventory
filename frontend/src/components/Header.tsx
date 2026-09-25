@@ -3,7 +3,7 @@ import { A, useLocation } from "@solidjs/router";
 import { appConfig, pageContext } from "../functions/exports";
 import { normalizeColorMode, refreshAppConfig, setColorMode } from "../functions/theme";
 import { apiGetCachedUpdateStatus, apiGetUpdateStatus, setSharedUpdateStatus, sharedUpdateStatus } from "../functions/updateApi";
-import { confirmUpdate, startUpdateFlow } from "../functions/updateFlow";
+import { confirmUpdate, startUpdateFlow, type UpdateFlowHandle } from "../functions/updateFlow";
 import {
   refreshSharedScannerStatus,
   scannerClockOffsetMs,
@@ -36,7 +36,7 @@ function Header() {
   let updatePanelRef: HTMLDivElement | undefined;
   let updateInitialTimer: number | undefined;
   let updatePollTimer: number | undefined;
-  let updateReconnectTimer: number | undefined;
+  let updateFlowHandle: UpdateFlowHandle | undefined;
   let scannerInitialTimer: number | undefined;
   let scannerPollTimer: number | undefined;
   let scannerTickTimer: number | undefined;
@@ -181,14 +181,16 @@ function Header() {
       return;
     }
 
-    if (updateReconnectTimer !== undefined) {
-      window.clearTimeout(updateReconnectTimer);
-    }
-    updateReconnectTimer = await startUpdateFlow(status, {
+    updateFlowHandle?.cancel();
+    updateFlowHandle = await startUpdateFlow(status, {
       onStatus: setUpdateStatus,
       onMessage: setUpdateMessage,
       onError: setUpdateError,
       onInstalling: setUpdateInstalling,
+      onComplete: () => {
+        setUpdateMessage("Update complete. Reloading LANnventory…");
+        window.setTimeout(() => window.location.reload(), 700);
+      },
     });
   };
 
@@ -252,9 +254,7 @@ function Header() {
       if (updatePollTimer !== undefined) {
         window.clearInterval(updatePollTimer);
       }
-      if (updateReconnectTimer !== undefined) {
-        window.clearTimeout(updateReconnectTimer);
-      }
+      updateFlowHandle?.cancel();
       if (scannerInitialTimer !== undefined) {
         window.clearTimeout(scannerInitialTimer);
       }
