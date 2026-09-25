@@ -127,6 +127,11 @@ function Updates() {
       </div>
 
       <div class="card-body update-panel-body">
+        <div class="settings-behavior-note">
+          <i class="bi bi-lightning-charge-fill" aria-hidden="true"></i>
+          <span>Update preferences save immediately. Installing a release still requires explicit confirmation.</span>
+        </div>
+
         <label class="update-field">
           <span class="update-field-label">Update channel</span>
           <select
