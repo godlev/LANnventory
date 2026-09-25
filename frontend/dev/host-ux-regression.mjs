@@ -73,6 +73,13 @@ forbidText(hostCard, '>Host details</div>', "Legacy feature-card title must not 
 requireText(appStyles, ".host-overview-header", "Device Overview must have dedicated responsive styling.");
 requireText(appStyles, ".host-overview-network", "Current network identity must have dedicated summary styling.");
 
+requireText(hostCard, 'class="host-overview-more"', "Destructive Host actions must be separated from routine actions.");
+requireText(hostCard, "More device actions", "Host action overflow must have an accessible name.");
+requireText(hostCard, "This action cannot be undone.", "Delete must require explicit destructive confirmation.");
+requireText(hostCard, ">Delete device</span>", "Delete must remain available as an explicit device action.");
+forbidText(hostCard, 'class="host-actions"', "Delete must not remain visually tied to edit-mode Save/Cancel actions.");
+requireText(appStyles, ".host-overview-danger-action", "Destructive Host action must have dedicated visual treatment.");
+
 for (const label of [
   "Current IP",
   "Current MAC",
