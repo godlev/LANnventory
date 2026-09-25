@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { formatLastSeen } from "../src/functions/dateFormat.ts";
-import { localDayUTCRange } from "../src/functions/history.ts";
+import { localDayUTCRange } from "../src/functions/historyDate.ts";
 
 const root = resolve(import.meta.dirname, "..");
 const read = (path) => readFileSync(resolve(root, path), "utf8");
