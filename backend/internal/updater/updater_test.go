@@ -715,3 +715,35 @@ func TestPhase359UAT2SelectionFromUAT1(t *testing.T) {
 		t.Fatalf("future beta.10 should supersede Phase 35.9 UAT2, got %+v ok=%v", next, ok)
 	}
 }
+
+
+func TestPhase359UAT3SelectionFromUAT2(t *testing.T) {
+	releases := []release{
+		{TagName: "v0.1.0-beta.9.uat.3", Prerelease: true, Draft: false},
+		{TagName: "v0.1.0-beta.9.uat.2", Prerelease: true, Draft: false},
+		{TagName: "v0.1.0-beta.9.uat.1", Prerelease: true, Draft: false},
+		{TagName: "v0.1.0-beta.9", Prerelease: true, Draft: false},
+	}
+
+	status, selected, ok := buildStatus(
+		"v0.1.0-beta.9.uat.2",
+		BetaChannel,
+		releases,
+		time.Time{},
+		false,
+	)
+	if !ok || selected.TagName != "v0.1.0-beta.9.uat.3" {
+		t.Fatalf("Beta selected %+v ok=%v, want Phase 35.9 UAT3", selected, ok)
+	}
+	if !status.Available || status.LatestVersion != "0.1.0-beta.9.uat.3" {
+		t.Fatalf("Beta status = %+v, want Phase 35.9 UAT3 available", status)
+	}
+
+	future := append([]release{
+		{TagName: "v0.1.0-beta.10", Prerelease: true, Draft: false},
+	}, releases...)
+	next, ok := selectLatestRelease(future, BetaChannel)
+	if !ok || next.TagName != "v0.1.0-beta.10" {
+		t.Fatalf("future beta.10 should supersede Phase 35.9 UAT3, got %+v ok=%v", next, ok)
+	}
+}
