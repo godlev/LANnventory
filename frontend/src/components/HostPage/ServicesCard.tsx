@@ -8,10 +8,10 @@ import {
 } from "../../functions/api";
 import { formatLastSeen } from "../../functions/dateFormat";
 import type { Host, Service } from "../../functions/exports";
+import Ping from "./Ping";
 
 type ServicesCardProps = {
   host: Host;
-  refreshKey?: number;
 };
 
 const defaultScanSettings: ServiceScanSettings = {
@@ -42,8 +42,6 @@ function ServicesCard(props: ServicesCardProps) {
 
   createEffect(() => {
     const id = props.host.ID;
-    void props.refreshKey;
-
     if (id < 1) {
       serviceRequestID++;
       setServices([]);
@@ -254,6 +252,23 @@ function ServicesCard(props: ServicesCardProps) {
                 <ServiceTable services={openServices()} />
               </Show>
             </section>
+
+            <details class="host-services-secondary">
+              <summary>
+                <span>
+                  <i class="bi bi-search" aria-hidden="true"></i>
+                  Manual service scan
+                </span>
+                <span class="badge text-bg-secondary">On demand</span>
+              </summary>
+              <div class="host-services-secondary-body">
+                <Ping
+                  host={props.host}
+                  embedded
+                  onScanComplete={() => void loadServices(props.host.ID)}
+                />
+              </div>
+            </details>
 
             <Show when={historicalServices().length > 0}>
               <details class="host-services-secondary">
