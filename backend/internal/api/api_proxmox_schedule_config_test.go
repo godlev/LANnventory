@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/godlev/LANnventory/internal/gdb"
 	"github.com/godlev/LANnventory/internal/models"
@@ -163,5 +164,77 @@ func TestProxmoxAPIScheduledSyncResponseDerivesLegacyAppliedState(t *testing.T) 
 	}
 	if got.SyncStatus != "healthy" {
 		t.Fatalf("sync status = %q, want healthy", got.SyncStatus)
+	}
+}
+
+
+func TestProxmoxAPIIntervalChangeReturnsPersistedNextSyncImmediately(t *testing.T) {
+	router := setupTestRouter(t)
+	host := seedHost(t, models.Host{Name: "pve-auto-next-response", Mac: "AA:BB:CC:DD:EE:B4", DeviceType: "server"})
+	enableTestHypervisor(t, router, host.ID)
+
+	if err := gdb.UpsertProxmoxAPIConfig(models.ProxmoxAPIConfig{
+		HypervisorMac:       host.Mac,
+		Enabled:             true,
+		BaseURL:             "https://10.4.1.6:8006",
+		TokenID:             "lannventory@pve!inventory",
+		TokenSecret:         "scheduled-sync-secret",
+		VerifyTLS:           true,
+		TimeoutSeconds:      10,
+		AutomaticSync:       true,
+		SyncIntervalMinutes: 15,
+		ConfigRevision:      4,
+		NextSyncAt:          "2026-09-25T18:45:00Z",
+		Status:              "configured",
+		LastSyncStatus:      "healthy",
+	}); err != nil {
+		t.Fatalf("UpsertProxmoxAPIConfig: %v", err)
+	}
+
+	before := time.Now().UTC()
+	rec := patchProxmoxAPIConfig(t, router, host.ID, `{"syncIntervalMinutes":60}`)
+	after := time.Now().UTC()
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d; body: %s", rec.Code, rec.Body.String())
+	}
+
+	var got ProxmoxAPIConfigResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("json.Unmarshal: %v", err)
+	}
+	if got.NextSyncAt == "" {
+		t.Fatal("PATCH response must include the newly scheduled next sync")
+	}
+	next, err := time.Parse(time.RFC3339, got.NextSyncAt)
+	if err != nil {
+		t.Fatalf("NextSyncAt %q is not RFC3339: %v", got.NextSyncAt, err)
+	}
+	minimum := before.Add(time.Hour)
+	maximum := after.Add(time.Hour + time.Minute)
+	if next.Before(minimum) || next.After(maximum) {
+		t.Fatalf("next sync = %s, want between %s and %s", next, minimum, maximum)
+	}
+	if got.ConfigRevision != 5 || got.SyncIntervalMinutes != 60 || !got.AutomaticSync {
+		t.Fatalf("unexpected changed config response: %+v", got)
+	}
+
+	stored, found, err := gdb.SelectProxmoxAPIConfig(host.Mac)
+	if err != nil || !found {
+		t.Fatalf("SelectProxmoxAPIConfig found=%v err=%v", found, err)
+	}
+	if stored.NextSyncAt != got.NextSyncAt {
+		t.Fatalf("stored next sync = %q, response = %q", stored.NextSyncAt, got.NextSyncAt)
+	}
+
+	rec = patchProxmoxAPIConfig(t, router, host.ID, `{"syncIntervalMinutes":60}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("no-op status = %d; body: %s", rec.Code, rec.Body.String())
+	}
+	var noOp ProxmoxAPIConfigResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &noOp); err != nil {
+		t.Fatalf("json.Unmarshal no-op: %v", err)
+	}
+	if noOp.NextSyncAt != got.NextSyncAt {
+		t.Fatalf("no-op patch changed next sync from %q to %q", got.NextSyncAt, noOp.NextSyncAt)
 	}
 }

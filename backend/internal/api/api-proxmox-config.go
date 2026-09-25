@@ -15,6 +15,7 @@ import (
 
 	"github.com/godlev/LANnventory/internal/gdb"
 	"github.com/godlev/LANnventory/internal/models"
+	"github.com/godlev/LANnventory/internal/proxmoxsync"
 )
 
 const (
@@ -178,11 +179,20 @@ func patchHostProxmoxAPIConfig(c *gin.Context) {
 	}
 
 	next.HypervisorMac = host.Mac
+	now := time.Now().UTC()
 	if materialProxmoxAPIConfigChanged(current, next) {
 		next.ConfigRevision = current.ConfigRevision + 1
-		next.NextSyncAt = ""
+		if next.Enabled && next.AutomaticSync {
+			next.NextSyncAt = proxmoxsync.NextScheduledAfterConfigChange(
+				next.HypervisorMac,
+				next.SyncIntervalMinutes,
+				now,
+			).Format(time.RFC3339)
+		} else {
+			next.NextSyncAt = ""
+		}
 	}
-	next.UpdatedAt = time.Now().UTC().Format(time.RFC3339)
+	next.UpdatedAt = now.Format(time.RFC3339)
 	if next.Enabled {
 		next.Status = "configured"
 	} else {

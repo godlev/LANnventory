@@ -149,7 +149,7 @@ func (s *Scheduler) reconcileSchedules(now time.Time, startup bool) ([]models.Pr
 		if overdueAtStartup {
 			next = now.Add(deterministicStartupSpread(config.HypervisorMac))
 		} else {
-			next = now.Add(interval).Add(deterministicStartupSpread(config.HypervisorMac))
+			next = NextScheduledAfterConfigChange(config.HypervisorMac, config.SyncIntervalMinutes, now)
 		}
 		nextValue := next.UTC().Format(time.RFC3339)
 		updated, err := s.Store.UpdateNextIfRevision(config.HypervisorMac, config.ConfigRevision, nextValue)
@@ -299,6 +299,15 @@ func (s *Scheduler) log() *slog.Logger {
 		return s.Log
 	}
 	return slog.Default()
+}
+
+// NextScheduledAfterConfigChange returns the deterministic first scheduled run
+// after an automatic-sync configuration change. API responses and the scheduler
+// use the same calculation so the persisted NextSyncAt is immediately truthful.
+func NextScheduledAfterConfigChange(hypervisorMac string, intervalMinutes int, now time.Time) time.Time {
+	return now.UTC().
+		Add(scheduleInterval(intervalMinutes)).
+		Add(deterministicStartupSpread(hypervisorMac))
 }
 
 func scheduleInterval(minutes int) time.Duration {

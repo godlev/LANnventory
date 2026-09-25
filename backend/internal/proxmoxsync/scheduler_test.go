@@ -307,3 +307,21 @@ func TestSchedulerCancellationReleasesInFlightWorker(t *testing.T) {
 		t.Fatalf("worker slot leaked after cancellation: %d", len(scheduler.sem))
 	}
 }
+
+
+func TestNextScheduledAfterConfigChangeMatchesSchedulerInitialization(t *testing.T) {
+	now := time.Date(2026, 9, 25, 18, 30, 0, 0, time.UTC)
+	mac := "AA:BB:CC:DD:EE:51"
+
+	got := NextScheduledAfterConfigChange(mac, 60, now)
+	want := now.Add(time.Hour).Add(deterministicStartupSpread(mac))
+	if !got.Equal(want) {
+		t.Fatalf("next = %s, want %s", got, want)
+	}
+
+	fallback := NextScheduledAfterConfigChange(mac, 999, now)
+	wantFallback := now.Add(time.Hour).Add(deterministicStartupSpread(mac))
+	if !fallback.Equal(wantFallback) {
+		t.Fatalf("fallback next = %s, want %s", fallback, wantFallback)
+	}
+}
