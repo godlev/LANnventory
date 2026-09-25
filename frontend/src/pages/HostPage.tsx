@@ -9,7 +9,6 @@ import HostedWorkloadCard from "../components/HostPage/HostedWorkloadCard";
 import DeviceProfileCard from "../components/HostPage/DeviceProfileCard";
 import ProxmoxInventoryCard from "../components/HostPage/ProxmoxInventoryCard";
 import IdentityCard from "../components/HostPage/IdentityCard";
-import Ping from "../components/HostPage/Ping";
 import ServicesCard from "../components/HostPage/ServicesCard";
 import HostActivityCard from "../components/HostPage/HostActivityCard";
 import HistCard from "../components/HostPage/HistCard";
@@ -21,7 +20,6 @@ function HostPage() {
   const [loadError, setLoadError] = createSignal("");
   const [deviceProfile, setDeviceProfile] = createSignal<DeviceProfileResponse | null>(null);
   const [hasUnsavedHostChanges, setHasUnsavedHostChanges] = createSignal(false);
-  const [serviceRefreshKey, setServiceRefreshKey] = createSignal(0);
   const params = useParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -126,7 +124,7 @@ function HostPage() {
       }
     >
       <div class="row g-3 mx-0 host-page-row">
-        <div class="col-12 col-md-8 col-lg-9 col-xl-10 host-details-column">
+        <div class="col-12 host-details-column">
           <HostCard
             host={currentHost()}
             editMode={isEditMode()}
@@ -134,12 +132,6 @@ function HostPage() {
             onHostChange={setCurrentHost}
             onDirtyChange={setHasUnsavedHostChanges}
           ></HostCard>
-        </div>
-        <div class="col-12 col-md-4 col-lg-3 col-xl-2 host-port-column">
-          <Ping
-            host={currentHost()}
-            onScanComplete={() => setServiceRefreshKey((value) => value + 1)}
-          ></Ping>
         </div>
       </div>
       <div class="row g-3 mx-0 mt-1 host-page-row">
@@ -161,7 +153,7 @@ function HostPage() {
       </Show>
       <div class="row g-3 mx-0 mt-1 host-page-row">
         <div class="col-md">
-          <ServicesCard host={currentHost()} refreshKey={serviceRefreshKey()}></ServicesCard>
+          <ServicesCard host={currentHost()}></ServicesCard>
         </div>
       </div>
       <div class="row g-3 mx-0 mt-1 host-page-row">
