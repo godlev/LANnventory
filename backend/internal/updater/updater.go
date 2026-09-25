@@ -462,34 +462,31 @@ func (s *Service) Schedule(ctx context.Context, currentVersion, channel, expecte
 		fmt.Sprintf("%s-to-%s-%d", safePathComponent(currentVersion), safePathComponent(targetVersion), s.now().Unix()),
 	)
 
+	unitName := fmt.Sprintf("lannventory-update-%d", s.now().UnixNano())
+	progress.BackupPath = backupDir
+	progress.SystemdUnit = unitName
+	if err := s.persistProgress(progress); err != nil {
+		return fail(fmt.Errorf("persist update job metadata: %w", err))
+	}
+
 	scriptPath := filepath.Join(updateDir, "apply-update.sh")
-	script := "#!/bin/sh\n" +
-		"set -eu\n" +
-		"sleep 2\n" +
-		"echo " + shellQuote(actualHashHex+"  "+debPath) + " | sha256sum -c -\n" +
-		"mkdir -p " + shellQuote(backupDir) + "\n" +
-		"cp -a /usr/bin/lannventory " + shellQuote(filepath.Join(backupDir, "lannventory")) + "\n" +
-		"printf '%s\\n' " + shellQuote("from="+currentVersion) + " " + shellQuote("to="+targetVersion) + " > " + shellQuote(filepath.Join(backupDir, "update.txt")) + "\n" +
-		"recover_service() { systemctl daemon-reload >/dev/null 2>&1 || true; systemctl start lannventory >/dev/null 2>&1 || true; echo " + shellQuote("LANnventory update did not complete successfully. Recovery files are preserved at "+backupDir) + " >&2; }\n" +
-		"trap recover_service EXIT\n" +
-		"systemctl stop lannventory\n" +
-		"if [ -d /etc/watchyourlan ]; then cp -a /etc/watchyourlan " + shellQuote(filepath.Join(backupDir, "watchyourlan")) + "; fi\n" +
-		"dpkg -i " + shellQuote(debPath) + "\n" +
-		"systemctl daemon-reload\n" +
-		"systemctl start lannventory\n" +
-		"healthy=0\n" +
-		"i=0\n" +
-		"while [ \"$i\" -lt 45 ]; do if systemctl is-active --quiet lannventory && curl -fsS --max-time 3 " + shellQuote(healthURL) + " >/dev/null 2>&1; then healthy=1; break; fi; i=$((i + 1)); sleep 2; done\n" +
-		"if [ \"$healthy\" -ne 1 ]; then echo " + shellQuote("LANnventory did not pass the post-update health check at "+healthURL) + " >&2; exit 1; fi\n" +
-		"trap - EXIT\n" +
-		"rm -rf " + shellQuote(updateDir) + "\n"
+	script := buildApplyUpdateScript(applyScriptParams{
+		ActualHashHex:  actualHashHex,
+		DebPath:        debPath,
+		BackupDir:      backupDir,
+		CurrentVersion: currentVersion,
+		TargetVersion:  targetVersion,
+		HealthURL:      healthURL,
+		UpdateDir:      updateDir,
+		ProgressPath:   s.progressPath,
+		AttemptID:      progress.AttemptID,
+		StartedAt:      progress.StartedAt,
+		SystemdUnit:    unitName,
+	})
 	if err := os.WriteFile(scriptPath, []byte(script), 0o700); err != nil {
 		return fail(fmt.Errorf("write update helper: %w", err))
 	}
 
-	unitName := fmt.Sprintf("lannventory-update-%d", s.now().UnixNano())
-	progress.BackupPath = backupDir
-	progress.SystemdUnit = unitName
 	if err := setStage(UpdateStageBackup); err != nil {
 		return fail(fmt.Errorf("persist backup progress: %w", err))
 	}
