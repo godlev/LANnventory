@@ -83,6 +83,26 @@ func SelectByDate(mac, date string) (hosts []models.Host) {
 	return hosts
 }
 
+// SelectByDateRange returns presence samples inside a half-open server-local timestamp range.
+func SelectByDateRange(mac, from, to string) (hosts []models.Host, ok bool) {
+
+	activeDB, release, err := acquireDB()
+	if err != nil {
+		return hosts, !check.IfError(err)
+	}
+	defer release()
+
+	tab := activeDB.Table("history")
+	err = tab.
+		Where("\"MAC\" = ?", mac).
+		Where("\"DATE\" >= ?", from).
+		Where("\"DATE\" < ?", to).
+		Order("\"DATE\" ASC").
+		Find(&hosts).Error
+
+	return hosts, !check.IfError(err)
+}
+
 // SelectLatest - get latest hosts by MAC
 func SelectLatest(mac string, number int) (hosts []models.Host) {
 
