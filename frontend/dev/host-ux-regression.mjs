@@ -11,7 +11,9 @@ const hostActivity = read("src/components/HostPage/HostActivityCard.tsx");
 const hostHistory = read("src/components/HostPage/HistCard.tsx");
 const servicesCard = read("src/components/HostPage/ServicesCard.tsx");
 const activityFeed = read("src/components/ActivityFeed.tsx");
+const hostPage = read("src/pages/HostPage.tsx");
 const hostCard = read("src/components/HostPage/HostCard.tsx");
+const portScan = read("src/components/HostPage/Ping.tsx");
 const deviceProfile = read("src/components/HostPage/DeviceProfileCard.tsx");
 const proxmoxInventory = read("src/components/HostPage/ProxmoxInventoryCard.tsx");
 const hostedWorkload = read("src/components/HostPage/HostedWorkloadCard.tsx");
@@ -80,6 +82,11 @@ requireText(hostHistory, '>History</span>', "Presence history must be labelled a
 requireText(appStyles, ".host-history-disclosure", "Presence history disclosure must have dedicated styling.");
 
 requireText(servicesCard, "Current open services", "Services must prioritize current open state.");
+requireText(servicesCard, "Manual service scan", "Manual port scanning must live with service inventory.");
+requireText(servicesCard, '<Ping', "Services must own the manual scan workflow.");
+requireText(portScan, "props.embedded", "Port scan must support embedded Services presentation.");
+requireText(hostPage, 'class="col-12 host-details-column"', "Device Overview must use the full Host page width.");
+forbidText(hostPage, "host-port-column", "Port scan must not remain a top-level peer of Device Overview.");
 requireText(servicesCard, "Previously observed services", "Closed services must remain available as explicit history.");
 requireText(servicesCard, "Closed services are retained as history.", "Historical service state must not imply a current open service.");
 requireText(servicesCard, '<details class="host-services-secondary">', "Historical services and scan settings must use progressive disclosure.");
