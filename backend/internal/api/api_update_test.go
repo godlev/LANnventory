@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -113,6 +115,68 @@ func TestGetUpdateStatusOnlyRefreshContactsReleaseSource(t *testing.T) {
 	}
 	if got := calls.Load(); got != 1 {
 		t.Fatalf("explicit refresh contacted release source %d times, want 1", got)
+	}
+}
+
+func TestGetUpdateProgressReturnsPersistedState(t *testing.T) {
+	router := setupConfigRouter(t)
+	progressPath := filepath.Join(t.TempDir(), "update-progress.json")
+	progress := updater.Progress{
+		AttemptID:       "attempt-1",
+		Status:          updater.ProgressStatusRunning,
+		Stage:           updater.UpdateStageBackup,
+		PreviousVersion: "0.1.0-beta.10",
+		TargetVersion:   "0.1.0-beta.11",
+		BackupPath:      "/var/lib/lannventory/update-backups/example",
+		BackupCreated:   true,
+	}
+	data, err := json.Marshal(progress)
+	if err != nil {
+		t.Fatalf("json.Marshal: %v", err)
+	}
+	if err := os.WriteFile(progressPath, data, 0o600); err != nil {
+		t.Fatalf("os.WriteFile: %v", err)
+	}
+
+	oldService := updateService
+	updateService = updater.NewServiceWithURLAndProgressPath(nil, "http://example.invalid/releases", progressPath)
+	t.Cleanup(func() { updateService = oldService })
+
+	req := httptest.NewRequest(http.MethodGet, "/api/update/progress", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	var got updater.Progress
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("json.Unmarshal: %v", err)
+	}
+	if got.AttemptID != progress.AttemptID || got.Status != progress.Status || got.Stage != progress.Stage || !got.BackupCreated {
+		t.Fatalf("progress response = %+v, want %+v", got, progress)
+	}
+}
+
+func TestGetUpdateProgressMissingStateReturnsIdle(t *testing.T) {
+	router := setupConfigRouter(t)
+	oldService := updateService
+	updateService = updater.NewServiceWithURLAndProgressPath(nil, "http://example.invalid/releases", filepath.Join(t.TempDir(), "missing.json"))
+	t.Cleanup(func() { updateService = oldService })
+
+	req := httptest.NewRequest(http.MethodGet, "/api/update/progress", nil)
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	var got updater.Progress
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("json.Unmarshal: %v", err)
+	}
+	if got.Status != updater.ProgressStatusIdle || got.Stage != updater.UpdateStageIdle {
+		t.Fatalf("progress response = %+v, want idle", got)
 	}
 }
 
