@@ -137,7 +137,6 @@ func (s *Scheduler) reconcileSchedules(now time.Time, startup bool) ([]models.Pr
 
 	for i := range configs {
 		config := &configs[i]
-		interval := scheduleInterval(config.SyncIntervalMinutes)
 		next, parseErr := parseScheduleTime(config.NextSyncAt)
 
 		needsInitialization := strings.TrimSpace(config.NextSyncAt) == "" || parseErr != nil
