@@ -1283,7 +1283,7 @@ info:
     name: MIT
     url: https://opensource.org/licenses/MIT
   title: LANnventory API
-  version: 0.1.0-beta.9.uat.3
+  version: 0.1.0-beta.10
 paths:
   /activity:
     get:
