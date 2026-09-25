@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/godlev/LANnventory/internal/conf"
 	"github.com/godlev/LANnventory/internal/updater"
@@ -127,6 +128,7 @@ func TestGetUpdateProgressReturnsPersistedState(t *testing.T) {
 		Stage:           updater.UpdateStageBackup,
 		PreviousVersion: "0.1.0-beta.10",
 		TargetVersion:   "0.1.0-beta.11",
+		UpdatedAt:       time.Now().UTC().Format(time.RFC3339),
 		BackupPath:      "/var/lib/lannventory/update-backups/example",
 		BackupCreated:   true,
 	}
