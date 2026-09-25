@@ -75,6 +75,10 @@ jobs:
         working-directory: frontend
         run: npm run test:host-ux
 
+      - name: Verify Settings UX semantic contracts
+        working-directory: frontend
+        run: npm run test:settings-ux
+
       - name: Build frontend and verify embedded bundle
         working-directory: frontend
         run: |
