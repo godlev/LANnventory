@@ -508,7 +508,7 @@ function SourceSummary(props: {
         <SummaryMetric label="Running" value={props.running} />
         <SummaryMetric label="Stopped" value={props.stopped} />
         <SummaryMetric label="Matched" value={props.matched} />
-        <SummaryMetric label="Review" value={props.conflicts} />
+        <SummaryMetric label="IP conflicts" value={props.conflicts} />
         <SummaryMetric label="Retired" value={props.retired} />
       </div>
     </div>
