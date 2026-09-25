@@ -154,7 +154,7 @@ function CorrelationPanel(props: CorrelationPanelProps) {
   };
 
   return (
-    <div class="mt-4 pt-3 border-top">
+    <div class="host-identity-matches mt-4 pt-3 border-top">
       <Show when={actionError()}>
         <div class="host-inline-error mb-3" role="alert">{actionError()}</div>
       </Show>
@@ -165,7 +165,7 @@ function CorrelationPanel(props: CorrelationPanelProps) {
             <div class="mb-4">
               <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
                 <div>
-                  <h6 class="mb-1">Confirmed identity group</h6>
+                  <h6 class="mb-1">Confirmed same-device identities</h6>
                   <div class="small device-cell-muted">
                     These MAC identities are grouped only because you explicitly confirmed the relationship. Original observations stay separate.
                   </div>
@@ -177,7 +177,7 @@ function CorrelationPanel(props: CorrelationPanelProps) {
                     </div>
                   </Show>
                 </div>
-                <span class="host-detail-section-badge">User confirmed · Read only projection</span>
+                <span class="host-detail-section-badge">User confirmed</span>
               </div>
               <div class="row g-2">
                 <For each={group().members}>{(member) =>
@@ -192,9 +192,9 @@ function CorrelationPanel(props: CorrelationPanelProps) {
           <div class={group().confirmed && group().members.length > 1 ? "pt-3 border-top" : ""}>
             <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
               <div>
-                <h6 class="mb-1">Possible same device</h6>
+                <h6 class="mb-1">Possible identity matches</h6>
                 <div class="small device-cell-muted">
-                  LANnventory uses correlation evidence to suggest same-device relationships. Shared IP history alone is not a same-device conclusion.
+                  LANnventory uses network evidence to suggest possible same-device relationships. Shared IP history alone is not a same-device conclusion.
                 </div>
               </div>
               <span class="host-detail-section-badge">Suggestion · User decision</span>
