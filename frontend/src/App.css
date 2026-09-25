@@ -4922,7 +4922,7 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     display: grid;
     gap: 0.55rem;
 }
-.host-services-section-heading {
+.host-section-summary-heading {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
@@ -4994,11 +4994,11 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
 }
 
 @media (max-width: 575.98px) {
-    .host-services-section-heading {
+    .host-section-summary-heading {
         align-items: stretch;
         flex-direction: column;
     }
-    .host-services-section-heading .badge {
+    .host-section-summary-heading .badge {
         align-self: flex-start;
     }
     .host-services-table-wrap {
@@ -5038,6 +5038,50 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
         font-weight: 800;
         text-transform: uppercase;
     }
+}
+
+/* Phase 35.10 Network identity hierarchy */
+.host-identity-body {
+    display: grid;
+    gap: 0.85rem;
+}
+.host-identity-current {
+    display: grid;
+    gap: 0.45rem;
+}
+.host-identity-history {
+    overflow: visible;
+    border: 1px solid var(--wyl-panel-border);
+    border-radius: 8px;
+    background: var(--wyl-control-bg);
+}
+.host-identity-history > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.65rem;
+    padding: 0.58rem 0.68rem;
+    list-style: none;
+    cursor: pointer;
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+.host-identity-history > summary::-webkit-details-marker {
+    display: none;
+}
+.host-identity-history > summary > span:first-child {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.38rem;
+}
+.host-identity-history > summary > span:first-child i {
+    color: var(--wyl-link);
+}
+.host-identity-history[open] > summary {
+    border-bottom: 1px solid var(--wyl-panel-border);
+}
+.host-identity-history-body {
+    padding: 0.72rem;
 }
 
 /* Host Recent Events: event snapshots belong to the historical event, not current Host state. */
