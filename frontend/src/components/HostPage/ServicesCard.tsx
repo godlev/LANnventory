@@ -209,6 +209,8 @@ function ServicesCard(props: ServicesCardProps) {
     }),
   );
   const openCount = createMemo(() => services().filter((service) => service.state === "open").length);
+  const openServices = createMemo(() => sortedServices().filter((service) => service.state === "open"));
+  const historicalServices = createMemo(() => sortedServices().filter((service) => service.state !== "open"));
 
   return (
     <section class="card wyl-panel host-panel" aria-labelledby="host-services-title">
@@ -216,168 +218,205 @@ function ServicesCard(props: ServicesCardProps) {
         <div>
           <div id="host-services-title" class="host-panel-title">Services</div>
           <div class="host-panel-subtitle">
-            Retained TCP service state is tracked per exact device address. Service hints are port-based labels, not protocol fingerprinting.
+            Current open services first. Previously observed services and scan scheduling are available below when you need them.
           </div>
         </div>
         <Show when={services().length > 0}>
           <span class="host-detail-section-badge">
-            {openCount()} open · {services().length} retained
+            {openCount()} open · {historicalServices().length} historical
           </span>
         </Show>
       </div>
 
-      <div class="card-body">
-        <div class="host-detail-section mb-3">
-          <div class="host-detail-section-header">
-            <span class="host-detail-section-heading">
-              <i class="bi bi-clock-history" aria-hidden="true"></i>
-              Scheduled scanning
-            </span>
-            <span class={scanSettings().enabled ? "badge text-bg-success" : "badge text-bg-secondary"}>
-              {scanSettings().enabled ? "Enabled" : "Off"}
-            </span>
-          </div>
-
-          <div class="p-3">
-            <Show when={!settingsLoading()} fallback={<div class="device-cell-muted">Loading scheduled scan settings…</div>}>
-              <div class="row g-3 align-items-end">
-                <div class="col-12 col-md-3 col-xl-2">
-                  <div class="form-check form-switch">
-                    <input
-                      id="host-service-scan-enabled"
-                      class="form-check-input"
-                      type="checkbox"
-                      role="switch"
-                      checked={scheduledEnabled()}
-                      onChange={(event) => handleEnabledChange(event.currentTarget.checked)}
-                    />
-                    <label class="form-check-label" for="host-service-scan-enabled">
-                      Enable automatic scans
-                    </label>
-                  </div>
-                </div>
-
-                <div class="col-12 col-md-3 col-xl-2">
-                  <label class="host-port-field w-100">
-                    <span>Interval (minutes)</span>
-                    <input
-                      type="number"
-                      min="1"
-                      step="1"
-                      class="form-control form-control-sm wyl-control"
-                      value={intervalMinutes()}
-                      onInput={(event) => handleIntervalChange(event.currentTarget.value)}
-                    />
-                  </label>
-                </div>
-
-                <div class="col-12 col-md-6 col-xl-6">
-                  <label class="host-port-field w-100">
-                    <span>TCP ports</span>
-                    <input
-                      type="text"
-                      class="form-control form-control-sm wyl-control"
-                      placeholder="22, 80, 443"
-                      value={portsText()}
-                      onInput={(event) => handlePortsChange(event.currentTarget.value)}
-                    />
-                  </label>
-                </div>
-
-                <div class="col-12 col-xl-2">
-                  <button
-                    type="button"
-                    class="btn btn-sm wyl-button w-100"
-                    disabled={props.host.ID < 1 || savingSettings() || !settingsDirty()}
-                    onClick={handleSaveSettings}
-                  >
-                    <i class="bi bi-floppy" aria-hidden="true"></i>
-                    <span>{savingSettings() ? "Saving…" : "Save"}</span>
-                  </button>
-                </div>
-              </div>
-
-              <div class="small device-cell-muted mt-2">
-                Up to 256 unique TCP ports. Example: 22, 80, 443. 60 minutes = 1 hour; 1440 = 1 day.
-                Scheduled scanning is opt-in and stays off until you enable and save it.
-              </div>
-
-              <div class="row g-2 mt-2 small">
-                <RuntimeField label="Next scan" value={scanSettings().nextScanAt} />
-                <RuntimeField label="Last attempt" value={scanSettings().lastAttemptAt} />
-                <RuntimeField label="Last success" value={scanSettings().lastSuccessfulAt} />
-              </div>
-
-              <Show when={settingsError()}>
-                <div class="host-inline-error mt-2" role="alert">{settingsError()}</div>
-              </Show>
-              <Show when={settingsSaved()}>
-                <div class="small text-success mt-2" role="status">{settingsSaved()}</div>
-              </Show>
-              <Show when={scanSettings().lastError}>
-                <div class="alert alert-warning py-2 px-3 small mt-2 mb-0" role="status">
-                  <strong>Last scheduled scan:</strong> {scanSettings().lastError}
-                </div>
-              </Show>
-            </Show>
-          </div>
-        </div>
-
+      <div class="card-body host-services-body">
         <Show when={!loading()} fallback={<div class="device-cell-muted">Loading services…</div>}>
           <Show when={!loadError()} fallback={<div class="host-inline-error" role="alert">{loadError()}</div>}>
-            <Show
-              when={sortedServices().length > 0}
-              fallback={
-                <div class="device-cell-muted">
-                  No services have been observed yet. Run a port scan to start building service inventory.
+            <section class="host-services-current" aria-labelledby="host-current-services-title">
+              <div class="host-services-section-heading">
+                <div>
+                  <div id="host-current-services-title" class="small fw-semibold">Current open services</div>
+                  <div class="small device-cell-muted">Services reported open on the most recent check for each exact device address.</div>
                 </div>
-              }
-            >
-              <div class="table-responsive">
-                <table class="table table-sm align-middle mb-0">
-                  <thead>
-                    <tr>
-                      <th scope="col">Service</th>
-                      <th scope="col">State</th>
-                      <th scope="col">Address</th>
-                      <th scope="col">First detected</th>
-                      <th scope="col">Last detected</th>
-                      <th scope="col">Last checked</th>
-                      <th scope="col">Source</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <For each={sortedServices()}>{(service) =>
-                      <tr>
-                        <td>
-                          <div class="fw-semibold">{serviceLabel(service)}</div>
-                          <Show when={service.serviceHint}>
-                            <div class="small device-cell-muted">Hint: {service.serviceHint}</div>
-                          </Show>
-                        </td>
-                        <td>
-                          <span class={service.state === "open" ? "badge text-bg-success" : "badge text-bg-secondary"}>
-                            {service.state === "open" ? "Open" : "Closed"}
-                          </span>
-                        </td>
-                        <td>
-                          <div class="font-monospace text-break">{service.address}</div>
-                          <div class="small device-cell-muted">{service.addressFamily.toUpperCase()}</div>
-                        </td>
-                        <td>{formatServiceTime(service.firstDetected)}</td>
-                        <td>{formatServiceTime(service.lastDetected)}</td>
-                        <td>{formatServiceTime(service.lastChecked)}</td>
-                        <td>{scanSourceLabel(service.lastScanSource)}</td>
-                      </tr>
-                    }</For>
-                  </tbody>
-                </table>
+                <span class={openServices().length > 0 ? "badge text-bg-success" : "badge text-bg-secondary"}>
+                  {openServices().length} open
+                </span>
               </div>
+
+              <Show
+                when={openServices().length > 0}
+                fallback={
+                  <div class="host-services-empty">
+                    <i class="bi bi-shield-check" aria-hidden="true"></i>
+                    <span>No open services are currently recorded. Run a port scan to refresh service inventory.</span>
+                  </div>
+                }
+              >
+                <ServiceTable services={openServices()} />
+              </Show>
+            </section>
+
+            <Show when={historicalServices().length > 0}>
+              <details class="host-services-secondary">
+                <summary>
+                  <span>
+                    <i class="bi bi-clock-history" aria-hidden="true"></i>
+                    Previously observed services
+                  </span>
+                  <span class="badge text-bg-secondary">{historicalServices().length}</span>
+                </summary>
+                <div class="host-services-secondary-body">
+                  <div class="small device-cell-muted mb-2">
+                    Closed services are retained as history. They do not represent services that LANnventory currently sees as open.
+                  </div>
+                  <ServiceTable services={historicalServices()} />
+                </div>
+              </details>
             </Show>
+
+            <details class="host-services-secondary">
+              <summary>
+                <span>
+                  <i class="bi bi-clock" aria-hidden="true"></i>
+                  Scheduled scanning
+                </span>
+                <span class={scanSettings().enabled ? "badge text-bg-success" : "badge text-bg-secondary"}>
+                  {scanSettings().enabled ? "Enabled" : "Off"}
+                </span>
+              </summary>
+
+              <div class="host-services-secondary-body">
+                <Show when={!settingsLoading()} fallback={<div class="device-cell-muted">Loading scheduled scan settings…</div>}>
+                  <div class="row g-3 align-items-end">
+                    <div class="col-12 col-md-3 col-xl-2">
+                      <div class="form-check form-switch">
+                        <input
+                          id="host-service-scan-enabled"
+                          class="form-check-input"
+                          type="checkbox"
+                          role="switch"
+                          checked={scheduledEnabled()}
+                          onChange={(event) => handleEnabledChange(event.currentTarget.checked)}
+                        />
+                        <label class="form-check-label" for="host-service-scan-enabled">
+                          Enable automatic scans
+                        </label>
+                      </div>
+                    </div>
+
+                    <div class="col-12 col-md-3 col-xl-2">
+                      <label class="host-port-field w-100">
+                        <span>Interval (minutes)</span>
+                        <input
+                          type="number"
+                          min="1"
+                          step="1"
+                          class="form-control form-control-sm wyl-control"
+                          value={intervalMinutes()}
+                          onInput={(event) => handleIntervalChange(event.currentTarget.value)}
+                        />
+                      </label>
+                    </div>
+
+                    <div class="col-12 col-md-6 col-xl-6">
+                      <label class="host-port-field w-100">
+                        <span>TCP ports</span>
+                        <input
+                          type="text"
+                          class="form-control form-control-sm wyl-control"
+                          placeholder="22, 80, 443"
+                          value={portsText()}
+                          onInput={(event) => handlePortsChange(event.currentTarget.value)}
+                        />
+                      </label>
+                    </div>
+
+                    <div class="col-12 col-xl-2">
+                      <button
+                        type="button"
+                        class="btn btn-sm wyl-button w-100"
+                        disabled={props.host.ID < 1 || savingSettings() || !settingsDirty()}
+                        onClick={handleSaveSettings}
+                      >
+                        <i class="bi bi-floppy" aria-hidden="true"></i>
+                        <span>{savingSettings() ? "Saving…" : "Save"}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="small device-cell-muted mt-2">
+                    Up to 256 unique TCP ports. Example: 22, 80, 443. 60 minutes = 1 hour; 1440 = 1 day.
+                    Scheduled scanning is opt-in and stays off until you enable and save it.
+                  </div>
+
+                  <div class="row g-2 mt-2 small">
+                    <RuntimeField label="Next scan" value={scanSettings().nextScanAt} />
+                    <RuntimeField label="Last attempt" value={scanSettings().lastAttemptAt} />
+                    <RuntimeField label="Last success" value={scanSettings().lastSuccessfulAt} />
+                  </div>
+
+                  <Show when={settingsError()}>
+                    <div class="host-inline-error mt-2" role="alert">{settingsError()}</div>
+                  </Show>
+                  <Show when={settingsSaved()}>
+                    <div class="small text-success mt-2" role="status">{settingsSaved()}</div>
+                  </Show>
+                  <Show when={scanSettings().lastError}>
+                    <div class="alert alert-warning py-2 px-3 small mt-2 mb-0" role="status">
+                      <strong>Last scheduled scan:</strong> {scanSettings().lastError}
+                    </div>
+                  </Show>
+                </Show>
+              </div>
+            </details>
           </Show>
         </Show>
       </div>
     </section>
+  );
+}
+
+function ServiceTable(props: { services: Service[] }) {
+  return (
+    <div class="table-responsive host-services-table-wrap">
+      <table class="table table-sm align-middle mb-0 host-services-table">
+        <thead>
+          <tr>
+            <th scope="col">Service</th>
+            <th scope="col">State</th>
+            <th scope="col">Address</th>
+            <th scope="col">First detected</th>
+            <th scope="col">Last detected</th>
+            <th scope="col">Last checked</th>
+            <th scope="col">Source</th>
+          </tr>
+        </thead>
+        <tbody>
+          <For each={props.services}>{(service) =>
+            <tr>
+              <td data-label="Service">
+                <div class="fw-semibold">{serviceLabel(service)}</div>
+                <Show when={service.serviceHint}>
+                  <div class="small device-cell-muted">Hint: {service.serviceHint}</div>
+                </Show>
+              </td>
+              <td data-label="State">
+                <span class={service.state === "open" ? "badge text-bg-success" : "badge text-bg-secondary"}>
+                  {service.state === "open" ? "Open" : "Closed"}
+                </span>
+              </td>
+              <td data-label="Address">
+                <div class="font-monospace host-service-address">{service.address}</div>
+                <div class="small device-cell-muted">{service.addressFamily.toUpperCase()}</div>
+              </td>
+              <td data-label="First detected">{formatServiceTime(service.firstDetected)}</td>
+              <td data-label="Last detected">{formatServiceTime(service.lastDetected)}</td>
+              <td data-label="Last checked">{formatServiceTime(service.lastChecked)}</td>
+              <td data-label="Source">{scanSourceLabel(service.lastScanSource)}</td>
+            </tr>
+          }</For>
+        </tbody>
+      </table>
+    </div>
   );
 }
 
