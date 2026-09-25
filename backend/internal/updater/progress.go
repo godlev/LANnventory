@@ -45,6 +45,7 @@ type Progress struct {
 	FailedStage     string `json:"failedStage"`
 	Error           string `json:"error"`
 	ServiceRestored bool   `json:"serviceRestored"`
+	SystemdUnit      string `json:"systemdUnit"`
 }
 
 func idleProgress() Progress {
@@ -94,9 +95,7 @@ func (s *Service) persistProgress(progress Progress) error {
 	if strings.TrimSpace(progress.Stage) == "" {
 		return errors.New("update progress stage is required")
 	}
-	if progress.UpdatedAt == "" {
-		progress.UpdatedAt = s.now().UTC().Format(time.RFC3339)
-	}
+	progress.UpdatedAt = s.now().UTC().Format(time.RFC3339)
 
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0o750); err != nil {
