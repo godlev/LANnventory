@@ -13,7 +13,6 @@ function HistCard(_props: any) {
   });
 
   const handleDate = (date: string) => {
-    setToday("");
     setToday(date);
   };
 
