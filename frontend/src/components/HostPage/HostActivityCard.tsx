@@ -19,6 +19,8 @@ const hostActivityLimit = 10;
 
 function HostActivityCard(props: HostActivityCardProps) {
   const [events, setEvents] = createSignal<HostEvent[]>([]);
+  const [loading, setLoading] = createSignal(false);
+  const [loadError, setLoadError] = createSignal("");
   let requestId = 0;
   let refreshTimer = 0;
 
@@ -26,10 +28,14 @@ function HostActivityCard(props: HostActivityCardProps) {
     if (hostID < 1) {
       requestId++;
       setEvents([]);
+      setLoadError("");
+      setLoading(false);
       return;
     }
 
     const activeRequest = ++requestId;
+    setLoading(true);
+    setLoadError("");
     try {
       const nextEvents = await apiGetHostActivity(hostID, hostActivityLimit);
       if (activeRequest === requestId) {
@@ -37,7 +43,11 @@ function HostActivityCard(props: HostActivityCardProps) {
       }
     } catch {
       if (activeRequest === requestId) {
-        setEvents([]);
+        setLoadError("Recent events could not be loaded.");
+      }
+    } finally {
+      if (activeRequest === requestId) {
+        setLoading(false);
       }
     }
   };
@@ -67,9 +77,22 @@ function HostActivityCard(props: HostActivityCardProps) {
       </div>
 
       <div class="card-body activity-panel-body">
+        <Show when={loadError()}>
+          <div class="host-section-error" role="alert">
+            <span>{loadError()}</span>
+            <button type="button" class="btn btn-sm wyl-button" onClick={() => void loadActivity(props.host.ID)}>
+              Retry
+            </button>
+          </div>
+        </Show>
+
         <Show
           when={events().length > 0}
-          fallback={<div class="activity-empty">No recorded events yet</div>}
+          fallback={
+            <div class="activity-empty">
+              {loading() ? "Loading recent events…" : loadError() ? "No event data is available right now." : "No recorded events yet"}
+            </div>
+          }
         >
           <div class="table-responsive host-event-table-wrap">
             <table class="table table-sm align-middle mb-0 host-event-table">
