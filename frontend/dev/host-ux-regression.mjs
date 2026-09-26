@@ -25,6 +25,7 @@ const hostedWorkload = read("src/components/HostPage/HostedWorkloadCard.tsx");
 const homeBody = read("src/pages/Body.tsx");
 const homeCardHead = read("src/components/Body/CardHead.tsx");
 const homeTableRow = read("src/components/Body/TableRow.tsx");
+const homeSummary = read("src/components/Body/SummaryCards.tsx");
 const appStyles = read("src/App.css");
 const deviceTypes = read("src/functions/deviceTypes.ts");
 
@@ -144,6 +145,16 @@ requireText(hostCard, "onClick={handleSaveAndMarkKnown}", "Unknown edit mode mus
 requireText(hostCard, "Atomically save the staged managed information and mark this device Known in one update.", "Save-and-mark-Known must explain its atomic behavior.");
 requireText(hostCard, 'setSaveStatus(markKnown ? "Changes saved and device marked Known" : "Changes saved")', "Atomic identification save must confirm the Known transition after success.");
 requireText(hostPage, "if (host.Known === 1 && identificationOpen())", "Identification helper must close after a successful Known transition.");
+requireText(hostPage, 'get("identify") === "1"', "Host workspace must accept the Home identify route intent.");
+requireText(hostPage, "identifyRouteHandledHostID", "Home identify route intent must be consumed only once per Host view.");
+requireText(homeTableRow, '?identify=1', "Unknown Home devices must link into the shared Host identification workflow.");
+requireText(homeTableRow, 'class="device-action-link device-identify-link"', "Home Identify must be a compact row action instead of a second workflow.");
+requireText(homeTableRow, "<Show when={!known()}>", "Home Identify must only be offered for Unknown devices.");
+requireText(homeTableRow, "device-mobile-identify-link", "Expanded mobile Home rows must expose the same Unknown Identify workflow.");
+requireText(homeSummary, 'makeSplit("Unknown", unknown, knownFacetHosts.length', "Recognition summary must retain the Unknown facet.");
+requireText(homeSummary, '"Known", 0)', "Unknown facet must continue to use the shared Known=0 filter.");
+requireText(homeSummary, "toggleHostFilter(item.filterField, item.filterValue)", "Unknown summary action must reuse the common persisted Host filter path.");
+requireText(appStyles, ".device-row-actions", "Home row actions must remain compact when Identify is present.");
 requireText(appStyles, ".host-identification-suggestions", "Explainable suggestions must have compact workspace styling.");
 requireText(historyApi, "apiGetHostIdentification", "Frontend API layer must expose the retained identification aggregate.");
 requireText(historyApi, "apiRefreshHostIdentificationNames", "Frontend API layer must expose targeted local-name refresh.");
