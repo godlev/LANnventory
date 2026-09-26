@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -114,5 +113,3 @@ func identificationHostnameSourceAllowed(source string) bool {
 	}
 }
 
-// Keep the context import explicit in this file's test seam contract.
-var _ func(context.Context, string) []discovery.HostnameObservation = identificationHostnameDiscovery
