@@ -1489,9 +1489,11 @@ html[data-bs-theme] .device-table > tbody > tr.device-row-unknown:hover > td {
     text-align: center;
 }
 .device-table-actions {
-    width: 1.75rem;
-    padding-left: 0.12rem !important;
-    padding-right: 0.12rem !important;
+    width: 3.35rem;
+    min-width: 3.35rem;
+    max-width: 3.35rem;
+    padding-left: 0.08rem !important;
+    padding-right: 0.08rem !important;
     text-align: center;
 }
 .device-table-ip {
@@ -1607,6 +1609,23 @@ html[data-bs-theme] .device-table > tbody > tr.device-row-unknown:hover > td {
 .device-header-action:focus-visible,
 .device-pin-toggle:focus-visible,
 .device-known-toggle:focus-visible,
+.device-identify-link {
+    color: var(--wyl-accent-unknown);
+    opacity: 0.92;
+}
+.device-mobile-identify-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    color: var(--wyl-link);
+    font-weight: 750;
+    text-decoration: none;
+}
+.device-mobile-identify-link:hover,
+.device-mobile-identify-link:focus-visible {
+    color: var(--wyl-link-hover);
+    text-decoration: underline;
+}
 .device-action-link:hover,
 .device-action-link:focus-visible {
     background-color: var(--wyl-panel-header-bg);
@@ -1672,6 +1691,12 @@ html[data-bs-theme] .device-table > tbody > tr.device-row-unknown:hover > td {
 }
 .device-status-icon-offline {
     color: var(--bs-danger);
+}
+.device-row-actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.05rem;
 }
 .device-action-link {
     display: inline-flex;
