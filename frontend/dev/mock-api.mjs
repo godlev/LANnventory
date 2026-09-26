@@ -1854,6 +1854,12 @@ function routeReadOnly(req, res, url) {
           source: 'mdns',
           reasons: ['selected from current mdns evidence'],
         } : undefined,
+        suggestedDeviceType: unknown ? {
+          value: 'camera',
+          confidence: 'low',
+          source: 'conservative-clues',
+          reasons: ['tcp/554 RTSP'],
+        } : undefined,
         clueCount: unknown ? 3 : 0,
         reasons: [],
         cautions: [],
