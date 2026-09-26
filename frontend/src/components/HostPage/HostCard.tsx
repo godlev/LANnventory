@@ -339,35 +339,37 @@ function HostCard(_props: HostCardProps) {
               </span>
             </div>
 
-            <div class="host-overview-type">{currentDeviceType().label}</div>
+            <div class="host-overview-summary-line">
+              <span class="host-overview-type">{currentDeviceType().label}</span>
 
-            <div class="host-overview-network" aria-label="Current network identity">
-              <span title="Current IP">
-                <i class="bi bi-globe2" aria-hidden="true"></i>
-                <span class="font-monospace">{_props.host.IP || "No IP"}</span>
-              </span>
-              <span title="Current MAC">
-                <i class="bi bi-ethernet" aria-hidden="true"></i>
-                <span class="font-monospace">{_props.host.Mac || "No MAC"}</span>
-              </span>
-            </div>
-
-            <Show when={_props.host.Owner || _props.host.Location}>
-              <div class="host-overview-managed-meta">
-                <Show when={_props.host.Owner}>
-                  <span>
-                    <i class="bi bi-person-fill" aria-hidden="true"></i>
-                    <span>{_props.host.Owner}</span>
-                  </span>
-                </Show>
-                <Show when={_props.host.Location}>
-                  <span>
-                    <i class="bi bi-geo-alt-fill" aria-hidden="true"></i>
-                    <span>{_props.host.Location}</span>
-                  </span>
-                </Show>
+              <div class="host-overview-network" aria-label="Current network identity">
+                <span title="Current IP">
+                  <i class="bi bi-globe2" aria-hidden="true"></i>
+                  <span class="font-monospace">{_props.host.IP || "No IP"}</span>
+                </span>
+                <span title="Current MAC">
+                  <i class="bi bi-ethernet" aria-hidden="true"></i>
+                  <span class="font-monospace">{_props.host.Mac || "No MAC"}</span>
+                </span>
               </div>
-            </Show>
+
+              <Show when={_props.host.Owner || _props.host.Location}>
+                <div class="host-overview-managed-meta">
+                  <Show when={_props.host.Owner}>
+                    <span>
+                      <i class="bi bi-person-fill" aria-hidden="true"></i>
+                      <span>{_props.host.Owner}</span>
+                    </span>
+                  </Show>
+                  <Show when={_props.host.Location}>
+                    <span>
+                      <i class="bi bi-geo-alt-fill" aria-hidden="true"></i>
+                      <span>{_props.host.Location}</span>
+                    </span>
+                  </Show>
+                </div>
+              </Show>
+            </div>
           </div>
         </div>
 

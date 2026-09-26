@@ -127,19 +127,20 @@ function HostPage() {
         </div>
       }
     >
-      <div class="row g-3 mx-0 host-page-row">
-        <div class="col-12 host-details-column">
-          <HostCard
-            host={currentHost()}
-            editMode={isEditMode()}
-            onEditModeChange={setEditMode}
-            onHostChange={setCurrentHost}
-            onDirtyChange={setHasUnsavedHostChanges}
-          ></HostCard>
+      <div class="host-primary-shell">
+        <div class="row g-3 mx-0 host-page-row">
+          <div class="col-12 host-details-column">
+            <HostCard
+              host={currentHost()}
+              editMode={isEditMode()}
+              onEditModeChange={setEditMode}
+              onHostChange={setCurrentHost}
+              onDirtyChange={setHasUnsavedHostChanges}
+            ></HostCard>
+          </div>
         </div>
-      </div>
-      <div class="host-section-nav-shell">
-        <nav class="host-section-nav" role="tablist" aria-label="Host sections">
+        <div class="host-section-nav-shell">
+          <nav class="host-section-nav" role="tablist" aria-label="Host sections">
           <button
             id="host-section-inventory-tab"
             type="button"
@@ -176,7 +177,8 @@ function HostPage() {
             <i class="bi bi-clock-history" aria-hidden="true"></i>
             <span>Activity</span>
           </button>
-        </nav>
+          </nav>
+        </div>
       </div>
 
       <section

@@ -98,6 +98,10 @@ requireText(portScan, "props.embedded", "Port scan must support embedded Service
 requireText(hostPage, 'class="col-12 host-details-column"', "Device Overview must use the full Host page width.");
 requireText(hostPage, 'type HostSection = "inventory" | "network" | "activity";', "Host secondary content must be divided into explicit local sections.");
 requireText(hostPage, 'class="host-section-nav"', "Host must expose visible local navigation instead of one long stack.");
+requireText(hostPage, 'class="host-primary-shell"', "Host navigation must be visually attached to the Device Overview shell.");
+requireText(hostCard, 'class="host-overview-summary-line"', "Host overview identity metadata must use the compact summary row.");
+requireText(appStyles, ".host-primary-shell .host-details-column > .host-panel", "Device Overview and Host tabs must share one visual shell.");
+requireText(appStyles, "border-radius: 0 0 8px 8px;", "Host tabs must visually continue the Device Overview instead of floating separately.");
 requireText(hostPage, 'hidden={activeSection() !== "inventory"}', "Inventory content must not remain visible when another Host section is selected.");
 requireText(hostPage, 'hidden={activeSection() !== "network"}', "Network content must not remain visible when another Host section is selected.");
 requireText(hostPage, 'hidden={activeSection() !== "activity"}', "Activity content must not remain visible when another Host section is selected.");
