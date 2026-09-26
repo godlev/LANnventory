@@ -823,3 +823,43 @@ func TestPhase3510UAT1SelectionFromBeta10(t *testing.T) {
 		t.Fatalf("future beta.11 should supersede Phase 35.10 UAT1, got %+v ok=%v", next, ok)
 	}
 }
+
+
+func TestPhase3510FinalBeta11SupersedesUATs(t *testing.T) {
+	releases := []release{
+		{TagName: "v0.1.0-beta.11", Prerelease: true, Draft: false},
+		{TagName: "v0.1.0-beta.10.uat.6", Prerelease: true, Draft: false},
+		{TagName: "v0.1.0-beta.10.uat.5", Prerelease: true, Draft: false},
+		{TagName: "v0.1.0-beta.10.uat.4", Prerelease: true, Draft: false},
+		{TagName: "v0.1.0-beta.10.uat.3", Prerelease: true, Draft: false},
+		{TagName: "v0.1.0-beta.10.uat.2", Prerelease: true, Draft: false},
+		{TagName: "v0.1.0-beta.10.uat.1", Prerelease: true, Draft: false},
+		{TagName: "v0.1.0-beta.10", Prerelease: true, Draft: false},
+	}
+
+	for _, installed := range []string{
+		"v0.1.0-beta.10",
+		"v0.1.0-beta.10.uat.1",
+		"v0.1.0-beta.10.uat.2",
+		"v0.1.0-beta.10.uat.3",
+		"v0.1.0-beta.10.uat.4",
+		"v0.1.0-beta.10.uat.5",
+		"v0.1.0-beta.10.uat.6",
+	} {
+		status, selected, ok := buildStatus(installed, BetaChannel, releases, time.Time{}, false)
+		if !ok {
+			t.Fatalf("Beta channel did not select a release for installed %s", installed)
+		}
+		if selected.TagName != "v0.1.0-beta.11" {
+			t.Fatalf("installed %s selected %q, want v0.1.0-beta.11", installed, selected.TagName)
+		}
+		if !status.Available || status.LatestVersion != "0.1.0-beta.11" {
+			t.Fatalf("installed %s status = %+v, want available beta.11", installed, status)
+		}
+	}
+
+	stableStatus, selected, ok := buildStatus("v0.1.0-beta.10.uat.6", StableChannel, releases, time.Time{}, false)
+	if ok || stableStatus.Available || selected.TagName != "" {
+		t.Fatalf("Stable channel exposed beta.11 prerelease: status=%+v selected=%+v ok=%v", stableStatus, selected, ok)
+	}
+}
