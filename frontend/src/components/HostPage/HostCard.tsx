@@ -17,6 +17,11 @@ type HostCardProps = {
   onDirtyChange?: (dirty: boolean) => void;
   identifyOpen?: boolean;
   onIdentifyToggle?: () => void;
+  identificationDraft?: {
+    token: number;
+    name?: string;
+    deviceType?: string;
+  } | null;
 };
 
 type HostEditDraft = {
@@ -53,6 +58,7 @@ function HostCard(_props: HostCardProps) {
   const [inventoryOptions, setInventoryOptions] = createSignal<InventoryOptionsState>(emptyInventoryOptions);
   let syncedHostID = _props.host.ID;
   let optionsRequestID = 0;
+  let appliedIdentificationDraftToken = 0;
 
   const syncDraftFromHost = (host: Host) => {
     const nextDraft = draftFromHost(host);
@@ -69,6 +75,29 @@ function HostCard(_props: HostCardProps) {
       syncedHostID = host.ID;
       syncDraftFromHost(host);
     }
+  });
+
+  createEffect(() => {
+    const suggestion = _props.identificationDraft;
+    if (!suggestion || suggestion.token === appliedIdentificationDraftToken || _props.host.ID === 0) {
+      return;
+    }
+
+    appliedIdentificationDraftToken = suggestion.token;
+    const suggestedName = suggestion.name?.trim();
+    const suggestedDeviceType = suggestion.deviceType ? normalizeDeviceType(suggestion.deviceType) : undefined;
+    if (!suggestedName && !suggestedDeviceType) {
+      return;
+    }
+
+    setSaveStatus("");
+    setSaveError("");
+    setDraft((current) => ({
+      ...current,
+      ...(suggestedName ? { Name: suggestedName } : {}),
+      ...(suggestedDeviceType ? { DeviceType: suggestedDeviceType } : {}),
+    }));
+    _props.onEditModeChange?.(true);
   });
 
   createEffect(() => {
