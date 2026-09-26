@@ -1831,6 +1831,50 @@ function routeReadOnly(req, res, url) {
     return true;
   }
 
+  const identificationMatch = pathname.match(/^\/api\/host\/(\d+)\/identification$/);
+  if (req.method === 'GET' && identificationMatch) {
+    const id = Number(identificationMatch[1]);
+    const hostEntry = findHostByID(id);
+    if (!hostEntry) {
+      sendJSON(res, { error: 'invalid host id' }, 400);
+      return true;
+    }
+
+    const unknown = hostEntry.Known !== 1;
+    sendJSON(res, {
+      hostId: id,
+      mac: hostEntry.Mac,
+      currentAddress: hostEntry.IP ?? '',
+      known: !unknown,
+      assessment: {
+        state: unknown ? 'suggested' : 'known',
+        suggestedName: unknown ? {
+          value: hostEntry.DNS || hostEntry.Name || 'mock-device.local',
+          confidence: 'medium',
+          source: 'mdns',
+          reasons: ['selected from current mdns evidence'],
+        } : undefined,
+        clueCount: unknown ? 3 : 0,
+        reasons: [],
+        cautions: [],
+        conflicts: [],
+        evidence: [],
+      },
+      sources: [
+        { source: 'discovery', available: true, total: unknown ? 2 : 0, included: unknown ? 2 : 0, truncated: false },
+        { source: 'services', available: true, total: unknown ? 1 : 0, included: unknown ? 1 : 0, truncated: false },
+        { source: 'workloads', available: true, total: 0, included: 0, truncated: false },
+        { source: 'address-history', available: true, total: 0, included: 0, truncated: false },
+      ],
+      warnings: [],
+      actions: [
+        { key: 'identity-history', available: true },
+        { key: 'service-scan', available: Boolean(hostEntry.IP), reason: hostEntry.IP ? '' : 'host has no current address' },
+      ],
+    });
+    return true;
+  }
+
   const hostMatch = pathname.match(/^\/api\/host\/(\d+)$/);
   if (req.method === 'GET' && hostMatch) {
     const id = Number(hostMatch[1]);
