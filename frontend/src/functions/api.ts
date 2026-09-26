@@ -152,6 +152,16 @@ export type HostIdentification = {
   actions: IdentificationAction[];
 };
 
+export type IdentificationNameRefreshSource = {
+  source: string;
+  values: string[];
+};
+
+export type IdentificationNameRefreshResponse = {
+  refreshedAt: string;
+  sources: IdentificationNameRefreshSource[];
+};
+
 export type DeviceProfileResponse = {
   managed: DeviceProfile | null;
   network: NetworkDeviceProfile | null;
@@ -932,6 +942,17 @@ export const apiGetHostIdentification = async (id: number | string): Promise<Hos
   return await apiJSON<HostIdentification>(url);
 };
 
+export const apiRefreshHostIdentificationNames = async (
+  id: number | string,
+  signal?: AbortSignal,
+): Promise<IdentificationNameRefreshResponse> => {
+  const url = apiPath+'/api/host/'+encodeURIComponent(String(id))+'/identification/refresh-names';
+  return await apiJSON<IdentificationNameRefreshResponse>(url, {
+    method: 'POST',
+    signal,
+  });
+};
+
 export const apiGetAddressIdentity = async (address: string): Promise<AddressIdentity> => {
   const params = new URLSearchParams({ address });
   const url = apiPath+'/api/identity/address?'+params.toString();
@@ -971,10 +992,15 @@ export type ServiceScanSettings = {
 
 export type ServiceScanSettingsPayload = Pick<ServiceScanSettings, "enabled" | "intervalMinutes" | "ports">;
 
-export const apiScanHostPort = async (id:number, port:number): Promise<HostPortScanResult> => {
+export const apiScanHostPort = async (
+  id:number,
+  port:number,
+  signal?: AbortSignal,
+): Promise<HostPortScanResult> => {
   const url = apiPath+'/api/host/'+id+'/port/'+port+'/scan';
   return await apiJSON<HostPortScanResult>(url, {
     method: 'POST',
+    signal,
   });
 };
 
