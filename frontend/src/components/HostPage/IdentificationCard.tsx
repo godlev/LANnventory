@@ -1,6 +1,7 @@
 import { For, Show } from "solid-js";
 
-import type { HostIdentification, IdentificationSourceStatus } from "../../functions/api";
+import type { HostIdentification, IdentificationSourceStatus, IdentificationSuggestion } from "../../functions/api";
+import { getDeviceTypeOption } from "../../functions/deviceTypes";
 
 type IdentificationCardProps = {
   identification: HostIdentification | null;
@@ -8,6 +9,7 @@ type IdentificationCardProps = {
   error: string;
   onClose?: () => void;
   onRetry?: () => void;
+  onUseSuggestion?: (draft: { name?: string; deviceType?: string }) => void;
 };
 
 function IdentificationCard(props: IdentificationCardProps) {
@@ -100,6 +102,57 @@ function IdentificationCard(props: IdentificationCardProps) {
                   </div>
                 </div>
 
+                <Show when={identification().assessment.suggestedName || identification().assessment.suggestedDeviceType}>
+                  <section class="host-identification-suggestions" aria-label="Identification suggestions">
+                    <div class="host-identification-suggestions-heading">
+                      <div>
+                        <strong>Suggested managed values</strong>
+                        <span>Review the evidence, then copy only the values you want into the editable draft.</span>
+                      </div>
+                      <Show when={identification().assessment.suggestedName && identification().assessment.suggestedDeviceType}>
+                        <button
+                          type="button"
+                          class="btn btn-sm wyl-button"
+                          onClick={() => props.onUseSuggestion?.({
+                            name: identification().assessment.suggestedName?.value,
+                            deviceType: identification().assessment.suggestedDeviceType?.value,
+                          })}
+                        >
+                          Use both
+                        </button>
+                      </Show>
+                    </div>
+
+                    <div class="host-identification-suggestion-grid">
+                      <Show when={identification().assessment.suggestedName}>
+                        {(suggestion) => (
+                          <SuggestionRow
+                            label="Name"
+                            suggestion={suggestion()}
+                            displayValue={suggestion().value}
+                            onUse={() => props.onUseSuggestion?.({ name: suggestion().value })}
+                          ></SuggestionRow>
+                        )}
+                      </Show>
+                      <Show when={identification().assessment.suggestedDeviceType}>
+                        {(suggestion) => (
+                          <SuggestionRow
+                            label="Device type"
+                            suggestion={suggestion()}
+                            displayValue={getDeviceTypeOption(suggestion().value).label}
+                            onUse={() => props.onUseSuggestion?.({ deviceType: suggestion().value })}
+                          ></SuggestionRow>
+                        )}
+                      </Show>
+                    </div>
+
+                    <div class="host-identification-draft-note">
+                      <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                      <span>Using a suggestion only fills the managed edit draft. Nothing is saved and the device stays Unknown until you explicitly save or change its Known state.</span>
+                    </div>
+                  </section>
+                </Show>
+
                 <div class="host-identification-sources" aria-label="Identification evidence sources">
                   <For each={identification().sources}>
                     {(source) => <SourceBadge source={source}></SourceBadge>}
@@ -147,6 +200,47 @@ function IdentificationCard(props: IdentificationCardProps) {
       </Show>
     </section>
   );
+}
+
+function SuggestionRow(props: {
+  label: string;
+  suggestion: IdentificationSuggestion;
+  displayValue: string;
+  onUse: () => void;
+}) {
+  return (
+    <div class="host-identification-suggestion">
+      <div class="host-identification-suggestion-main">
+        <span class="host-identification-suggestion-label">{props.label}</span>
+        <strong class="host-identification-suggestion-value">{props.displayValue}</strong>
+        <span class={"host-identification-confidence is-" + props.suggestion.confidence}>
+          {confidenceLabelText(props.suggestion.confidence)}
+        </span>
+      </div>
+      <div class="host-identification-suggestion-provenance">
+        <span>Source: {props.suggestion.source}</span>
+        <Show when={props.suggestion.reasons[0]}>
+          <span>{props.suggestion.reasons[0]}</span>
+        </Show>
+      </div>
+      <button type="button" class="btn btn-sm wyl-button" onClick={props.onUse}>
+        Use {props.label.toLowerCase()}
+      </button>
+    </div>
+  );
+}
+
+function confidenceLabelText(confidence: IdentificationSuggestion["confidence"]) {
+  switch (confidence) {
+    case "high":
+      return "High confidence";
+    case "medium":
+      return "Medium confidence";
+    case "low":
+      return "Low confidence";
+    default:
+      return "No confidence";
+  }
 }
 
 function SourceBadge(props: { source: IdentificationSourceStatus }) {
