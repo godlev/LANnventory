@@ -100,8 +100,11 @@ func TestHostIdentificationAggregatesRetainedEvidenceAndExactInterfaceMAC(t *tes
 	if !workloads.Available || workloads.Total != 1 || workloads.Included != 1 || workloads.Truncated {
 		t.Fatalf("workload source = %+v", workloads)
 	}
-	if len(response.Actions) != 2 || !response.Actions[1].Available {
-		t.Fatalf("actions = %+v", response.Actions)
+	for _, key := range []string{"identity-history", "name-refresh", "service-scan"} {
+		action := identificationActionByKey(t, response.Actions, key)
+		if !action.Available {
+			t.Fatalf("action %q unavailable: %+v", key, action)
+		}
 	}
 }
 
@@ -265,6 +268,17 @@ func TestHostIdentificationRejectsInvalidHost(t *testing.T) {
 			t.Fatalf("%s status = %d; body: %s", path, rec.Code, rec.Body.String())
 		}
 	}
+}
+
+func identificationActionByKey(t *testing.T, actions []IdentificationAction, key string) IdentificationAction {
+	t.Helper()
+	for _, action := range actions {
+		if action.Key == key {
+			return action
+		}
+	}
+	t.Fatalf("action %q missing from %+v", key, actions)
+	return IdentificationAction{}
 }
 
 func identificationSourceByName(t *testing.T, sources []IdentificationSourceStatus, name string) IdentificationSourceStatus {
