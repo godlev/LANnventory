@@ -49,7 +49,7 @@ requireText(identity, '<MACObservation address={props.address.address}', "Histor
 forbidText(identity, "Also observed with", "Ambiguous shared-IP wording must not return.");
 
 requireText(identity, "Current network identity", "Current identity observations must have visual priority.");
-requireText(identity, '<details class="host-identity-history">', "Historical identity observations must use progressive disclosure.");
+requireText(identity, '<details class="host-identity-history host-disclosure">', "Historical identity observations must use progressive disclosure.");
 requireText(identity, "Previous addresses and names are historical observations.", "Identity history must explicitly distinguish history from current state.");
 requireText(appStyles, ".host-identity-history", "Identity history must have dedicated secondary styling.");
 
@@ -79,7 +79,7 @@ requireText(appStyles, ".host-section-error", "Partial Host section errors must 
 
 requireText(activityFeed, '<A href={"/host/" + event.HostID}', "Global Activity Host links must remain available.");
 
-requireText(hostHistory, 'class="card wyl-panel host-history-panel host-history-disclosure"', "Presence history must be secondary progressive disclosure.");
+requireText(hostHistory, 'class="card wyl-panel host-history-panel host-history-disclosure host-disclosure"', "Presence history must be secondary progressive disclosure.");
 requireText(hostHistory, '<Show when={expanded()}>', "Presence history content must load only after the user opens it.");
 requireText(hostHistory, '>History</span>', "Presence history must be labelled as historical context.");
 requireText(appStyles, ".host-history-disclosure", "Presence history disclosure must have dedicated styling.");
@@ -112,7 +112,7 @@ requireText(hostHistory, 'host-history-disclosure host-disclosure', "Presence hi
 forbidText(hostPage, "host-port-column", "Port scan must not remain a top-level peer of Device Overview.");
 requireText(servicesCard, "Previously observed services", "Closed services must remain available as explicit history.");
 requireText(servicesCard, "Closed services are retained as history.", "Historical service state must not imply a current open service.");
-requireText(servicesCard, '<details class="host-services-secondary">', "Historical services and scan settings must use progressive disclosure.");
+requireText(servicesCard, '<details class="host-services-secondary host-disclosure">', "Historical services and scan settings must use progressive disclosure.");
 requireText(servicesCard, "Scheduled scanning", "Per-host scheduled scan controls must remain available.");
 requireText(servicesCard, 'data-label="Service"', "Services table must expose mobile row labels.");
 requireText(appStyles, ".host-services-table td::before", "Services must transform into labelled rows on narrow screens.");
