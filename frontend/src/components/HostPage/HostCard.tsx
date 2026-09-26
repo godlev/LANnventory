@@ -318,7 +318,7 @@ function HostCard(_props: HostCardProps) {
   };
 
   return (
-    <div class="card wyl-panel host-panel">
+    <section class="host-panel host-overview-card" aria-label="Host overview">
       <div class="card-header host-panel-header host-overview-header">
         <div class="host-overview-main">
           <div
@@ -758,7 +758,7 @@ function HostCard(_props: HostCardProps) {
         </Show>
 
       </div>
-    </div>
+    </section>
   )
 
 }

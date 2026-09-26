@@ -3670,33 +3670,34 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     flex-direction: column;
     gap: 0.85rem;
 }
-.host-page-row {
-    row-gap: 0.85rem;
-}
 
-.host-primary-shell {
-    margin: 0;
-}
-.host-primary-shell .host-page-row {
-    margin-bottom: 0 !important;
-}
-.host-primary-shell .host-details-column > .host-panel {
-    border-bottom-right-radius: 0;
-    border-bottom-left-radius: 0;
-    box-shadow: none;
-}
-.host-primary-column .host-section-nav-shell {
-    width: 100%;
-    box-sizing: border-box;
-}
-.host-section-nav-shell {
-    margin: -1px 0 0;
-    padding: 0 0.72rem;
+.host-workspace {
+    display: grid;
+    gap: 0;
+    min-width: 0;
+    overflow: visible;
     background-color: var(--wyl-panel-bg);
     border: 1px solid var(--wyl-panel-border);
-    border-top: 1px solid var(--wyl-card-border);
-    border-radius: 0 0 8px 8px;
+    border-radius: 8px;
     box-shadow: var(--wyl-shadow);
+}
+.host-overview-card {
+    min-width: 0;
+    height: auto;
+}
+.host-overview-card .card-header {
+    border-bottom: 1px solid var(--wyl-card-border);
+    border-radius: 8px 8px 0 0;
+    background-color: var(--wyl-panel-header-bg);
+}
+.host-overview-card .card-body {
+    border-bottom: 1px solid var(--wyl-card-border);
+}
+.host-section-nav-shell {
+    min-width: 0;
+    padding: 0 0.95rem;
+    background-color: var(--wyl-panel-header-bg);
+    border-bottom: 1px solid var(--wyl-card-border);
 }
 .host-section-nav {
     display: flex;
@@ -3709,7 +3710,6 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     overflow-x: auto;
     background: transparent;
     border: 0;
-    border-radius: 0;
     box-shadow: none;
 }
 .host-section-tab {
@@ -3745,11 +3745,24 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     background-color: transparent;
     border-bottom-color: var(--wyl-link-hover);
 }
+.host-section-content {
+    min-width: 0;
+    padding: 0.85rem 0.95rem 0.95rem;
+}
 .host-section-pane {
-    margin-top: -0.35rem;
+    min-width: 0;
 }
 .host-section-pane[hidden] {
     display: none !important;
+}
+.host-section-stack {
+    display: grid;
+    gap: 0.85rem;
+    min-width: 0;
+}
+.host-workspace .host-section-stack > .host-panel.wyl-panel,
+.host-workspace .host-section-stack > .host-history-panel {
+    box-shadow: none;
 }
 
 /* Phase 35.10 UAT: disclosures must look interactive, not like static rows. */
@@ -3822,8 +3835,10 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
         width: 100%;
     }
     .host-section-tab {
-        flex: 1 0 auto;
+        flex: 1 1 0;
+        min-width: 0;
         padding-inline: 0.55rem;
+        white-space: nowrap;
     }
     .host-disclosure > summary {
         align-items: flex-start;
@@ -3866,7 +3881,7 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
 }
 .host-overview-header {
     align-items: center;
-    padding: 0.52rem 0.72rem;
+    padding: 0.48rem 0.68rem;
 }
 .host-overview-main {
     display: flex;
@@ -4022,7 +4037,7 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
 .host-details-body,
 .host-port-body,
 .host-history-body {
-    padding: 0.95rem;
+    padding: 0.72rem;
 }
 .host-details-layout {
     display: grid;
@@ -4045,8 +4060,8 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     align-items: center;
     justify-content: space-between;
     gap: 0.55rem;
-    min-height: 2.4rem;
-    padding: 0.5rem 0.65rem;
+    min-height: 2.12rem;
+    padding: 0.42rem 0.58rem;
     border-bottom: 1px solid var(--wyl-card-border);
 }
 .host-detail-section-heading {
@@ -4088,13 +4103,13 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
 .host-property-grid {
     display: grid;
     grid-template-columns: minmax(7rem, 9rem) minmax(0, 1fr);
-    column-gap: 0.78rem;
-    row-gap: 0.56rem;
+    column-gap: 0.68rem;
+    row-gap: 0.4rem;
     align-items: center;
 }
 .host-property-grid-section {
-    grid-template-columns: minmax(5.8rem, 7.2rem) minmax(0, 1fr);
-    padding: 0.72rem 0.72rem 0.78rem;
+    grid-template-columns: minmax(7.4rem, 8.4rem) minmax(0, 1fr);
+    padding: 0.55rem 0.62rem 0.62rem;
 }
 .host-field-label {
     text-align: right;
@@ -4495,9 +4510,6 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
 }
 
 @media (max-width: 991.98px) {
-    .host-details-layout {
-        grid-template-columns: 1fr;
-    }
     .overview-grid {
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
@@ -4839,8 +4851,12 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     .host-port-controls {
         grid-template-columns: 1fr;
     }
+    .host-property-grid-section {
+        grid-template-columns: minmax(6.4rem, 7.2rem) minmax(0, 1fr);
+        column-gap: 0.55rem;
+    }
     .host-field-label {
-        text-align: left;
+        text-align: right;
     }
     .host-actions,
     .host-edit-actions,
