@@ -40,8 +40,10 @@ function HostPage() {
   let requestId = 0;
   let identificationRequestId = 0;
   let identificationDraftToken = 0;
+  let identifyRouteHandledHostID = 0;
 
   const isEditMode = () => new URLSearchParams(location.search).get("edit") === "1";
+  const identificationRequested = () => new URLSearchParams(location.search).get("identify") === "1";
   const setEditMode = (editing: boolean) => {
     if (!params.id) {
       return;
@@ -151,6 +153,7 @@ function HostPage() {
     setActiveSection("inventory");
     setDeviceProfile(null);
     identificationRequestId++;
+    identifyRouteHandledHostID = 0;
     setIdentification(null);
     setIdentificationOpen(false);
     setIdentificationLoading(false);
@@ -201,6 +204,12 @@ function HostPage() {
       setIdentification(null);
       setIdentificationLoading(false);
       setIdentificationError("");
+    }
+
+    if (host.Known !== 1 && identificationRequested() && identifyRouteHandledHostID !== host.ID) {
+      identifyRouteHandledHostID = host.ID;
+      setIdentificationOpen(true);
+      void loadIdentification(host.ID);
     }
 
     const hostName = deviceDisplayName(host);
