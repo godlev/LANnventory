@@ -79,6 +79,51 @@ func TestCheckFindsNewerBetaRelease(t *testing.T) {
 	}
 }
 
+func TestCheckOrdersUATBetweenBetaReleases(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`[
+			{"tag_name":"v0.1.0-beta.11.uat.1","prerelease":true,"draft":false,"published_at":"2026-09-27T00:00:00Z","assets":[]},
+			{"tag_name":"v0.1.0-beta.11","prerelease":true,"draft":false,"published_at":"2026-09-26T00:00:00Z","assets":[]}
+		]`))
+	}))
+	defer server.Close()
+
+	service := NewServiceWithURL(server.Client(), server.URL)
+
+	status, err := service.Check(context.Background(), "0.1.0-beta.11", BetaChannel, true)
+	if err != nil {
+		t.Fatalf("Check beta.11 -> UAT: %v", err)
+	}
+	if !status.Available || status.LatestVersion != "0.1.0-beta.11.uat.1" {
+		t.Fatalf("beta.11 status = %+v, want UAT available", status)
+	}
+
+	status, err = service.Check(context.Background(), "0.1.0-beta.11.uat.1", BetaChannel, true)
+	if err != nil {
+		t.Fatalf("Check same UAT: %v", err)
+	}
+	if status.Available {
+		t.Fatalf("same UAT release must not be offered again: %+v", status)
+	}
+
+	newerServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`[
+			{"tag_name":"v0.1.0-beta.12","prerelease":true,"draft":false,"published_at":"2026-09-28T00:00:00Z","assets":[]},
+			{"tag_name":"v0.1.0-beta.11.uat.1","prerelease":true,"draft":false,"published_at":"2026-09-27T00:00:00Z","assets":[]}
+		]`))
+	}))
+	defer newerServer.Close()
+
+	service = NewServiceWithURL(newerServer.Client(), newerServer.URL)
+	status, err = service.Check(context.Background(), "0.1.0-beta.11.uat.1", BetaChannel, true)
+	if err != nil {
+		t.Fatalf("Check UAT -> beta.12: %v", err)
+	}
+	if !status.Available || status.LatestVersion != "0.1.0-beta.12" {
+		t.Fatalf("UAT status = %+v, want beta.12 available", status)
+	}
+}
+
 func TestChecksumForFile(t *testing.T) {
 	hash := strings.Repeat("a", 64)
 	data := []byte(hash + "  lannventory_0.2.0_linux_amd64.deb\n")
