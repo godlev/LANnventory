@@ -15,6 +15,8 @@ type HostCardProps = {
   onEditModeChange?: (editMode: boolean) => void;
   onHostChange?: (host: Host) => void;
   onDirtyChange?: (dirty: boolean) => void;
+  identifyOpen?: boolean;
+  onIdentifyToggle?: () => void;
 };
 
 type HostEditDraft = {
@@ -416,6 +418,26 @@ function HostCard(_props: HostCardProps) {
               >
                 <i class="bi bi-x-lg" aria-hidden="true"></i>
                 <span>Cancel</span>
+              </button>
+            </ActionTooltip>
+          </Show>
+
+          <Show when={!isKnown() && !_props.editMode}>
+            <ActionTooltip
+              title="Help identify"
+              detail="Review retained local evidence for this Unknown device. No network probes run automatically."
+            >
+              <button
+                type="button"
+                class={"btn btn-sm wyl-button host-identify-button" + (_props.identifyOpen ? " is-active" : "")}
+                title="Help identify"
+                aria-label="Help identify this Unknown device"
+                aria-expanded={_props.identifyOpen === true}
+                disabled={_props.host.ID === 0}
+                onClick={() => _props.onIdentifyToggle?.()}
+              >
+                <i class="bi bi-search" aria-hidden="true"></i>
+                <span>Help identify</span>
               </button>
             </ActionTooltip>
           </Show>
