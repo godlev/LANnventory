@@ -138,6 +138,12 @@ requireText(servicesCard, 'id="host-services-card"', "Identification service sho
 requireText(identity, 'id="host-identity-card"', "Identification history shortcut must target the existing Identity card.");
 requireText(hostCard, "identificationDraft", "Host overview must accept staged identification values without a direct save.");
 requireText(hostCard, "setDraft((current)", "Identification suggestions must populate the existing managed edit draft.");
+requireText(hostCard, "const persistDraft = async (markKnown: boolean)", "Managed save and Save-and-mark-Known must share one persistence path.");
+requireText(hostCard, "...(markKnown ? { known: true } : {})", "Save-and-mark-Known must include Known in the same Host PATCH payload.");
+requireText(hostCard, "onClick={handleSaveAndMarkKnown}", "Unknown edit mode must expose an explicit Save-and-mark-Known action.");
+requireText(hostCard, "Atomically save the staged managed information and mark this device Known in one update.", "Save-and-mark-Known must explain its atomic behavior.");
+requireText(hostCard, 'setSaveStatus(markKnown ? "Changes saved and device marked Known" : "Changes saved")', "Atomic identification save must confirm the Known transition after success.");
+requireText(hostPage, "if (host.Known === 1 && identificationOpen())", "Identification helper must close after a successful Known transition.");
 requireText(appStyles, ".host-identification-suggestions", "Explainable suggestions must have compact workspace styling.");
 requireText(historyApi, "apiGetHostIdentification", "Frontend API layer must expose the retained identification aggregate.");
 requireText(historyApi, "apiRefreshHostIdentificationNames", "Frontend API layer must expose targeted local-name refresh.");
