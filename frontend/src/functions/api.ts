@@ -937,9 +937,12 @@ export const apiGetHostIdentity = async (id: number | string): Promise<HostIdent
   return await apiJSON<HostIdentity>(url);
 };
 
-export const apiGetHostIdentification = async (id: number | string): Promise<HostIdentification> => {
+export const apiGetHostIdentification = async (
+  id: number | string,
+  signal?: AbortSignal,
+): Promise<HostIdentification> => {
   const url = apiPath+'/api/host/'+encodeURIComponent(String(id))+'/identification';
-  return await apiJSON<HostIdentification>(url);
+  return await apiJSON<HostIdentification>(url, { signal });
 };
 
 export const apiRefreshHostIdentificationNames = async (
