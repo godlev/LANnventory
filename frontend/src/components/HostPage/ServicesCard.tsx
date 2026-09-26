@@ -211,7 +211,7 @@ function ServicesCard(props: ServicesCardProps) {
   const historicalServices = createMemo(() => sortedServices().filter((service) => service.state !== "open"));
 
   return (
-    <section class="card wyl-panel host-panel" aria-labelledby="host-services-title">
+    <section id="host-services-card" class="card wyl-panel host-panel" aria-labelledby="host-services-title">
       <div class="card-header host-panel-header">
         <div>
           <div id="host-services-title" class="host-panel-title">Services</div>
