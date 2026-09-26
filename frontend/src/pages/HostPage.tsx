@@ -107,6 +107,14 @@ function HostPage() {
     });
   };
 
+  const openIdentificationNetworkTarget = (target: "services" | "identity") => {
+    setActiveSection("network");
+    queueMicrotask(() => {
+      const elementID = target === "services" ? "host-services-card" : "host-identity-card";
+      document.getElementById(elementID)?.scrollIntoView({ block: "start" });
+    });
+  };
+
   useBeforeLeave((event) => {
     if (!hasUnsavedHostChanges() || event.defaultPrevented) {
       return;
@@ -231,6 +239,8 @@ function HostPage() {
             onClose={closeIdentification}
             onRetry={() => void loadIdentification(currentHost().ID, true)}
             onUseSuggestion={applyIdentificationSuggestion}
+            onEvidenceChanged={() => loadIdentification(currentHost().ID, true)}
+            onOpenNetwork={openIdentificationNetworkTarget}
           ></IdentificationCard>
         </Show>
 
