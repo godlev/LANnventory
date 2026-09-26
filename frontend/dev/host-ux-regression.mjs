@@ -112,6 +112,10 @@ requireText(hostCard, "when={!isKnown() && !_props.editMode}", "Help identify mu
 requireText(hostCard, 'aria-expanded={_props.identifyOpen === true}', "Help identify must expose expanded state for keyboard and assistive users.");
 requireText(hostPage, "apiGetHostIdentification", "Host workspace must own the identification aggregate request.");
 requireText(hostPage, "identificationRequestId", "Identification requests must ignore stale Host responses.");
+requireText(hostPage, "identificationLoadController?.abort()", "Identification aggregate loads must be actively cancelled when superseded or closed.");
+requireText(hostPage, "apiGetHostIdentification(hostID, controller.signal)", "Identification aggregate fetch must receive the active AbortSignal.");
+requireText(hostPage, 'document.getElementById("host-identify-toggle")?.focus()', "Closing identification must return keyboard focus to its Host entry point.");
+requireText(hostCard, 'id="host-identify-toggle"', "Host identification entry point must expose a stable focus-return target.");
 requireText(hostPage, "<IdentificationCard", "Identification workflow must stay inside the existing Host workspace.");
 requireText(identificationCard, "Retained evidence only · no probes run automatically", "Identification summary must distinguish retained evidence from active probes.");
 requireText(identificationCard, "current clues", "Identification summary must expose a compact current-clue count.");
@@ -128,6 +132,10 @@ requireText(identificationCard, "apiRefreshHostIdentificationNames", "Identifica
 requireText(identificationCard, "apiScanHostPort", "Identification presets must reuse the Host-bound per-port scan endpoint.");
 requireText(identificationCard, "new AbortController()", "Identification investigations must be cancellable.");
 requireText(identificationCard, ">Stop</span>", "Running identification investigations must expose an explicit Stop action.");
+requireText(identificationCard, 'event.key !== "Escape"', "Identification helper must provide a keyboard Escape path.");
+requireText(identificationCard, "if (runningAction())", "Escape must stop a running investigation before closing the helper.");
+requireText(identificationCard, "aria-busy={props.loading || Boolean(runningAction())}", "Identification helper must expose aggregate and investigation busy state.");
+requireText(identificationCard, 'aria-label="Stop current identification investigation"', "Stop action must have an explicit accessible name.");
 requireText(identificationCard, "ports: [22, 80, 443, 445, 554, 631, 8080, 8443, 9100]", "Common identification preset must remain bounded.");
 requireText(identificationCard, "ports: [80, 443, 554, 8000, 8080, 8554]", "Camera/IoT preset must remain bounded.");
 requireText(identificationCard, "ports: [80, 443, 515, 631, 9100]", "Printer preset must remain bounded.");
@@ -157,6 +165,7 @@ requireText(homeSummary, "toggleHostFilter(item.filterField, item.filterValue)",
 requireText(appStyles, ".device-row-actions", "Home row actions must remain compact when Identify is present.");
 requireText(appStyles, ".host-identification-suggestions", "Explainable suggestions must have compact workspace styling.");
 requireText(historyApi, "apiGetHostIdentification", "Frontend API layer must expose the retained identification aggregate.");
+requireText(historyApi, "return await apiJSON<HostIdentification>(url, { signal });", "Retained identification aggregate requests must support cancellation.");
 requireText(historyApi, "apiRefreshHostIdentificationNames", "Frontend API layer must expose targeted local-name refresh.");
 requireText(historyApi, "signal?: AbortSignal", "Identification investigation requests must support cancellation.");
 requireText(mockApi, "/identification$/", "Mock backend must expose the retained identification endpoint.");
@@ -164,6 +173,8 @@ requireText(mockApi, "identificationRefreshMatch", "Mock backend must expose exp
 requireText(mockApi, "hostPortScanMatch", "Mock backend must expose Host-bound preset port probes.");
 requireText(appStyles, ".host-identification-panel", "Identification summary must have dedicated workspace-integrated styling.");
 requireText(appStyles, ".host-identification-toolkit", "Identification investigation controls must stay compact inside the Host workspace.");
+requireText(appStyles, ".host-identification-preset-buttons,\n    .host-identification-shortcuts {\n        display: grid;", "Small-screen identification actions must collapse to a readable single-column layout.");
+requireText(appStyles, ".host-identification-summary {\n        align-items: flex-start;\n        flex-direction: column;", "Small-screen identification summary must stack instead of compressing horizontally.");
 requireText(hostCard, 'class="host-panel host-overview-card"', "Host overview must be an internal workspace block instead of a nested standalone card.");
 requireText(appStyles, ".host-workspace", "Host workspace must own the shared width, border, and visual boundary.");
 requireText(appStyles, ".host-section-content", "Host section content must share the workspace width instead of a separate row width.");
