@@ -67,6 +67,8 @@ function IdentityCard(props: IdentityCardProps) {
     requestID++;
   });
 
+  const activeAddresses = createMemo(() => identity().addresses.filter((item) => item.active));
+  const historicalAddresses = createMemo(() => identity().addresses.filter((item) => !item.active));
   const activeEvidence = createMemo(() => identity().evidence.filter((item) => item.active));
   const historicalEvidence = createMemo(() => identity().evidence.filter((item) => !item.active));
 
@@ -74,60 +76,98 @@ function IdentityCard(props: IdentityCardProps) {
     <div class="card wyl-panel host-panel">
       <div class="card-header host-panel-header">
         <div>
-          <div class="host-panel-title">Network identity history</div>
+          <div class="host-panel-title">Network identity</div>
           <div class="host-panel-subtitle">
-            Network observations only; managed Inventory stays unchanged. Shared IP history alone does not mean the same physical device.
+            Current observations first. Historical IP reuse and previous discovered names remain available separately and do not prove physical-device identity.
           </div>
         </div>
         <span class="host-detail-section-badge">Discovered · Read only</span>
       </div>
 
-      <div class="card-body">
+      <div class="card-body host-identity-body">
         <Show when={!loading()} fallback={<div class="device-cell-muted">Loading identity observations…</div>}>
           <Show when={!loadError()} fallback={<div class="host-inline-error" role="alert">{loadError()}</div>}>
-            <div class="row g-3">
-              <div class="col-12 col-xl-6">
-                <h6 class="mb-2">Address history</h6>
-                <Show
-                  when={identity().addresses.length > 0}
-                  fallback={<div class="device-cell-muted">No retained address observations yet.</div>}
-                >
-                  <For each={identity().addresses}>{(address) =>
-                    <AddressObservation address={address} currentMac={identity().mac || props.host.Mac}></AddressObservation>
-                  }</For>
-                </Show>
+            <section class="host-identity-current" aria-labelledby="host-current-identity-title">
+              <div class="host-section-summary-heading">
+                <div>
+                  <div id="host-current-identity-title" class="small fw-semibold">Current network identity</div>
+                  <div class="small device-cell-muted">What LANnventory currently observes for this MAC and its active addresses.</div>
+                </div>
+                <span class="host-detail-section-badge">Current</span>
               </div>
 
-              <div class="col-12 col-xl-6">
-                <h6 class="mb-1">How LANnventory identified this</h6>
-                <div class="small device-cell-muted mb-2">Scanner, Reverse DNS, mDNS and SSDP are discovery sources, not device properties.</div>
-                <Show
-                  when={identity().dataSources.length > 0}
-                  fallback={<div class="device-cell-muted mb-3">No discovery sources have reported identity data yet.</div>}
-                >
-                  <div class="d-flex flex-wrap gap-2 mb-3">
-                    <For each={identity().dataSources}>{(source) =>
-                      <span class="badge rounded-pill text-bg-secondary">✓ {sourceLabel(source)}</span>
+              <div class="row g-3 mt-0">
+                <div class="col-12 col-xl-6">
+                  <div class="small fw-semibold mb-2">Current addresses</div>
+                  <Show
+                    when={activeAddresses().length > 0}
+                    fallback={<div class="device-cell-muted">No active address observation is retained right now.</div>}
+                  >
+                    <For each={activeAddresses()}>{(address) =>
+                      <AddressObservation address={address} currentMac={identity().mac || props.host.Mac}></AddressObservation>
                     }</For>
-                  </div>
-                </Show>
+                  </Show>
+                </div>
 
-                <h6 class="mb-2">Discovered identities</h6>
-                <Show
-                  when={identity().evidence.length > 0}
-                  fallback={<div class="device-cell-muted">No discovered identity evidence yet.</div>}
-                >
-                  <Show when={activeEvidence().length > 0}>
-                    <div class="small fw-semibold mb-1">Current evidence</div>
+                <div class="col-12 col-xl-6">
+                  <div class="small fw-semibold mb-1">Current discovered identities</div>
+                  <div class="small device-cell-muted mb-2">Scanner, Reverse DNS, mDNS and SSDP are discovery sources, not managed device properties.</div>
+
+                  <Show
+                    when={identity().dataSources.length > 0}
+                    fallback={<div class="device-cell-muted mb-3">No discovery sources have reported identity data yet.</div>}
+                  >
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                      <For each={identity().dataSources}>{(source) =>
+                        <span class="badge rounded-pill text-bg-secondary">✓ {sourceLabel(source)}</span>
+                      }</For>
+                    </div>
+                  </Show>
+
+                  <Show
+                    when={activeEvidence().length > 0}
+                    fallback={<div class="device-cell-muted">No current discovered identity evidence is retained.</div>}
+                  >
                     <For each={activeEvidence()}>{(item) => <EvidenceObservation item={item}></EvidenceObservation>}</For>
                   </Show>
-                  <Show when={historicalEvidence().length > 0}>
-                    <div class="small fw-semibold mt-3 mb-1">Previous evidence</div>
-                    <For each={historicalEvidence()}>{(item) => <EvidenceObservation item={item} historical></EvidenceObservation>}</For>
-                  </Show>
-                </Show>
+                </div>
               </div>
-            </div>
+            </section>
+
+            <Show when={historicalAddresses().length > 0 || historicalEvidence().length > 0}>
+              <details class="host-identity-history host-disclosure">
+                <summary>
+                  <span>
+                    <i class="bi bi-clock-history" aria-hidden="true"></i>
+                    Identity history
+                  </span>
+                  <span class="badge text-bg-secondary">
+                    {historicalAddresses().length + historicalEvidence().length}
+                  </span>
+                </summary>
+                <div class="host-identity-history-body">
+                  <div class="small device-cell-muted mb-3">
+                    Previous addresses and names are historical observations. An IP used by another MAC is context only, not proof that both MACs belong to the same physical device.
+                  </div>
+                  <div class="row g-3">
+                    <Show when={historicalAddresses().length > 0}>
+                      <div class="col-12 col-xl-6">
+                        <div class="small fw-semibold mb-2">Previous addresses</div>
+                        <For each={historicalAddresses()}>{(address) =>
+                          <AddressObservation address={address} currentMac={identity().mac || props.host.Mac}></AddressObservation>
+                        }</For>
+                      </div>
+                    </Show>
+                    <Show when={historicalEvidence().length > 0}>
+                      <div class="col-12 col-xl-6">
+                        <div class="small fw-semibold mb-2">Previous discovered identities</div>
+                        <For each={historicalEvidence()}>{(item) => <EvidenceObservation item={item} historical></EvidenceObservation>}</For>
+                      </div>
+                    </Show>
+                  </div>
+                </div>
+              </details>
+            </Show>
 
             <CorrelationPanel host={props.host}></CorrelationPanel>
           </Show>

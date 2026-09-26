@@ -93,7 +93,10 @@ type Service struct {
 	client              *http.Client
 	releasesURL         string
 	releaseNotesBaseURL string
+	progressPath        string
 	now                 func() time.Time
+	unitActive          func(string) bool
+	serviceActive       func() bool
 
 	mu               sync.Mutex
 	cached           []release
@@ -104,20 +107,27 @@ type Service struct {
 }
 
 func NewService() *Service {
-	service := NewServiceWithURL(&http.Client{Timeout: 30 * time.Second}, defaultReleasesURL)
+	service := NewServiceWithURLAndProgressPath(&http.Client{Timeout: 30 * time.Second}, defaultReleasesURL, defaultProgressPath)
 	service.releaseNotesBaseURL = defaultReleaseNotesBaseURL
 	return service
 }
 
 func NewServiceWithURL(client *http.Client, releasesURL string) *Service {
+	return NewServiceWithURLAndProgressPath(client, releasesURL, defaultProgressPath)
+}
+
+func NewServiceWithURLAndProgressPath(client *http.Client, releasesURL, progressPath string) *Service {
 	if client == nil {
 		client = &http.Client{Timeout: 30 * time.Second}
 	}
 	return &Service{
 		client:           client,
 		releasesURL:      releasesURL,
+		progressPath:     progressPath,
 		releaseSummaries: make(map[string]string),
 		now:              time.Now,
+		unitActive:       systemdUnitActive,
+		serviceActive:    lannventoryServiceActive,
 	}
 }
 
@@ -328,6 +338,21 @@ func (s *Service) Schedule(ctx context.Context, currentVersion, channel, expecte
 		s.mu.Unlock()
 		return ApplyResult{}, ErrUpdateInProgress
 	}
+	s.mu.Unlock()
+
+	existingProgress, err := s.Progress()
+	if err != nil {
+		return ApplyResult{}, fmt.Errorf("read existing update progress: %w", err)
+	}
+	if existingProgress.Status == ProgressStatusRunning {
+		return ApplyResult{}, ErrUpdateInProgress
+	}
+
+	s.mu.Lock()
+	if s.updating {
+		s.mu.Unlock()
+		return ApplyResult{}, ErrUpdateInProgress
+	}
 	s.updating = true
 	s.mu.Unlock()
 
@@ -367,34 +392,73 @@ func (s *Service) Schedule(ctx context.Context, currentVersion, channel, expecte
 		return ApplyResult{}, fmt.Errorf("%w: %s", ErrUnsupportedInstall, reason)
 	}
 
+	startedAt := s.now().UTC()
+	progress := Progress{
+		AttemptID:       fmt.Sprintf("update-%d", startedAt.UnixNano()),
+		Status:          ProgressStatusRunning,
+		Stage:           UpdateStagePreparing,
+		PreviousVersion: currentVersion,
+		TargetVersion:   targetVersion,
+		StartedAt:       startedAt.Format(time.RFC3339),
+	}
+	if err := s.persistProgress(progress); err != nil {
+		return ApplyResult{}, fmt.Errorf("initialize update progress: %w", err)
+	}
+	progressActive := true
+
+	fail := func(updateErr error) (ApplyResult, error) {
+		if progressActive {
+			progress.Status = ProgressStatusFailed
+			progress.FailedStage = progress.Stage
+			progress.Error = updateErr.Error()
+			progress.CompletedAt = s.now().UTC().Format(time.RFC3339)
+			_ = s.persistProgress(progress)
+		}
+		return ApplyResult{}, updateErr
+	}
+	setStage := func(stage string) error {
+		progress.Status = ProgressStatusRunning
+		progress.Stage = stage
+		progress.FailedStage = ""
+		progress.Error = ""
+		progress.CompletedAt = ""
+		return s.persistProgress(progress)
+	}
+
+	if err := setStage(UpdateStageDownloading); err != nil {
+		return fail(fmt.Errorf("persist download progress: %w", err))
+	}
 	checksumData, err := s.download(ctx, checksumAsset.BrowserDownloadURL, maxChecksumBody)
 	if err != nil {
-		return ApplyResult{}, fmt.Errorf("download checksums: %w", err)
+		return fail(fmt.Errorf("download checksums: %w", err))
+	}
+	debData, err := s.download(ctx, debAsset.BrowserDownloadURL, maxPackageBody)
+	if err != nil {
+		return fail(fmt.Errorf("download package: %w", err))
+	}
+
+	if err := setStage(UpdateStageVerifying); err != nil {
+		return fail(fmt.Errorf("persist verification progress: %w", err))
 	}
 	expectedHash, err := checksumForFile(checksumData, debAsset.Name)
 	if err != nil {
-		return ApplyResult{}, err
-	}
-
-	debData, err := s.download(ctx, debAsset.BrowserDownloadURL, maxPackageBody)
-	if err != nil {
-		return ApplyResult{}, fmt.Errorf("download package: %w", err)
+		return fail(err)
 	}
 	actualHash := sha256.Sum256(debData)
 	actualHashHex := hex.EncodeToString(actualHash[:])
 	if !strings.EqualFold(expectedHash, actualHashHex) {
-		return ApplyResult{}, errors.New("downloaded package checksum does not match checksums.txt")
+		return fail(errors.New("downloaded package checksum does not match checksums.txt"))
 	}
 	if digest := strings.TrimSpace(debAsset.Digest); digest != "" {
 		digest = strings.TrimPrefix(strings.ToLower(digest), "sha256:")
 		if len(digest) == 64 && !strings.EqualFold(digest, actualHashHex) {
-			return ApplyResult{}, errors.New("downloaded package checksum does not match GitHub asset digest")
+			return fail(errors.New("downloaded package checksum does not match GitHub asset digest"))
 		}
 	}
 
 	updateDir, err := os.MkdirTemp("/var/tmp", "lannventory-update-")
 	if err != nil {
-		return ApplyResult{}, fmt.Errorf("create update directory: %w", err)
+		return fail(fmt.Errorf("create update directory: %w", err))
 	}
 	cleanup := true
 	defer func() {
@@ -405,7 +469,7 @@ func (s *Service) Schedule(ctx context.Context, currentVersion, channel, expecte
 
 	debPath := filepath.Join(updateDir, filepath.Base(debAsset.Name))
 	if err := os.WriteFile(debPath, debData, 0o600); err != nil {
-		return ApplyResult{}, fmt.Errorf("write package: %w", err)
+		return fail(fmt.Errorf("write package: %w", err))
 	}
 
 	healthURL = strings.TrimSpace(healthURL)
@@ -417,35 +481,38 @@ func (s *Service) Schedule(ctx context.Context, currentVersion, channel, expecte
 		fmt.Sprintf("%s-to-%s-%d", safePathComponent(currentVersion), safePathComponent(targetVersion), s.now().Unix()),
 	)
 
-	scriptPath := filepath.Join(updateDir, "apply-update.sh")
-	script := "#!/bin/sh\n" +
-		"set -eu\n" +
-		"sleep 2\n" +
-		"echo " + shellQuote(actualHashHex+"  "+debPath) + " | sha256sum -c -\n" +
-		"mkdir -p " + shellQuote(backupDir) + "\n" +
-		"cp -a /usr/bin/lannventory " + shellQuote(filepath.Join(backupDir, "lannventory")) + "\n" +
-		"printf '%s\\n' " + shellQuote("from="+currentVersion) + " " + shellQuote("to="+targetVersion) + " > " + shellQuote(filepath.Join(backupDir, "update.txt")) + "\n" +
-		"recover_service() { systemctl daemon-reload >/dev/null 2>&1 || true; systemctl start lannventory >/dev/null 2>&1 || true; echo " + shellQuote("LANnventory update did not complete successfully. Recovery files are preserved at "+backupDir) + " >&2; }\n" +
-		"trap recover_service EXIT\n" +
-		"systemctl stop lannventory\n" +
-		"if [ -d /etc/watchyourlan ]; then cp -a /etc/watchyourlan " + shellQuote(filepath.Join(backupDir, "watchyourlan")) + "; fi\n" +
-		"dpkg -i " + shellQuote(debPath) + "\n" +
-		"systemctl daemon-reload\n" +
-		"systemctl start lannventory\n" +
-		"healthy=0\n" +
-		"i=0\n" +
-		"while [ \"$i\" -lt 45 ]; do if systemctl is-active --quiet lannventory && curl -fsS --max-time 3 " + shellQuote(healthURL) + " >/dev/null 2>&1; then healthy=1; break; fi; i=$((i + 1)); sleep 2; done\n" +
-		"if [ \"$healthy\" -ne 1 ]; then echo " + shellQuote("LANnventory did not pass the post-update health check at "+healthURL) + " >&2; exit 1; fi\n" +
-		"trap - EXIT\n" +
-		"rm -rf " + shellQuote(updateDir) + "\n"
-	if err := os.WriteFile(scriptPath, []byte(script), 0o700); err != nil {
-		return ApplyResult{}, fmt.Errorf("write update helper: %w", err)
+	unitName := fmt.Sprintf("lannventory-update-%d", s.now().UnixNano())
+	progress.BackupPath = backupDir
+	progress.SystemdUnit = unitName
+	if err := s.persistProgress(progress); err != nil {
+		return fail(fmt.Errorf("persist update job metadata: %w", err))
 	}
 
-	unitName := fmt.Sprintf("lannventory-update-%d", time.Now().UnixNano())
+	scriptPath := filepath.Join(updateDir, "apply-update.sh")
+	script := buildApplyUpdateScript(applyScriptParams{
+		ActualHashHex:  actualHashHex,
+		DebPath:        debPath,
+		BackupDir:      backupDir,
+		CurrentVersion: currentVersion,
+		TargetVersion:  targetVersion,
+		HealthURL:      healthURL,
+		UpdateDir:      updateDir,
+		ProgressPath:   s.progressPath,
+		AttemptID:      progress.AttemptID,
+		StartedAt:      progress.StartedAt,
+		SystemdUnit:    unitName,
+	})
+	if err := os.WriteFile(scriptPath, []byte(script), 0o700); err != nil {
+		return fail(fmt.Errorf("write update helper: %w", err))
+	}
+
+	if err := setStage(UpdateStageBackup); err != nil {
+		return fail(fmt.Errorf("persist backup progress: %w", err))
+	}
+
 	output, err := exec.Command("systemd-run", "--unit="+unitName, "--collect", "--no-block", "/bin/sh", scriptPath).CombinedOutput()
 	if err != nil {
-		return ApplyResult{}, fmt.Errorf("schedule update: %w: %s", err, strings.TrimSpace(string(output)))
+		return fail(fmt.Errorf("schedule update: %w: %s", err, strings.TrimSpace(string(output))))
 	}
 
 	scheduled = true

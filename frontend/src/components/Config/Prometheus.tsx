@@ -24,8 +24,15 @@ function Prometheus() {
 
   return (
     <div class="card wyl-panel config-panel">
-      <div class="card-header">Prometheus config</div>
+      <div class="card-header config-panel-heading">
+        <span>Prometheus</span>
+        <span class="settings-behavior-badge">Save required</span>
+      </div>
       <div class="card-body table-responsive">
+        <div class="settings-behavior-note">
+          <i class="bi bi-floppy" aria-hidden="true"></i>
+          <span>Integration changes are staged until you choose <strong>Save Prometheus</strong>.</span>
+        </div>
         <form action={apiPath + '/api/config_prometheus/'} method="post" onSubmit={handleSubmit}>
           <table class="table table-borderless"><tbody>
             <tr>

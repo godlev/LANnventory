@@ -21,6 +21,35 @@ export type UpdateStatus = {
   snapshotBaseVersion: string;
 };
 
+export type UpdateProgressStatus = "idle" | "running" | "complete" | "failed";
+export type UpdateProgressStage =
+  | "idle"
+  | "preparing"
+  | "downloading"
+  | "verifying"
+  | "backup"
+  | "installing"
+  | "restarting"
+  | "health-check"
+  | "complete";
+
+export type UpdateProgress = {
+  attemptId: string;
+  status: UpdateProgressStatus;
+  stage: UpdateProgressStage;
+  previousVersion: string;
+  targetVersion: string;
+  startedAt: string;
+  updatedAt: string;
+  completedAt: string;
+  backupPath: string;
+  backupCreated: boolean;
+  failedStage: string;
+  error: string;
+  serviceRestored: boolean;
+  systemdUnit: string;
+};
+
 export type UpdateApplyResult = {
   version: string;
   scheduled: boolean;
@@ -29,10 +58,16 @@ export type UpdateApplyResult = {
 };
 
 export const [sharedUpdateStatus, setSharedUpdateStatus] = createSignal<UpdateStatus>();
+export const [sharedUpdateProgress, setSharedUpdateProgress] = createSignal<UpdateProgress>();
 
 const publishUpdateStatus = (status: UpdateStatus): UpdateStatus => {
   setSharedUpdateStatus(status);
   return status;
+};
+
+const publishUpdateProgress = (progress: UpdateProgress): UpdateProgress => {
+  setSharedUpdateProgress(progress);
+  return progress;
 };
 
 const apiJSON = async <T>(url: string, init?: RequestInit): Promise<T> => {
@@ -57,6 +92,10 @@ export const apiGetUpdateStatus = async (refresh = false): Promise<UpdateStatus>
 
 export const apiGetCachedUpdateStatus = async (): Promise<UpdateStatus> => {
   return publishUpdateStatus(await apiJSON<UpdateStatus>("/api/update/status?cached=1"));
+};
+
+export const apiGetUpdateProgress = async (): Promise<UpdateProgress> => {
+  return publishUpdateProgress(await apiJSON<UpdateProgress>("/api/update/progress"));
 };
 
 export const apiSetUpdateSettings = async (

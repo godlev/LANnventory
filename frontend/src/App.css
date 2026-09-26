@@ -3108,7 +3108,7 @@ html[data-bs-theme] .activity-table > tbody > tr.activity-group-row:hover > td {
 }
 
 .settings-page {
-    max-width: 68rem;
+    max-width: 82rem;
     margin: 0 auto 1.5rem;
 }
 .settings-page-header {
@@ -3126,6 +3126,78 @@ html[data-bs-theme] .activity-table > tbody > tr.activity-group-row:hover > td {
     color: var(--wyl-muted);
     font-size: 0.88rem;
     font-weight: 700;
+}
+.settings-shell {
+    display: grid;
+    grid-template-columns: 13.5rem minmax(0, 1fr);
+    gap: 1rem;
+    align-items: start;
+}
+.settings-nav {
+    position: sticky;
+    top: 0.85rem;
+    display: grid;
+    gap: 0.28rem;
+    padding: 0.48rem;
+    border: 1px solid var(--wyl-panel-border);
+    border-radius: 9px;
+    background: var(--wyl-panel-bg);
+}
+.settings-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.52rem;
+    padding: 0.52rem 0.58rem;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    color: var(--bs-body-color);
+    font-size: 0.8rem;
+    font-weight: 750;
+    text-decoration: none;
+}
+.settings-nav-link i {
+    flex: 0 0 1rem;
+    color: var(--wyl-muted);
+    text-align: center;
+}
+.settings-nav-link:hover,
+.settings-nav-link:focus-visible {
+    color: var(--wyl-link);
+    background: var(--wyl-table-hover-bg);
+}
+.settings-nav-link.is-active {
+    color: var(--wyl-heading);
+    border-color: var(--wyl-control-border);
+    background: var(--wyl-control-bg);
+}
+.settings-nav-link.is-active i {
+    color: var(--wyl-link);
+}
+.settings-mobile-nav {
+    display: none;
+}
+.settings-content {
+    min-width: 0;
+}
+.settings-content .settings-section {
+    gap: 0.8rem;
+}
+
+@media (max-width: 767.98px) {
+    .settings-shell {
+        display: block;
+    }
+    .settings-nav {
+        display: none;
+    }
+    .settings-mobile-nav {
+        display: grid;
+        gap: 0.3rem;
+        margin-bottom: 0.8rem;
+        color: var(--wyl-muted);
+        font-size: 0.72rem;
+        font-weight: 800;
+    }
 }
 .settings-layout {
     display: grid;
@@ -3171,6 +3243,62 @@ html[data-bs-theme] .activity-table > tbody > tr.activity-group-row:hover > td {
 }
 .config-panel {
     margin-bottom: 0;
+}
+.config-panel-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.65rem;
+}
+.settings-behavior-badge {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+    min-height: 1.3rem;
+    padding: 0.1rem 0.4rem;
+    border: 1px solid var(--wyl-panel-border);
+    border-radius: 999px;
+    color: var(--wyl-muted);
+    font-size: 0.64rem;
+    font-weight: 850;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+.settings-behavior-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.45rem;
+    margin-bottom: 0.7rem;
+    padding: 0.5rem 0.58rem;
+    border: 1px solid var(--wyl-panel-border);
+    border-radius: 7px;
+    color: var(--wyl-muted);
+    background: var(--wyl-control-bg);
+    font-size: 0.74rem;
+    line-height: 1.35;
+}
+.settings-behavior-note i {
+    flex: 0 0 auto;
+    margin-top: 0.04rem;
+    color: var(--wyl-link);
+}
+.config-secret-state {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.32rem;
+    margin-bottom: 0.38rem;
+    padding: 0.12rem 0.4rem;
+    border: 1px solid var(--wyl-panel-border);
+    border-radius: 999px;
+    color: var(--wyl-muted);
+    font-size: 0.68rem;
+    font-weight: 750;
+}
+.config-secret-state.is-stored {
+    color: var(--bs-success);
+}
+.config-secret-state.is-empty {
+    color: var(--wyl-muted);
 }
 .config-panel .card-body {
     padding: 0.95rem;
@@ -3295,6 +3423,28 @@ html[data-bs-theme] .config-panel table > tbody > tr > td {
 .data-load-warning {
     border-color: var(--wyl-danger-control-border);
     color: var(--wyl-danger-control-text);
+}
+
+.host-section-error {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.65rem;
+    margin-bottom: 0.7rem;
+    padding: 0.55rem 0.62rem;
+    border: 1px solid var(--wyl-danger-control-border);
+    border-radius: 7px;
+    color: var(--wyl-danger-control-text);
+    font-size: 0.78rem;
+}
+@media (max-width: 575.98px) {
+    .host-section-error {
+        align-items: stretch;
+        flex-direction: column;
+    }
+    .host-section-error .btn {
+        align-self: flex-start;
+    }
 }
 .config-secondary-action {
     float: none;
@@ -3520,8 +3670,183 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     flex-direction: column;
     gap: 0.85rem;
 }
-.host-page-row {
-    row-gap: 0.85rem;
+
+.host-workspace {
+    display: grid;
+    gap: 0;
+    min-width: 0;
+    overflow: visible;
+    background-color: var(--wyl-panel-bg);
+    border: 1px solid var(--wyl-panel-border);
+    border-radius: 8px;
+    box-shadow: var(--wyl-shadow);
+}
+.host-overview-card {
+    min-width: 0;
+    height: auto;
+}
+.host-overview-card .card-header {
+    border-bottom: 1px solid var(--wyl-card-border);
+    border-radius: 8px 8px 0 0;
+    background-color: var(--wyl-panel-header-bg);
+}
+.host-overview-card .card-body {
+    border-bottom: 1px solid var(--wyl-card-border);
+}
+.host-section-nav-shell {
+    min-width: 0;
+    padding: 0 0.95rem;
+    background-color: var(--wyl-panel-header-bg);
+    border-bottom: 1px solid var(--wyl-card-border);
+}
+.host-section-nav {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    width: 100%;
+    max-width: 100%;
+    min-height: 2.35rem;
+    padding: 0;
+    overflow-x: auto;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+}
+.host-section-tab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.36rem;
+    flex: 0 0 auto;
+    min-height: 2.35rem;
+    padding: 0.42rem 0.82rem 0.36rem;
+    color: var(--wyl-muted);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    font-size: 0.78rem;
+    font-weight: 850;
+    line-height: 1.1;
+    letter-spacing: 0.025em;
+    cursor: pointer;
+}
+.host-section-tab:hover,
+.host-section-tab:focus-visible {
+    color: var(--bs-body-color);
+    background-color: var(--wyl-control-hover-bg);
+}
+.host-section-tab:focus-visible {
+    outline: 2px solid var(--wyl-link-hover);
+    outline-offset: -2px;
+}
+.host-section-tab.is-active {
+    color: var(--wyl-control-text-strong);
+    background-color: transparent;
+    border-bottom-color: var(--wyl-link-hover);
+}
+.host-section-content {
+    min-width: 0;
+    padding: 0.85rem 0.95rem 0.95rem;
+}
+.host-section-pane {
+    min-width: 0;
+}
+.host-section-pane[hidden] {
+    display: none !important;
+}
+.host-section-stack {
+    display: grid;
+    gap: 0.85rem;
+    min-width: 0;
+}
+.host-workspace .host-section-stack > .host-panel.wyl-panel,
+.host-workspace .host-section-stack > .host-history-panel {
+    box-shadow: none;
+}
+
+/* Phase 35.10 UAT: disclosures must look interactive, not like static rows. */
+.host-disclosure > summary {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    position: relative;
+    list-style: none;
+    cursor: pointer;
+    transition: background-color 120ms ease, border-color 120ms ease;
+}
+.host-disclosure > summary::-webkit-details-marker {
+    display: none;
+}
+.host-disclosure > summary::after {
+    content: "Show details  ▾";
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    min-height: 1.72rem;
+    margin-left: auto;
+    padding: 0.18rem 0.46rem;
+    color: var(--wyl-link-hover);
+    background-color: var(--wyl-panel-header-bg);
+    border: 1px solid var(--wyl-control-border);
+    border-radius: 6px;
+    font-size: 0.66rem;
+    font-weight: 850;
+    line-height: 1;
+    letter-spacing: 0.025em;
+    white-space: nowrap;
+}
+.host-disclosure[open] > summary::after {
+    content: "Hide details  ▴";
+}
+.host-disclosure > summary:hover,
+.host-disclosure > summary:focus-visible {
+    background-color: var(--wyl-control-hover-bg);
+}
+.host-disclosure > summary:focus-visible {
+    outline: 2px solid var(--wyl-link-hover);
+    outline-offset: 2px;
+}
+
+.proxmox-workloads-disclosure {
+    margin-top: 0.85rem;
+    overflow: visible;
+    background-color: var(--wyl-control-bg);
+    border: 1px solid var(--wyl-panel-border);
+    border-radius: 8px;
+}
+.proxmox-workloads-disclosure > summary {
+    padding: 0.68rem 0.72rem;
+}
+.proxmox-workloads-disclosure[open] > summary {
+    border-bottom: 1px solid var(--wyl-panel-border);
+}
+.proxmox-workloads-disclosure-body {
+    padding: 0.72rem;
+}
+
+@media (max-width: 575.98px) {
+    .host-section-nav-shell {
+        margin-inline: 0;
+        padding-inline: 0.2rem;
+    }
+    .host-section-nav {
+        width: 100%;
+    }
+    .host-section-tab {
+        flex: 1 1 0;
+        min-width: 0;
+        padding-inline: 0.55rem;
+        white-space: nowrap;
+    }
+    .host-disclosure > summary {
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+    .host-disclosure > summary::after {
+        margin-left: 0;
+    }
 }
 .host-panel,
 .host-history-panel {
@@ -3554,10 +3879,165 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     font-variant-caps: all-small-caps;
     letter-spacing: 0.035em;
 }
+.host-overview-header {
+    align-items: center;
+    padding: 0.48rem 0.68rem;
+}
+.host-overview-main {
+    display: flex;
+    flex: 1 1 32rem;
+    align-items: center;
+    gap: 0.58rem;
+    min-width: 0;
+}
+.host-overview-device-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 2.2rem;
+    width: 2.2rem;
+    height: 2.2rem;
+    border: 1px solid var(--wyl-panel-border);
+    border-radius: 8px;
+    color: var(--wyl-link);
+    background: var(--wyl-control-bg);
+    font-size: 1.05rem;
+}
+.host-overview-identity {
+    min-width: 0;
+}
+.host-overview-title-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+.host-overview-name {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    color: var(--wyl-heading);
+    font-size: 1.08rem;
+    font-weight: 850;
+    line-height: 1.08;
+}
+.host-overview-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.28rem;
+    flex: 0 0 auto;
+    padding: 0.12rem 0.42rem;
+    border: 1px solid var(--wyl-panel-border);
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    line-height: 1.15;
+}
+.host-overview-status.is-online {
+    color: var(--bs-success);
+}
+.host-overview-status.is-offline {
+    color: var(--wyl-muted);
+}
+.host-overview-summary-line {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem 0.8rem;
+    flex-wrap: wrap;
+    margin-top: 0.22rem;
+    min-width: 0;
+}
+.host-overview-type {
+    color: var(--wyl-muted);
+    font-size: 0.72rem;
+    font-weight: 800;
+}
+.host-overview-network,
+.host-overview-managed-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem 0.72rem;
+    flex-wrap: wrap;
+    margin-top: 0;
+    min-width: 0;
+}
+.host-overview-network {
+    color: var(--bs-body-color);
+    font-size: 0.72rem;
+}
+.host-overview-managed-meta {
+    color: var(--wyl-muted);
+    font-size: 0.7rem;
+}
+.host-overview-network > span,
+.host-overview-managed-meta > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    min-width: 0;
+}
+.host-overview-network .font-monospace {
+    overflow-wrap: anywhere;
+}
+.host-overview-network i,
+.host-overview-managed-meta i {
+    flex: 0 0 auto;
+    color: var(--wyl-muted);
+}
+.host-overview-actions {
+    flex: 0 0 auto;
+    align-self: center;
+}
+
+.host-overview-more {
+    position: relative;
+}
+.host-overview-more > summary {
+    list-style: none;
+}
+.host-overview-more > summary::-webkit-details-marker {
+    display: none;
+}
+.host-overview-more[open] > summary {
+    border-color: var(--wyl-link);
+}
+.host-overview-more-menu {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + 0.35rem);
+    right: 0;
+    min-width: 11.5rem;
+    padding: 0.35rem;
+    border: 1px solid var(--wyl-panel-border);
+    border-radius: 8px;
+    background: var(--wyl-panel-bg);
+    box-shadow: 0 0.45rem 1.2rem rgba(0, 0, 0, 0.16);
+}
+.host-overview-danger-action {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    width: 100%;
+    padding: 0.45rem 0.55rem;
+    border: 0;
+    border-radius: 6px;
+    color: var(--wyl-danger-control-text);
+    background: transparent;
+    font-size: 0.78rem;
+    font-weight: 750;
+    text-align: left;
+}
+.host-overview-danger-action:hover,
+.host-overview-danger-action:focus-visible {
+    background: color-mix(in srgb, var(--bs-danger) 10%, transparent);
+}
+.host-overview-danger-action:disabled {
+    opacity: 0.55;
+}
+
 .host-details-body,
 .host-port-body,
 .host-history-body {
-    padding: 0.95rem;
+    padding: 0.72rem;
 }
 .host-details-layout {
     display: grid;
@@ -3580,8 +4060,8 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     align-items: center;
     justify-content: space-between;
     gap: 0.55rem;
-    min-height: 2.4rem;
-    padding: 0.5rem 0.65rem;
+    min-height: 2.12rem;
+    padding: 0.42rem 0.58rem;
     border-bottom: 1px solid var(--wyl-card-border);
 }
 .host-detail-section-heading {
@@ -3623,13 +4103,13 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
 .host-property-grid {
     display: grid;
     grid-template-columns: minmax(7rem, 9rem) minmax(0, 1fr);
-    column-gap: 0.78rem;
-    row-gap: 0.56rem;
+    column-gap: 0.68rem;
+    row-gap: 0.4rem;
     align-items: center;
 }
 .host-property-grid-section {
-    grid-template-columns: minmax(5.8rem, 7.2rem) minmax(0, 1fr);
-    padding: 0.72rem 0.72rem 0.78rem;
+    grid-template-columns: minmax(7.4rem, 8.4rem) minmax(0, 1fr);
+    padding: 0.55rem 0.62rem 0.62rem;
 }
 .host-field-label {
     text-align: right;
@@ -4009,15 +4489,27 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     min-height: 3.25rem;
     line-height: 1.05;
 }
+.host-history-disclosure > summary {
+    list-style: none;
+    cursor: pointer;
+}
+.host-history-disclosure > summary::-webkit-details-marker {
+    display: none;
+}
+.host-history-disclosure[open] > summary {
+    border-bottom: 1px solid var(--wyl-panel-border);
+}
+.host-history-controls {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 0.7rem;
+}
 .host-loading {
     color: var(--wyl-muted);
     font-size: 0.86rem;
 }
 
 @media (max-width: 991.98px) {
-    .host-details-layout {
-        grid-template-columns: 1fr;
-    }
     .overview-grid {
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
@@ -4333,12 +4825,38 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     .config-highlight-list {
         grid-template-columns: 1fr;
     }
+    .host-overview-header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+    .host-overview-main {
+        flex-basis: auto;
+        width: 100%;
+    }
+    .host-overview-actions {
+        justify-content: flex-start;
+        width: 100%;
+    }
+    .host-overview-more-menu {
+        right: auto;
+        left: 0;
+    }
+    .host-overview-network,
+    .host-overview-managed-meta {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0.3rem;
+    }
     .host-property-grid,
     .host-port-controls {
         grid-template-columns: 1fr;
     }
+    .host-property-grid-section {
+        grid-template-columns: minmax(6.4rem, 7.2rem) minmax(0, 1fr);
+        column-gap: 0.55rem;
+    }
     .host-field-label {
-        text-align: left;
+        text-align: right;
     }
     .host-actions,
     .host-edit-actions,
@@ -4354,6 +4872,9 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     .host-history-date-control {
         align-items: flex-start;
         flex-direction: column;
+    }
+    .host-history-controls {
+        justify-content: flex-start;
     }
     .activity-row {
         grid-template-columns: 2rem minmax(0, 1fr);
@@ -4744,6 +5265,177 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     }
 }
 
+/* Phase 35.10 Host Services hierarchy */
+.host-services-body {
+    display: grid;
+    gap: 0.85rem;
+}
+.host-services-current {
+    display: grid;
+    gap: 0.55rem;
+}
+.host-section-summary-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+.host-services-empty {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.72rem 0.78rem;
+    border: 1px dashed var(--wyl-panel-border);
+    border-radius: 8px;
+    color: var(--wyl-muted);
+    font-size: 0.8rem;
+    line-height: 1.4;
+}
+.host-services-empty i {
+    flex: 0 0 auto;
+    margin-top: 0.05rem;
+}
+.host-services-secondary {
+    overflow: visible;
+    border: 1px solid var(--wyl-panel-border);
+    border-radius: 8px;
+    background: var(--wyl-control-bg);
+}
+.host-services-secondary > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.65rem;
+    padding: 0.58rem 0.68rem;
+    list-style: none;
+    cursor: pointer;
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+.host-services-secondary > summary::-webkit-details-marker {
+    display: none;
+}
+.host-services-secondary > summary > span:first-child {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.38rem;
+}
+.host-services-secondary > summary > span:first-child i {
+    color: var(--wyl-link);
+}
+.host-services-secondary[open] > summary {
+    border-bottom: 1px solid var(--wyl-panel-border);
+}
+.host-services-secondary-body {
+    padding: 0.72rem;
+}
+.host-services-table {
+    min-width: 760px;
+}
+.host-services-table th {
+    color: var(--wyl-muted);
+    font-size: 0.7rem;
+    font-weight: 850;
+    text-transform: uppercase;
+}
+.host-services-table td {
+    font-size: 0.78rem;
+}
+.host-service-address {
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 575.98px) {
+    .host-section-summary-heading {
+        align-items: stretch;
+        flex-direction: column;
+    }
+    .host-section-summary-heading .badge {
+        align-self: flex-start;
+    }
+    .host-services-table-wrap {
+        overflow-x: visible;
+    }
+    .host-services-table,
+    .host-services-table tbody {
+        display: block;
+        width: 100%;
+        min-width: 0;
+    }
+    .host-services-table thead {
+        display: none;
+    }
+    .host-services-table tr {
+        display: grid;
+        width: 100%;
+        padding: 0.42rem 0;
+        border-top: 1px solid var(--wyl-panel-border);
+    }
+    .host-services-table tbody tr:first-child {
+        border-top: 0;
+    }
+    .host-services-table td {
+        display: grid;
+        grid-template-columns: 6.6rem minmax(0, 1fr);
+        gap: 0.5rem;
+        align-items: start;
+        width: 100%;
+        padding: 0.28rem 0;
+        border: 0;
+    }
+    .host-services-table td::before {
+        content: attr(data-label);
+        color: var(--wyl-muted);
+        font-size: 0.68rem;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+}
+
+/* Phase 35.10 Network identity hierarchy */
+.host-identity-body {
+    display: grid;
+    gap: 0.85rem;
+}
+.host-identity-current {
+    display: grid;
+    gap: 0.45rem;
+}
+.host-identity-history {
+    overflow: visible;
+    border: 1px solid var(--wyl-panel-border);
+    border-radius: 8px;
+    background: var(--wyl-control-bg);
+}
+.host-identity-history > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.65rem;
+    padding: 0.58rem 0.68rem;
+    list-style: none;
+    cursor: pointer;
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+.host-identity-history > summary::-webkit-details-marker {
+    display: none;
+}
+.host-identity-history > summary > span:first-child {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.38rem;
+}
+.host-identity-history > summary > span:first-child i {
+    color: var(--wyl-link);
+}
+.host-identity-history[open] > summary {
+    border-bottom: 1px solid var(--wyl-panel-border);
+}
+.host-identity-history-body {
+    padding: 0.72rem;
+}
+
 /* Host Recent Events: event snapshots belong to the historical event, not current Host state. */
 .host-event-table {
     table-layout: fixed;
@@ -5100,6 +5792,57 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     animation: wyl-scanner-spin 1.1s linear infinite;
 }
 
+.proxmox-source-details,
+.proxmox-collection-settings {
+    border: 1px solid var(--wyl-panel-border);
+    border-radius: 8px;
+    background: var(--wyl-control-bg);
+}
+.proxmox-source-details {
+    margin-top: 0.55rem;
+}
+.proxmox-source-details > summary,
+.proxmox-collection-settings > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.65rem;
+    padding: 0.58rem 0.68rem;
+    list-style: none;
+    cursor: pointer;
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+.proxmox-source-details > summary::-webkit-details-marker,
+.proxmox-collection-settings > summary::-webkit-details-marker {
+    display: none;
+}
+.proxmox-collection-settings > summary > span:first-child {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.38rem;
+}
+.proxmox-collection-settings > summary > span:first-child i {
+    color: var(--wyl-link);
+}
+.proxmox-source-details[open] > summary,
+.proxmox-collection-settings[open] > summary {
+    border-bottom: 1px solid var(--wyl-panel-border);
+}
+.proxmox-source-details .proxmox-source-grid {
+    margin: 0;
+    padding: 0.68rem;
+}
+.proxmox-collection-settings-body {
+    display: grid;
+    gap: 0.85rem;
+    padding: 0.72rem;
+}
+.proxmox-collection-settings-body > .proxmox-section:first-child {
+    padding-top: 0;
+    border-top: 0;
+}
+
 @media (max-width: 991.98px) {
     .proxmox-source-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -5347,6 +6090,52 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
 }
 
 @media (max-width: 767.98px) {
+    .proxmox-workload-table-wrap {
+        overflow-x: visible;
+    }
+    .proxmox-workload-table,
+    .proxmox-workload-table tbody {
+        display: block;
+        width: 100%;
+        min-width: 0;
+    }
+    .proxmox-workload-table thead {
+        display: none;
+    }
+    .proxmox-workload-table tr {
+        display: grid;
+        width: 100%;
+        padding: 0.5rem 0.62rem;
+        border-top: 1px solid var(--wyl-panel-border);
+    }
+    .proxmox-workload-table tbody tr:first-child {
+        border-top: 0;
+    }
+    .proxmox-workload-table td {
+        display: grid;
+        grid-template-columns: 7.2rem minmax(0, 1fr);
+        gap: 0.5rem;
+        align-items: start;
+        width: 100%;
+        padding: 0.3rem 0;
+        border: 0;
+    }
+    .proxmox-workload-table td::before {
+        content: attr(data-label);
+        color: var(--wyl-muted);
+        font-size: 0.68rem;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+    .proxmox-workload-title,
+    .proxmox-interface,
+    .proxmox-linked-host {
+        min-width: 0;
+    }
+    .proxmox-interface > span:not(.device-cell-muted):not(.proxmox-interface-name) {
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
     .proxmox-candidate,
     .proxmox-candidate.is-ip-conflict {
         display: grid;
@@ -5380,6 +6169,22 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     border: 1px solid var(--wyl-panel-border);
     border-radius: 7px;
     background: var(--wyl-table-row-bg);
+}
+
+.profile-empty-state {
+    display: grid;
+    grid-template-columns: 1.5rem minmax(0, 1fr);
+    gap: 0.58rem;
+    align-items: start;
+    padding: 0.68rem 0.72rem;
+    border: 1px dashed var(--wyl-panel-border);
+    border-radius: 8px;
+    color: var(--bs-body-color);
+}
+.profile-empty-state > i {
+    margin-top: 0.05rem;
+    color: var(--wyl-muted);
+    font-size: 1rem;
 }
 .profile-source-legend-title {
     margin-right: 0.12rem;

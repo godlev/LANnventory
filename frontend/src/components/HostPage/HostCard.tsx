@@ -116,6 +116,7 @@ function HostCard(_props: HostCardProps) {
   const currentDeviceType = () => getDeviceTypeOption(_props.editMode ? draft().DeviceType : _props.host.DeviceType);
   const hostDeviceTypeTitle = () => deviceTypeTitle(_props.editMode ? draft().DeviceType : _props.host.DeviceType);
   const inventoryName = () => (_props.editMode ? draft().Name : _props.host.Name).trim();
+  const overviewName = () => inventoryName() || _props.host.DNS || _props.host.IP || "Unnamed device";
   const editDirty = () => !hostDraftEquals(draft(), baseline());
   const canSave = () => _props.editMode && !saving() && editDirty() && _props.host.ID > 0;
   const pinTitle = () => _props.host.Pinned ? "Remove from Home pins" : "Pin on Home";
@@ -163,6 +164,18 @@ function HostCard(_props: HostCardProps) {
   };
 
   const handleDel = async () => {
+    if (_props.host.ID === 0) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Delete " + overviewName() + " from LANnventory?\n\n" +
+      "This removes the device record from LANnventory. This action cannot be undone.",
+    );
+    if (!confirmed) {
+      return;
+    }
+
     await apiDelHost(_props.host.ID);
     window.location.href = '/';
   };
@@ -305,26 +318,108 @@ function HostCard(_props: HostCardProps) {
   };
 
   return (
-    <div class="card wyl-panel host-panel">
-      <div class="card-header host-panel-header">
-        <div>
-          <div class="host-panel-title">Host details</div>
-          <div class="host-panel-subtitle host-panel-status">
-            <span
-              class={isOnline() ? "device-status-icon device-status-icon-online" : "device-status-icon device-status-icon-offline"}
-              title={statusText()}
-              aria-label={statusText()}
-              role="img"
-            >
-              <i class={isOnline() ? "bi bi-check-circle-fill" : "bi bi-x-circle-fill"} aria-hidden="true"></i>
-            </span>
-            <span>{statusText()}</span>
-            <span class="host-status-separator" aria-hidden="true">·</span>
-            <span class="host-header-id">ID {_props.host.ID}</span>
+    <section class="host-panel host-overview-card" aria-label="Host overview">
+      <div class="card-header host-panel-header host-overview-header">
+        <div class="host-overview-main">
+          <div
+            class="host-overview-device-icon"
+            title={hostDeviceTypeTitle()}
+            aria-label={hostDeviceTypeTitle()}
+            role="img"
+          >
+            <i class={"bi " + currentDeviceType().icon} aria-hidden="true"></i>
+          </div>
+
+          <div class="host-overview-identity">
+            <div class="host-overview-title-row">
+              <div class="host-overview-name">{overviewName()}</div>
+              <span class={isOnline() ? "host-overview-status is-online" : "host-overview-status is-offline"}>
+                <i class={isOnline() ? "bi bi-check-circle-fill" : "bi bi-x-circle-fill"} aria-hidden="true"></i>
+                <span>{statusText()}</span>
+              </span>
+            </div>
+
+            <div class="host-overview-summary-line">
+              <span class="host-overview-type">{currentDeviceType().label}</span>
+
+              <div class="host-overview-network" aria-label="Current network identity">
+                <span title="Current IP">
+                  <i class="bi bi-globe2" aria-hidden="true"></i>
+                  <span class="font-monospace">{_props.host.IP || "No IP"}</span>
+                </span>
+                <span title="Current MAC">
+                  <i class="bi bi-ethernet" aria-hidden="true"></i>
+                  <span class="font-monospace">{_props.host.Mac || "No MAC"}</span>
+                </span>
+              </div>
+
+              <Show when={_props.host.Owner || _props.host.Location}>
+                <div class="host-overview-managed-meta">
+                  <Show when={_props.host.Owner}>
+                    <span>
+                      <i class="bi bi-person-fill" aria-hidden="true"></i>
+                      <span>{_props.host.Owner}</span>
+                    </span>
+                  </Show>
+                  <Show when={_props.host.Location}>
+                    <span>
+                      <i class="bi bi-geo-alt-fill" aria-hidden="true"></i>
+                      <span>{_props.host.Location}</span>
+                    </span>
+                  </Show>
+                </div>
+              </Show>
+            </div>
           </div>
         </div>
 
-        <div class="host-panel-actions">
+        <div class="host-panel-actions host-overview-actions">
+          <Show
+            when={_props.editMode}
+            fallback={
+              <ActionTooltip title="Edit" detail="Edit the managed information for this device.">
+                <button
+                  type="button"
+                  class="btn btn-sm btn-primary host-mode-button"
+                  title="Edit device"
+                  aria-label="Edit device"
+                  disabled={_props.host.ID === 0}
+                  onClick={handleModeToggle}
+                >
+                  <i class="bi bi-pencil-fill" aria-hidden="true"></i>
+                  <span>Edit</span>
+                </button>
+              </ActionTooltip>
+            }
+          >
+            <ActionTooltip title="Save" detail="Save the staged managed-information changes for this device.">
+              <button
+                type="button"
+                class="btn btn-sm btn-primary host-save-button"
+                title="Save changes"
+                aria-label="Save changes"
+                disabled={!canSave()}
+                onClick={handleSaveChanges}
+              >
+                <i class={saving() ? "bi bi-hourglass-split" : "bi bi-save"} aria-hidden="true"></i>
+                <span>{saving() ? "Saving" : "Save"}</span>
+              </button>
+            </ActionTooltip>
+            <ActionTooltip title="Cancel" detail="Discard staged changes and leave edit mode.">
+              <button
+                type="button"
+                class="btn btn-sm wyl-button"
+                title="Cancel changes"
+                aria-label="Cancel changes"
+                disabled={saving()}
+                onClick={handleCancelChanges}
+              >
+                <i class="bi bi-x-lg" aria-hidden="true"></i>
+                <span>Cancel</span>
+              </button>
+            </ActionTooltip>
+          </Show>
+
           <ActionTooltip
             title="Wake on LAN"
             detail={"Send a Wake-on-LAN magic packet to " + (_props.host.Mac || "this device") + "."}
@@ -334,6 +429,7 @@ function HostCard(_props: HostCardProps) {
               class="btn btn-sm wyl-button host-wol-button host-icon-button"
               title="Wake on LAN"
               aria-label="Wake on LAN"
+              disabled={!_props.host.Mac}
               onClick={handleWOL}
             >
               <i class="bi bi-power" aria-hidden="true"></i>
@@ -377,51 +473,26 @@ function HostCard(_props: HostCardProps) {
             </button>
           </ActionTooltip>
 
-          <Show
-            when={_props.editMode}
-            fallback={
-              <ActionTooltip title="Edit" detail="Edit the managed inventory fields for this device.">
-                <button
-                  type="button"
-                  class="btn btn-sm wyl-button host-mode-button"
-                  title="Edit host"
-                  aria-label="Edit host"
-                  disabled={_props.host.ID === 0}
-                  onClick={handleModeToggle}
-                >
-                  <i class="bi bi-pencil-fill" aria-hidden="true"></i>
-                  <span>Edit</span>
-                </button>
-              </ActionTooltip>
-            }
-          >
-            <ActionTooltip title="Save" detail="Save the staged inventory changes for this device.">
+          <details class="host-overview-more">
+            <summary
+              class="btn btn-sm wyl-button host-icon-button"
+              title="More device actions"
+              aria-label="More device actions"
+            >
+              <i class="bi bi-three-dots" aria-hidden="true"></i>
+            </summary>
+            <div class="host-overview-more-menu">
               <button
                 type="button"
-                class="btn btn-sm wyl-button host-save-button"
-                title="Save changes"
-                aria-label="Save changes"
-                disabled={!canSave()}
-                onClick={handleSaveChanges}
+                class="host-overview-danger-action"
+                disabled={_props.host.ID === 0}
+                onClick={handleDel}
               >
-                <i class={saving() ? "bi bi-hourglass-split" : "bi bi-save"} aria-hidden="true"></i>
-                <span>{saving() ? "Saving" : "Save"}</span>
+                <i class="bi bi-trash-fill" aria-hidden="true"></i>
+                <span>Delete device</span>
               </button>
-            </ActionTooltip>
-            <ActionTooltip title="Cancel" detail="Discard staged inventory changes and leave edit mode.">
-              <button
-                type="button"
-                class="btn btn-sm wyl-button"
-                title="Cancel changes"
-                aria-label="Cancel changes"
-                disabled={saving()}
-                onClick={handleCancelChanges}
-              >
-                <i class="bi bi-x-lg" aria-hidden="true"></i>
-                <span>Cancel</span>
-              </button>
-            </ActionTooltip>
-          </Show>
+            </div>
+          </details>
         </div>
       </div>
 
@@ -431,9 +502,9 @@ function HostCard(_props: HostCardProps) {
             <div class="host-detail-section-header">
               <div class="host-detail-section-heading">
                 <i class="bi bi-pencil-square" aria-hidden="true"></i>
-                <span id="host-inventory-heading">Inventory</span>
+                <span id="host-inventory-heading">Managed information</span>
               </div>
-              <span class="host-detail-section-badge host-detail-section-badge-editable">Editable</span>
+              <span class="host-detail-section-badge host-detail-section-badge-editable">Managed · Editable</span>
             </div>
 
             <div class="host-property-grid host-property-grid-section">
@@ -557,9 +628,9 @@ function HostCard(_props: HostCardProps) {
             <div class="host-detail-section-header">
               <div class="host-detail-section-heading">
                 <i class="bi bi-router-fill" aria-hidden="true"></i>
-                <span id="host-discovery-heading">Network &amp; Discovery</span>
+                <span id="host-discovery-heading">Current network</span>
               </div>
-              <span class="host-detail-section-badge">Read only</span>
+              <span class="host-detail-section-badge">Discovered · Read only</span>
             </div>
 
             <div class="host-property-grid host-property-grid-section">
@@ -686,24 +757,8 @@ function HostCard(_props: HostCardProps) {
           <div class="host-inline-error" role="alert">{pinError() || knownError()}</div>
         </Show>
 
-        <Show when={_props.editMode}>
-          <div class="host-actions">
-            <ActionTooltip title="Delete" detail="Remove this device from LANnventory.">
-              <button
-                type="button"
-                onClick={handleDel}
-                class="btn btn-sm wyl-button device-delete-button host-delete-button"
-                title="Delete"
-                aria-label="Delete device"
-              >
-                <i class="bi bi-trash-fill" aria-hidden="true"></i>
-                <span>Delete</span>
-              </button>
-            </ActionTooltip>
-          </div>
-        </Show>
       </div>
-    </div>
+    </section>
   )
 
 }

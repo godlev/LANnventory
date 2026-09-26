@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { formatLastSeen } from "../src/functions/dateFormat.ts";
+import { localDayUTCRange } from "../src/functions/historyDate.ts";
 
 const root = resolve(import.meta.dirname, "..");
 const read = (path) => readFileSync(resolve(root, path), "utf8");
@@ -8,8 +9,14 @@ const read = (path) => readFileSync(resolve(root, path), "utf8");
 const identity = read("src/components/HostPage/IdentityCard.tsx");
 const correlation = read("src/components/HostPage/CorrelationPanel.tsx");
 const hostActivity = read("src/components/HostPage/HostActivityCard.tsx");
+const hostHistory = read("src/components/HostPage/HistCard.tsx");
+const macHistory = read("src/components/MacHistory.tsx");
+const historyApi = read("src/functions/api.ts");
+const servicesCard = read("src/components/HostPage/ServicesCard.tsx");
 const activityFeed = read("src/components/ActivityFeed.tsx");
+const hostPage = read("src/pages/HostPage.tsx");
 const hostCard = read("src/components/HostPage/HostCard.tsx");
+const portScan = read("src/components/HostPage/Ping.tsx");
 const deviceProfile = read("src/components/HostPage/DeviceProfileCard.tsx");
 const proxmoxInventory = read("src/components/HostPage/ProxmoxInventoryCard.tsx");
 const hostedWorkload = read("src/components/HostPage/HostedWorkloadCard.tsx");
@@ -31,7 +38,7 @@ function forbidText(source, value, message) {
   }
 }
 
-requireText(identity, "Network identity history", "Identity section title must clarify history.");
+requireText(identity, "Network identity", "Identity section title must describe the current device identity.");
 requireText(identity, "This IP was also used by", "Shared IP wording must make the IP the grammatical subject.");
 requireText(
   identity,
@@ -41,8 +48,15 @@ requireText(
 requireText(identity, '<MACObservation address={props.address.address}', "Historical MAC rows must retain explicit address context.");
 forbidText(identity, "Also observed with", "Ambiguous shared-IP wording must not return.");
 
-requireText(correlation, "Possible same device", "Correlation section must remain separate.");
+requireText(identity, "Current network identity", "Current identity observations must have visual priority.");
+requireText(identity, '<details class="host-identity-history host-disclosure">', "Historical identity observations must use progressive disclosure.");
+requireText(identity, "Previous addresses and names are historical observations.", "Identity history must explicitly distinguish history from current state.");
+requireText(appStyles, ".host-identity-history", "Identity history must have dedicated secondary styling.");
+
+requireText(correlation, "Possible identity matches", "Possible identity matches must remain separate from IP reuse history.");
 requireText(correlation, "Shared IP history alone is not a same-device conclusion.", "Correlation must remain separate from address reuse.");
+requireText(correlation, "Confirmed same-device identities", "Confirmed user decisions must use user-facing identity terminology.");
+forbidText(correlation, "Read only projection", "Implementation-oriented correlation terminology must not be exposed to users.");
 requireText(
   correlation,
   "No evidence currently suggests that another MAC belongs to this same physical device.",
@@ -58,7 +72,87 @@ requireText(hostActivity, '<th scope="col">When</th>', "Host Recent Events must 
 forbidText(hostActivity, 'href={"/host/"', "Host Recent Events must not link back to the same Host page.");
 forbidText(hostActivity, "activityHostName", "Host Recent Events must not repeat the Host name.");
 
+requireText(hostActivity, "Recent events could not be loaded.", "Host Recent Events must expose section-level API failures.");
+requireText(hostActivity, "Retry", "Host Recent Events must offer a local retry action.");
+requireText(hostActivity, 'class="host-section-error"', "Secondary Host section failure must not replace the whole Host page.");
+requireText(appStyles, ".host-section-error", "Partial Host section errors must have dedicated styling.");
+
 requireText(activityFeed, '<A href={"/host/" + event.HostID}', "Global Activity Host links must remain available.");
+
+requireText(hostHistory, 'class="card wyl-panel host-history-panel host-history-disclosure host-disclosure"', "Presence history must be secondary progressive disclosure.");
+requireText(hostHistory, '<Show when={expanded()}>', "Presence history content must load only after the user opens it.");
+requireText(hostHistory, '>History</span>', "Presence history must be labelled as historical context.");
+requireText(appStyles, ".host-history-disclosure", "Presence history disclosure must have dedicated styling.");
+requireText(macHistory, "createEffect", "Presence history must refetch when Host/date inputs change.");
+requireText(macHistory, "Presence history could not be loaded.", "Presence history must expose API failures.");
+requireText(macHistory, "No presence data recorded for this date.", "Presence history must distinguish a valid empty day from an API failure.");
+requireText(macHistory, "Retry", "Presence history must expose a local retry action.");
+requireText(historyApi, 'params.set("from", range.from)', "Dated presence queries must send an explicit browser-local UTC range.");
+requireText(historyApi, 'params.set("timeZone", range.timeZone)', "Dated presence queries must send browser timezone context.");
+forbidText(hostHistory, 'setToday("");', "Presence date changes must not rely on forced unmount/remount behavior.");
+
+requireText(servicesCard, "Current open services", "Services must prioritize current open state.");
+requireText(servicesCard, "Manual service scan", "Manual port scanning must live with service inventory.");
+requireText(servicesCard, '<Ping', "Services must own the manual scan workflow.");
+requireText(portScan, "props.embedded", "Port scan must support embedded Services presentation.");
+requireText(hostPage, 'type HostSection = "inventory" | "network" | "activity";', "Host secondary content must be divided into explicit local sections.");
+requireText(hostPage, 'class="host-workspace"', "Device Overview, Host navigation, and active Host content must share one structural workspace shell.");
+requireText(hostPage, 'class="host-section-nav"', "Host must expose visible local navigation instead of one long stack.");
+requireText(hostPage, 'class="host-section-content"', "Selected Host content must be part of the same Host workspace as the navigation.");
+requireText(hostPage, 'class="host-section-stack"', "Selected Host section cards must stack inside the shared workspace content area.");
+forbidText(hostPage, "host-primary-shell", "Host layout must not return to the compensated primary-shell/tab-strip structure.");
+forbidText(hostPage, "host-page-row", "Host layout must not rely on separate Bootstrap rows for overview and selected content widths.");
+forbidText(hostPage, "host-primary-column", "Host navigation must not depend on Bootstrap column width compensation.");
+requireText(hostCard, 'class="host-overview-summary-line"', "Host overview identity metadata must use the compact summary row.");
+requireText(hostCard, 'class="host-panel host-overview-card"', "Host overview must be an internal workspace block instead of a nested standalone card.");
+requireText(appStyles, ".host-workspace", "Host workspace must own the shared width, border, and visual boundary.");
+requireText(appStyles, ".host-section-content", "Host section content must share the workspace width instead of a separate row width.");
+requireText(appStyles, ".host-section-stack", "Host section cards must use an explicit stack layout inside the workspace.");
+requireText(appStyles, ".host-overview-card .card-body", "Overview details must separate from local navigation inside the workspace.");
+forbidText(appStyles, ".host-primary-shell", "Host CSS must not keep the old primary-shell width compensation.");
+forbidText(appStyles, "margin-top: -0.35rem;", "Selected Host content must not be pulled under the nav with negative margin compensation.");
+forbidText(appStyles, "host-details-column", "Host CSS must not depend on removed Bootstrap Host columns.");
+requireText(appStyles, "border-bottom: 2px solid transparent;", "Host tabs must use a flat tab-strip affordance instead of boxed pill controls.");
+requireText(appStyles, "border-bottom-color: var(--wyl-link-hover);", "The active Host tab must be identified by a clear underline.");
+forbidText(appStyles, "background-color: var(--wyl-control-bg);\n    border: 1px solid var(--wyl-card-border);\n    border-radius: 7px;\n    box-shadow: none;\n}\n.host-section-tab", "Host navigation must not regress to a nested pill container.");
+requireText(hostPage, 'hidden={activeSection() !== "inventory"}', "Inventory content must not remain visible when another Host section is selected.");
+requireText(hostPage, 'hidden={activeSection() !== "network"}', "Network content must not remain visible when another Host section is selected.");
+requireText(hostPage, 'hidden={activeSection() !== "activity"}', "Activity content must not remain visible when another Host section is selected.");
+requireText(appStyles, ".host-section-tab.is-active", "Host local navigation must expose a clear active state.");
+requireText(proxmoxInventory, 'class="proxmox-workloads-disclosure host-disclosure"', "Large Proxmox workload inventory must be collapsed behind an explicit disclosure by default.");
+requireText(appStyles, 'content: "Show details  ▾";', "Collapsed Host disclosures must advertise that more content is available.");
+requireText(appStyles, 'content: "Hide details  ▴";', "Expanded Host disclosures must advertise how to collapse them.");
+requireText(servicesCard, 'host-services-secondary host-disclosure', "Service secondary sections must use the shared disclosure affordance.");
+requireText(identity, 'host-identity-history host-disclosure', "Identity history must use the shared disclosure affordance.");
+requireText(hostHistory, 'host-history-disclosure host-disclosure', "Presence history must use the shared disclosure affordance.");
+
+forbidText(hostPage, "host-port-column", "Port scan must not remain a top-level peer of Device Overview.");
+requireText(servicesCard, "Previously observed services", "Closed services must remain available as explicit history.");
+requireText(servicesCard, "Closed services are retained as history.", "Historical service state must not imply a current open service.");
+requireText(servicesCard, '<details class="host-services-secondary host-disclosure">', "Historical services and scan settings must use progressive disclosure.");
+requireText(servicesCard, "Scheduled scanning", "Per-host scheduled scan controls must remain available.");
+requireText(servicesCard, 'data-label="Service"', "Services table must expose mobile row labels.");
+requireText(appStyles, ".host-services-table td::before", "Services must transform into labelled rows on narrow screens.");
+
+requireText(hostCard, 'class="host-overview-main"', "Host must expose a first-class Device Overview hierarchy.");
+requireText(hostCard, '{overviewName()}', "Device Overview must lead with the device display name.");
+requireText(hostCard, '{currentDeviceType().label}', "Device Overview must expose device type.");
+requireText(hostCard, '{statusText()}', "Device Overview must expose current online/offline state.");
+requireText(hostCard, '{_props.host.IP || "No IP"}', "Device Overview must expose current IP.");
+requireText(hostCard, '{_props.host.Mac || "No MAC"}', "Device Overview must expose current MAC.");
+requireText(hostCard, '>Managed information</span>', "User-controlled Host fields must be labelled Managed information.");
+requireText(hostCard, '>Current network</span>', "Observed current network fields must be grouped separately.");
+requireText(hostCard, '>Discovered · Read only</span>', "Discovered network data must expose read-only provenance.");
+forbidText(hostCard, '>Host details</div>', "Legacy feature-card title must not remain the primary Host hierarchy.");
+requireText(appStyles, ".host-overview-header", "Device Overview must have dedicated responsive styling.");
+requireText(appStyles, ".host-overview-network", "Current network identity must have dedicated summary styling.");
+
+requireText(hostCard, 'class="host-overview-more"', "Destructive Host actions must be separated from routine actions.");
+requireText(hostCard, "More device actions", "Host action overflow must have an accessible name.");
+requireText(hostCard, "This action cannot be undone.", "Delete must require explicit destructive confirmation.");
+requireText(hostCard, ">Delete device</span>", "Delete must remain available as an explicit device action.");
+forbidText(hostCard, 'class="host-actions"', "Delete must not remain visually tied to edit-mode Save/Cancel actions.");
+requireText(appStyles, ".host-overview-danger-action", "Destructive Host action must have dedicated visual treatment.");
 
 for (const label of [
   "Current IP",
@@ -83,6 +177,11 @@ requireText(deviceProfile, "Imports will not overwrite this field.", "Manual fie
 requireText(deviceProfile, "optional reference values", "Hypervisor reference fields must be explained as optional.");
 requireText(deviceProfile, "Capability profile; the Host remains Device Type Server.", "Hypervisor must remain a profile capability rather than a Device Type.");
 requireText(deviceProfile, '<option value="proxmox-ve">Proxmox VE</option>', "Manual Proxmox profile option must remain available.");
+
+requireText(deviceProfile, "No device profile configured", "Empty Device Profiles must collapse into a useful compact state.");
+requireText(deviceProfile, "hasAnyProfile", "Device Profile must distinguish meaningful profile data from empty typed sections.");
+requireText(deviceProfile, "props.editing || props.value", "Unset profile fields must stay hidden until editing.");
+requireText(appStyles, ".profile-empty-state", "Empty Device Profile state must have dedicated compact styling.");
 
 requireText(proxmoxInventory, "How access works", "Proxmox onboarding must explain collector permissions.");
 requireText(proxmoxInventory, "uses the permissions of the shell user", "Collector access model must be explicit.");
@@ -116,6 +215,11 @@ requireText(proxmoxInventory, "Remove link", "The linked-state action must descr
 requireText(proxmoxInventory, "Historical IP reuse is kept in Host history only.", "Historical IP reuse must be explained as context rather than workload-match evidence.");
 requireText(proxmoxInventory, "Manual / script", "Proxmox inventory must retain the existing script source selector.");
 requireText(proxmoxInventory, "Proxmox API", "Proxmox inventory must offer the optional API source.");
+requireText(proxmoxInventory, "Connection &amp; collection", "Proxmox connection and collection controls must be secondary disclosure.");
+requireText(proxmoxInventory, "Source details", "Technical Proxmox collector metadata must remain accessible without dominating the summary.");
+requireText(proxmoxInventory, "Current LANnventory view of the last successfully applied read-only inventory snapshot.", "Proxmox summary must describe current inventory state.");
+requireText(proxmoxInventory, 'data-label="Guest"', "Proxmox workloads must expose mobile row labels.");
+requireText(appStyles, ".proxmox-workload-table td::before", "Proxmox workload table must transform into labelled rows on narrow screens.");
 requireText(proxmoxInventory, "API Token Secret", "Proxmox API setup must expose a dedicated token-secret field.");
 requireText(proxmoxInventory, "Stored secret — leave blank to keep", "Stored Proxmox token secrets must remain write-only in the UI.");
 requireText(proxmoxInventory, "Clear stored token secret", "Proxmox API setup must provide explicit secret clearing.");
@@ -163,6 +267,14 @@ forbidText(deviceTypes, '| "hypervisor"', "Hypervisor must not become an exclusi
 
 const originalTZ = process.env.TZ;
 process.env.TZ = "Europe/Sofia";
+const sofiaLocalDay = localDayUTCRange("2026-09-26");
+if (sofiaLocalDay?.from !== "2026-09-25T21:00:00.000Z" || sofiaLocalDay?.to !== "2026-09-26T21:00:00.000Z") {
+  throw new Error("Presence local-day range must map Sofia midnight boundaries to UTC.");
+}
+const sofiaDSTDay = localDayUTCRange("2026-10-25");
+if (sofiaDSTDay?.from !== "2026-10-24T21:00:00.000Z" || sofiaDSTDay?.to !== "2026-10-25T22:00:00.000Z") {
+  throw new Error("Presence local-day range must preserve a 25-hour DST transition day.");
+}
 const currentYear = new Date().getFullYear();
 if (formatLastSeen(`${currentYear}-09-24T18:16:00Z`) !== "24 Sep 21:16") {
   throw new Error("RFC3339 UTC timestamps must be rendered in the browser-local timezone.");

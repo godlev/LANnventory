@@ -80,3 +80,32 @@ func assertSelectTestMarkers(t *testing.T, events []models.HostEvent, want []str
 		}
 	}
 }
+
+
+func TestSelectByDateRangeUsesHalfOpenBounds(t *testing.T) {
+	startSelectTestDB(t)
+	mac := "AA:BB:CC:DD:EE:55"
+	for _, date := range []string{
+		"2026-09-25 20:59:59",
+		"2026-09-25 21:00:00",
+		"2026-09-26 20:59:59",
+		"2026-09-26 21:00:00",
+	} {
+		Update("history", models.Host{
+			Name: "presence-test",
+			Mac:  mac,
+			Date: date,
+		})
+	}
+
+	rows, ok := SelectByDateRange(mac, "2026-09-25 21:00:00", "2026-09-26 21:00:00")
+	if !ok {
+		t.Fatal("SelectByDateRange failed")
+	}
+	if len(rows) != 2 {
+		t.Fatalf("rows len = %d, want 2: %+v", len(rows), rows)
+	}
+	if rows[0].Date != "2026-09-25 21:00:00" || rows[1].Date != "2026-09-26 20:59:59" {
+		t.Fatalf("range rows = %+v, want half-open range bounds", rows)
+	}
+}

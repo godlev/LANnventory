@@ -56,6 +56,22 @@ function DeviceProfileCard(props: ProfileCardProps) {
   const showSystem = createMemo(() => isSystemType() || profile().system !== null || profile().hypervisor !== null);
   const showHypervisor = createMemo(() => props.host.DeviceType === "server" || profile().hypervisor !== null);
   const dirty = createMemo(() => JSON.stringify(draft()) !== JSON.stringify(baseline()));
+  const hasManagedProfile = createMemo(() => {
+    const managed = profile().managed;
+    return Boolean(managed && (managed.manufacturer || managed.model || managed.managementAddress));
+  });
+  const hasNetworkProfile = createMemo(() => {
+    const network = profile().network;
+    return Boolean(network && (network.managementMode || network.physicalPortCount || network.portCapabilityNotes));
+  });
+  const hasSystemProfile = createMemo(() => {
+    const system = profile().system;
+    return Boolean(system && (system.role || system.operatingSystem || system.version));
+  });
+  const hasHypervisorProfile = createMemo(() => Boolean(profile().hypervisor?.platform));
+  const hasAnyProfile = createMemo(() =>
+    hasManagedProfile() || hasNetworkProfile() || hasSystemProfile() || hasHypervisorProfile(),
+  );
 
   createEffect(() => {
     const id = props.host.ID;
@@ -214,95 +230,116 @@ function DeviceProfileCard(props: ProfileCardProps) {
       </div>
 
       <div class="card-body">
-        <DataSourceLegend />
         <Show when={!loading()} fallback={<div class="device-cell-muted">Loading device profile…</div>}>
-          <div class="row g-3">
-            <div class="col-12">
-              <div class="small fw-semibold mb-2">General</div>
-              <div class="row g-2">
-                <ProfileField label="Manufacturer" editing={editing()} value={draft().manufacturer} onInput={(value) => updateDraft("manufacturer", value)} />
-                <ProfileField label="Model" editing={editing()} value={draft().model} onInput={(value) => updateDraft("model", value)} />
-                <ProfileField label="Management address" editing={editing()} value={draft().managementAddress} onInput={(value) => updateDraft("managementAddress", value)} monospace />
+          <Show
+            when={editing() || hasAnyProfile()}
+            fallback={
+              <div class="profile-empty-state">
+                <i class="bi bi-card-list" aria-hidden="true"></i>
+                <div>
+                  <div class="fw-semibold">No device profile configured</div>
+                  <div class="small device-cell-muted">Add manufacturer, model, system role or other managed details only when they are useful for this device.</div>
+                </div>
               </div>
+            }
+          >
+            <DataSourceLegend />
+            <div class="row g-3">
+              <Show when={editing() || hasManagedProfile()}>
+                <div class="col-12">
+                  <div class="small fw-semibold mb-2">General</div>
+                  <div class="row g-2">
+                    <ProfileField label="Manufacturer" editing={editing()} value={draft().manufacturer} onInput={(value) => updateDraft("manufacturer", value)} />
+                    <ProfileField label="Model" editing={editing()} value={draft().model} onInput={(value) => updateDraft("model", value)} />
+                    <ProfileField label="Management address" editing={editing()} value={draft().managementAddress} onInput={(value) => updateDraft("managementAddress", value)} monospace />
+                  </div>
+                </div>
+              </Show>
+
+              <Show when={(editing() && showNetwork()) || hasNetworkProfile()}>
+                <div class="col-12">
+                  <hr class="my-1" />
+                  <div class="small fw-semibold mb-2">Network device</div>
+                  <div class="row g-2">
+                    <Show when={editing() || draft().managementMode}>
+                      <div class="col-12 col-lg-4">
+                        <FieldLabel label="Management" source="manual" />
+                        <Show when={editing()} fallback={<ProfileValue value={managementModeLabel(draft().managementMode)} />}>
+                          <select class="form-select form-select-sm wyl-control" value={draft().managementMode} onChange={(event) => updateDraft("managementMode", event.currentTarget.value as ProfileDraft["managementMode"])}>
+                            <option value="">Not set</option>
+                            <option value="managed">Managed</option>
+                            <option value="unmanaged">Unmanaged</option>
+                          </select>
+                        </Show>
+                      </div>
+                    </Show>
+                    <Show when={editing() || (draft().physicalPortCount !== "" && draft().physicalPortCount !== "0")}>
+                      <div class="col-12 col-lg-4">
+                        <FieldLabel label="Physical ports" source="manual" />
+                        <Show when={editing()} fallback={<ProfileValue value={draft().physicalPortCount === "" || draft().physicalPortCount === "0" ? "" : draft().physicalPortCount} />}>
+                          <input class="form-control form-control-sm wyl-control" type="number" min="0" max="65535" step="1" value={draft().physicalPortCount} onInput={(event) => updateDraft("physicalPortCount", event.currentTarget.value)} />
+                        </Show>
+                      </div>
+                    </Show>
+                    <Show when={editing() || draft().portCapabilityNotes}>
+                      <div class="col-12">
+                        <FieldLabel label="Port capability notes" source="manual" />
+                        <Show when={editing()} fallback={<ProfileValue value={draft().portCapabilityNotes} />}>
+                          <textarea class="form-control form-control-sm wyl-control" rows={2} value={draft().portCapabilityNotes} onInput={(event) => updateDraft("portCapabilityNotes", event.currentTarget.value)}></textarea>
+                        </Show>
+                      </div>
+                    </Show>
+                  </div>
+                </div>
+              </Show>
+
+              <Show when={(editing() && showSystem()) || hasSystemProfile()}>
+                <div class="col-12">
+                  <hr class="my-1" />
+                  <div class="small fw-semibold mb-2">System</div>
+                  <div class="row g-2">
+                    <ProfileField label="Role" editing={editing()} value={draft().role} onInput={(value) => updateDraft("role", value)} />
+                    <ProfileField label="Operating system / platform" editing={editing()} value={draft().operatingSystem} onInput={(value) => updateDraft("operatingSystem", value)} />
+                    <ProfileField label="Version" editing={editing()} value={draft().systemVersion} onInput={(value) => updateDraft("systemVersion", value)} />
+                  </div>
+                </div>
+              </Show>
+
+              <Show when={(editing() && showHypervisor()) || hasHypervisorProfile()}>
+                <div class="col-12">
+                  <hr class="my-1" />
+                  <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                    <div>
+                      <div class="small fw-semibold">Hypervisor</div>
+                      <div class="small device-cell-muted">Capability profile; the Host remains Device Type Server. Platform is selected manually. Version, node and cluster are optional reference values; imported observations appear separately below.</div>
+                    </div>
+                    <Show when={draft().hypervisorPlatform === "proxmox-ve"}>
+                      <span class="badge text-bg-secondary">Proxmox VE</span>
+                    </Show>
+                  </div>
+                  <div class="row g-2">
+                    <div class="col-12 col-lg-4">
+                      <FieldLabel label="Platform" source="manual" />
+                      <Show when={editing()} fallback={<ProfileValue value={hypervisorPlatformLabel(draft().hypervisorPlatform)} />}>
+                        <select class="form-select form-select-sm wyl-control" value={draft().hypervisorPlatform} onChange={(event) => updateDraft("hypervisorPlatform", event.currentTarget.value as ProfileDraft["hypervisorPlatform"])}>
+                          <option value="">Not a hypervisor</option>
+                          <option value="proxmox-ve">Proxmox VE</option>
+                          <option value="vmware-esxi">VMware ESXi</option>
+                          <option value="hyper-v">Hyper-V</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </Show>
+                    </div>
+                    <Show when={draft().hypervisorPlatform !== ""}>
+                      <ProfileField label="Hypervisor version" editing={editing()} value={draft().hypervisorVersion} onInput={(value) => updateDraft("hypervisorVersion", value)} hint="Optional manual reference" />
+                      <ProfileField label="Node name" editing={editing()} value={draft().nodeName} onInput={(value) => updateDraft("nodeName", value)} monospace hint="Optional manual reference" />
+                      <ProfileField label="Cluster name" editing={editing()} value={draft().clusterName} onInput={(value) => updateDraft("clusterName", value)} hint="Optional manual reference" />
+                    </Show>
+                  </div>
+                </div>
+              </Show>
             </div>
-
-            <Show when={showNetwork()}>
-              <div class="col-12">
-                <hr class="my-1" />
-                <div class="small fw-semibold mb-2">Network device</div>
-                <div class="row g-2">
-                  <div class="col-12 col-lg-4">
-                    <FieldLabel label="Management" source="manual" />
-                    <Show when={editing()} fallback={<ProfileValue value={managementModeLabel(draft().managementMode)} />}>
-                      <select class="form-select form-select-sm wyl-control" value={draft().managementMode} onChange={(event) => updateDraft("managementMode", event.currentTarget.value as ProfileDraft["managementMode"])}>
-                        <option value="">Not set</option>
-                        <option value="managed">Managed</option>
-                        <option value="unmanaged">Unmanaged</option>
-                      </select>
-                    </Show>
-                  </div>
-                  <div class="col-12 col-lg-4">
-                    <FieldLabel label="Physical ports" source="manual" />
-                    <Show when={editing()} fallback={<ProfileValue value={draft().physicalPortCount === "" || draft().physicalPortCount === "0" ? "" : draft().physicalPortCount} />}>
-                      <input class="form-control form-control-sm wyl-control" type="number" min="0" max="65535" step="1" value={draft().physicalPortCount} onInput={(event) => updateDraft("physicalPortCount", event.currentTarget.value)} />
-                    </Show>
-                  </div>
-                  <div class="col-12">
-                    <FieldLabel label="Port capability notes" source="manual" />
-                    <Show when={editing()} fallback={<ProfileValue value={draft().portCapabilityNotes} />}>
-                      <textarea class="form-control form-control-sm wyl-control" rows={2} value={draft().portCapabilityNotes} onInput={(event) => updateDraft("portCapabilityNotes", event.currentTarget.value)}></textarea>
-                    </Show>
-                  </div>
-                </div>
-              </div>
-            </Show>
-
-            <Show when={showSystem()}>
-              <div class="col-12">
-                <hr class="my-1" />
-                <div class="small fw-semibold mb-2">System</div>
-                <div class="row g-2">
-                  <ProfileField label="Role" editing={editing()} value={draft().role} onInput={(value) => updateDraft("role", value)} />
-                  <ProfileField label="Operating system / platform" editing={editing()} value={draft().operatingSystem} onInput={(value) => updateDraft("operatingSystem", value)} />
-                  <ProfileField label="Version" editing={editing()} value={draft().systemVersion} onInput={(value) => updateDraft("systemVersion", value)} />
-                </div>
-              </div>
-            </Show>
-
-            <Show when={showHypervisor()}>
-              <div class="col-12">
-                <hr class="my-1" />
-                <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
-                  <div>
-                    <div class="small fw-semibold">Hypervisor</div>
-                    <div class="small device-cell-muted">Capability profile; the Host remains Device Type Server. Platform is selected manually. Version, node and cluster are optional reference values; imported observations appear separately below.</div>
-                  </div>
-                  <Show when={draft().hypervisorPlatform === "proxmox-ve"}>
-                    <span class="badge text-bg-secondary">Proxmox VE</span>
-                  </Show>
-                </div>
-                <div class="row g-2">
-                  <div class="col-12 col-lg-4">
-                    <FieldLabel label="Platform" source="manual" />
-                    <Show when={editing()} fallback={<ProfileValue value={hypervisorPlatformLabel(draft().hypervisorPlatform)} />}>
-                      <select class="form-select form-select-sm wyl-control" value={draft().hypervisorPlatform} onChange={(event) => updateDraft("hypervisorPlatform", event.currentTarget.value as ProfileDraft["hypervisorPlatform"])}>
-                        <option value="">Not a hypervisor</option>
-                        <option value="proxmox-ve">Proxmox VE</option>
-                        <option value="vmware-esxi">VMware ESXi</option>
-                        <option value="hyper-v">Hyper-V</option>
-                        <option value="other">Other</option>
-                      </select>
-                    </Show>
-                  </div>
-                  <Show when={draft().hypervisorPlatform !== ""}>
-                    <ProfileField label="Hypervisor version" editing={editing()} value={draft().hypervisorVersion} onInput={(value) => updateDraft("hypervisorVersion", value)} hint="Optional manual reference" />
-                    <ProfileField label="Node name" editing={editing()} value={draft().nodeName} onInput={(value) => updateDraft("nodeName", value)} monospace hint="Optional manual reference" />
-                    <ProfileField label="Cluster name" editing={editing()} value={draft().clusterName} onInput={(value) => updateDraft("clusterName", value)} hint="Optional manual reference" />
-                  </Show>
-                </div>
-              </div>
-            </Show>
-          </div>
+          </Show>
 
           <Show when={error()}>
             <div class="host-inline-error mt-3" role="alert">{error()}</div>
@@ -325,20 +362,22 @@ function ProfileField(props: {
   hint?: string;
 }) {
   return (
-    <div class="col-12 col-lg-4">
-      <FieldLabel label={props.label} source="manual" />
-      <Show when={props.editing} fallback={<ProfileValue value={props.value} monospace={props.monospace} />}>
-        <input
-          class={"form-control form-control-sm wyl-control"+(props.monospace ? " font-monospace" : "")}
-          type="text"
-          value={props.value}
-          onInput={(event) => props.onInput(event.currentTarget.value)}
-        />
-      </Show>
-      <Show when={props.hint}>
-        <div class="profile-field-hint">{props.hint}</div>
-      </Show>
-    </div>
+    <Show when={props.editing || props.value}>
+      <div class="col-12 col-lg-4">
+        <FieldLabel label={props.label} source="manual" />
+        <Show when={props.editing} fallback={<ProfileValue value={props.value} monospace={props.monospace} />}>
+          <input
+            class={"form-control form-control-sm wyl-control"+(props.monospace ? " font-monospace" : "")}
+            type="text"
+            value={props.value}
+            onInput={(event) => props.onInput(event.currentTarget.value)}
+          />
+        </Show>
+        <Show when={props.hint}>
+          <div class="profile-field-hint">{props.hint}</div>
+        </Show>
+      </div>
+    </Show>
   );
 }
 

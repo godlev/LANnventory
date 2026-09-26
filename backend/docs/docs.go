@@ -834,6 +834,12 @@ const docTemplate = `{
                         "name": "num",
                         "in": "query",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "IANA browser time zone used to render DATE values",
+                        "name": "timeZone",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -845,13 +851,22 @@ const docTemplate = `{
                                 "$ref": "#/definitions/models.Host"
                             }
                         }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
                     }
                 }
             }
         },
         "/history/{mac}/{date}": {
             "get": {
-                "description": "Retrieve history for a specific host on a given date\nInventory metadata fields are not included on history rows.\nThe date format is flexible and can be:\n- Year only: ` + "`" + `2025` + "`" + `\n- Year + month: ` + "`" + `2025-09` + "`" + `\n- Full date: ` + "`" + `2025-09-06` + "`" + `\n- Full timestamp: ` + "`" + `2025-09-06 00:58:26` + "`" + `",
+                "description": "Retrieve history for a specific host on a given date\nInventory metadata fields are not included on history rows.\nLegacy callers may filter by DATE prefix. Browser clients can provide an explicit UTC range so the selected date represents the browser-local calendar day.\nThe date format is flexible and can be:\n- Year only: ` + "`" + `2025` + "`" + `\n- Year + month: ` + "`" + `2025-09` + "`" + `\n- Full date: ` + "`" + `2025-09-06` + "`" + `\n- Full timestamp: ` + "`" + `2025-09-06 00:58:26` + "`" + `",
                 "produces": [
                     "application/json"
                 ],
@@ -873,6 +888,24 @@ const docTemplate = `{
                         "name": "date",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Browser-local day start as RFC3339 UTC instant",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Next browser-local day start as RFC3339 UTC instant",
+                        "name": "to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "IANA browser time zone used to render DATE values",
+                        "name": "timeZone",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -882,6 +915,24 @@ const docTemplate = `{
                             "type": "array",
                             "items": {
                                 "$ref": "#/definitions/models.Host"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
                             }
                         }
                     }

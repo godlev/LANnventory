@@ -24,8 +24,15 @@ function Influx() {
 
   return (
     <div class="card wyl-panel config-panel">
-          <div class="card-header">InfluxDB2 config</div>
+          <div class="card-header config-panel-heading">
+            <span>InfluxDB2</span>
+            <span class="settings-behavior-badge">Save required</span>
+          </div>
           <div class="card-body table-responsive">
+            <div class="settings-behavior-note">
+              <i class="bi bi-floppy" aria-hidden="true"></i>
+              <span>Integration changes are staged until you choose <strong>Save InfluxDB</strong>.</span>
+            </div>
             <form action={apiPath + '/api/config_influx/'} method="post" onSubmit={handleSubmit}>
               <table class="table table-borderless"><tbody>
                 <tr>
@@ -46,11 +53,17 @@ function Influx() {
                 <tr>
                   <td class="config-field-label">Token</td>
                   <td class="config-field-value">
+                    <Show
+                      when={appConfig().InfluxTokenConfigured}
+                      fallback={<div class="config-secret-state is-empty"><i class="bi bi-dash-circle" aria-hidden="true"></i><span>Not configured</span></div>}
+                    >
+                      <div class="config-secret-state is-stored"><i class="bi bi-shield-lock-fill" aria-hidden="true"></i><span>Stored securely · value hidden</span></div>
+                    </Show>
                     <input
                       name="token"
                       type="text"
                       class="form-control"
-                      placeholder={appConfig().InfluxTokenConfigured ? "Configured - leave blank to keep current value" : ""}
+                      placeholder={appConfig().InfluxTokenConfigured ? "Leave blank to keep the stored token" : "Enter InfluxDB token"}
                     ></input>
                     <Show when={appConfig().InfluxTokenConfigured}>
                       <label class="form-check config-secret-clear">
@@ -58,7 +71,7 @@ function Influx() {
                         <span class="form-check-label">Clear stored InfluxDB token</span>
                       </label>
                     </Show>
-                    <div class="config-field-helper">Stored InfluxDB tokens are write-only and are not displayed after saving.</div>
+                    <div class="config-field-helper">Stored InfluxDB tokens are write-only and are never displayed after saving. Enter a new value only to replace the stored token.</div>
                   </td>
                 </tr>
                 <tr>

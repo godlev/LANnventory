@@ -319,31 +319,6 @@ function ProxmoxInventoryCard(props: Props) {
           when={!loading() || sourceState() !== null || workloads().length > 0}
           fallback={<div class="device-cell-muted">Loading Proxmox inventory…</div>}
         >
-          <div class="proxmox-section">
-            <div class="proxmox-section-heading">
-              <div>
-                <div class="small fw-semibold">Proxmox inventory source</div>
-                <div class="small device-cell-muted">Choose the collection method. Both paths use the same Preview/Diff and workload matching rules.</div>
-              </div>
-              <div class="btn-group btn-group-sm" role="group" aria-label="Proxmox inventory source">
-                <button
-                  type="button"
-                  class={"btn "+(collectionMode() === "script" ? "btn-primary" : "btn-outline-secondary")}
-                  onClick={() => setCollectionMode("script")}
-                >
-                  Manual / script
-                </button>
-                <button
-                  type="button"
-                  class={"btn "+(collectionMode() === "api" ? "btn-primary" : "btn-outline-secondary")}
-                  onClick={() => setCollectionMode("api")}
-                >
-                  Proxmox API
-                </button>
-              </div>
-            </div>
-          </div>
-
           <SourceSummary
             state={sourceState()}
             total={totalCount()}
@@ -354,8 +329,8 @@ function ProxmoxInventoryCard(props: Props) {
             conflicts={possibleConflictCount()}
           />
 
-          <div class="proxmox-section">
-            <div class="proxmox-section-heading">
+          <details class="proxmox-workloads-disclosure host-disclosure">
+            <summary class="proxmox-section-heading">
               <div>
                 <div class="small fw-semibold">Workloads</div>
                 <div class="small device-cell-muted">
@@ -363,68 +338,108 @@ function ProxmoxInventoryCard(props: Props) {
                 </div>
               </div>
               <span class="badge text-bg-secondary">{workloads().length}</span>
-            </div>
+            </summary>
 
-            <Show
-              when={workloads().length > 0}
-              fallback={
-                <div class="proxmox-empty">
-                  <i class="bi bi-hdd-stack" aria-hidden="true"></i>
-                  <span>No workloads imported yet.</span>
+            <div class="proxmox-workloads-disclosure-body">
+              <Show
+                when={workloads().length > 0}
+                fallback={
+                  <div class="proxmox-empty">
+                    <i class="bi bi-hdd-stack" aria-hidden="true"></i>
+                    <span>No workloads imported yet.</span>
+                  </div>
+                }
+              >
+                <div class="table-responsive proxmox-workload-table-wrap">
+                  <table class="table table-sm align-middle mb-0 proxmox-workload-table">
+                    <thead>
+                      <tr>
+                        <th>Guest</th>
+                        <th>Status</th>
+                        <th>Network identity</th>
+                        <th>LANnventory match</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <For each={workloads()}>
+                        {(workload) => (
+                          <WorkloadRow
+                            workload={workload}
+                            match={matchesByWorkload().get(workload.id)}
+                            busy={linkBusy() === workload.id}
+                            onLink={(hostID) => void linkCandidate(workload.id, hostID)}
+                            onUnlink={() => void unlinkWorkload(workload.id)}
+                            onReject={(candidate) => void rejectCandidate(workload.id, candidate)}
+                            onClearRejection={(hostID) => void clearCandidateRejection(workload.id, hostID)}
+                          />
+                        )}
+                      </For>
+                    </tbody>
+                  </table>
                 </div>
-              }
-            >
-              <div class="table-responsive proxmox-workload-table-wrap">
-                <table class="table table-sm align-middle mb-0 proxmox-workload-table">
-                  <thead>
-                    <tr>
-                      <th>Guest</th>
-                      <th>Status</th>
-                      <th>Network identity</th>
-                      <th>LANnventory match</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <For each={workloads()}>
-                      {(workload) => (
-                        <WorkloadRow
-                          workload={workload}
-                          match={matchesByWorkload().get(workload.id)}
-                          busy={linkBusy() === workload.id}
-                          onLink={(hostID) => void linkCandidate(workload.id, hostID)}
-                          onUnlink={() => void unlinkWorkload(workload.id)}
-                          onReject={(candidate) => void rejectCandidate(workload.id, candidate)}
-                          onClearRejection={(hostID) => void clearCandidateRejection(workload.id, hostID)}
-                        />
-                      )}
-                    </For>
-                  </tbody>
-                </table>
-              </div>
-            </Show>
-          </div>
+              </Show>
+            </div>
+          </details>
 
-          <Show
-            when={collectionMode() === "api"}
-            fallback={
-              <ImportSection
-                importText={importText()}
-                preview={preview()}
-                previewing={previewing()}
-                applying={applying()}
-                error={importError()}
-                status={importStatus()}
-                onText={handleImportText}
-                onFile={(file) => void handleFile(file)}
-                onClear={clearImport}
-                onPreview={() => void handlePreview()}
-                onApply={() => void handleApply()}
-                proxmoxAddress={props.host.IP}
-              />
-            }
-          >
-            <ProxmoxAPISection hostID={props.host.ID} onApplied={() => refresh(props.host.ID)} />
-          </Show>
+          <details class="proxmox-collection-settings host-disclosure">
+            <summary>
+              <span>
+                <i class="bi bi-sliders" aria-hidden="true"></i>
+                Connection &amp; collection
+              </span>
+              <span class="badge text-bg-secondary">
+                {collectionMode() === "api" ? "Proxmox API" : "Manual / script"}
+              </span>
+            </summary>
+            <div class="proxmox-collection-settings-body">
+              <div class="proxmox-section">
+                <div class="proxmox-section-heading">
+                  <div>
+                    <div class="small fw-semibold">Inventory source</div>
+                    <div class="small device-cell-muted">Choose how LANnventory receives read-only Proxmox inventory. Both methods use the same Preview/Diff and workload matching safety rules.</div>
+                  </div>
+                  <div class="btn-group btn-group-sm" role="group" aria-label="Proxmox inventory source">
+                    <button
+                      type="button"
+                      class={"btn "+(collectionMode() === "script" ? "btn-primary" : "btn-outline-secondary")}
+                      onClick={() => setCollectionMode("script")}
+                    >
+                      Manual / script
+                    </button>
+                    <button
+                      type="button"
+                      class={"btn "+(collectionMode() === "api" ? "btn-primary" : "btn-outline-secondary")}
+                      onClick={() => setCollectionMode("api")}
+                    >
+                      Proxmox API
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <Show
+                when={collectionMode() === "api"}
+                fallback={
+                  <ImportSection
+                    importText={importText()}
+                    preview={preview()}
+                    previewing={previewing()}
+                    applying={applying()}
+                    error={importError()}
+                    status={importStatus()}
+                    onText={handleImportText}
+                    onFile={(file) => void handleFile(file)}
+                    onClear={clearImport}
+                    onPreview={() => void handlePreview()}
+                    onApply={() => void handleApply()}
+                    proxmoxAddress={props.host.IP}
+                  />
+                }
+              >
+                <ProxmoxAPISection hostID={props.host.ID} onApplied={() => refresh(props.host.ID)} />
+              </Show>
+            </div>
+          </details>
         </Show>
       </div>
     </section>
@@ -444,10 +459,10 @@ function SourceSummary(props: {
     <div class="proxmox-source-block">
       <div class="proxmox-section-heading">
         <div>
-          <div class="small fw-semibold">Source state</div>
-          <div class="small device-cell-muted">Last successfully applied read-only collector snapshot.</div>
+          <div class="small fw-semibold">Proxmox VE</div>
+          <div class="small device-cell-muted">Current LANnventory view of the last successfully applied read-only inventory snapshot.</div>
         </div>
-        <Show when={props.state} fallback={<span class="badge text-bg-secondary">Not imported</span>}>
+        <Show when={props.state} fallback={<span class="badge text-bg-secondary">Not connected</span>}>
           {(state) => (
             <span class={"badge "+(state().nodeStatus === "online" ? "text-bg-success" : state().nodeStatus === "offline" ? "text-bg-danger" : "text-bg-secondary")}>
               {capitalize(state().nodeStatus)}
@@ -462,23 +477,31 @@ function SourceSummary(props: {
           <div class="proxmox-empty proxmox-empty-source">
             <i class="bi bi-box-arrow-in-down" aria-hidden="true"></i>
             <div>
-              <div class="fw-semibold">No collector snapshot has been applied.</div>
-              <div class="small device-cell-muted">Use the import workflow below to preview the read-only collector output first.</div>
+              <div class="fw-semibold">No Proxmox inventory has been applied yet.</div>
+              <div class="small device-cell-muted">Open Connection &amp; collection below to configure a read-only API source or use the guided script import.</div>
             </div>
           </div>
         }
       >
         {(state) => (
-          <div class="proxmox-source-grid">
-            <SourceMetric label="Node" value={state().nodeHostname} monospace />
-            <SourceMetric label="PVE version" value={state().nodePveVersion} />
-            <SourceMetric label="Cluster" value={state().nodeClusterName || "Standalone"} />
-            <SourceMetric label="Source" value={state().source === "proxmox-api" ? "Proxmox API" : "Script import"} />
-            <SourceMetric label="Collected" value={formatTimestamp(state().collectedAt)} />
-            <SourceMetric label="Imported" value={formatTimestamp(state().importedAt)} />
-            <SourceMetric label="Collector" value={state().collectorVersion} />
-            <SourceMetric label="Schema" value={"v"+state().schemaVersion} />
-          </div>
+          <>
+            <div class="proxmox-source-grid proxmox-node-overview-grid">
+              <SourceMetric label="Node" value={state().nodeHostname} monospace />
+              <SourceMetric label="PVE version" value={state().nodePveVersion} />
+              <SourceMetric label="Cluster" value={state().nodeClusterName || "Standalone"} />
+              <SourceMetric label="Inventory source" value={state().source === "proxmox-api" ? "Proxmox API" : "Script import"} />
+            </div>
+
+            <details class="proxmox-source-details host-disclosure">
+              <summary>Source details</summary>
+              <div class="proxmox-source-grid">
+                <SourceMetric label="Collected" value={formatTimestamp(state().collectedAt)} />
+                <SourceMetric label="Imported" value={formatTimestamp(state().importedAt)} />
+                <SourceMetric label="Collector" value={state().collectorVersion} />
+                <SourceMetric label="Schema" value={"v"+state().schemaVersion} />
+              </div>
+            </details>
+          </>
         )}
       </Show>
 
@@ -543,7 +566,7 @@ function WorkloadRow(props: {
   const retired = () => Boolean(props.workload.retiredAt);
   return (
     <tr class={retired() ? "proxmox-workload-retired" : ""}>
-      <td>
+      <td data-label="Guest">
         <div class="proxmox-workload-title">
           <span class="font-monospace proxmox-vmid">{props.workload.nativeId}</span>
           <span class="fw-semibold">{props.workload.name || "Unnamed workload"}</span>
@@ -557,13 +580,13 @@ function WorkloadRow(props: {
           </Show>
         </div>
       </td>
-      <td>
+      <td data-label="Status">
         <span class={"proxmox-status "+statusClass(props.workload.status)}>
           <i class={props.workload.status === "running" ? "bi bi-play-circle-fill" : props.workload.status === "stopped" ? "bi bi-stop-circle-fill" : "bi bi-question-circle-fill"} aria-hidden="true"></i>
           {capitalize(props.workload.status)}
         </span>
       </td>
-      <td>
+      <td data-label="Network identity">
         <Show
           when={props.workload.interfaces.length > 0}
           fallback={<span class="device-cell-muted">No network identity</span>}
@@ -582,7 +605,7 @@ function WorkloadRow(props: {
           </div>
         </Show>
       </td>
-      <td>
+      <td data-label="LANnventory match">
         <MatchCell
           workload={props.workload}
           match={props.match}
@@ -646,7 +669,7 @@ function MatchCell(props: {
               </div>
             </Show>
             <Show when={rejectedCandidates().length > 0}>
-              <details class="proxmox-rejected-candidates">
+              <details class="proxmox-rejected-candidates host-disclosure">
                 <summary>
                   Rejected suggestions ({rejectedCandidates().length})
                 </summary>

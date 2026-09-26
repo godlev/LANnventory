@@ -130,6 +130,15 @@ func getUpdateStatus(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, withUpdateSettings(status, config))
 }
 
+func getUpdateProgress(c *gin.Context) {
+	progress, err := updateService.Progress()
+	if err != nil {
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "update progress could not be loaded"})
+		return
+	}
+	c.IndentedJSON(http.StatusOK, progress)
+}
+
 // saveUpdateChannel godoc
 // @Summary      Set update channel
 // @Description  Persists the Stable or Beta update channel without triggering a release check.

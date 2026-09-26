@@ -1,4 +1,4 @@
-import { createSignal, onMount, Show } from "solid-js"
+import { createSignal, onCleanup, onMount, Show } from "solid-js"
 import About from "../components/Config/About"
 import Basic from "../components/Config/Basic"
 import DataExport from "../components/Config/DataExport"
@@ -11,23 +11,48 @@ import Updates from "../components/Config/Updates"
 import "../components/Config/Updates.css"
 import { refreshAppConfig } from "../functions/theme"
 
+type SettingsSection = "general" | "network" | "diagnostics" | "data" | "updates" | "integrations" | "about";
+
+const settingsSections: Array<{ id: SettingsSection; label: string; icon: string }> = [
+  { id: "general", label: "General", icon: "bi-sliders" },
+  { id: "network", label: "Network discovery", icon: "bi-router" },
+  { id: "diagnostics", label: "Diagnostics", icon: "bi-heart-pulse" },
+  { id: "data", label: "Data & retention", icon: "bi-database" },
+  { id: "updates", label: "Updates", icon: "bi-arrow-up-circle" },
+  { id: "integrations", label: "Integrations", icon: "bi-plug" },
+  { id: "about", label: "About", icon: "bi-info-circle" },
+];
+
+function sectionFromHash(): SettingsSection {
+  const value = window.location.hash.replace(/^#/, "");
+  const legacyAliases: Record<string, SettingsSection> = {
+    scanning: "network",
+    "data-retention": "data",
+    "data-export": "data",
+  };
+  const normalized = legacyAliases[value] ?? value;
+
+  return settingsSections.some((section) => section.id === normalized)
+    ? normalized as SettingsSection
+    : "general";
+}
+
 function Config() {
   const [loading, setLoading] = createSignal(true);
   const [error, setError] = createSignal("");
+  const [activeSection, setActiveSection] = createSignal<SettingsSection>(sectionFromHash());
+
+  const selectSection = (section: SettingsSection) => {
+    setActiveSection(section);
+    const nextHash = "#" + section;
+    if (window.location.hash !== nextHash) {
+      window.history.replaceState(null, "", window.location.pathname + window.location.search + nextHash);
+    }
+  };
 
   onMount(() => {
-    const scrollToHash = () => {
-      const id = window.location.hash.slice(1);
-      if (!id) {
-        return;
-      }
-
-      document.getElementById(id)?.scrollIntoView();
-    };
-
-    requestAnimationFrame(scrollToHash);
-    window.setTimeout(scrollToHash, 100);
-    window.setTimeout(scrollToHash, 500);
+    const syncSectionFromHash = () => setActiveSection(sectionFromHash());
+    window.addEventListener("hashchange", syncSectionFromHash);
 
     refreshAppConfig()
       .then(() => {
@@ -39,58 +64,123 @@ function Config() {
       .finally(() => {
         setLoading(false);
       });
+
+    onCleanup(() => window.removeEventListener("hashchange", syncSectionFromHash));
   });
 
   return (
     <div class="settings-page">
       <header class="settings-page-header">
         <h1>Settings</h1>
-        <p>Configure LANnventory</p>
+        <p>Configure LANnventory by area without scanning one long page.</p>
       </header>
 
       <Show when={!loading()} fallback={<div class="settings-status-panel" role="status">Loading settings</div>}>
         <Show when={!error()} fallback={<div class="settings-status-panel settings-status-error" role="alert">{error()}</div>}>
-          <div class="settings-layout">
-            <div class="settings-column">
-              <section id="general" class="settings-section" aria-label="General">
-                <Basic></Basic>
-              </section>
+          <div class="settings-shell">
+            <nav class="settings-nav" aria-label="Settings sections">
+              {settingsSections.map((section) => (
+                <a
+                  href={"#" + section.id}
+                  class={"settings-nav-link" + (activeSection() === section.id ? " is-active" : "")}
+                  aria-current={activeSection() === section.id ? "page" : undefined}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    selectSection(section.id);
+                  }}
+                >
+                  <i class={"bi " + section.icon} aria-hidden="true"></i>
+                  <span>{section.label}</span>
+                </a>
+              ))}
+            </nav>
 
-              <section id="scanning" class="settings-section" aria-label="Scanning and database">
-                <Scan></Scan>
-              </section>
+            <label class="settings-mobile-nav">
+              <span>Settings section</span>
+              <select
+                class="form-select form-select-sm wyl-control"
+                value={activeSection()}
+                onChange={(event) => selectSection(event.currentTarget.value as SettingsSection)}
+              >
+                {settingsSections.map((section) => (
+                  <option value={section.id}>{section.label}</option>
+                ))}
+              </select>
+            </label>
 
-              <section id="diagnostics" class="settings-section" aria-label="Scanner health and diagnostics">
-                <Diagnostics></Diagnostics>
-              </section>
+            <main class="settings-content">
+              <Show when={activeSection() === "general"}>
+                <section id="general" class="settings-section" aria-label="General">
+                  <div class="settings-section-heading">
+                    <h2>General</h2>
+                    <p>Application behavior, appearance and existing notification compatibility settings.</p>
+                  </div>
+                  <Basic />
+                </section>
+              </Show>
 
-              <section id="data-retention" class="settings-section" aria-label="Data retention">
-                <Retention></Retention>
-              </section>
+              <Show when={activeSection() === "network"}>
+                <section id="network" class="settings-section" aria-label="Network discovery">
+                  <div class="settings-section-heading">
+                    <h2>Network discovery</h2>
+                    <p>Interfaces, scan cadence, ARP scanner behavior and the current database-backed scanner configuration.</p>
+                  </div>
+                  <Scan />
+                </section>
+              </Show>
 
-              <section id="data-export" class="settings-section" aria-label="Data backup and export">
-                <DataExport></DataExport>
-              </section>
-            </div>
+              <Show when={activeSection() === "diagnostics"}>
+                <section id="diagnostics" class="settings-section" aria-label="Scanner health and diagnostics">
+                  <div class="settings-section-heading">
+                    <h2>Diagnostics</h2>
+                    <p>Scanner, database and runtime health information.</p>
+                  </div>
+                  <Diagnostics />
+                </section>
+              </Show>
 
-            <div class="settings-column">
-              <section id="updates" class="settings-section" aria-label="Updates">
-                <Updates></Updates>
-              </section>
+              <Show when={activeSection() === "data"}>
+                <section id="data" class="settings-section" aria-label="Data and retention">
+                  <div class="settings-section-heading">
+                    <h2>Data &amp; retention</h2>
+                    <p>Retention periods plus safe backup and inventory export actions.</p>
+                  </div>
+                  <Retention />
+                  <DataExport />
+                </section>
+              </Show>
 
-              <section id="integrations" class="settings-section" aria-label="Integrations">
-                <div class="settings-section-heading">
-                  <h2>Integrations</h2>
-                  <p>Send LANnventory metrics to external monitoring systems.</p>
-                </div>
-                <Influx></Influx>
-                <Prometheus></Prometheus>
-              </section>
+              <Show when={activeSection() === "updates"}>
+                <section id="updates" class="settings-section" aria-label="Updates">
+                  <div class="settings-section-heading">
+                    <h2>Updates</h2>
+                    <p>Release channel, automatic checks and installation status.</p>
+                  </div>
+                  <Updates />
+                </section>
+              </Show>
 
-              <section id="about" class="settings-section" aria-label="About">
-                <About></About>
-              </section>
-            </div>
+              <Show when={activeSection() === "integrations"}>
+                <section id="integrations" class="settings-section" aria-label="Integrations">
+                  <div class="settings-section-heading">
+                    <h2>Integrations</h2>
+                    <p>Send LANnventory metrics to external monitoring systems.</p>
+                  </div>
+                  <Influx />
+                  <Prometheus />
+                </section>
+              </Show>
+
+              <Show when={activeSection() === "about"}>
+                <section id="about" class="settings-section" aria-label="About">
+                  <div class="settings-section-heading">
+                    <h2>About</h2>
+                    <p>Version, project information, documentation and upstream credits.</p>
+                  </div>
+                  <About />
+                </section>
+              </Show>
+            </main>
           </div>
         </Show>
       </Show>

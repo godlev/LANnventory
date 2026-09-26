@@ -1,4 +1,4 @@
-import { For, onCleanup, onMount, Show } from "solid-js";
+import { createEffect, createSignal, For, onCleanup, onMount, Show } from "solid-js";
 import { getHistoryForMac } from "../functions/history";
 import { Host, show } from "../functions/exports";
 import { createStore } from "solid-js/store";
@@ -7,20 +7,52 @@ import { getHistoryPeriod, historyPeriodLabel, parseHistoryTimestamp } from "../
 function MacHistory(_props: any) {
 
   const [hist, setHist] = createStore<Host[]>([]);
+  const [loading, setLoading] = createSignal(true);
+  const [loadError, setLoadError] = createSignal("");
   let interval: number;
+  let requestID = 0;
 
-  onMount(async () => {
-    const newHistory = await getHistoryForMac(_props.mac, _props.date);
-    setHist(newHistory);
-    interval = setInterval(async () => {
-      // console.log("Upd Hist", new Date());
-      const newHistory = await getHistoryForMac(_props.mac, _props.date);
+  const loadHistory = async (mac: string, date: string, foreground: boolean) => {
+    const activeRequest = ++requestID;
+    if (foreground) {
+      setLoading(true);
+    }
+    setLoadError("");
+
+    try {
+      const newHistory = await getHistoryForMac(mac, date);
+      if (activeRequest !== requestID) {
+        return;
+      }
       setHist(newHistory);
-    }, 60000); // 60000 ms = 1 minute
+    } catch {
+      if (activeRequest !== requestID) {
+        return;
+      }
+      setHist([]);
+      setLoadError("Presence history could not be loaded.");
+    } finally {
+      if (activeRequest === requestID && foreground) {
+        setLoading(false);
+      }
+    }
+  };
+
+  createEffect(() => {
+    const mac = _props.mac;
+    const date = _props.date;
+    void loadHistory(mac, date, true);
+  });
+
+  onMount(() => {
+    interval = window.setInterval(() => {
+      void loadHistory(_props.mac, _props.date, false);
+    }, 60000);
   });
 
   onCleanup(() => {
-    clearInterval(interval);
+    requestID++;
+    window.clearInterval(interval);
   });
 
   const statusLabel = (host: Host) => host.Now === 0 ? "Offline" : "Online";
@@ -83,20 +115,50 @@ function MacHistory(_props: any) {
   };
 
   return (
-    <div class="history-sample-strip" aria-label="Presence samples">
-      <For each={hist}>{(h, index) =>
+    <Show
+      when={!loading()}
+      fallback={<div class="device-cell-muted" role="status">Loading presence history…</div>}
+    >
+      <Show
+        when={!loadError()}
+        fallback={
+          <div class="host-section-error" role="alert">
+            <span>{loadError()}</span>
+            <button
+              type="button"
+              class="btn btn-sm wyl-button"
+              onClick={() => void loadHistory(_props.mac, _props.date, true)}
+            >
+              Retry
+            </button>
+          </div>
+        }
+      >
         <Show
-          when={index() < show()}
+          when={hist.length > 0}
+          fallback={
+            <div class="device-cell-muted">
+              {_props.date ? "No presence data recorded for this date." : "No presence data recorded yet."}
+            </div>
+          }
         >
-          <i
-            title={sampleTitle(h)}
-            aria-label={sampleTitle(h)}
-            role="img"
-            class={sampleClass(h) + " history-sample" + boundaryClass(h, index())}
-          ></i>
+          <div class="history-sample-strip" aria-label="Presence samples">
+            <For each={hist}>{(h, index) =>
+              <Show
+                when={index() < show()}
+              >
+                <i
+                  title={sampleTitle(h)}
+                  aria-label={sampleTitle(h)}
+                  role="img"
+                  class={sampleClass(h) + " history-sample" + boundaryClass(h, index())}
+                ></i>
+              </Show>
+            }</For>
+          </div>
         </Show>
-      }</For>
-    </div>
+      </Show>
+    </Show>
   )
 }
 

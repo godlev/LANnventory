@@ -9,11 +9,12 @@ import HostedWorkloadCard from "../components/HostPage/HostedWorkloadCard";
 import DeviceProfileCard from "../components/HostPage/DeviceProfileCard";
 import ProxmoxInventoryCard from "../components/HostPage/ProxmoxInventoryCard";
 import IdentityCard from "../components/HostPage/IdentityCard";
-import Ping from "../components/HostPage/Ping";
 import ServicesCard from "../components/HostPage/ServicesCard";
 import HostActivityCard from "../components/HostPage/HostActivityCard";
 import HistCard from "../components/HostPage/HistCard";
 import { emptyHost, emptyPageContext, Host, setPageContext } from "../functions/exports";
+
+type HostSection = "inventory" | "network" | "activity";
 
 function HostPage() {
 
@@ -21,7 +22,7 @@ function HostPage() {
   const [loadError, setLoadError] = createSignal("");
   const [deviceProfile, setDeviceProfile] = createSignal<DeviceProfileResponse | null>(null);
   const [hasUnsavedHostChanges, setHasUnsavedHostChanges] = createSignal(false);
-  const [serviceRefreshKey, setServiceRefreshKey] = createSignal(0);
+  const [activeSection, setActiveSection] = createSignal<HostSection>("inventory");
   const params = useParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -70,6 +71,7 @@ function HostPage() {
 
     const activeRequest = ++requestId;
     setLoadError("");
+    setActiveSection("inventory");
     setDeviceProfile(null);
     setCurrentHost(emptyHost);
     setPageContext({ kind: "host", hostName: "" });
@@ -125,60 +127,100 @@ function HostPage() {
         </div>
       }
     >
-      <div class="row g-3 mx-0 host-page-row">
-        <div class="col-12 col-md-8 col-lg-9 col-xl-10 host-details-column">
-          <HostCard
-            host={currentHost()}
-            editMode={isEditMode()}
-            onEditModeChange={setEditMode}
-            onHostChange={setCurrentHost}
-            onDirtyChange={setHasUnsavedHostChanges}
-          ></HostCard>
+      <section class="host-workspace" aria-label="Host workspace">
+        <HostCard
+          host={currentHost()}
+          editMode={isEditMode()}
+          onEditModeChange={setEditMode}
+          onHostChange={setCurrentHost}
+          onDirtyChange={setHasUnsavedHostChanges}
+        ></HostCard>
+
+        <div class="host-section-nav-shell">
+          <nav class="host-section-nav" role="tablist" aria-label="Host sections">
+            <button
+              id="host-section-inventory-tab"
+              type="button"
+              role="tab"
+              aria-selected={activeSection() === "inventory"}
+              aria-controls="host-section-inventory"
+              class={"host-section-tab" + (activeSection() === "inventory" ? " is-active" : "")}
+              onClick={() => setActiveSection("inventory")}
+            >
+              <i class="bi bi-box-seam" aria-hidden="true"></i>
+              <span>Inventory</span>
+            </button>
+            <button
+              id="host-section-network-tab"
+              type="button"
+              role="tab"
+              aria-selected={activeSection() === "network"}
+              aria-controls="host-section-network"
+              class={"host-section-tab" + (activeSection() === "network" ? " is-active" : "")}
+              onClick={() => setActiveSection("network")}
+            >
+              <i class="bi bi-diagram-3" aria-hidden="true"></i>
+              <span>Network</span>
+            </button>
+            <button
+              id="host-section-activity-tab"
+              type="button"
+              role="tab"
+              aria-selected={activeSection() === "activity"}
+              aria-controls="host-section-activity"
+              class={"host-section-tab" + (activeSection() === "activity" ? " is-active" : "")}
+              onClick={() => setActiveSection("activity")}
+            >
+              <i class="bi bi-clock-history" aria-hidden="true"></i>
+              <span>Activity</span>
+            </button>
+          </nav>
         </div>
-        <div class="col-12 col-md-4 col-lg-3 col-xl-2 host-port-column">
-          <Ping
-            host={currentHost()}
-            onScanComplete={() => setServiceRefreshKey((value) => value + 1)}
-          ></Ping>
+
+        <div class="host-section-content">
+          <section
+            id="host-section-inventory"
+            class="host-section-pane"
+            role="tabpanel"
+            aria-labelledby="host-section-inventory-tab"
+            hidden={activeSection() !== "inventory"}
+          >
+            <div class="host-section-stack">
+              <HostedWorkloadCard host={currentHost()}></HostedWorkloadCard>
+              <DeviceProfileCard host={currentHost()} onProfileChange={setDeviceProfile}></DeviceProfileCard>
+              <Show when={deviceProfile()?.hypervisor?.platform === "proxmox-ve"}>
+                <ProxmoxInventoryCard host={currentHost()}></ProxmoxInventoryCard>
+              </Show>
+            </div>
+          </section>
+
+          <section
+            id="host-section-network"
+            class="host-section-pane"
+            role="tabpanel"
+            aria-labelledby="host-section-network-tab"
+            hidden={activeSection() !== "network"}
+          >
+            <div class="host-section-stack">
+              <ServicesCard host={currentHost()}></ServicesCard>
+              <IdentityCard host={currentHost()}></IdentityCard>
+            </div>
+          </section>
+
+          <section
+            id="host-section-activity"
+            class="host-section-pane"
+            role="tabpanel"
+            aria-labelledby="host-section-activity-tab"
+            hidden={activeSection() !== "activity"}
+          >
+            <div class="host-section-stack">
+              <HostActivityCard host={currentHost()}></HostActivityCard>
+              <HistCard mac={currentHost().Mac}></HistCard>
+            </div>
+          </section>
         </div>
-      </div>
-      <div class="row g-3 mx-0 mt-1 host-page-row">
-        <div class="col-md">
-          <HostedWorkloadCard host={currentHost()}></HostedWorkloadCard>
-        </div>
-      </div>
-      <div class="row g-3 mx-0 mt-1 host-page-row">
-        <div class="col-md">
-          <DeviceProfileCard host={currentHost()} onProfileChange={setDeviceProfile}></DeviceProfileCard>
-        </div>
-      </div>
-      <Show when={deviceProfile()?.hypervisor?.platform === "proxmox-ve"}>
-        <div class="row g-3 mx-0 mt-1 host-page-row">
-          <div class="col-md">
-            <ProxmoxInventoryCard host={currentHost()}></ProxmoxInventoryCard>
-          </div>
-        </div>
-      </Show>
-      <div class="row g-3 mx-0 mt-1 host-page-row">
-        <div class="col-md">
-          <ServicesCard host={currentHost()} refreshKey={serviceRefreshKey()}></ServicesCard>
-        </div>
-      </div>
-      <div class="row g-3 mx-0 mt-1 host-page-row">
-        <div class="col-md">
-          <IdentityCard host={currentHost()}></IdentityCard>
-        </div>
-      </div>
-      <div class="row g-3 mx-0 mt-1 host-page-row">
-        <div class="col-md">
-          <HostActivityCard host={currentHost()}></HostActivityCard>
-        </div>
-      </div>
-      <div class="row g-3 mx-0 mt-1 host-page-row">
-        <div class="col-md">
-          <HistCard mac={currentHost().Mac}></HistCard>
-        </div>
-      </div>
+      </section>
     </Show>
     </div>
   )
