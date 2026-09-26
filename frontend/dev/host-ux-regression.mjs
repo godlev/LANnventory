@@ -95,12 +95,14 @@ requireText(servicesCard, "Current open services", "Services must prioritize cur
 requireText(servicesCard, "Manual service scan", "Manual port scanning must live with service inventory.");
 requireText(servicesCard, '<Ping', "Services must own the manual scan workflow.");
 requireText(portScan, "props.embedded", "Port scan must support embedded Services presentation.");
-requireText(hostPage, 'class="col-12 host-details-column"', "Device Overview must use the full Host page width.");
+requireText(hostPage, 'class="col-12 host-details-column host-primary-column"', "Device Overview and local Host navigation must share the same Bootstrap column.");
 requireText(hostPage, 'type HostSection = "inventory" | "network" | "activity";', "Host secondary content must be divided into explicit local sections.");
 requireText(hostPage, 'class="host-section-nav"', "Host must expose visible local navigation instead of one long stack.");
 requireText(hostPage, 'class="host-primary-shell"', "Host navigation must be visually attached to the Device Overview shell.");
 requireText(hostCard, 'class="host-overview-summary-line"', "Host overview identity metadata must use the compact summary row.");
 requireText(appStyles, ".host-primary-shell .host-details-column > .host-panel", "Device Overview and Host tabs must share one visual shell.");
+requireText(appStyles, ".host-primary-column .host-section-nav-shell", "Host navigation width must be constrained by the same column as Device Overview.");
+requireText(appStyles, "box-sizing: border-box;", "Host navigation border must stay inside the shared Host column width.");
 requireText(appStyles, "border-radius: 0 0 8px 8px;", "Host tabs must visually continue the Device Overview instead of floating separately.");
 requireText(appStyles, "border-bottom: 2px solid transparent;", "Host tabs must use a flat tab-strip affordance instead of boxed pill controls.");
 requireText(appStyles, "border-bottom-color: var(--wyl-link-hover);", "The active Host tab must be identified by a clear underline.");

@@ -3685,6 +3685,10 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     border-bottom-left-radius: 0;
     box-shadow: none;
 }
+.host-primary-column .host-section-nav-shell {
+    width: 100%;
+    box-sizing: border-box;
+}
 .host-section-nav-shell {
     margin: -1px 0 0;
     padding: 0 0.72rem;

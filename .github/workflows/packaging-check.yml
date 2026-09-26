@@ -158,3 +158,42 @@ jobs:
 
 
 
+
+
+  sync-phase35-10-embedded-frontend:
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/phase35.10-host-overview' }}
+    permissions:
+      contents: write
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build and sync embedded frontend
+        run: |
+          set -euo pipefail
+          cd frontend
+          make all
+          cd ..
+          if git diff --quiet -- backend/internal/web/public; then
+            echo "Embedded frontend is already synchronized."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/internal/web/public
+          git commit -m "Build embedded frontend for aligned Host tabs"
+          git push origin HEAD:phase35.10-host-overview
