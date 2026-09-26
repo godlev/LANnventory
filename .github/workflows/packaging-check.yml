@@ -158,7 +158,7 @@ jobs:
 
 
   create-phase35-10-uat-tag:
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/phase35.10-host-overview' }}
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.number == 25 }}
     runs-on: ubuntu-22.04
     permissions:
       contents: write
