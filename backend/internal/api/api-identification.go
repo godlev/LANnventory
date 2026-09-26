@@ -82,16 +82,7 @@ type HostIdentificationResponse struct {
 	Actions        []IdentificationAction           `json:"actions"`
 }
 
-// getHostIdentification godoc
-// @Summary      Get retained identification assessment for a host
-// @Description  Aggregate retained discovery, service, address-history, and exact workload-interface evidence without running live discovery or changing host state.
-// @Tags         hosts
-// @Produce      json
-// @Param        id   path      int  true  "Host ID"
-// @Success      200  {object}  HostIdentificationResponse
-// @Failure      400  {object}  map[string]string
-// @Router       /host/{id}/identification [get]
-func getHostIdentification(c *gin.Context) {
+// getHostIdentification returns retained identification evidence only; it does not run live discovery.\nfunc getHostIdentification(c *gin.Context) {
 	host, err := getHostByID(c.Param("id"))
 	if err != nil || host.ID < 1 {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": errInvalidHostID.Error()})
