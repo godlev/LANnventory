@@ -75,18 +75,16 @@ function IdentificationCard(props: IdentificationCardProps) {
       }
       await refreshEvidence();
     } catch (error) {
-      if (!controller.signal.aborted) {
+      if (controller.signal.aborted) {
+        setInvestigationStatus("Name refresh stopped.");
+      } else {
         setInvestigationError(apiErrorMessage(error, "Name refresh failed."));
       }
     } finally {
       if (investigationController === controller) {
         investigationController = undefined;
       }
-      if (!controller.signal.aborted) {
-        setRunningAction("");
-      } else {
-        setRunningAction("");
-      }
+      setRunningAction("");
     }
   };
 
@@ -136,7 +134,12 @@ function IdentificationCard(props: IdentificationCardProps) {
         await refreshEvidence();
       }
     } catch (error) {
-      if (!controller.signal.aborted) {
+      if (controller.signal.aborted) {
+        setInvestigationStatus("Port check stopped after " + completed + " of " + preset.ports.length + " ports.");
+        if (completed > 0) {
+          await refreshEvidence();
+        }
+      } else {
         setInvestigationError(apiErrorMessage(error, preset.label + " port check failed."));
       }
     } finally {
