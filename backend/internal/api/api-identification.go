@@ -82,7 +82,8 @@ type HostIdentificationResponse struct {
 	Actions        []IdentificationAction           `json:"actions"`
 }
 
-// getHostIdentification returns retained identification evidence only; it does not run live discovery.\nfunc getHostIdentification(c *gin.Context) {
+// getHostIdentification returns retained identification evidence only; it does not run live discovery.
+func getHostIdentification(c *gin.Context) {
 	host, err := getHostByID(c.Param("id"))
 	if err != nil || host.ID < 1 {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": errInvalidHostID.Error()})
