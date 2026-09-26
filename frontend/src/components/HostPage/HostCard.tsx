@@ -485,6 +485,7 @@ function HostCard(_props: HostCardProps) {
               detail="Review retained local evidence for this Unknown device. No network probes run automatically."
             >
               <button
+                id="host-identify-toggle"
                 type="button"
                 class={"btn btn-sm wyl-button host-identify-button" + (_props.identifyOpen ? " is-active" : "")}
                 title="Help identify"
