@@ -2175,6 +2175,43 @@ async function routeSafeAction(req, res, url) {
     return true;
   }
 
+  const identificationRefreshMatch = pathname.match(/^\/api\/host\/(\d+)\/identification\/refresh-names$/);
+  if (req.method === 'POST' && identificationRefreshMatch) {
+    const id = Number(identificationRefreshMatch[1]);
+    const hostEntry = findHostByID(id);
+    if (!hostEntry || !hostEntry.IP) {
+      sendJSON(res, { error: hostEntry ? 'host has no current IP' : 'invalid host id' }, 400);
+      return true;
+    }
+    const refreshedName = hostEntry.DNS || hostEntry.Name || ('mock-device-' + id + '.local');
+    hostEntry.DNS = refreshedName;
+    sendJSON(res, {
+      refreshedAt: new Date().toISOString(),
+      sources: [
+        { source: 'mdns', values: [refreshedName] },
+      ],
+    });
+    return true;
+  }
+
+  const hostPortScanMatch = pathname.match(/^\/api\/host\/(\d+)\/port\/(\d+)\/scan$/);
+  if (req.method === 'POST' && hostPortScanMatch) {
+    const id = Number(hostPortScanMatch[1]);
+    const portNumber = Number(hostPortScanMatch[2]);
+    const hostEntry = findHostByID(id);
+    if (!hostEntry || !hostEntry.IP) {
+      sendJSON(res, { error: hostEntry ? 'host has no current IP' : 'invalid host id' }, 400);
+      return true;
+    }
+    const openPorts = new Set([80, 443, 554]);
+    sendJSON(res, {
+      port: portNumber,
+      open: openPorts.has(portNumber),
+      state: openPorts.has(portNumber) ? 'open' : 'closed',
+    });
+    return true;
+  }
+
   const inventoryMatch = pathname.match(/^\/api\/host\/(\d+)$/);
   if (req.method === 'PATCH' && inventoryMatch) {
     const id = Number(inventoryMatch[1]);
