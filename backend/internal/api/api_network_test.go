@@ -208,6 +208,70 @@ func TestHostPortScanDoesNotPersistNeverSeenClosedPort(t *testing.T) {
 	}
 }
 
+func TestHostPortScanDoesNotPersistWhenHostBindingChangesDuringProbe(t *testing.T) {
+	tests := []struct {
+		name   string
+		mutate func(models.Host) models.Host
+	}{
+		{
+			name: "ip changes",
+			mutate: func(host models.Host) models.Host {
+				host.IP = "192.168.1.41"
+				return host
+			},
+		},
+		{
+			name: "mac changes",
+			mutate: func(host models.Host) models.Host {
+				host.Mac = "AA:BB:CC:DD:EE:42"
+				return host
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			router := setupTestRouter(t)
+			host := seedHost(t, models.Host{
+				Name:  "race-target",
+				IP:    "192.168.1.40",
+				Mac:   "AA:BB:CC:DD:EE:40",
+				Iface: "eth0",
+				Known: 0,
+				Now:   1,
+			})
+
+			originalPortProbe := portProbe
+			portProbe = func(_ context.Context, addr, port string) portscan.Result {
+				changed := tc.mutate(host)
+				if err := gdb.UpdateWithError("now", changed); err != nil {
+					t.Fatalf("UpdateWithError: %v", err)
+				}
+				return portscan.Result{State: portscan.ProbeOpen}
+			}
+			t.Cleanup(func() {
+				portProbe = originalPortProbe
+			})
+
+			req := httptest.NewRequest(http.MethodPost, "/api/host/"+strconv.Itoa(host.ID)+"/port/80/scan", nil)
+			rec := httptest.NewRecorder()
+			router.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusConflict {
+				t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusConflict, rec.Body.String())
+			}
+
+			services, err := gdb.SelectServicesByMAC(host.Mac)
+			if err != nil {
+				t.Fatalf("SelectServicesByMAC: %v", err)
+			}
+			if len(services) != 0 {
+				t.Fatalf("probe result persisted after binding change: %+v", services)
+			}
+		})
+	}
+}
+
 func TestHostPortScanDoesNotChangeStateOnIndeterminateFailure(t *testing.T) {
 	router := setupTestRouter(t)
 	host := seedHost(t, models.Host{
