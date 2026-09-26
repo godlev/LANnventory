@@ -2,6 +2,7 @@ package api
 
 import (
 	"log/slog"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/godlev/LANnventory/internal/check"
 	"github.com/godlev/LANnventory/internal/gdb"
+	"github.com/godlev/LANnventory/internal/identity"
 	"github.com/godlev/LANnventory/internal/models"
 	"github.com/godlev/LANnventory/internal/portscan"
 )
@@ -90,6 +92,13 @@ func scanHostPort(c *gin.Context) {
 		return
 	}
 
+	currentHost, err := getHostByID(c.Param("id"))
+	if err != nil || currentHost.ID < 1 || !sameHostProbeBinding(host, currentHost) {
+		c.IndentedJSON(http.StatusConflict, gin.H{"error": "host address changed during scan; result was not recorded"})
+		return
+	}
+	host = currentHost
+
 	observedAt := time.Now().Format(models.HostEventDateLayout)
 	if _, _, _, err := gdb.RecordHostServiceObservation(host, models.Service{
 		Mac:            host.Mac,
@@ -109,6 +118,24 @@ func scanHostPort(c *gin.Context) {
 		Open:  open,
 		State: string(result.State),
 	})
+}
+
+func sameHostProbeBinding(before, after models.Host) bool {
+	if before.ID < 1 || before.ID != after.ID {
+		return false
+	}
+	beforeMAC, beforeErr := identity.NormalizeMAC(before.Mac)
+	afterMAC, afterErr := identity.NormalizeMAC(after.Mac)
+	if beforeErr != nil || afterErr != nil || beforeMAC != afterMAC {
+		return false
+	}
+
+	beforeIP := net.ParseIP(strings.TrimSpace(before.IP))
+	afterIP := net.ParseIP(strings.TrimSpace(after.IP))
+	if beforeIP == nil || afterIP == nil {
+		return false
+	}
+	return beforeIP.String() == afterIP.String()
 }
 
 // sendWOL godoc
