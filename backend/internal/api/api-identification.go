@@ -323,12 +323,15 @@ func identificationAssessmentState(host models.Host, assessment identification.A
 }
 
 func identificationActions(host models.Host) []IdentificationAction {
+	hasAddress := strings.TrimSpace(host.IP) != ""
 	actions := []IdentificationAction{
 		{Key: "identity-history", Available: true},
-		{Key: "service-scan", Available: strings.TrimSpace(host.IP) != ""},
+		{Key: "name-refresh", Available: hasAddress},
+		{Key: "service-scan", Available: hasAddress},
 	}
-	if strings.TrimSpace(host.IP) == "" {
+	if !hasAddress {
 		actions[1].Reason = "host has no current address"
+		actions[2].Reason = "host has no current address"
 	}
 	return actions
 }
