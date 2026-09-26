@@ -150,6 +150,7 @@ function HostCard(_props: HostCardProps) {
   const overviewName = () => inventoryName() || _props.host.DNS || _props.host.IP || "Unnamed device";
   const editDirty = () => !hostDraftEquals(draft(), baseline());
   const canSave = () => _props.editMode && !saving() && editDirty() && _props.host.ID > 0;
+  const canSaveAndMarkKnown = () => _props.editMode && !saving() && !isKnown() && _props.host.ID > 0;
   const pinTitle = () => _props.host.Pinned ? "Remove from Home pins" : "Pin on Home";
   const pinDetail = () => _props.host.Pinned
     ? "This device is pinned at the top of the Home device list. Activate to unpin it."
@@ -270,8 +271,8 @@ function HostCard(_props: HostCardProps) {
     }));
   };
 
-  const handleSaveChanges = async () => {
-    if (!canSave()) {
+  const persistDraft = async (markKnown: boolean) => {
+    if (markKnown ? !canSaveAndMarkKnown() : !canSave()) {
       return;
     }
 
@@ -288,6 +289,7 @@ function HostCard(_props: HostCardProps) {
         location: currentDraft.Location,
         notes: currentDraft.Notes,
         tags: currentDraft.Tags,
+        ...(markKnown ? { known: true } : {}),
       });
       updateHostInView(updatedHost);
       _props.onHostChange?.(updatedHost);
@@ -295,12 +297,20 @@ function HostCard(_props: HostCardProps) {
       syncDraftFromHost(updatedHost);
       _props.onDirtyChange?.(false);
       _props.onEditModeChange?.(false);
-      setSaveStatus("Changes saved");
+      setSaveStatus(markKnown ? "Changes saved and device marked Known" : "Changes saved");
     } catch {
-      setSaveError("Changes could not be saved");
+      setSaveError(markKnown ? "Changes and Known state could not be saved" : "Changes could not be saved");
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleSaveChanges = () => {
+    void persistDraft(false);
+  };
+
+  const handleSaveAndMarkKnown = () => {
+    void persistDraft(true);
   };
 
   const handleCancelChanges = () => {
@@ -436,6 +446,24 @@ function HostCard(_props: HostCardProps) {
                 <span>{saving() ? "Saving" : "Save"}</span>
               </button>
             </ActionTooltip>
+            <Show when={!isKnown()}>
+              <ActionTooltip
+                title="Save and mark Known"
+                detail="Atomically save the staged managed information and mark this device Known in one update."
+              >
+                <button
+                  type="button"
+                  class="btn btn-sm wyl-button host-save-known-button"
+                  title="Save and mark Known"
+                  aria-label="Save changes and mark device Known"
+                  disabled={!canSaveAndMarkKnown()}
+                  onClick={handleSaveAndMarkKnown}
+                >
+                  <i class={saving() ? "bi bi-hourglass-split" : "bi bi-bookmark-check"} aria-hidden="true"></i>
+                  <span>{saving() ? "Saving" : "Save & mark Known"}</span>
+                </button>
+              </ActionTooltip>
+            </Show>
             <ActionTooltip title="Cancel" detail="Discard staged changes and leave edit mode.">
               <button
                 type="button"
