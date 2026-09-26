@@ -102,6 +102,10 @@ requireText(hostPage, 'class="host-primary-shell"', "Host navigation must be vis
 requireText(hostCard, 'class="host-overview-summary-line"', "Host overview identity metadata must use the compact summary row.");
 requireText(appStyles, ".host-primary-shell .host-details-column > .host-panel", "Device Overview and Host tabs must share one visual shell.");
 requireText(appStyles, "border-radius: 0 0 8px 8px;", "Host tabs must visually continue the Device Overview instead of floating separately.");
+requireText(appStyles, "border-bottom: 2px solid transparent;", "Host tabs must use a flat tab-strip affordance instead of boxed pill controls.");
+requireText(appStyles, "border-bottom-color: var(--wyl-link-hover);", "The active Host tab must be identified by a clear underline.");
+requireText(appStyles, ".host-section-pane {\n    margin-top: -0.35rem;", "Selected Host content must sit close to the local navigation.");
+forbidText(appStyles, "background-color: var(--wyl-control-bg);\n    border: 1px solid var(--wyl-card-border);\n    border-radius: 7px;\n    box-shadow: none;\n}\n.host-section-tab", "Host navigation must not regress to a nested pill container.");
 requireText(hostPage, 'hidden={activeSection() !== "inventory"}', "Inventory content must not remain visible when another Host section is selected.");
 requireText(hostPage, 'hidden={activeSection() !== "network"}', "Network content must not remain visible when another Host section is selected.");
 requireText(hostPage, 'hidden={activeSection() !== "activity"}', "Activity content must not remain visible when another Host section is selected.");

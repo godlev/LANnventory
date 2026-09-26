@@ -3687,24 +3687,25 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
 }
 .host-section-nav-shell {
     margin: -1px 0 0;
-    padding: 0.38rem 0.72rem 0.46rem;
-    background-color: var(--wyl-panel-header-bg);
+    padding: 0 0.72rem;
+    background-color: var(--wyl-panel-bg);
     border: 1px solid var(--wyl-panel-border);
-    border-top: 0;
+    border-top: 1px solid var(--wyl-card-border);
     border-radius: 0 0 8px 8px;
     box-shadow: var(--wyl-shadow);
 }
 .host-section-nav {
     display: flex;
-    align-items: center;
-    gap: 0.2rem;
-    width: fit-content;
+    align-items: stretch;
+    gap: 0;
+    width: 100%;
     max-width: 100%;
-    padding: 0.16rem;
+    min-height: 2.35rem;
+    padding: 0;
     overflow-x: auto;
-    background-color: var(--wyl-control-bg);
-    border: 1px solid var(--wyl-card-border);
-    border-radius: 7px;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
     box-shadow: none;
 }
 .host-section-tab {
@@ -3713,12 +3714,13 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     justify-content: center;
     gap: 0.36rem;
     flex: 0 0 auto;
-    min-height: 1.9rem;
-    padding: 0.32rem 0.66rem;
+    min-height: 2.35rem;
+    padding: 0.42rem 0.82rem 0.36rem;
     color: var(--wyl-muted);
     background: transparent;
-    border: 1px solid transparent;
-    border-radius: 7px;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
     font-size: 0.78rem;
     font-weight: 850;
     line-height: 1.1;
@@ -3732,12 +3734,15 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
 }
 .host-section-tab:focus-visible {
     outline: 2px solid var(--wyl-link-hover);
-    outline-offset: 2px;
+    outline-offset: -2px;
 }
 .host-section-tab.is-active {
     color: var(--wyl-control-text-strong);
-    background-color: var(--wyl-card-active-bg);
-    border-color: var(--wyl-control-border);
+    background-color: transparent;
+    border-bottom-color: var(--wyl-link-hover);
+}
+.host-section-pane {
+    margin-top: -0.35rem;
 }
 .host-section-pane[hidden] {
     display: none !important;
@@ -3807,13 +3812,14 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
 @media (max-width: 575.98px) {
     .host-section-nav-shell {
         margin-inline: 0;
-        padding-inline: 0.45rem;
+        padding-inline: 0.2rem;
     }
     .host-section-nav {
         width: 100%;
     }
     .host-section-tab {
         flex: 1 0 auto;
+        padding-inline: 0.55rem;
     }
     .host-disclosure > summary {
         align-items: flex-start;
