@@ -4254,6 +4254,7 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     }
     .host-identification-summary {
         align-items: flex-start;
+        flex-direction: column;
     }
     .host-identification-clue-count {
         justify-items: start;
@@ -4275,7 +4276,7 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     }
     .host-identification-suggestion > button {
         grid-row: auto;
-        justify-self: start;
+        justify-self: stretch;
     }
     .host-identification-toolkit-heading,
     .host-identification-toolkit-row {
@@ -4284,7 +4285,19 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
     }
     .host-identification-toolkit-row > button,
     .host-identification-toolkit-heading > button {
-        align-self: flex-start;
+        align-self: stretch;
+        justify-content: center;
+    }
+    .host-identification-preset-buttons,
+    .host-identification-shortcuts {
+        display: grid;
+        grid-template-columns: 1fr;
+        align-items: stretch;
+    }
+    .host-identification-preset-buttons .btn,
+    .host-identification-shortcuts .btn {
+        justify-content: flex-start;
+        width: 100%;
     }
     .host-section-nav-shell {
         margin-inline: 0;
