@@ -115,7 +115,17 @@ requireText(hostPage, "<IdentificationCard", "Identification workflow must stay 
 requireText(identificationCard, "Retained evidence only · no probes run automatically", "Identification summary must distinguish retained evidence from active probes.");
 requireText(identificationCard, "current clues", "Identification summary must expose a compact current-clue count.");
 requireText(identificationCard, "Some retained sources are unavailable.", "Partial identification source failures must remain visible without replacing the Host page.");
+requireText(identificationCard, "Suggested managed values", "Identification helper must expose explainable managed-value suggestions.");
+requireText(identificationCard, "Source:", "Identification suggestions must expose provenance.");
+requireText(identificationCard, "High confidence", "Identification suggestions must expose confidence labels.");
+requireText(identificationCard, "Use both", "Identification helper must allow explicitly staging both suggestions.");
+requireText(identificationCard, "Nothing is saved and the device stays Unknown", "Suggestion actions must clearly remain draft-only.");
+forbidText(identificationCard, "apiPatchHost", "Identification suggestions must not save Host fields directly.");
 forbidText(identificationCard, "apiScanHostPort", "Opening Help identify must not trigger service probes.");
+requireText(hostPage, "onUseSuggestion={applyIdentificationSuggestion}", "Host workspace must route suggestion choices into the managed draft.");
+requireText(hostCard, "identificationDraft", "Host overview must accept staged identification values without a direct save.");
+requireText(hostCard, "setDraft((current)", "Identification suggestions must populate the existing managed edit draft.");
+requireText(appStyles, ".host-identification-suggestions", "Explainable suggestions must have compact workspace styling.");
 requireText(historyApi, "apiGetHostIdentification", "Frontend API layer must expose the retained identification aggregate.");
 requireText(mockApi, "/identification$/", "Mock backend must expose the retained identification endpoint.");
 requireText(appStyles, ".host-identification-panel", "Identification summary must have dedicated workspace-integrated styling.");
