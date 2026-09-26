@@ -135,7 +135,7 @@ function IdentityCard(props: IdentityCardProps) {
             </section>
 
             <Show when={historicalAddresses().length > 0 || historicalEvidence().length > 0}>
-              <details class="host-identity-history">
+              <details class="host-identity-history host-disclosure">
                 <summary>
                   <span>
                     <i class="bi bi-clock-history" aria-hidden="true"></i>

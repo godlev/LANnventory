@@ -96,6 +96,19 @@ requireText(servicesCard, "Manual service scan", "Manual port scanning must live
 requireText(servicesCard, '<Ping', "Services must own the manual scan workflow.");
 requireText(portScan, "props.embedded", "Port scan must support embedded Services presentation.");
 requireText(hostPage, 'class="col-12 host-details-column"', "Device Overview must use the full Host page width.");
+requireText(hostPage, 'type HostSection = "inventory" | "network" | "activity";', "Host secondary content must be divided into explicit local sections.");
+requireText(hostPage, 'class="host-section-nav"', "Host must expose visible local navigation instead of one long stack.");
+requireText(hostPage, 'hidden={activeSection() !== "inventory"}', "Inventory content must not remain visible when another Host section is selected.");
+requireText(hostPage, 'hidden={activeSection() !== "network"}', "Network content must not remain visible when another Host section is selected.");
+requireText(hostPage, 'hidden={activeSection() !== "activity"}', "Activity content must not remain visible when another Host section is selected.");
+requireText(appStyles, ".host-section-tab.is-active", "Host local navigation must expose a clear active state.");
+requireText(proxmoxInventory, 'class="proxmox-workloads-disclosure host-disclosure"', "Large Proxmox workload inventory must be collapsed behind an explicit disclosure by default.");
+requireText(appStyles, 'content: "Show details  ▾";', "Collapsed Host disclosures must advertise that more content is available.");
+requireText(appStyles, 'content: "Hide details  ▴";', "Expanded Host disclosures must advertise how to collapse them.");
+requireText(servicesCard, 'host-services-secondary host-disclosure', "Service secondary sections must use the shared disclosure affordance.");
+requireText(identity, 'host-identity-history host-disclosure', "Identity history must use the shared disclosure affordance.");
+requireText(hostHistory, 'host-history-disclosure host-disclosure', "Presence history must use the shared disclosure affordance.");
+
 forbidText(hostPage, "host-port-column", "Port scan must not remain a top-level peer of Device Overview.");
 requireText(servicesCard, "Previously observed services", "Closed services must remain available as explicit history.");
 requireText(servicesCard, "Closed services are retained as history.", "Historical service state must not imply a current open service.");

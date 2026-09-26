@@ -3673,6 +3673,138 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
 .host-page-row {
     row-gap: 0.85rem;
 }
+
+.host-section-nav-shell {
+    margin: 0 0.75rem;
+}
+.host-section-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.38rem;
+    width: fit-content;
+    max-width: 100%;
+    padding: 0.34rem;
+    overflow-x: auto;
+    background-color: var(--wyl-panel-bg);
+    border: 1px solid var(--wyl-panel-border);
+    border-radius: 9px;
+    box-shadow: var(--wyl-shadow);
+}
+.host-section-tab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.42rem;
+    flex: 0 0 auto;
+    min-height: 2.2rem;
+    padding: 0.42rem 0.78rem;
+    color: var(--wyl-muted);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    font-size: 0.78rem;
+    font-weight: 850;
+    line-height: 1.1;
+    letter-spacing: 0.025em;
+    cursor: pointer;
+}
+.host-section-tab:hover,
+.host-section-tab:focus-visible {
+    color: var(--bs-body-color);
+    background-color: var(--wyl-control-hover-bg);
+}
+.host-section-tab:focus-visible {
+    outline: 2px solid var(--wyl-link-hover);
+    outline-offset: 2px;
+}
+.host-section-tab.is-active {
+    color: var(--wyl-control-text-strong);
+    background-color: var(--wyl-card-active-bg);
+    border-color: var(--wyl-control-border);
+}
+.host-section-pane[hidden] {
+    display: none !important;
+}
+
+/* Phase 35.10 UAT: disclosures must look interactive, not like static rows. */
+.host-disclosure > summary {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    position: relative;
+    list-style: none;
+    cursor: pointer;
+    transition: background-color 120ms ease, border-color 120ms ease;
+}
+.host-disclosure > summary::-webkit-details-marker {
+    display: none;
+}
+.host-disclosure > summary::after {
+    content: "Show details  ▾";
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    min-height: 1.72rem;
+    margin-left: auto;
+    padding: 0.18rem 0.46rem;
+    color: var(--wyl-link-hover);
+    background-color: var(--wyl-panel-header-bg);
+    border: 1px solid var(--wyl-control-border);
+    border-radius: 6px;
+    font-size: 0.66rem;
+    font-weight: 850;
+    line-height: 1;
+    letter-spacing: 0.025em;
+    white-space: nowrap;
+}
+.host-disclosure[open] > summary::after {
+    content: "Hide details  ▴";
+}
+.host-disclosure > summary:hover,
+.host-disclosure > summary:focus-visible {
+    background-color: var(--wyl-control-hover-bg);
+}
+.host-disclosure > summary:focus-visible {
+    outline: 2px solid var(--wyl-link-hover);
+    outline-offset: 2px;
+}
+
+.proxmox-workloads-disclosure {
+    margin-top: 0.85rem;
+    overflow: visible;
+    background-color: var(--wyl-control-bg);
+    border: 1px solid var(--wyl-panel-border);
+    border-radius: 8px;
+}
+.proxmox-workloads-disclosure > summary {
+    padding: 0.68rem 0.72rem;
+}
+.proxmox-workloads-disclosure[open] > summary {
+    border-bottom: 1px solid var(--wyl-panel-border);
+}
+.proxmox-workloads-disclosure-body {
+    padding: 0.72rem;
+}
+
+@media (max-width: 575.98px) {
+    .host-section-nav-shell {
+        margin-inline: 0;
+    }
+    .host-section-nav {
+        width: 100%;
+    }
+    .host-section-tab {
+        flex: 1 0 auto;
+    }
+    .host-disclosure > summary {
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+    .host-disclosure > summary::after {
+        margin-left: 0;
+    }
+}
 .host-panel,
 .host-history-panel {
     height: 100%;

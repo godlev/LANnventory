@@ -253,7 +253,7 @@ function ServicesCard(props: ServicesCardProps) {
               </Show>
             </section>
 
-            <details class="host-services-secondary">
+            <details class="host-services-secondary host-disclosure">
               <summary>
                 <span>
                   <i class="bi bi-search" aria-hidden="true"></i>
@@ -271,7 +271,7 @@ function ServicesCard(props: ServicesCardProps) {
             </details>
 
             <Show when={historicalServices().length > 0}>
-              <details class="host-services-secondary">
+              <details class="host-services-secondary host-disclosure">
                 <summary>
                   <span>
                     <i class="bi bi-clock-history" aria-hidden="true"></i>
@@ -288,7 +288,7 @@ function ServicesCard(props: ServicesCardProps) {
               </details>
             </Show>
 
-            <details class="host-services-secondary">
+            <details class="host-services-secondary host-disclosure">
               <summary>
                 <span>
                   <i class="bi bi-clock" aria-hidden="true"></i>

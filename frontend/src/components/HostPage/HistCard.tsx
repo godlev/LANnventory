@@ -18,7 +18,7 @@ function HistCard(_props: any) {
 
   return (
     <details
-      class="card wyl-panel host-history-panel host-history-disclosure"
+      class="card wyl-panel host-history-panel host-history-disclosure host-disclosure"
       onToggle={(event) => setExpanded(event.currentTarget.open)}
     >
       <summary class="card-header host-history-header">

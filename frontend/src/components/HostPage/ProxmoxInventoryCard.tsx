@@ -329,8 +329,8 @@ function ProxmoxInventoryCard(props: Props) {
             conflicts={possibleConflictCount()}
           />
 
-          <div class="proxmox-section">
-            <div class="proxmox-section-heading">
+          <details class="proxmox-workloads-disclosure host-disclosure">
+            <summary class="proxmox-section-heading">
               <div>
                 <div class="small fw-semibold">Workloads</div>
                 <div class="small device-cell-muted">
@@ -338,48 +338,50 @@ function ProxmoxInventoryCard(props: Props) {
                 </div>
               </div>
               <span class="badge text-bg-secondary">{workloads().length}</span>
-            </div>
+            </summary>
 
-            <Show
-              when={workloads().length > 0}
-              fallback={
-                <div class="proxmox-empty">
-                  <i class="bi bi-hdd-stack" aria-hidden="true"></i>
-                  <span>No workloads imported yet.</span>
+            <div class="proxmox-workloads-disclosure-body">
+              <Show
+                when={workloads().length > 0}
+                fallback={
+                  <div class="proxmox-empty">
+                    <i class="bi bi-hdd-stack" aria-hidden="true"></i>
+                    <span>No workloads imported yet.</span>
+                  </div>
+                }
+              >
+                <div class="table-responsive proxmox-workload-table-wrap">
+                  <table class="table table-sm align-middle mb-0 proxmox-workload-table">
+                    <thead>
+                      <tr>
+                        <th>Guest</th>
+                        <th>Status</th>
+                        <th>Network identity</th>
+                        <th>LANnventory match</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <For each={workloads()}>
+                        {(workload) => (
+                          <WorkloadRow
+                            workload={workload}
+                            match={matchesByWorkload().get(workload.id)}
+                            busy={linkBusy() === workload.id}
+                            onLink={(hostID) => void linkCandidate(workload.id, hostID)}
+                            onUnlink={() => void unlinkWorkload(workload.id)}
+                            onReject={(candidate) => void rejectCandidate(workload.id, candidate)}
+                            onClearRejection={(hostID) => void clearCandidateRejection(workload.id, hostID)}
+                          />
+                        )}
+                      </For>
+                    </tbody>
+                  </table>
                 </div>
-              }
-            >
-              <div class="table-responsive proxmox-workload-table-wrap">
-                <table class="table table-sm align-middle mb-0 proxmox-workload-table">
-                  <thead>
-                    <tr>
-                      <th>Guest</th>
-                      <th>Status</th>
-                      <th>Network identity</th>
-                      <th>LANnventory match</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <For each={workloads()}>
-                      {(workload) => (
-                        <WorkloadRow
-                          workload={workload}
-                          match={matchesByWorkload().get(workload.id)}
-                          busy={linkBusy() === workload.id}
-                          onLink={(hostID) => void linkCandidate(workload.id, hostID)}
-                          onUnlink={() => void unlinkWorkload(workload.id)}
-                          onReject={(candidate) => void rejectCandidate(workload.id, candidate)}
-                          onClearRejection={(hostID) => void clearCandidateRejection(workload.id, hostID)}
-                        />
-                      )}
-                    </For>
-                  </tbody>
-                </table>
-              </div>
-            </Show>
-          </div>
+              </Show>
+            </div>
+          </details>
 
-          <details class="proxmox-collection-settings">
+          <details class="proxmox-collection-settings host-disclosure">
             <summary>
               <span>
                 <i class="bi bi-sliders" aria-hidden="true"></i>
@@ -490,7 +492,7 @@ function SourceSummary(props: {
               <SourceMetric label="Inventory source" value={state().source === "proxmox-api" ? "Proxmox API" : "Script import"} />
             </div>
 
-            <details class="proxmox-source-details">
+            <details class="proxmox-source-details host-disclosure">
               <summary>Source details</summary>
               <div class="proxmox-source-grid">
                 <SourceMetric label="Collected" value={formatTimestamp(state().collectedAt)} />
@@ -667,7 +669,7 @@ function MatchCell(props: {
               </div>
             </Show>
             <Show when={rejectedCandidates().length > 0}>
-              <details class="proxmox-rejected-candidates">
+              <details class="proxmox-rejected-candidates host-disclosure">
                 <summary>
                   Rejected suggestions ({rejectedCandidates().length})
                 </summary>
