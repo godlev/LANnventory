@@ -33,3 +33,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -a "$UAT_TAG" "$TARGET_SHA" -m "Phase 35.10 UAT 1"
           git push origin "refs/tags/$UAT_TAG"
+
+# One-shot trigger commit; tag target is pinned above.
