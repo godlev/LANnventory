@@ -39,6 +39,7 @@ function HostPage() {
   const previousTitle = document.title;
   let requestId = 0;
   let identificationRequestId = 0;
+  let identificationLoadController: AbortController | undefined;
   let identificationDraftToken = 0;
   let identifyRouteHandledHostID = 0;
 
@@ -52,27 +53,40 @@ function HostPage() {
     navigate("/host/" + params.id + (editing ? "?edit=1" : ""));
   };
 
+  const cancelIdentificationLoad = () => {
+    identificationLoadController?.abort();
+    identificationLoadController = undefined;
+    identificationRequestId++;
+    setIdentificationLoading(false);
+  };
+
   const loadIdentification = async (hostID: number, force = false) => {
     if (hostID < 1 || (!force && identification()?.hostId === hostID)) {
       return;
     }
 
+    identificationLoadController?.abort();
+    const controller = new AbortController();
+    identificationLoadController = controller;
     const activeRequest = ++identificationRequestId;
     setIdentificationLoading(true);
     setIdentificationError("");
 
     try {
-      const response = await apiGetHostIdentification(hostID);
-      if (activeRequest !== identificationRequestId) {
+      const response = await apiGetHostIdentification(hostID, controller.signal);
+      if (controller.signal.aborted || activeRequest !== identificationRequestId) {
         return;
       }
       setIdentification(response);
     } catch {
-      if (activeRequest !== identificationRequestId) {
+      if (controller.signal.aborted || activeRequest !== identificationRequestId) {
         return;
       }
       setIdentificationError("Identification evidence could not be loaded.");
     } finally {
+      if (identificationLoadController === controller) {
+        identificationLoadController = undefined;
+      }
       if (activeRequest === identificationRequestId) {
         setIdentificationLoading(false);
       }
@@ -86,14 +100,21 @@ function HostPage() {
     }
 
     const nextOpen = !identificationOpen();
-    setIdentificationOpen(nextOpen);
-    if (nextOpen) {
-      void loadIdentification(host.ID);
+    if (!nextOpen) {
+      closeIdentification();
+      return;
     }
+
+    setIdentificationOpen(true);
+    void loadIdentification(host.ID);
   };
 
   const closeIdentification = () => {
+    cancelIdentificationLoad();
     setIdentificationOpen(false);
+    queueMicrotask(() => {
+      document.getElementById("host-identify-toggle")?.focus();
+    });
   };
 
   const applyIdentificationSuggestion = (draft: { name?: string; deviceType?: string }) => {
@@ -152,7 +173,7 @@ function HostPage() {
     setLoadError("");
     setActiveSection("inventory");
     setDeviceProfile(null);
-    identificationRequestId++;
+    cancelIdentificationLoad();
     identifyRouteHandledHostID = 0;
     setIdentification(null);
     setIdentificationOpen(false);
@@ -184,7 +205,7 @@ function HostPage() {
 
   onCleanup(() => {
     requestId++;
-    identificationRequestId++;
+    cancelIdentificationLoad();
     window.removeEventListener("beforeunload", handleBeforeUnload);
     setHasUnsavedHostChanges(false);
     setPageContext(emptyPageContext);
@@ -199,7 +220,7 @@ function HostPage() {
     }
 
     if (host.Known === 1 && identificationOpen()) {
-      identificationRequestId++;
+      cancelIdentificationLoad();
       setIdentificationOpen(false);
       setIdentification(null);
       setIdentificationLoading(false);
