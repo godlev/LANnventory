@@ -292,6 +292,19 @@ function TableRow(_props: any) {
             <span class="device-mobile-detail-value">{known() ? "Yes" : "No"}</span>
             <span class="device-mobile-detail-label">Pinned</span>
             <span class="device-mobile-detail-value">{isPinned() ? "Yes" : "No"}</span>
+            <Show when={!known()}>
+              <span class="device-mobile-detail-label">Action</span>
+              <span class="device-mobile-detail-value">
+                <a
+                  href={"/host/" + _props.host.ID + "?identify=1"}
+                  class="device-mobile-identify-link"
+                  aria-label={"Help identify " + displayName()}
+                >
+                  <i class="bi bi-search" aria-hidden="true"></i>
+                  <span>Help identify</span>
+                </a>
+              </span>
+            </Show>
           </div>
         </Show>
       </td>
@@ -312,9 +325,22 @@ function TableRow(_props: any) {
         <Show
           when={editNames()}
           fallback={
-          <a href={"/host/" + _props.host.ID + "?edit=1"} class="device-action-link" title="Edit host">
-            <i class="bi bi-pencil-fill my-btn p-2" aria-hidden="true"></i>
-          </a>}
+            <span class="device-row-actions">
+              <Show when={!known()}>
+                <a
+                  href={"/host/" + _props.host.ID + "?identify=1"}
+                  class="device-action-link device-identify-link"
+                  title="Help identify unknown device"
+                  aria-label={"Help identify " + displayName()}
+                >
+                  <i class="bi bi-search" aria-hidden="true"></i>
+                </a>
+              </Show>
+              <a href={"/host/" + _props.host.ID + "?edit=1"} class="device-action-link" title="Edit host" aria-label={"Edit " + displayName()}>
+                <i class="bi bi-pencil-fill" aria-hidden="true"></i>
+              </a>
+            </span>
+          }
         >
           <input
             type="checkbox"
