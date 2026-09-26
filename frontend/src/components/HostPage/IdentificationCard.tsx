@@ -158,6 +158,21 @@ function IdentificationCard(props: IdentificationCardProps) {
     investigationController?.abort();
   };
 
+  const handlePanelKeyDown = (event: KeyboardEvent) => {
+    if (event.key !== "Escape") {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    if (runningAction()) {
+      handleStopInvestigation();
+      return;
+    }
+
+    props.onClose?.();
+  };
+
   const stateTitle = () => {
     const state = props.identification?.assessment.state;
     switch (state) {
@@ -187,7 +202,12 @@ function IdentificationCard(props: IdentificationCardProps) {
   };
 
   return (
-    <section class="host-identification-panel" aria-label="Help identify unknown device">
+    <section
+      class="host-identification-panel"
+      aria-label="Help identify unknown device"
+      aria-busy={props.loading || Boolean(runningAction())}
+      onKeyDown={handlePanelKeyDown}
+    >
       <div class="host-identification-header">
         <div class="host-identification-heading">
           <span class="host-identification-icon" aria-hidden="true">
@@ -301,7 +321,12 @@ function IdentificationCard(props: IdentificationCardProps) {
                       <span>Run only the bounded checks you choose. Nothing runs when this panel opens.</span>
                     </div>
                     <Show when={runningAction()}>
-                      <button type="button" class="btn btn-sm wyl-button" onClick={handleStopInvestigation}>
+                      <button
+                        type="button"
+                        class="btn btn-sm wyl-button"
+                        aria-label="Stop current identification investigation"
+                        onClick={handleStopInvestigation}
+                      >
                         <i class="bi bi-stop-circle" aria-hidden="true"></i>
                         <span>Stop</span>
                       </button>
