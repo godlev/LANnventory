@@ -50,6 +50,7 @@ func Routes(router *gin.Engine) {
 		r0.GET("/host/:id/service-scan-settings", getHostServiceScanSettings)
 		r0.PUT("/host/:id/service-scan-settings", setHostServiceScanSettings)
 		r0.GET("/host/:id/identification", getHostIdentification)
+		r0.POST("/host/:id/identification/refresh-names", refreshHostIdentificationNames)
 		r0.GET("/host/:id/identity", getHostIdentity)
 		r0.GET("/host/:id/identity/candidates", getHostIdentityCandidates)
 		r0.GET("/host/:id/identity/decisions", getHostIdentityDecisions)
