@@ -28,11 +28,6 @@ function HostPage() {
   const [identificationOpen, setIdentificationOpen] = createSignal(false);
   const [identificationLoading, setIdentificationLoading] = createSignal(false);
   const [identificationError, setIdentificationError] = createSignal("");
-  const [identificationDraft, setIdentificationDraft] = createSignal<{
-    token: number;
-    name?: string;
-    deviceType?: string;
-  } | null>(null);
   const params = useParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -40,7 +35,6 @@ function HostPage() {
   let requestId = 0;
   let identificationRequestId = 0;
   let identificationLoadController: AbortController | undefined;
-  let identificationDraftToken = 0;
   let identifyRouteHandledHostID = 0;
 
   const isEditMode = () => new URLSearchParams(location.search).get("edit") === "1";
@@ -117,27 +111,6 @@ function HostPage() {
     });
   };
 
-  const applyIdentificationSuggestion = (draft: { name?: string; deviceType?: string }) => {
-    const host = currentHost();
-    if (host.ID < 1 || host.Known === 1) {
-      return;
-    }
-
-    identificationDraftToken++;
-    setIdentificationDraft({
-      token: identificationDraftToken,
-      ...draft,
-    });
-  };
-
-  const openIdentificationNetworkTarget = (target: "services" | "identity") => {
-    setActiveSection("network");
-    queueMicrotask(() => {
-      const elementID = target === "services" ? "host-services-card" : "host-identity-card";
-      document.getElementById(elementID)?.scrollIntoView({ block: "start" });
-    });
-  };
-
   useBeforeLeave((event) => {
     if (!hasUnsavedHostChanges() || event.defaultPrevented) {
       return;
@@ -179,7 +152,6 @@ function HostPage() {
     setIdentificationOpen(false);
     setIdentificationLoading(false);
     setIdentificationError("");
-    setIdentificationDraft(null);
     setCurrentHost(emptyHost);
     setPageContext({ kind: "host", hostName: "" });
     document.title = "Host · LANnventory";
@@ -258,7 +230,6 @@ function HostPage() {
           onDirtyChange={setHasUnsavedHostChanges}
           identifyOpen={identificationOpen()}
           onIdentifyToggle={handleIdentificationToggle}
-          identificationDraft={identificationDraft()}
         ></HostCard>
 
         <Show when={currentHost().Known !== 1 && identificationOpen()}>
@@ -268,9 +239,7 @@ function HostPage() {
             error={identificationError()}
             onClose={closeIdentification}
             onRetry={() => void loadIdentification(currentHost().ID, true)}
-            onUseSuggestion={applyIdentificationSuggestion}
             onEvidenceChanged={() => loadIdentification(currentHost().ID, true)}
-            onOpenNetwork={openIdentificationNetworkTarget}
           ></IdentificationCard>
         </Show>
 

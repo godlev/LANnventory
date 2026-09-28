@@ -3718,6 +3718,42 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
 .host-overview-card .card-body {
     border-bottom: 1px solid var(--wyl-card-border);
 }
+
+.host-identification-simple {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.58rem;
+    align-items: center;
+    margin-top: 0.62rem;
+}
+.host-identification-primary-action {
+    min-width: 9.2rem;
+    justify-content: center;
+    gap: 0.38rem;
+}
+.host-identification-result {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.42rem;
+    min-width: 0;
+    padding: 0.48rem 0.55rem;
+    color: var(--bs-body-color);
+    background: var(--wyl-control-bg);
+    border: 1px solid var(--wyl-card-border);
+    border-radius: 7px;
+    font-size: 0.72rem;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+}
+.host-identification-result i {
+    flex: 0 0 auto;
+    margin-top: 0.05rem;
+    color: var(--wyl-link);
+}
+.host-identification-result.is-error {
+    color: var(--bs-danger);
+}
+
 .host-identification-panel {
     min-width: 0;
     padding: 0.68rem 0.78rem 0.74rem;
@@ -4251,6 +4287,13 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
 @media (max-width: 575.98px) {
     .host-identification-panel {
         padding-inline: 0.58rem;
+    }
+    .host-identification-simple {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+    }
+    .host-identification-primary-action {
+        width: 100%;
     }
     .host-identification-summary {
         align-items: flex-start;
