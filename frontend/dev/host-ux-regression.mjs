@@ -127,7 +127,7 @@ requireText(identificationCard, "buildIdentificationResult", "Identification mus
 requireText(hostPage, "vendor={currentHost().Hw}", "Identification fallback must receive the Host vendor when available.");
 requireText(identificationCard, 'vendorName ? "Unknown " + vendorName + " device."', "Unclassified results must retain useful vendor context.");
 requireText(identificationCard, '" is available, but no hostname or device-specific service was found, so the device type remains uncertain."', "A generic open service must be reported without inventing a device classification.");
-requireText(identificationCard, '"No hostname or distinctive network service was found, so LANnventory cannot classify it reliably."', "Empty fallback results must explain what useful evidence was missing.");
+requireText(identificationCard, "No hostname or distinctive network service was found, so LANnventory cannot classify it reliably.", "Empty fallback results must explain what useful evidence was missing.");
 requireText(identificationCard, 'run.indeterminate +', "Inconclusive service checks must be quantified instead of summarized vaguely.");
 requireText(identificationCard, 'role="status" aria-live="polite"', "Identification result must be announced as one live status message.");
 requireText(identificationCard, 'event.key !== "Escape"', "Identification helper must provide a keyboard Escape path.");
