@@ -10,6 +10,7 @@ import { getDeviceTypeOption } from "../../functions/deviceTypes";
 
 type IdentificationCardProps = {
   identification: HostIdentification | null;
+  vendor?: string;
   loading: boolean;
   error: string;
   onClose?: () => void;
@@ -119,7 +120,7 @@ function IdentificationCard(props: IdentificationCardProps) {
         await refreshEvidence();
       }
 
-      setResultMessage(buildIdentificationResult(props.identification ?? identification, summary));
+      setResultMessage(buildIdentificationResult(props.identification ?? identification, summary, props.vendor));
     } catch (error) {
       if (controller.signal.aborted) {
         summary.stopped = true;
@@ -130,7 +131,7 @@ function IdentificationCard(props: IdentificationCardProps) {
             // Keep the best already-known evidence if the final refresh also fails.
           }
         }
-        setResultMessage(buildIdentificationResult(props.identification ?? identification, summary));
+        setResultMessage(buildIdentificationResult(props.identification ?? identification, summary, props.vendor));
       } else {
         setResultMessage(
           "I couldn't complete the identification check. " +
@@ -251,6 +252,7 @@ function IdentificationCard(props: IdentificationCardProps) {
 function buildIdentificationResult(
   identification: HostIdentification,
   run: IdentificationRunSummary,
+  vendor?: string,
 ): string {
   const assessment = identification.assessment;
   const prefix = run.stopped ? "Stopped early. " : "";
@@ -299,25 +301,41 @@ function buildIdentificationResult(
       message += " Open: " + run.openPorts.map(serviceLabel).join(", ") + ".";
     }
     if (run.partialError) {
-      message += " Some checks could not complete.";
+      message += " One or more checks could not complete.";
     }
     return message;
   }
 
-  let message = prefix + "I couldn't identify this device reliably.";
-  if (run.openPorts.length > 0) {
+  const vendorName = usefulVendor(vendor);
+  let message = prefix + (vendorName ? "Unknown " + vendorName + " device." : "I couldn't identify this device reliably.");
+
+  if (run.openPorts.length === 1) {
     message +=
-      " I found " +
+      " " +
+      run.openPorts.map(serviceLabel)[0] +
+      " is available, but no hostname or device-specific service was found, so the device type remains uncertain.";
+  } else if (run.openPorts.length > 1) {
+    message +=
+      " Open services: " +
       run.openPorts.map(serviceLabel).join(", ") +
-      ", but no current hostname or device-specific evidence was strong enough to classify it.";
+      ". None provided enough device-specific evidence to classify it reliably.";
   } else if (run.completed > 0) {
-    message += " None of the checked common services provided a useful device-specific clue.";
+    message += " No hostname or distinctive network service was found, so LANnventory cannot classify it reliably.";
   } else {
-    message += " There is not enough current retained evidence to suggest a name or device type.";
+    message += " There is not enough current evidence to suggest a name or device type.";
   }
 
-  if (run.indeterminate > 0 || run.partialError) {
-    message += " Some checks were inconclusive.";
+  if (run.indeterminate > 0) {
+    message +=
+      " " +
+      run.indeterminate +
+      " of " +
+      identificationPorts.length +
+      " service checks " +
+      (run.indeterminate === 1 ? "was" : "were") +
+      " inconclusive.";
+  } else if (run.partialError) {
+    message += " The service check ended before all ports could be tested.";
   }
 
   const caution = identification.warnings.find((warning) => warning.severity === "caution");
@@ -326,6 +344,14 @@ function buildIdentificationResult(
   }
 
   return message;
+}
+
+function usefulVendor(value?: string): string {
+  const vendor = (value ?? "").trim();
+  if (!vendor || /^unknown$/i.test(vendor) || /^not set$/i.test(vendor)) {
+    return "";
+  }
+  return vendor.replace(/[.]+$/, "");
 }
 
 function confidenceText(suggestion: IdentificationSuggestion): string {

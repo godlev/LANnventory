@@ -235,6 +235,7 @@ function HostPage() {
         <Show when={currentHost().Known !== 1 && identificationOpen()}>
           <IdentificationCard
             identification={identification()}
+            vendor={currentHost().Hw}
             loading={identificationLoading()}
             error={identificationError()}
             onClose={closeIdentification}
