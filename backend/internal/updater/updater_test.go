@@ -170,6 +170,51 @@ func TestCheckOrdersUAT2AfterUAT1BeforeNextBeta(t *testing.T) {
 	}
 }
 
+func TestCheckOrdersUAT3AfterUAT2BeforeNextBeta(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`[
+			{"tag_name":"v0.1.0-beta.11.uat.3","prerelease":true,"draft":false,"published_at":"2026-10-09T00:00:00Z","assets":[]},
+			{"tag_name":"v0.1.0-beta.11.uat.2","prerelease":true,"draft":false,"published_at":"2026-09-28T00:00:00Z","assets":[]}
+		]`))
+	}))
+	defer server.Close()
+
+	service := NewServiceWithURL(server.Client(), server.URL)
+
+	status, err := service.Check(context.Background(), "0.1.0-beta.11.uat.2", BetaChannel, true)
+	if err != nil {
+		t.Fatalf("Check UAT2 -> UAT3: %v", err)
+	}
+	if !status.Available || status.LatestVersion != "0.1.0-beta.11.uat.3" {
+		t.Fatalf("UAT2 status = %+v, want UAT3 available", status)
+	}
+
+	status, err = service.Check(context.Background(), "0.1.0-beta.11.uat.3", BetaChannel, true)
+	if err != nil {
+		t.Fatalf("Check same UAT3: %v", err)
+	}
+	if status.Available {
+		t.Fatalf("same UAT3 release must not be offered again: %+v", status)
+	}
+
+	newerServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`[
+			{"tag_name":"v0.1.0-beta.12","prerelease":true,"draft":false,"published_at":"2026-10-10T00:00:00Z","assets":[]},
+			{"tag_name":"v0.1.0-beta.11.uat.3","prerelease":true,"draft":false,"published_at":"2026-10-09T00:00:00Z","assets":[]}
+		]`))
+	}))
+	defer newerServer.Close()
+
+	service = NewServiceWithURL(newerServer.Client(), newerServer.URL)
+	status, err = service.Check(context.Background(), "0.1.0-beta.11.uat.3", BetaChannel, true)
+	if err != nil {
+		t.Fatalf("Check UAT3 -> beta.12: %v", err)
+	}
+	if !status.Available || status.LatestVersion != "0.1.0-beta.12" {
+		t.Fatalf("UAT3 status = %+v, want beta.12 available", status)
+	}
+}
+
 func TestChecksumForFile(t *testing.T) {
 	hash := strings.Repeat("a", 64)
 	data := []byte(hash + "  lannventory_0.2.0_linux_amd64.deb\n")
