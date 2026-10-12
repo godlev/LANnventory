@@ -215,6 +215,39 @@ func TestCheckOrdersUAT3AfterUAT2BeforeNextBeta(t *testing.T) {
 	}
 }
 
+func TestPhase3511FinalBeta12SupersedesUATs(t *testing.T) {
+	releases := []release{
+		{TagName: "v0.1.0-beta.12", Prerelease: true, Draft: false},
+		{TagName: "v0.1.0-beta.11.uat.3", Prerelease: true, Draft: false},
+		{TagName: "v0.1.0-beta.11.uat.2", Prerelease: true, Draft: false},
+		{TagName: "v0.1.0-beta.11.uat.1", Prerelease: true, Draft: false},
+		{TagName: "v0.1.0-beta.11", Prerelease: true, Draft: false},
+	}
+
+	for _, installed := range []string{
+		"v0.1.0-beta.11",
+		"v0.1.0-beta.11.uat.1",
+		"v0.1.0-beta.11.uat.2",
+		"v0.1.0-beta.11.uat.3",
+	} {
+		status, selected, ok := buildStatus(installed, BetaChannel, releases, time.Time{}, false)
+		if !ok {
+			t.Fatalf("Beta channel did not select a release for installed %s", installed)
+		}
+		if selected.TagName != "v0.1.0-beta.12" {
+			t.Fatalf("installed %s selected %q, want v0.1.0-beta.12", installed, selected.TagName)
+		}
+		if !status.Available || status.LatestVersion != "0.1.0-beta.12" {
+			t.Fatalf("installed %s status = %+v, want available beta.12", installed, status)
+		}
+	}
+
+	stableStatus, selected, ok := buildStatus("v0.1.0-beta.11.uat.3", StableChannel, releases, time.Time{}, false)
+	if ok || stableStatus.Available || selected.TagName != "" {
+		t.Fatalf("Stable channel exposed beta.12 prerelease: status=%+v selected=%+v ok=%v", stableStatus, selected, ok)
+	}
+}
+
 func TestChecksumForFile(t *testing.T) {
 	hash := strings.Repeat("a", 64)
 	data := []byte(hash + "  lannventory_0.2.0_linux_amd64.deb\n")
