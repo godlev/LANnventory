@@ -1,7 +1,7 @@
 import { useBeforeLeave, useLocation, useNavigate, useParams } from "@solidjs/router";
 import { createEffect, createSignal, onCleanup, Show } from "solid-js";
 
-import { apiGetHost, type DeviceProfileResponse } from "../functions/api";
+import { apiGetHost, apiGetHostIdentification, type DeviceProfileResponse, type HostIdentification } from "../functions/api";
 import { deviceDisplayName } from "../functions/deviceIdentity";
 
 import HostCard from "../components/HostPage/HostCard";
@@ -10,6 +10,7 @@ import DeviceProfileCard from "../components/HostPage/DeviceProfileCard";
 import ProxmoxInventoryCard from "../components/HostPage/ProxmoxInventoryCard";
 import IdentityCard from "../components/HostPage/IdentityCard";
 import ServicesCard from "../components/HostPage/ServicesCard";
+import IdentificationCard from "../components/HostPage/IdentificationCard";
 import HostActivityCard from "../components/HostPage/HostActivityCard";
 import HistCard from "../components/HostPage/HistCard";
 import { emptyHost, emptyPageContext, Host, setPageContext } from "../functions/exports";
@@ -23,19 +24,91 @@ function HostPage() {
   const [deviceProfile, setDeviceProfile] = createSignal<DeviceProfileResponse | null>(null);
   const [hasUnsavedHostChanges, setHasUnsavedHostChanges] = createSignal(false);
   const [activeSection, setActiveSection] = createSignal<HostSection>("inventory");
+  const [identification, setIdentification] = createSignal<HostIdentification | null>(null);
+  const [identificationOpen, setIdentificationOpen] = createSignal(false);
+  const [identificationLoading, setIdentificationLoading] = createSignal(false);
+  const [identificationError, setIdentificationError] = createSignal("");
   const params = useParams();
   const location = useLocation();
   const navigate = useNavigate();
   const previousTitle = document.title;
   let requestId = 0;
+  let identificationRequestId = 0;
+  let identificationLoadController: AbortController | undefined;
+  let identifyRouteHandledHostID = 0;
 
   const isEditMode = () => new URLSearchParams(location.search).get("edit") === "1";
+  const identificationRequested = () => new URLSearchParams(location.search).get("identify") === "1";
   const setEditMode = (editing: boolean) => {
     if (!params.id) {
       return;
     }
 
     navigate("/host/" + params.id + (editing ? "?edit=1" : ""));
+  };
+
+  const cancelIdentificationLoad = () => {
+    identificationLoadController?.abort();
+    identificationLoadController = undefined;
+    identificationRequestId++;
+    setIdentificationLoading(false);
+  };
+
+  const loadIdentification = async (hostID: number, force = false) => {
+    if (hostID < 1 || (!force && identification()?.hostId === hostID)) {
+      return;
+    }
+
+    identificationLoadController?.abort();
+    const controller = new AbortController();
+    identificationLoadController = controller;
+    const activeRequest = ++identificationRequestId;
+    setIdentificationLoading(true);
+    setIdentificationError("");
+
+    try {
+      const response = await apiGetHostIdentification(hostID, controller.signal);
+      if (controller.signal.aborted || activeRequest !== identificationRequestId) {
+        return;
+      }
+      setIdentification(response);
+    } catch {
+      if (controller.signal.aborted || activeRequest !== identificationRequestId) {
+        return;
+      }
+      setIdentificationError("Identification evidence could not be loaded.");
+    } finally {
+      if (identificationLoadController === controller) {
+        identificationLoadController = undefined;
+      }
+      if (activeRequest === identificationRequestId) {
+        setIdentificationLoading(false);
+      }
+    }
+  };
+
+  const handleIdentificationToggle = () => {
+    const host = currentHost();
+    if (host.ID < 1 || host.Known === 1) {
+      return;
+    }
+
+    const nextOpen = !identificationOpen();
+    if (!nextOpen) {
+      closeIdentification();
+      return;
+    }
+
+    setIdentificationOpen(true);
+    void loadIdentification(host.ID);
+  };
+
+  const closeIdentification = () => {
+    cancelIdentificationLoad();
+    setIdentificationOpen(false);
+    queueMicrotask(() => {
+      document.getElementById("host-identify-toggle")?.focus();
+    });
   };
 
   useBeforeLeave((event) => {
@@ -73,6 +146,12 @@ function HostPage() {
     setLoadError("");
     setActiveSection("inventory");
     setDeviceProfile(null);
+    cancelIdentificationLoad();
+    identifyRouteHandledHostID = 0;
+    setIdentification(null);
+    setIdentificationOpen(false);
+    setIdentificationLoading(false);
+    setIdentificationError("");
     setCurrentHost(emptyHost);
     setPageContext({ kind: "host", hostName: "" });
     document.title = "Host · LANnventory";
@@ -98,6 +177,7 @@ function HostPage() {
 
   onCleanup(() => {
     requestId++;
+    cancelIdentificationLoad();
     window.removeEventListener("beforeunload", handleBeforeUnload);
     setHasUnsavedHostChanges(false);
     setPageContext(emptyPageContext);
@@ -109,6 +189,20 @@ function HostPage() {
 
     if (host.ID === 0) {
       return;
+    }
+
+    if (host.Known === 1 && identificationOpen()) {
+      cancelIdentificationLoad();
+      setIdentificationOpen(false);
+      setIdentification(null);
+      setIdentificationLoading(false);
+      setIdentificationError("");
+    }
+
+    if (host.Known !== 1 && identificationRequested() && identifyRouteHandledHostID !== host.ID) {
+      identifyRouteHandledHostID = host.ID;
+      setIdentificationOpen(true);
+      void loadIdentification(host.ID);
     }
 
     const hostName = deviceDisplayName(host);
@@ -134,7 +228,21 @@ function HostPage() {
           onEditModeChange={setEditMode}
           onHostChange={setCurrentHost}
           onDirtyChange={setHasUnsavedHostChanges}
+          identifyOpen={identificationOpen()}
+          onIdentifyToggle={handleIdentificationToggle}
         ></HostCard>
+
+        <Show when={currentHost().Known !== 1 && identificationOpen()}>
+          <IdentificationCard
+            identification={identification()}
+            vendor={currentHost().Hw}
+            loading={identificationLoading()}
+            error={identificationError()}
+            onClose={closeIdentification}
+            onRetry={() => void loadIdentification(currentHost().ID, true)}
+            onEvidenceChanged={() => loadIdentification(currentHost().ID, true)}
+          ></IdentificationCard>
+        </Show>
 
         <div class="host-section-nav-shell">
           <nav class="host-section-nav" role="tablist" aria-label="Host sections">

@@ -15,6 +15,13 @@ type HostCardProps = {
   onEditModeChange?: (editMode: boolean) => void;
   onHostChange?: (host: Host) => void;
   onDirtyChange?: (dirty: boolean) => void;
+  identifyOpen?: boolean;
+  onIdentifyToggle?: () => void;
+  identificationDraft?: {
+    token: number;
+    name?: string;
+    deviceType?: string;
+  } | null;
 };
 
 type HostEditDraft = {
@@ -51,6 +58,7 @@ function HostCard(_props: HostCardProps) {
   const [inventoryOptions, setInventoryOptions] = createSignal<InventoryOptionsState>(emptyInventoryOptions);
   let syncedHostID = _props.host.ID;
   let optionsRequestID = 0;
+  let appliedIdentificationDraftToken = 0;
 
   const syncDraftFromHost = (host: Host) => {
     const nextDraft = draftFromHost(host);
@@ -67,6 +75,29 @@ function HostCard(_props: HostCardProps) {
       syncedHostID = host.ID;
       syncDraftFromHost(host);
     }
+  });
+
+  createEffect(() => {
+    const suggestion = _props.identificationDraft;
+    if (!suggestion || suggestion.token === appliedIdentificationDraftToken || _props.host.ID === 0) {
+      return;
+    }
+
+    appliedIdentificationDraftToken = suggestion.token;
+    const suggestedName = suggestion.name?.trim();
+    const suggestedDeviceType = suggestion.deviceType ? normalizeDeviceType(suggestion.deviceType) : undefined;
+    if (!suggestedName && !suggestedDeviceType) {
+      return;
+    }
+
+    setSaveStatus("");
+    setSaveError("");
+    setDraft((current) => ({
+      ...current,
+      ...(suggestedName ? { Name: suggestedName } : {}),
+      ...(suggestedDeviceType ? { DeviceType: suggestedDeviceType } : {}),
+    }));
+    _props.onEditModeChange?.(true);
   });
 
   createEffect(() => {
@@ -119,6 +150,7 @@ function HostCard(_props: HostCardProps) {
   const overviewName = () => inventoryName() || _props.host.DNS || _props.host.IP || "Unnamed device";
   const editDirty = () => !hostDraftEquals(draft(), baseline());
   const canSave = () => _props.editMode && !saving() && editDirty() && _props.host.ID > 0;
+  const canSaveAndMarkKnown = () => _props.editMode && !saving() && !isKnown() && _props.host.ID > 0;
   const pinTitle = () => _props.host.Pinned ? "Remove from Home pins" : "Pin on Home";
   const pinDetail = () => _props.host.Pinned
     ? "This device is pinned at the top of the Home device list. Activate to unpin it."
@@ -239,8 +271,8 @@ function HostCard(_props: HostCardProps) {
     }));
   };
 
-  const handleSaveChanges = async () => {
-    if (!canSave()) {
+  const persistDraft = async (markKnown: boolean) => {
+    if (markKnown ? !canSaveAndMarkKnown() : !canSave()) {
       return;
     }
 
@@ -257,6 +289,7 @@ function HostCard(_props: HostCardProps) {
         location: currentDraft.Location,
         notes: currentDraft.Notes,
         tags: currentDraft.Tags,
+        ...(markKnown ? { known: true } : {}),
       });
       updateHostInView(updatedHost);
       _props.onHostChange?.(updatedHost);
@@ -264,12 +297,20 @@ function HostCard(_props: HostCardProps) {
       syncDraftFromHost(updatedHost);
       _props.onDirtyChange?.(false);
       _props.onEditModeChange?.(false);
-      setSaveStatus("Changes saved");
+      setSaveStatus(markKnown ? "Changes saved and device marked Known" : "Changes saved");
     } catch {
-      setSaveError("Changes could not be saved");
+      setSaveError(markKnown ? "Changes and Known state could not be saved" : "Changes could not be saved");
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleSaveChanges = () => {
+    void persistDraft(false);
+  };
+
+  const handleSaveAndMarkKnown = () => {
+    void persistDraft(true);
   };
 
   const handleCancelChanges = () => {
@@ -405,6 +446,24 @@ function HostCard(_props: HostCardProps) {
                 <span>{saving() ? "Saving" : "Save"}</span>
               </button>
             </ActionTooltip>
+            <Show when={!isKnown()}>
+              <ActionTooltip
+                title="Save and mark Known"
+                detail="Atomically save the staged managed information and mark this device Known in one update."
+              >
+                <button
+                  type="button"
+                  class="btn btn-sm wyl-button host-save-known-button"
+                  title="Save and mark Known"
+                  aria-label="Save changes and mark device Known"
+                  disabled={!canSaveAndMarkKnown()}
+                  onClick={handleSaveAndMarkKnown}
+                >
+                  <i class={saving() ? "bi bi-hourglass-split" : "bi bi-bookmark-check"} aria-hidden="true"></i>
+                  <span>{saving() ? "Saving" : "Save & mark Known"}</span>
+                </button>
+              </ActionTooltip>
+            </Show>
             <ActionTooltip title="Cancel" detail="Discard staged changes and leave edit mode.">
               <button
                 type="button"
@@ -416,6 +475,27 @@ function HostCard(_props: HostCardProps) {
               >
                 <i class="bi bi-x-lg" aria-hidden="true"></i>
                 <span>Cancel</span>
+              </button>
+            </ActionTooltip>
+          </Show>
+
+          <Show when={!isKnown() && !_props.editMode}>
+            <ActionTooltip
+              title="Help identify"
+              detail="Review retained local evidence for this Unknown device. No network probes run automatically."
+            >
+              <button
+                id="host-identify-toggle"
+                type="button"
+                class={"btn btn-sm wyl-button host-identify-button" + (_props.identifyOpen ? " is-active" : "")}
+                title="Help identify"
+                aria-label="Help identify this Unknown device"
+                aria-expanded={_props.identifyOpen === true}
+                disabled={_props.host.ID === 0}
+                onClick={() => _props.onIdentifyToggle?.()}
+              >
+                <i class="bi bi-search" aria-hidden="true"></i>
+                <span>Help identify</span>
               </button>
             </ActionTooltip>
           </Show>

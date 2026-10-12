@@ -1831,6 +1831,56 @@ function routeReadOnly(req, res, url) {
     return true;
   }
 
+  const identificationMatch = pathname.match(/^\/api\/host\/(\d+)\/identification$/);
+  if (req.method === 'GET' && identificationMatch) {
+    const id = Number(identificationMatch[1]);
+    const hostEntry = findHostByID(id);
+    if (!hostEntry) {
+      sendJSON(res, { error: 'invalid host id' }, 400);
+      return true;
+    }
+
+    const unknown = hostEntry.Known !== 1;
+    sendJSON(res, {
+      hostId: id,
+      mac: hostEntry.Mac,
+      currentAddress: hostEntry.IP ?? '',
+      known: !unknown,
+      assessment: {
+        state: unknown ? 'suggested' : 'known',
+        suggestedName: unknown ? {
+          value: hostEntry.DNS || hostEntry.Name || 'mock-device.local',
+          confidence: 'medium',
+          source: 'mdns',
+          reasons: ['selected from current mdns evidence'],
+        } : undefined,
+        suggestedDeviceType: unknown ? {
+          value: 'camera',
+          confidence: 'low',
+          source: 'conservative-clues',
+          reasons: ['tcp/554 RTSP'],
+        } : undefined,
+        clueCount: unknown ? 3 : 0,
+        reasons: [],
+        cautions: [],
+        conflicts: [],
+        evidence: [],
+      },
+      sources: [
+        { source: 'discovery', available: true, total: unknown ? 2 : 0, included: unknown ? 2 : 0, truncated: false },
+        { source: 'services', available: true, total: unknown ? 1 : 0, included: unknown ? 1 : 0, truncated: false },
+        { source: 'workloads', available: true, total: 0, included: 0, truncated: false },
+        { source: 'address-history', available: true, total: 0, included: 0, truncated: false },
+      ],
+      warnings: [],
+      actions: [
+        { key: 'identity-history', available: true },
+        { key: 'service-scan', available: Boolean(hostEntry.IP), reason: hostEntry.IP ? '' : 'host has no current address' },
+      ],
+    });
+    return true;
+  }
+
   const hostMatch = pathname.match(/^\/api\/host\/(\d+)$/);
   if (req.method === 'GET' && hostMatch) {
     const id = Number(hostMatch[1]);
@@ -2122,6 +2172,43 @@ async function routeSafeAction(req, res, url) {
       return true;
     }
     sendJSON(res, result);
+    return true;
+  }
+
+  const identificationRefreshMatch = pathname.match(/^\/api\/host\/(\d+)\/identification\/refresh-names$/);
+  if (req.method === 'POST' && identificationRefreshMatch) {
+    const id = Number(identificationRefreshMatch[1]);
+    const hostEntry = findHostByID(id);
+    if (!hostEntry || !hostEntry.IP) {
+      sendJSON(res, { error: hostEntry ? 'host has no current IP' : 'invalid host id' }, 400);
+      return true;
+    }
+    const refreshedName = hostEntry.DNS || hostEntry.Name || ('mock-device-' + id + '.local');
+    hostEntry.DNS = refreshedName;
+    sendJSON(res, {
+      refreshedAt: new Date().toISOString(),
+      sources: [
+        { source: 'mdns', values: [refreshedName] },
+      ],
+    });
+    return true;
+  }
+
+  const hostPortScanMatch = pathname.match(/^\/api\/host\/(\d+)\/port\/(\d+)\/scan$/);
+  if (req.method === 'POST' && hostPortScanMatch) {
+    const id = Number(hostPortScanMatch[1]);
+    const portNumber = Number(hostPortScanMatch[2]);
+    const hostEntry = findHostByID(id);
+    if (!hostEntry || !hostEntry.IP) {
+      sendJSON(res, { error: hostEntry ? 'host has no current IP' : 'invalid host id' }, 400);
+      return true;
+    }
+    const openPorts = new Set([80, 443, 554]);
+    sendJSON(res, {
+      port: portNumber,
+      open: openPorts.has(portNumber),
+      state: openPorts.has(portNumber) ? 'open' : 'closed',
+    });
     return true;
   }
 

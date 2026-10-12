@@ -73,7 +73,7 @@ function IdentityCard(props: IdentityCardProps) {
   const historicalEvidence = createMemo(() => identity().evidence.filter((item) => !item.active));
 
   return (
-    <div class="card wyl-panel host-panel">
+    <div id="host-identity-card" class="card wyl-panel host-panel">
       <div class="card-header host-panel-header">
         <div>
           <div class="host-panel-title">Network identity</div>

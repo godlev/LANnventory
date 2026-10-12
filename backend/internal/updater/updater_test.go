@@ -79,6 +79,175 @@ func TestCheckFindsNewerBetaRelease(t *testing.T) {
 	}
 }
 
+func TestCheckOrdersUATBetweenBetaReleases(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`[
+			{"tag_name":"v0.1.0-beta.11.uat.1","prerelease":true,"draft":false,"published_at":"2026-09-27T00:00:00Z","assets":[]},
+			{"tag_name":"v0.1.0-beta.11","prerelease":true,"draft":false,"published_at":"2026-09-26T00:00:00Z","assets":[]}
+		]`))
+	}))
+	defer server.Close()
+
+	service := NewServiceWithURL(server.Client(), server.URL)
+
+	status, err := service.Check(context.Background(), "0.1.0-beta.11", BetaChannel, true)
+	if err != nil {
+		t.Fatalf("Check beta.11 -> UAT: %v", err)
+	}
+	if !status.Available || status.LatestVersion != "0.1.0-beta.11.uat.1" {
+		t.Fatalf("beta.11 status = %+v, want UAT available", status)
+	}
+
+	status, err = service.Check(context.Background(), "0.1.0-beta.11.uat.1", BetaChannel, true)
+	if err != nil {
+		t.Fatalf("Check same UAT: %v", err)
+	}
+	if status.Available {
+		t.Fatalf("same UAT release must not be offered again: %+v", status)
+	}
+
+	newerServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`[
+			{"tag_name":"v0.1.0-beta.12","prerelease":true,"draft":false,"published_at":"2026-09-28T00:00:00Z","assets":[]},
+			{"tag_name":"v0.1.0-beta.11.uat.1","prerelease":true,"draft":false,"published_at":"2026-09-27T00:00:00Z","assets":[]}
+		]`))
+	}))
+	defer newerServer.Close()
+
+	service = NewServiceWithURL(newerServer.Client(), newerServer.URL)
+	status, err = service.Check(context.Background(), "0.1.0-beta.11.uat.1", BetaChannel, true)
+	if err != nil {
+		t.Fatalf("Check UAT -> beta.12: %v", err)
+	}
+	if !status.Available || status.LatestVersion != "0.1.0-beta.12" {
+		t.Fatalf("UAT status = %+v, want beta.12 available", status)
+	}
+}
+
+func TestCheckOrdersUAT2AfterUAT1BeforeNextBeta(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`[
+			{"tag_name":"v0.1.0-beta.11.uat.2","prerelease":true,"draft":false,"published_at":"2026-09-28T00:00:00Z","assets":[]},
+			{"tag_name":"v0.1.0-beta.11.uat.1","prerelease":true,"draft":false,"published_at":"2026-09-27T00:00:00Z","assets":[]},
+			{"tag_name":"v0.1.0-beta.11","prerelease":true,"draft":false,"published_at":"2026-09-26T00:00:00Z","assets":[]}
+		]`))
+	}))
+	defer server.Close()
+
+	service := NewServiceWithURL(server.Client(), server.URL)
+
+	status, err := service.Check(context.Background(), "0.1.0-beta.11.uat.1", BetaChannel, true)
+	if err != nil {
+		t.Fatalf("Check UAT1 -> UAT2: %v", err)
+	}
+	if !status.Available || status.LatestVersion != "0.1.0-beta.11.uat.2" {
+		t.Fatalf("UAT1 status = %+v, want UAT2 available", status)
+	}
+
+	status, err = service.Check(context.Background(), "0.1.0-beta.11.uat.2", BetaChannel, true)
+	if err != nil {
+		t.Fatalf("Check same UAT2: %v", err)
+	}
+	if status.Available {
+		t.Fatalf("same UAT2 release must not be offered again: %+v", status)
+	}
+
+	newerServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`[
+			{"tag_name":"v0.1.0-beta.12","prerelease":true,"draft":false,"published_at":"2026-09-29T00:00:00Z","assets":[]},
+			{"tag_name":"v0.1.0-beta.11.uat.2","prerelease":true,"draft":false,"published_at":"2026-09-28T00:00:00Z","assets":[]}
+		]`))
+	}))
+	defer newerServer.Close()
+
+	service = NewServiceWithURL(newerServer.Client(), newerServer.URL)
+	status, err = service.Check(context.Background(), "0.1.0-beta.11.uat.2", BetaChannel, true)
+	if err != nil {
+		t.Fatalf("Check UAT2 -> beta.12: %v", err)
+	}
+	if !status.Available || status.LatestVersion != "0.1.0-beta.12" {
+		t.Fatalf("UAT2 status = %+v, want beta.12 available", status)
+	}
+}
+
+func TestCheckOrdersUAT3AfterUAT2BeforeNextBeta(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`[
+			{"tag_name":"v0.1.0-beta.11.uat.3","prerelease":true,"draft":false,"published_at":"2026-10-09T00:00:00Z","assets":[]},
+			{"tag_name":"v0.1.0-beta.11.uat.2","prerelease":true,"draft":false,"published_at":"2026-09-28T00:00:00Z","assets":[]}
+		]`))
+	}))
+	defer server.Close()
+
+	service := NewServiceWithURL(server.Client(), server.URL)
+
+	status, err := service.Check(context.Background(), "0.1.0-beta.11.uat.2", BetaChannel, true)
+	if err != nil {
+		t.Fatalf("Check UAT2 -> UAT3: %v", err)
+	}
+	if !status.Available || status.LatestVersion != "0.1.0-beta.11.uat.3" {
+		t.Fatalf("UAT2 status = %+v, want UAT3 available", status)
+	}
+
+	status, err = service.Check(context.Background(), "0.1.0-beta.11.uat.3", BetaChannel, true)
+	if err != nil {
+		t.Fatalf("Check same UAT3: %v", err)
+	}
+	if status.Available {
+		t.Fatalf("same UAT3 release must not be offered again: %+v", status)
+	}
+
+	newerServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`[
+			{"tag_name":"v0.1.0-beta.12","prerelease":true,"draft":false,"published_at":"2026-10-10T00:00:00Z","assets":[]},
+			{"tag_name":"v0.1.0-beta.11.uat.3","prerelease":true,"draft":false,"published_at":"2026-10-09T00:00:00Z","assets":[]}
+		]`))
+	}))
+	defer newerServer.Close()
+
+	service = NewServiceWithURL(newerServer.Client(), newerServer.URL)
+	status, err = service.Check(context.Background(), "0.1.0-beta.11.uat.3", BetaChannel, true)
+	if err != nil {
+		t.Fatalf("Check UAT3 -> beta.12: %v", err)
+	}
+	if !status.Available || status.LatestVersion != "0.1.0-beta.12" {
+		t.Fatalf("UAT3 status = %+v, want beta.12 available", status)
+	}
+}
+
+func TestPhase3511FinalBeta12SupersedesUATs(t *testing.T) {
+	releases := []release{
+		{TagName: "v0.1.0-beta.12", Prerelease: true, Draft: false},
+		{TagName: "v0.1.0-beta.11.uat.3", Prerelease: true, Draft: false},
+		{TagName: "v0.1.0-beta.11.uat.2", Prerelease: true, Draft: false},
+		{TagName: "v0.1.0-beta.11.uat.1", Prerelease: true, Draft: false},
+		{TagName: "v0.1.0-beta.11", Prerelease: true, Draft: false},
+	}
+
+	for _, installed := range []string{
+		"v0.1.0-beta.11",
+		"v0.1.0-beta.11.uat.1",
+		"v0.1.0-beta.11.uat.2",
+		"v0.1.0-beta.11.uat.3",
+	} {
+		status, selected, ok := buildStatus(installed, BetaChannel, releases, time.Time{}, false)
+		if !ok {
+			t.Fatalf("Beta channel did not select a release for installed %s", installed)
+		}
+		if selected.TagName != "v0.1.0-beta.12" {
+			t.Fatalf("installed %s selected %q, want v0.1.0-beta.12", installed, selected.TagName)
+		}
+		if !status.Available || status.LatestVersion != "0.1.0-beta.12" {
+			t.Fatalf("installed %s status = %+v, want available beta.12", installed, status)
+		}
+	}
+
+	stableStatus, selected, ok := buildStatus("v0.1.0-beta.11.uat.3", StableChannel, releases, time.Time{}, false)
+	if ok || stableStatus.Available || selected.TagName != "" {
+		t.Fatalf("Stable channel exposed beta.12 prerelease: status=%+v selected=%+v ok=%v", stableStatus, selected, ok)
+	}
+}
+
 func TestChecksumForFile(t *testing.T) {
 	hash := strings.Repeat("a", 64)
 	data := []byte(hash + "  lannventory_0.2.0_linux_amd64.deb\n")

@@ -91,6 +91,77 @@ export type AddressIdentity = {
   macHistory: AddressMACObservation[];
 };
 
+export type IdentificationConfidence = "none" | "low" | "medium" | "high";
+export type IdentificationFreshness = "current" | "stale" | "historical";
+
+export type IdentificationSuggestion = {
+  value: string;
+  confidence: IdentificationConfidence;
+  source: string;
+  reasons: string[];
+};
+
+export type IdentificationEvidence = {
+  category: "discovery" | "service" | "workload" | string;
+  source: string;
+  kind: string;
+  value: string;
+  freshness: IdentificationFreshness;
+};
+
+export type IdentificationAssessment = {
+  state: "known" | "conflict" | "suggested" | "needs-investigation" | string;
+  suggestedName?: IdentificationSuggestion;
+  suggestedDeviceType?: IdentificationSuggestion;
+  clueCount: number;
+  reasons: string[];
+  cautions: string[];
+  conflicts: string[];
+  evidence: IdentificationEvidence[];
+};
+
+export type IdentificationSourceStatus = {
+  source: "discovery" | "services" | "workloads" | "address-history" | string;
+  available: boolean;
+  total: number;
+  included: number;
+  truncated: boolean;
+  message?: string;
+};
+
+export type IdentificationWarning = {
+  code: string;
+  severity: "info" | "caution" | string;
+  message: string;
+};
+
+export type IdentificationAction = {
+  key: "identity-history" | "service-scan" | string;
+  available: boolean;
+  reason?: string;
+};
+
+export type HostIdentification = {
+  hostId: number;
+  mac: string;
+  currentAddress: string;
+  known: boolean;
+  assessment: IdentificationAssessment;
+  sources: IdentificationSourceStatus[];
+  warnings: IdentificationWarning[];
+  actions: IdentificationAction[];
+};
+
+export type IdentificationNameRefreshSource = {
+  source: string;
+  values: string[];
+};
+
+export type IdentificationNameRefreshResponse = {
+  refreshedAt: string;
+  sources: IdentificationNameRefreshSource[];
+};
+
 export type DeviceProfileResponse = {
   managed: DeviceProfile | null;
   network: NetworkDeviceProfile | null;
@@ -866,6 +937,25 @@ export const apiGetHostIdentity = async (id: number | string): Promise<HostIdent
   return await apiJSON<HostIdentity>(url);
 };
 
+export const apiGetHostIdentification = async (
+  id: number | string,
+  signal?: AbortSignal,
+): Promise<HostIdentification> => {
+  const url = apiPath+'/api/host/'+encodeURIComponent(String(id))+'/identification';
+  return await apiJSON<HostIdentification>(url, { signal });
+};
+
+export const apiRefreshHostIdentificationNames = async (
+  id: number | string,
+  signal?: AbortSignal,
+): Promise<IdentificationNameRefreshResponse> => {
+  const url = apiPath+'/api/host/'+encodeURIComponent(String(id))+'/identification/refresh-names';
+  return await apiJSON<IdentificationNameRefreshResponse>(url, {
+    method: 'POST',
+    signal,
+  });
+};
+
 export const apiGetAddressIdentity = async (address: string): Promise<AddressIdentity> => {
   const params = new URLSearchParams({ address });
   const url = apiPath+'/api/identity/address?'+params.toString();
@@ -905,10 +995,15 @@ export type ServiceScanSettings = {
 
 export type ServiceScanSettingsPayload = Pick<ServiceScanSettings, "enabled" | "intervalMinutes" | "ports">;
 
-export const apiScanHostPort = async (id:number, port:number): Promise<HostPortScanResult> => {
+export const apiScanHostPort = async (
+  id:number,
+  port:number,
+  signal?: AbortSignal,
+): Promise<HostPortScanResult> => {
   const url = apiPath+'/api/host/'+id+'/port/'+port+'/scan';
   return await apiJSON<HostPortScanResult>(url, {
     method: 'POST',
+    signal,
   });
 };
 
