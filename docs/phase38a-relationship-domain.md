@@ -123,3 +123,46 @@ JSON values are rejected. Type registry includes derived-only §hosts§ and
 §matches_host§ but generic REST writes cannot alter them. The Host endpoint
 currently lists only persisted manual assertions; Phase 38A.4 will add
 read-only derived Proxmox graph projections without duplicating source rows.
+
+## Phase 38A.4 — Canonical Graph Read Projection
+
+`GET /api/relationships/graph` returns a deterministic graph object with
+`nodes`, `edges` and `truncated`. Optional `hostId` filters to **one hop**
+incident to a current LAN Host; omitted `hostId` supplies a global bounded
+snapshot. `limit` defaults to 100 and is restricted to 1–500 edges. The graph
+includes only vertices incident to projected edges (not all isolated Hosts).
+A scoped Host is required to exist in `now`, else the API returns 404.
+
+The graph is built from a single consistent SQL read transaction:
+- `relationship_assertions` — explicit source-owned claims; `manual:<id>`
+  (or `assertion:<id>` for future nonmanual assertions)
+- `infrastructure_workloads` — derived `hosts:<workloadId>` edges from
+  authoritative workload Hypervisor MAC to the existing current Host
+- `infrastructure_workload_host_links` — derived `matches:<workloadId>`
+  edges to current Hosts, requiring **both Host ID and Host MAC** to match
+
+Every projected edge has `owner`, `readOnly`, `provenance`,
+`sourceDetail`, `sourceInstance` and the registry-defined labels.
+`hosts` and `matches_host` are ALWAYS marked read-only in generic
+relationship CRUD, including an existing Phase 35 manual workload match.
+Proxmox API/script workload source maps to `proxmox` provenance; an
+explicitly/manual-inventoried workload maps to `manual`. An exact-MAC
+match maps to `system`; an explicitly selected match maps to `manual`.
+No confidence scores are fabricated. Retired workloads remain visible
+with `retiredAt` instead of being silently deleted.
+
+Read queries are bounded to `limit+1` rows per source and resolve linked
+workloads/Hosts in batches. They neither traverse recursively nor invoke
+collectors; `truncated` warns when additional source candidates or edges
+may have been omitted. Endpoint IDs are typed (`host:...` versus
+`workload:...`); no fake LAN Host is generated for a VM/LXC.
+
+The preexisting `GET /api/host/{id}/relationships` intentionally keeps its
+38A.3 manual assertion response contract. To see both manual and source
+relationships for one Host use `GET /api/relationships/graph?hostId={id}`.
+38A.5 UI should consume the latter if it needs derived edges.
+
+Graph output does not represent an inferred physical port, a 2-hop path,
+an identity correlation decision, a scan candidate or a computed network
+topology. No storage, source-sync, source-of-truth, or frontend modifications
+are made in 38A.4.

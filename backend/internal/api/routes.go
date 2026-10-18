@@ -23,6 +23,7 @@ func Routes(router *gin.Engine) {
 		r0.GET("/infrastructure/workload-summaries", getInfrastructureWorkloadSummaries)
 		r0.GET("/relationships/types", getRelationshipTypes)
 		r0.GET("/relationships/targets", getRelationshipTargets)
+		r0.GET("/relationships/graph", getRelationshipGraph)
 		r0.GET("/relationships/:id", getRelationship)
 		r0.POST("/relationships", createRelationship)
 		r0.PATCH("/relationships/:id", patchRelationship)

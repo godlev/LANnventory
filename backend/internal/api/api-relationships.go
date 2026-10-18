@@ -53,6 +53,40 @@ type RelationshipNotePatchRequest struct {
 	Note *string `json:"note"`
 }
 
+// getRelationshipGraph returns one bounded canonical read-only snapshot. It
+// resolves existing Proxmox owners/matches without writing another relation.
+func getRelationshipGraph(c *gin.Context) {
+	var hostID uint64
+	if raw := strings.TrimSpace(c.Query("hostId")); raw != "" {
+		id, ok := parsePositiveRelationshipID(raw)
+		if !ok {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid hostId"})
+			return
+		}
+		hostID = id
+	}
+	limit := relationships.DefaultGraphLimit
+	if raw := strings.TrimSpace(c.Query("limit")); raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err != nil || n < 1 || n > relationships.MaxGraphLimit {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "limit must be between 1 and 500"})
+			return
+		}
+		limit = n
+	}
+	graph, err := gdb.SelectRelationshipGraph(hostID, limit)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "host not found"})
+		return
+	}
+	if err != nil {
+		slog.Error("Failed to project relationship graph", "hostId", hostID, "err", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load relationship graph"})
+		return
+	}
+	c.JSON(http.StatusOK, graph)
+}
+
 // getRelationshipTypes exposes the canonical registry, including source-owned
 // predicates that generic manual CRUD cannot modify.
 func getRelationshipTypes(c *gin.Context) {
