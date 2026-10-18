@@ -21,6 +21,12 @@ func Routes(router *gin.Engine) {
 		r0.GET("/inventory/options", getInventoryOptions)
 		r0.GET("/infrastructure/workload-memberships", getInfrastructureWorkloadMemberships)
 		r0.GET("/infrastructure/workload-summaries", getInfrastructureWorkloadSummaries)
+		r0.GET("/relationships/types", getRelationshipTypes)
+		r0.GET("/relationships/targets", getRelationshipTargets)
+		r0.POST("/relationships", createRelationship)
+		r0.PATCH("/relationships/:id", patchRelationship)
+		r0.DELETE("/relationships/:id", deleteRelationship)
+		r0.GET("/host/:id/relationships", getHostRelationships)
 		r0.GET("/edit/:id/:name/*known", editHost) // api-hosts.go
 		r0.GET("/host/:id/activity", getHostActivity)
 		r0.GET("/host/:id/profile", getHostDeviceProfile)

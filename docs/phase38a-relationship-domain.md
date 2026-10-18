@@ -101,3 +101,25 @@ empty collection. **The application has logical export, not a restore importer;*
 export compatibility does not imply restore functionality.
 
 No API, UI, visual topology, source collector or main-branch merge is included.
+
+## Phase 38A.3 — manual REST API (development checkpoint)
+
+- §GET /api/relationships/types§ — read-only canonical registry.
+- §GET /api/relationships/targets?query=...&excludeHostId=...§ — bounded,
+  current-inventory-only Host target search; query length 2–100 Unicode
+  characters, max 20 results, literal case-insensitive matching.
+- §GET /api/host/{id}/relationships§ — existing Host's incident **manual**
+  assertions; outgoing/incoming edges are returned once, with registry labels.
+- §POST /api/relationships§ — manual Host-to-Host assertion only; required
+  typed §source§ and §target§, optional note, strict JSON decoding.
+- §PATCH /api/relationships/{id}§ — note-only update; identity and ownership
+  cannot change.
+- §DELETE /api/relationships/{id}§ — delete manually owned assertions only.
+
+Codes: 201 create; 200 list/update; 204 delete; 400 malformed/forbidden
+relationship types; 404 missing entities/assertions; 409 duplicate assertion;
+500 unexpected persistence failure. Invalid JSON, extra fields and trailing
+JSON values are rejected. Type registry includes derived-only §hosts§ and
+§matches_host§ but generic REST writes cannot alter them. The Host endpoint
+currently lists only persisted manual assertions; Phase 38A.4 will add
+read-only derived Proxmox graph projections without duplicating source rows.

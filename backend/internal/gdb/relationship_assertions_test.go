@@ -61,8 +61,8 @@ func TestManualRelationshipPersistenceUniqueAndProvenanceProtected(t *testing.T)
 	if first.ID == 0 || first.Provenance != "manual" || first.Note != "managed" || first.SourceInstance != "" {
 		t.Fatalf("saved = %+v", first)
 	}
-	if _, err := CreateManualRelationship(manualRelationship(relationships.TypeManages, 1, 2, "replacement")); err == nil {
-		t.Fatal("duplicate creation silently succeeded")
+	if _, err := CreateManualRelationship(manualRelationship(relationships.TypeManages, 1, 2, "replacement")); !errors.Is(err, ErrRelationshipAlreadyExists) {
+		t.Fatalf("duplicate = %v, want ErrRelationshipAlreadyExists", err)
 	}
 	rows, err := ListManualRelationshipsByHost(2)
 	if err != nil || len(rows) != 1 || rows[0].Note != "managed" {

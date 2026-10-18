@@ -3,6 +3,7 @@ package gdb
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/godlev/LANnventory/internal/models"
@@ -11,6 +12,10 @@ import (
 )
 
 const relationshipAssertionsTable = "relationship_assertions"
+
+// ErrRelationshipAlreadyExists indicates a unique identity conflict. The
+// existing assertion and its note remain unchanged.
+var ErrRelationshipAlreadyExists = errors.New("relationship already exists")
 
 // CreateManualRelationship inserts a validated manual claim, not a generic
 // writer for Proxmox-derived relationships or third-party source evidence.
@@ -47,6 +52,9 @@ func CreateManualRelationship(input relationships.ManualCreateInput) (models.Rel
 		return txDB.Table(relationshipAssertionsTable).Create(&saved).Error
 	})
 	if err != nil {
+		if isRelationshipDuplicate(err) {
+			return models.RelationshipAssertion{}, ErrRelationshipAlreadyExists
+		}
 		return models.RelationshipAssertion{}, err
 	}
 	return saved, nil
@@ -175,4 +183,22 @@ func deleteRelationshipAssertionsForEndpointTx(txDB *gorm.DB, entityType string,
 		Where(`("SOURCE_ENTITY_TYPE" = ? AND "SOURCE_ENTITY_ID" = ?) OR ("TARGET_ENTITY_TYPE" = ? AND "TARGET_ENTITY_ID" = ?)`,
 			entityType, entityID, entityType, entityID).
 		Delete(&models.RelationshipAssertion{}).Error
+}
+
+type relationshipSQLState interface { SQLState() string }
+
+// SQLite reports the indexed columns; PostgreSQL exposes SQLSTATE 23505.
+// Restrict SQLite text matching to our assertion table to avoid swallowing
+// unrelated persistence errors as relationship conflicts.
+func isRelationshipDuplicate(err error) bool {
+	if errors.Is(err, gorm.ErrDuplicatedKey) {
+		return true
+	}
+	var state relationshipSQLState
+	if errors.As(err, &state) && state.SQLState() == "23505" {
+		return true
+	}
+	message := strings.ToLower(err.Error())
+	return strings.Contains(message, "unique constraint failed: relationship_assertions.") ||
+		strings.Contains(message, "idx_relationship_assertion_identity")
 }
