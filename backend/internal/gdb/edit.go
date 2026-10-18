@@ -85,6 +85,9 @@ func DeleteCurrentHostWithMetadata(host models.Host) error {
 	defer release()
 
 	return activeDB.Transaction(func(txDB *gorm.DB) error {
+		if err := deleteRelationshipAssertionsForEndpointTx(txDB, "host", uint64(host.ID)); err != nil {
+			return err
+		}
 		if result := deleteHostDeviceChangeEvents(txDB, host.ID); result.Error != nil {
 			return result.Error
 		}

@@ -12,7 +12,7 @@ import (
 
 const (
 	Format        = "lannventory-backup"
-	FormatVersion = 5
+	FormatVersion = 6
 )
 
 // Document is the stable, versioned logical backup format.
@@ -40,6 +40,7 @@ type Data struct {
 	InfrastructureWorkloadInterfaces []InfrastructureWorkloadInterface `json:"infrastructureWorkloadInterfaces"`
 	InfrastructureWorkloadHostLinks  []InfrastructureWorkloadHostLink  `json:"infrastructureWorkloadHostLinks"`
 	ProxmoxSourceStates              []ProxmoxSourceState              `json:"proxmoxSourceStates"`
+	RelationshipAssertions           []RelationshipAssertion           `json:"relationshipAssertions"`
 }
 
 // Host mirrors the currently persisted host columns in the now/history tables.
@@ -159,6 +160,23 @@ type InfrastructureWorkloadHostLink struct {
 	UpdatedAt  string `json:"updatedAt"`
 }
 
+// RelationshipAssertion is a portable source-owned claim; authoritative
+// Proxmox HOSTS/MATCHES_HOST records stay in their existing backup collections.
+type RelationshipAssertion struct {
+	ID               uint64 `json:"id"`
+	RelationshipType string `json:"type"`
+	SourceEntityType string `json:"sourceEntityType"`
+	SourceEntityID   uint64 `json:"sourceEntityId"`
+	TargetEntityType string `json:"targetEntityType"`
+	TargetEntityID   uint64 `json:"targetEntityId"`
+	Provenance       string `json:"provenance"`
+	SourceDetail     string `json:"sourceDetail,omitempty"`
+	SourceInstance   string `json:"sourceInstance,omitempty"`
+	Note             string `json:"note,omitempty"`
+	CreatedAt        string `json:"createdAt"`
+	UpdatedAt        string `json:"updatedAt"`
+}
+
 // ProxmoxSourceState is the portable imported/discovered Proxmox node state.
 type ProxmoxSourceState struct {
 	HypervisorMac    string `json:"hypervisorMac"`
@@ -228,7 +246,7 @@ func NewDocument(data Data, appVersion string, createdAt time.Time) Document {
 	}
 }
 
-func DataFromModels(currentHosts, history []models.Host, events []models.HostEvent, hostMetadata []models.HostMetadata, hostLifecycle []models.HostLifecycle, deviceProfiles []models.DeviceProfile, networkProfiles []models.NetworkDeviceProfile, systemProfiles []models.SystemDeviceProfile, hypervisorProfiles []models.HypervisorProfile, workloads []models.InfrastructureWorkload, workloadInterfaces []models.InfrastructureWorkloadInterface, workloadLinks []models.InfrastructureWorkloadHostLink, proxmoxSourceStates []models.ProxmoxSourceState) Data {
+func DataFromModels(currentHosts, history []models.Host, events []models.HostEvent, hostMetadata []models.HostMetadata, hostLifecycle []models.HostLifecycle, deviceProfiles []models.DeviceProfile, networkProfiles []models.NetworkDeviceProfile, systemProfiles []models.SystemDeviceProfile, hypervisorProfiles []models.HypervisorProfile, workloads []models.InfrastructureWorkload, workloadInterfaces []models.InfrastructureWorkloadInterface, workloadLinks []models.InfrastructureWorkloadHostLink, proxmoxSourceStates []models.ProxmoxSourceState, relationshipAssertions []models.RelationshipAssertion) Data {
 	data := Data{
 		CurrentHosts:                     make([]Host, 0, len(currentHosts)),
 		History:                          make([]Host, 0, len(history)),
@@ -243,6 +261,7 @@ func DataFromModels(currentHosts, history []models.Host, events []models.HostEve
 		InfrastructureWorkloadInterfaces: make([]InfrastructureWorkloadInterface, 0, len(workloadInterfaces)),
 		InfrastructureWorkloadHostLinks:  make([]InfrastructureWorkloadHostLink, 0, len(workloadLinks)),
 		ProxmoxSourceStates:              make([]ProxmoxSourceState, 0, len(proxmoxSourceStates)),
+		RelationshipAssertions:           make([]RelationshipAssertion, 0, len(relationshipAssertions)),
 	}
 
 	for _, host := range currentHosts {
@@ -283,6 +302,9 @@ func DataFromModels(currentHosts, history []models.Host, events []models.HostEve
 	}
 	for _, state := range proxmoxSourceStates {
 		data.ProxmoxSourceStates = append(data.ProxmoxSourceStates, ProxmoxSourceStateFromModel(state))
+	}
+	for _, assertion := range relationshipAssertions {
+		data.RelationshipAssertions = append(data.RelationshipAssertions, RelationshipAssertionFromModel(assertion))
 	}
 
 	return data
@@ -414,6 +436,17 @@ func InfrastructureWorkloadHostLinkFromModel(link models.InfrastructureWorkloadH
 	}
 }
 
+func RelationshipAssertionFromModel(assertion models.RelationshipAssertion) RelationshipAssertion {
+	return RelationshipAssertion{
+		ID: assertion.ID, RelationshipType: assertion.RelationshipType,
+		SourceEntityType: assertion.SourceEntityType, SourceEntityID: assertion.SourceEntityID,
+		TargetEntityType: assertion.TargetEntityType, TargetEntityID: assertion.TargetEntityID,
+		Provenance: assertion.Provenance, SourceDetail: assertion.SourceDetail,
+		SourceInstance: assertion.SourceInstance, Note: assertion.Note,
+		CreatedAt: assertion.CreatedAt, UpdatedAt: assertion.UpdatedAt,
+	}
+}
+
 func ProxmoxSourceStateFromModel(state models.ProxmoxSourceState) ProxmoxSourceState {
 	return ProxmoxSourceState{
 		HypervisorMac:    state.HypervisorMac,
@@ -529,6 +562,9 @@ func normalizeData(data Data) Data {
 	}
 	if data.ProxmoxSourceStates == nil {
 		data.ProxmoxSourceStates = []ProxmoxSourceState{}
+	}
+	if data.RelationshipAssertions == nil {
+		data.RelationshipAssertions = []RelationshipAssertion{}
 	}
 
 	return data

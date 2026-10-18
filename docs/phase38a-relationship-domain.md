@@ -76,3 +76,28 @@ reverse labels, resolver errors, note validation and nonhierarchical cycles.
 
 The repository Packaging Check workflow is triggered on development-branch
 pushes. No main merge or prerelease is allowed until the required UAT gates.
+
+## Phase 38A.2 — durable assertions
+
+The new `relationship_assertions` table uses a primary key, a seven-field composite
+unique index (type, typed source, typed target, provenance, source instance) and
+indexes on both typed endpoint pairs. SQLite and PostgreSQL are supported by
+the existing GORM migration machinery.
+
+The app exposes only manual Host-to-Host persistence mutations for the three
+approved predicates. Source and target IDs refer to current inventory records,
+not historical observations or mutable network addresses. Direct create never
+upserts an existing assertion. Manual deletion and note updates cannot mutate
+a Proxmox/system-owned assertion.
+
+Deletion of a current Host removes both incoming and outgoing assertions in
+the enclosing Host transaction; destructive workload deletion similarly
+cleans future assertions for its ID. Ordinary offline transitions and workload
+retirement do not delete manual assertions.
+
+Logical export **v6** includes all source-owned assertions as a consistently
+ordered collection. Missing lists from historical v5 JSON normalize to an
+empty collection. **The application has logical export, not a restore importer;**
+export compatibility does not imply restore functionality.
+
+No API, UI, visual topology, source collector or main-branch merge is included.

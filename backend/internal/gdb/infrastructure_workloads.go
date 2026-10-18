@@ -354,6 +354,9 @@ func selectInfrastructureWorkloadByIDDB(activeDB *gorm.DB, id uint) (models.Infr
 }
 
 func deleteInfrastructureWorkloadTx(txDB *gorm.DB, workloadID uint) error {
+	if err := deleteRelationshipAssertionsForEndpointTx(txDB, "workload", uint64(workloadID)); err != nil {
+		return err
+	}
 	if err := txDB.Table(infrastructureWorkloadHostLinksTable).
 		Where(`"WORKLOAD_ID" = ?`, workloadID).
 		Delete(&models.InfrastructureWorkloadHostLink{}).Error; err != nil {

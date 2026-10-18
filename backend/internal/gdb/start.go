@@ -141,6 +141,9 @@ func migrate(candidate *gorm.DB) error {
 	if err := candidate.Table(hypervisorProfilesTable).AutoMigrate(&models.HypervisorProfile{}); err != nil {
 		return err
 	}
+	if err := candidate.Table(relationshipAssertionsTable).AutoMigrate(&models.RelationshipAssertion{}); err != nil {
+		return err
+	}
 	if err := candidate.Table(infrastructureWorkloadsTable).AutoMigrate(&models.InfrastructureWorkload{}); err != nil {
 		return err
 	}
