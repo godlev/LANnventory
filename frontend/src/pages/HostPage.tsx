@@ -8,6 +8,7 @@ import HostCard from "../components/HostPage/HostCard";
 import HostedWorkloadCard from "../components/HostPage/HostedWorkloadCard";
 import DeviceProfileCard from "../components/HostPage/DeviceProfileCard";
 import ProxmoxInventoryCard from "../components/HostPage/ProxmoxInventoryCard";
+import RelationshipsCard from "../components/HostPage/RelationshipsCard";
 import IdentityCard from "../components/HostPage/IdentityCard";
 import ServicesCard from "../components/HostPage/ServicesCard";
 import IdentificationCard from "../components/HostPage/IdentificationCard";
@@ -296,6 +297,7 @@ function HostPage() {
             <div class="host-section-stack">
               <HostedWorkloadCard host={currentHost()}></HostedWorkloadCard>
               <DeviceProfileCard host={currentHost()} onProfileChange={setDeviceProfile}></DeviceProfileCard>
+              <RelationshipsCard host={currentHost()} active={activeSection() === "inventory"}></RelationshipsCard>
               <Show when={deviceProfile()?.hypervisor?.platform === "proxmox-ve"}>
                 <ProxmoxInventoryCard host={currentHost()}></ProxmoxInventoryCard>
               </Show>

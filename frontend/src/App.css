@@ -7042,3 +7042,75 @@ html[data-bs-theme] .history-table > tbody > tr:hover > td {
         grid-template-columns: 1fr;
     }
 }
+
+/* Phase 38A.5: relationship inventory is a compact Host card, not a topology map. */
+.host-relationships-list {
+    display: grid;
+    gap: 0.45rem;
+}
+.host-relationship-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.55rem;
+    padding: 0.62rem 0.72rem;
+    border: 1px solid var(--wyl-panel-border);
+    border-radius: 7px;
+    background: var(--wyl-control-bg);
+}
+.host-relationship-main {
+    display: flex;
+    flex: 1 1 22rem;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.45rem;
+    min-width: 0;
+}
+.host-relationship-entity {
+    overflow-wrap: anywhere;
+    font-weight: 650;
+}
+.host-relationship-direction {
+    font-size: 0.82rem;
+    font-weight: 750;
+}
+.host-relationship-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--wyl-muted);
+    font-size: 0.75rem;
+}
+.host-relationship-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+}
+.host-relationship-editor {
+    padding: 0.76rem;
+    margin-block: 0.5rem 0.8rem;
+    border: 1px solid var(--wyl-panel-border);
+    border-radius: 8px;
+    background: var(--wyl-control-bg);
+}
+.host-relationship-targets {
+    max-height: 12rem;
+    overflow-y: auto;
+}
+.host-relationship-targets button {
+    text-align: left;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+@media (max-width: 575.98px) {
+    .host-relationship-row {
+        align-items: stretch;
+    }
+    .host-relationship-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+}

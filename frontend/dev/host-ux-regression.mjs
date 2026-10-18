@@ -17,6 +17,7 @@ const identificationCard = read("src/components/HostPage/IdentificationCard.tsx"
 const mockApi = read("dev/mock-api.mjs");
 const activityFeed = read("src/components/ActivityFeed.tsx");
 const hostPage = read("src/pages/HostPage.tsx");
+const relationshipsCard = read("src/components/HostPage/RelationshipsCard.tsx");
 const hostCard = read("src/components/HostPage/HostCard.tsx");
 const portScan = read("src/components/HostPage/Ping.tsx");
 const deviceProfile = read("src/components/HostPage/DeviceProfileCard.tsx");
@@ -100,6 +101,24 @@ requireText(servicesCard, '<Ping', "Services must own the manual scan workflow."
 requireText(portScan, "props.embedded", "Port scan must support embedded Services presentation.");
 requireText(hostPage, 'type HostSection = "inventory" | "network" | "activity";', "Host secondary content must be divided into explicit local sections.");
 requireText(hostPage, 'class="host-workspace"', "Device Overview, Host navigation, and active Host content must share one structural workspace shell.");
+requireText(hostPage, '<RelationshipsCard host={currentHost()} active={activeSection() === "inventory"}', "Relationships must stay inside existing Inventory navigation and be inactive outside it.");
+requireText(historyApi, "apiGetRelationshipGraph", "Frontend API must load read-only canonical relationship projections.");
+requireText(historyApi, "apiSearchRelationshipTargets", "Frontend API must search only verified current Host targets.");
+requireText(historyApi, "apiCreateManualRelationship", "Frontend API must use source-safe relationship creation.");
+requireText(historyApi, "apiPatchManualRelationshipNote", "Frontend API must restrict manual edits to notes.");
+requireText(historyApi, "apiDeleteManualRelationship", "Frontend API must permit explicit manual deletion.");
+requireText(relationshipsCard, 'edge.owner === "relationship_assertions" && edge.provenance === "manual"', "Read-only Proxmox links must never expose generic delete/edit.");
+requireText(relationshipsCard, "!edge.readOnly", "Relationship management must check the server's readOnly flag.");
+requireText(relationshipsCard, "window.confirm", "Deleting manual relations must require explicit confirmation.");
+requireText(relationshipsCard, "apiSearchRelationshipTargets(query, currentID, controller.signal)", "Target search must be cancellable and scoped to current Host.");
+requireText(relationshipsCard, "controller?.abort()", "Target lookup must abort when input changes.");
+requireText(relationshipsCard, "relationshipType()", "Manual relationship type must be explicitly selected.");
+requireText(relationshipsCard, "reverse()", "Create must support an explicit direction.");
+requireText(relationshipsCard, "graph()?.truncated", "Partial relationship graphs must be disclosed.");
+requireText(relationshipsCard, 'class="card wyl-panel host-panel host-relationships-panel"', "Relationships must reuse the current Host card structure.");
+requireText(appStyles, ".host-relationships-list", "Relationships must have compact, responsive styling.");
+forbidText(relationshipsCard, "window.location.reload()", "Relationship failures must not force whole-page refresh.");
+
 requireText(hostPage, 'class="host-section-nav"', "Host must expose visible local navigation instead of one long stack.");
 requireText(hostPage, 'class="host-section-content"', "Selected Host content must be part of the same Host workspace as the navigation.");
 requireText(hostPage, 'class="host-section-stack"', "Selected Host section cards must stack inside the shared workspace content area.");

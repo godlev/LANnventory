@@ -484,6 +484,105 @@ export type ProxmoxAPISyncPreviewResponse = {
   preview: ProxmoxImportPreview;
 };
 
+export type RelationshipEntityType = "host" | "workload";
+export type RelationshipEndpoint = {
+  entityType: RelationshipEntityType;
+  entityId: number;
+};
+export type RelationshipDefinition = {
+  type: string;
+  sourceTypes: RelationshipEntityType[];
+  targetTypes: RelationshipEntityType[];
+  directionality: "directed" | "symmetric";
+  sourceLabel: string;
+  inverseLabel: string;
+  manualAllowed: boolean;
+  hierarchical: boolean;
+  automaticAllowed: boolean;
+};
+export type RelationshipGraphNode = {
+  id: string;
+  entityType: RelationshipEntityType;
+  entityId: number;
+  label: string;
+  mac?: string;
+  ip?: string;
+  workloadType?: string;
+  nativeId?: string;
+  status?: string;
+  retiredAt?: string;
+};
+export type RelationshipGraphEdge = {
+  id: string;
+  type: string;
+  source: RelationshipEndpoint;
+  target: RelationshipEndpoint;
+  directionality: "directed" | "symmetric";
+  sourceLabel: string;
+  inverseLabel: string;
+  provenance: "manual" | "proxmox" | "system";
+  sourceDetail?: string;
+  sourceInstance?: string;
+  owner: string;
+  readOnly: boolean;
+  note?: string;
+  retiredAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+export type RelationshipGraph = {
+  nodes: RelationshipGraphNode[];
+  edges: RelationshipGraphEdge[];
+  truncated: boolean;
+};
+export type RelationshipHostTarget = {
+  id: number;
+  name: string;
+  dns: string;
+  ip: string;
+  mac: string;
+  deviceType: string;
+};
+export type ManualRelationshipInput = {
+  type: string;
+  source: RelationshipEndpoint;
+  target: RelationshipEndpoint;
+  note?: string;
+};
+
+export const apiGetRelationshipTypes = async (signal?: AbortSignal): Promise<RelationshipDefinition[]> =>
+  apiJSON<RelationshipDefinition[]>(apiPath + "/api/relationships/types", { signal });
+
+export const apiGetRelationshipGraph = async (hostID: number, limit = 100, signal?: AbortSignal): Promise<RelationshipGraph> => {
+  const params = new URLSearchParams({ hostId: String(hostID), limit: String(limit) });
+  return apiJSON<RelationshipGraph>(apiPath + "/api/relationships/graph?" + params.toString(), { signal });
+};
+
+export const apiSearchRelationshipTargets = async (query: string, hostID: number, signal?: AbortSignal): Promise<RelationshipHostTarget[]> => {
+  const params = new URLSearchParams({ query, excludeHostId: String(hostID) });
+  return apiJSON<RelationshipHostTarget[]>(apiPath + "/api/relationships/targets?" + params.toString(), { signal });
+};
+
+export const apiCreateManualRelationship = async (payload: ManualRelationshipInput): Promise<void> => {
+  await apiFetch(apiPath + "/api/relationships", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+};
+
+export const apiPatchManualRelationshipNote = async (id: number, note: string): Promise<void> => {
+  await apiFetch(apiPath + "/api/relationships/" + encodeURIComponent(String(id)), {
+    method: "PATCH",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ note }),
+  });
+};
+
+export const apiDeleteManualRelationship = async (id: number): Promise<void> => {
+  await apiFetch(apiPath + "/api/relationships/" + encodeURIComponent(String(id)), { method: "DELETE" });
+};
+
 const apiFetch = async (url: string, init?: RequestInit): Promise<Response> => {
   const response = await fetch(url, init);
   if (!response.ok) {

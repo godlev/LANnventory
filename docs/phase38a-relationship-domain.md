@@ -166,3 +166,24 @@ Graph output does not represent an inferred physical port, a 2-hop path,
 an identity correlation decision, a scan candidate or a computed network
 topology. No storage, source-sync, source-of-truth, or frontend modifications
 are made in 38A.4.
+
+## Phase 38A.5 — Minimal Host Inventory Relationships UI
+
+A compact **Relationships** card is placed in the existing Host **Inventory**
+section. It consumes the read-only one-hop graph projection, including native
+Proxmox `hosts`/`matches_host` edges with explicit provenance, direction
+and read-only labels. Workloads are identified as VMs/LXCs; they are never
+presented as invented LAN Hosts. The existing Host navigation and Phase 35.12
+pause remain unchanged.
+
+Manual Host-to-Host editing uses only the protected Phase 38A.3 endpoints:
+strict registered type selection, bounded current Host search (minimum two
+characters), explicit source/target direction, optional 500-character note,
+confirmation before delete, and note-only edit. Imported/Proxmox matches
+cannot be edited or removed through the card. Loading, empty, partial,
+API failure and mutation states are explicit. Stale graph/search requests are
+cancelled on Host switch/section deactivation. The UI warns when the graph
+is truncated and allows an explicit increase from 100 to 500 edges.
+
+The UI does not auto-create relationships from network scans, display a
+physical topology, rewrite source records or alter existing Host/Proxmox UX.
