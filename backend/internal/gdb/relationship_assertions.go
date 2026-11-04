@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/godlev/LANnventory/internal/models"
@@ -17,6 +18,22 @@ const relationshipAssertionsTable = "relationship_assertions"
 // existing assertion and its note remain unchanged.
 var ErrRelationshipAlreadyExists = errors.New("relationship already exists")
 
+// SQLite deferred transactions can deadlock while upgrading concurrent
+// endpoint-validation reads to writes. The busy timeout cannot resolve that
+// cycle because every transaction already owns a read snapshot. Serialize the
+// complete relationship mutation on SQLite so validation and the write remain
+// one transaction. PostgreSQL does not use this lock.
+var sqliteRelationshipWriteMu sync.Mutex
+
+func serializeSQLiteRelationshipWrite(activeDB *gorm.DB, write func() error) error {
+	if activeDB.Dialector.Name() != "sqlite" {
+		return write()
+	}
+	sqliteRelationshipWriteMu.Lock()
+	defer sqliteRelationshipWriteMu.Unlock()
+	return write()
+}
+
 // CreateManualRelationship inserts a validated manual claim, not a generic
 // writer for Proxmox-derived relationships or third-party source evidence.
 // The transaction validates both current entities before inserting.
@@ -28,28 +45,30 @@ func CreateManualRelationship(input relationships.ManualCreateInput) (models.Rel
 	defer release()
 
 	var saved models.RelationshipAssertion
-	err = activeDB.Transaction(func(txDB *gorm.DB) error {
-		assertion, err := relationships.NewManualAssertion(input, func(endpoint relationships.Endpoint) (bool, error) {
-			return relationshipEndpointExistsTx(txDB, endpoint)
+	err = serializeSQLiteRelationshipWrite(activeDB, func() error {
+		return activeDB.Transaction(func(txDB *gorm.DB) error {
+			assertion, err := relationships.NewManualAssertion(input, func(endpoint relationships.Endpoint) (bool, error) {
+				return relationshipEndpointExistsTx(txDB, endpoint)
+			})
+			if err != nil {
+				return err
+			}
+			now := time.Now().UTC().Format(time.RFC3339Nano)
+			saved = models.RelationshipAssertion{
+				RelationshipType: string(assertion.Type),
+				SourceEntityType: string(assertion.Source.EntityType),
+				SourceEntityID:   assertion.Source.EntityID,
+				TargetEntityType: string(assertion.Target.EntityType),
+				TargetEntityID:   assertion.Target.EntityID,
+				Provenance:       string(relationships.ProvenanceManual),
+				Note:             assertion.Note,
+				CreatedAt:        now,
+				UpdatedAt:        now,
+			}
+			// The unique index handles racing requests. A duplicate create must
+			// fail rather than silently update the earlier manual note.
+			return txDB.Table(relationshipAssertionsTable).Create(&saved).Error
 		})
-		if err != nil {
-			return err
-		}
-		now := time.Now().UTC().Format(time.RFC3339Nano)
-		saved = models.RelationshipAssertion{
-			RelationshipType: string(assertion.Type),
-			SourceEntityType: string(assertion.Source.EntityType),
-			SourceEntityID: assertion.Source.EntityID,
-			TargetEntityType: string(assertion.Target.EntityType),
-			TargetEntityID: assertion.Target.EntityID,
-			Provenance: string(relationships.ProvenanceManual),
-			Note: assertion.Note,
-			CreatedAt: now,
-			UpdatedAt: now,
-		}
-		// The unique index handles racing requests. A duplicate create must
-		// fail rather than silently update the earlier manual note.
-		return txDB.Table(relationshipAssertionsTable).Create(&saved).Error
 	})
 	if err != nil {
 		if isRelationshipDuplicate(err) {
@@ -96,16 +115,18 @@ func DeleteManualRelationship(id uint64) error {
 		return err
 	}
 	defer release()
-	result := activeDB.Table(relationshipAssertionsTable).
-		Where(`"ID" = ? AND "PROVENANCE" = ?`, id, string(relationships.ProvenanceManual)).
-		Delete(&models.RelationshipAssertion{})
-	if result.Error != nil {
-		return result.Error
-	}
-	if result.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
-	}
-	return nil
+	return serializeSQLiteRelationshipWrite(activeDB, func() error {
+		result := activeDB.Table(relationshipAssertionsTable).
+			Where(`"ID" = ? AND "PROVENANCE" = ?`, id, string(relationships.ProvenanceManual)).
+			Delete(&models.RelationshipAssertion{})
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return gorm.ErrRecordNotFound
+		}
+		return nil
+	})
 }
 
 // UpdateManualRelationshipNote validates the requested note and current
@@ -120,35 +141,37 @@ func UpdateManualRelationshipNote(id uint64, note string) (models.RelationshipAs
 	}
 	defer release()
 	var row models.RelationshipAssertion
-	err = activeDB.Transaction(func(txDB *gorm.DB) error {
-		if err := txDB.Table(relationshipAssertionsTable).
-			Where(`"ID" = ? AND "PROVENANCE" = ?`, id, string(relationships.ProvenanceManual)).
-			First(&row).Error; err != nil {
-			return err
-		}
-		validated, err := relationships.NewManualAssertion(relationships.ManualCreateInput{
-			Type: relationships.Type(row.RelationshipType),
-			Source: relationships.Endpoint{EntityType: relationships.EntityType(row.SourceEntityType), EntityID: row.SourceEntityID},
-			Target: relationships.Endpoint{EntityType: relationships.EntityType(row.TargetEntityType), EntityID: row.TargetEntityID},
-			Note: note,
-		}, func(endpoint relationships.Endpoint) (bool, error) {
-			return relationshipEndpointExistsTx(txDB, endpoint)
+	err = serializeSQLiteRelationshipWrite(activeDB, func() error {
+		return activeDB.Transaction(func(txDB *gorm.DB) error {
+			if err := txDB.Table(relationshipAssertionsTable).
+				Where(`"ID" = ? AND "PROVENANCE" = ?`, id, string(relationships.ProvenanceManual)).
+				First(&row).Error; err != nil {
+				return err
+			}
+			validated, err := relationships.NewManualAssertion(relationships.ManualCreateInput{
+				Type:   relationships.Type(row.RelationshipType),
+				Source: relationships.Endpoint{EntityType: relationships.EntityType(row.SourceEntityType), EntityID: row.SourceEntityID},
+				Target: relationships.Endpoint{EntityType: relationships.EntityType(row.TargetEntityType), EntityID: row.TargetEntityID},
+				Note:   note,
+			}, func(endpoint relationships.Endpoint) (bool, error) {
+				return relationshipEndpointExistsTx(txDB, endpoint)
+			})
+			if err != nil {
+				return err
+			}
+			row.Note = validated.Note
+			row.UpdatedAt = time.Now().UTC().Format(time.RFC3339Nano)
+			result := txDB.Table(relationshipAssertionsTable).
+				Where(`"ID" = ? AND "PROVENANCE" = ?`, id, string(relationships.ProvenanceManual)).
+				Updates(map[string]any{"NOTE": row.Note, "UPDATED_AT": row.UpdatedAt})
+			if result.Error != nil {
+				return result.Error
+			}
+			if result.RowsAffected == 0 {
+				return gorm.ErrRecordNotFound
+			}
+			return nil
 		})
-		if err != nil {
-			return err
-		}
-		row.Note = validated.Note
-		row.UpdatedAt = time.Now().UTC().Format(time.RFC3339Nano)
-		result := txDB.Table(relationshipAssertionsTable).
-			Where(`"ID" = ? AND "PROVENANCE" = ?`, id, string(relationships.ProvenanceManual)).
-			Updates(map[string]any{"NOTE": row.Note, "UPDATED_AT": row.UpdatedAt})
-		if result.Error != nil {
-			return result.Error
-		}
-		if result.RowsAffected == 0 {
-			return gorm.ErrRecordNotFound
-		}
-		return nil
 	})
 	if err != nil {
 		return models.RelationshipAssertion{}, err
@@ -185,7 +208,7 @@ func deleteRelationshipAssertionsForEndpointTx(txDB *gorm.DB, entityType string,
 		Delete(&models.RelationshipAssertion{}).Error
 }
 
-type relationshipSQLState interface { SQLState() string }
+type relationshipSQLState interface{ SQLState() string }
 
 // SQLite reports the indexed columns; PostgreSQL exposes SQLSTATE 23505.
 // Restrict SQLite text matching to our assertion table to avoid swallowing
