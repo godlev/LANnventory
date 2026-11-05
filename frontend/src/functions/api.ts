@@ -643,7 +643,7 @@ export const apiGetConfig = async () => {
 export const apiGetVersion = async () => {
 
   const url = apiPath+'/api/version';
-  const res = await apiJSON<string>(url);
+  const res = await apiJSON<string>(url, { cache: "no-store" });
 
   return res;
 };

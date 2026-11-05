@@ -55,6 +55,7 @@ export type UpdateApplyResult = {
   scheduled: boolean;
   message: string;
   backupPath: string;
+  attemptId?: string;
 };
 
 export const [sharedUpdateStatus, setSharedUpdateStatus] = createSignal<UpdateStatus>();
@@ -70,6 +71,13 @@ const publishUpdateProgress = (progress: UpdateProgress): UpdateProgress => {
   return progress;
 };
 
+export class UpdateHTTPError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+    this.name = "UpdateHTTPError";
+  }
+}
+
 const apiJSON = async <T>(url: string, init?: RequestInit): Promise<T> => {
   const response = await fetch(url, init);
   if (!response.ok) {
@@ -80,22 +88,22 @@ const apiJSON = async <T>(url: string, init?: RequestInit): Promise<T> => {
     } catch {
       detail = await response.text();
     }
-    throw new Error(detail || response.statusText || "Update request failed");
+    throw new UpdateHTTPError(detail || response.statusText || "Update request failed", response.status);
   }
   return await response.json() as T;
 };
 
 export const apiGetUpdateStatus = async (refresh = false): Promise<UpdateStatus> => {
   const suffix = refresh ? "?refresh=1" : "";
-  return publishUpdateStatus(await apiJSON<UpdateStatus>("/api/update/status" + suffix));
+  return publishUpdateStatus(await apiJSON<UpdateStatus>("/api/update/status" + suffix, { cache: "no-store" }));
 };
 
 export const apiGetCachedUpdateStatus = async (): Promise<UpdateStatus> => {
-  return publishUpdateStatus(await apiJSON<UpdateStatus>("/api/update/status?cached=1"));
+  return publishUpdateStatus(await apiJSON<UpdateStatus>("/api/update/status?cached=1", { cache: "no-store" }));
 };
 
 export const apiGetUpdateProgress = async (): Promise<UpdateProgress> => {
-  return publishUpdateProgress(await apiJSON<UpdateProgress>("/api/update/progress"));
+  return publishUpdateProgress(await apiJSON<UpdateProgress>("/api/update/progress", { cache: "no-store" }));
 };
 
 export const apiSetUpdateSettings = async (

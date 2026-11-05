@@ -61,6 +61,7 @@ type updateApplyResponse struct {
 	Scheduled  bool   `json:"scheduled"`
 	Message    string `json:"message"`
 	BackupPath string `json:"backupPath"`
+	AttemptID  string `json:"attemptId"`
 }
 
 // StartUpdateScheduler starts automatic update polling using the same updater service
@@ -114,6 +115,7 @@ func notifyUpdateSchedulerConfigChanged() {
 // @Failure      502      {object}  map[string]string
 // @Router       /update/status [get]
 func getUpdateStatus(c *gin.Context) {
+	c.Header("Cache-Control", "no-store")
 	config := conf.GetAppConfig()
 	refresh := c.Query("refresh") == "1" || strings.EqualFold(c.Query("refresh"), "true")
 	if !refresh {
@@ -131,6 +133,7 @@ func getUpdateStatus(c *gin.Context) {
 }
 
 func getUpdateProgress(c *gin.Context) {
+	c.Header("Cache-Control", "no-store")
 	progress, err := updateService.Progress()
 	if err != nil {
 		c.IndentedJSON(http.StatusInternalServerError, gin.H{"error": "update progress could not be loaded"})

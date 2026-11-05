@@ -865,6 +865,8 @@ definitions:
     type: object
   api.updateApplyResponse:
     properties:
+      attemptId:
+        type: string
       backupPath:
         type: string
       message:

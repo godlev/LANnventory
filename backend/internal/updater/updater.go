@@ -87,6 +87,7 @@ type ApplyResult struct {
 	Scheduled  bool   `json:"scheduled"`
 	Message    string `json:"message"`
 	BackupPath string `json:"backupPath"`
+	AttemptID  string `json:"attemptId"`
 }
 
 type Service struct {
@@ -522,6 +523,7 @@ func (s *Service) Schedule(ctx context.Context, currentVersion, channel, expecte
 		Scheduled:  true,
 		Message:    "Update scheduled. LANnventory will back up its current data, install the verified package, restart, and run a health check.",
 		BackupPath: backupDir,
+		AttemptID:  progress.AttemptID,
 	}, nil
 }
 

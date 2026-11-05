@@ -4952,6 +4952,9 @@ const docTemplate = `{
         "api.updateApplyResponse": {
             "type": "object",
             "properties": {
+                "attemptId": {
+                    "type": "string"
+                },
                 "backupPath": {
                     "type": "string"
                 },

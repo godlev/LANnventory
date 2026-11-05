@@ -79,6 +79,10 @@ jobs:
         working-directory: frontend
         run: npm run test:settings-ux
 
+      - name: Verify update flow regressions
+        working-directory: frontend
+        run: npm run test:update-flow
+
       - name: Build frontend and verify embedded bundle
         working-directory: frontend
         run: |

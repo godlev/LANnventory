@@ -151,6 +151,9 @@ func TestGetUpdateProgressReturnsPersistedState(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
 	}
+	if got := rec.Header().Get("Cache-Control"); got != "no-store" {
+		t.Fatalf("Cache-Control = %q, want no-store", got)
+	}
 	var got updater.Progress
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("json.Unmarshal: %v", err)
@@ -173,12 +176,29 @@ func TestGetUpdateProgressMissingStateReturnsIdle(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusOK, rec.Body.String())
 	}
+	if got := rec.Header().Get("Cache-Control"); got != "no-store" {
+		t.Fatalf("Cache-Control = %q, want no-store", got)
+	}
 	var got updater.Progress
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("json.Unmarshal: %v", err)
 	}
 	if got.Status != updater.ProgressStatusIdle || got.Stage != updater.UpdateStageIdle {
 		t.Fatalf("progress response = %+v, want idle", got)
+	}
+}
+
+func TestUpdateApplyResultIncludesAttemptIdentity(t *testing.T) {
+	payload, err := json.Marshal(updater.ApplyResult{
+		Version:   "0.1.0-beta.14",
+		Scheduled: true,
+		AttemptID: "update-123",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(payload), `"attemptId":"update-123"`) {
+		t.Fatalf("apply response omitted attempt identity: %s", payload)
 	}
 }
 

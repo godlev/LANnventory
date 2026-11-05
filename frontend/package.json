@@ -10,7 +10,8 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test:host-ux": "node dev/host-ux-regression.mjs",
-    "test:settings-ux": "node dev/settings-ux-regression.mjs"
+    "test:settings-ux": "node dev/settings-ux-regression.mjs",
+    "test:update-flow": "node dev/update-flow-regression.mjs"
   },
   "dependencies": {
     "@fontsource/open-sans": "^5.3.0",

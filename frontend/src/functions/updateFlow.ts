@@ -3,16 +3,18 @@ import {
   apiApplyUpdate,
   apiGetUpdateProgress,
   apiGetUpdateStatus,
+  UpdateHTTPError,
   type UpdateProgress,
   type UpdateStatus,
 } from "./updateApi";
 
 const progressPollIntervalMs = 1000;
 const updateFlowTimeoutMs = 5 * 60 * 1000;
-const attemptClockToleranceMs = 5000;
+let updateSubmissionPending = false;
 
 export type UpdateFlowHandle = {
   cancel: () => void;
+  trackAttempt: (attemptID: string) => void;
 };
 
 export type UpdateFlowCallbacks = {
@@ -35,36 +37,57 @@ export async function startUpdateFlow(
   status: UpdateStatus,
   callbacks: UpdateFlowCallbacks = {},
 ): Promise<UpdateFlowHandle | undefined> {
-  if (!status.available || !status.installSupported || status.updating) {
+  if (!status.available || !status.installSupported || status.updating || updateSubmissionPending) {
     return undefined;
   }
 
+  updateSubmissionPending = true;
   callbacks.onInstalling?.(true);
   callbacks.onError?.("");
   callbacks.onMessage?.("Preparing update…");
 
-  const startedAt = Date.now();
-  const handle = watchUpdateProgress(status.latestVersion, startedAt, callbacks);
+  let baselineAttemptID = "";
+  let baselineKnown = false;
+  try {
+    const baseline = await apiGetUpdateProgress();
+    baselineAttemptID = baseline.attemptId;
+    baselineKnown = true;
+  } catch {
+    // Scheduling can still proceed. Without a baseline, the watcher only adopts
+    // a running attempt until the scheduling response supplies its attempt ID.
+  }
+
+  let observedProgress = false;
+  const trackedCallbacks: UpdateFlowCallbacks = {
+    ...callbacks,
+    onProgress: (progress) => {
+      observedProgress = true;
+      callbacks.onProgress?.(progress);
+    },
+  };
+  const handle = watchUpdateProgress(
+    status.latestVersion,
+    trackedCallbacks,
+    "",
+    baselineAttemptID,
+    baselineKnown,
+  );
 
   try {
     const result = await apiApplyUpdate(status.latestVersion);
-    callbacks.onMessage?.(
-      result.backupPath
-        ? "Update scheduled. Recovery backup path: " + result.backupPath + "."
-        : "Update scheduled. LANnventory is tracking installation progress.",
-    );
+    handle.trackAttempt(result.attemptId ?? "");
+    if (!observedProgress) {
+      callbacks.onMessage?.(
+        result.backupPath
+          ? "Update scheduled. Recovery backup path: " + result.backupPath + "."
+          : "Update scheduled. LANnventory is tracking installation progress.",
+      );
+    }
     return handle;
   } catch (err) {
-    try {
-      const progress = await apiGetUpdateProgress();
-      if (progress.status === "running" && sameVersion(progress.targetVersion, status.latestVersion)) {
-        callbacks.onProgress?.(progress);
-        callbacks.onMessage?.(stageMessage(progress));
-        return handle;
-      }
-    } catch {
-      // If the backend disappeared before replying, the progress watcher will handle
-      // a genuine restart only when it has already observed the matching attempt.
+    if (!(err instanceof UpdateHTTPError)) {
+      callbacks.onMessage?.("LANnventory is temporarily unreachable while update scheduling is confirmed…");
+      return handle;
     }
 
     handle.cancel();
@@ -72,6 +95,8 @@ export async function startUpdateFlow(
     callbacks.onMessage?.("");
     callbacks.onError?.(err instanceof Error ? err.message : "Update could not be scheduled");
     return undefined;
+  } finally {
+    updateSubmissionPending = false;
   }
 }
 
@@ -88,20 +113,21 @@ export function resumeUpdateFlow(
   callbacks.onProgress?.(progress);
   callbacks.onMessage?.(stageMessage(progress));
 
-  const startedAt = parseTime(progress.startedAt) ?? Date.now();
-  return watchUpdateProgress(progress.targetVersion, startedAt, callbacks, progress.attemptId);
+  return watchUpdateProgress(progress.targetVersion, callbacks, progress.attemptId);
 }
 
 function watchUpdateProgress(
   targetVersion: string,
-  startedAt: number,
   callbacks: UpdateFlowCallbacks,
   initialAttemptID = "",
+  baselineAttemptID = "",
+  baselineKnown = false,
 ): UpdateFlowHandle {
   let cancelled = false;
   let timer: number | undefined;
   let activeAttemptID = initialAttemptID;
   let lastProgress: UpdateProgress | undefined;
+  const watcherStartedAt = Date.now();
 
   const handle: UpdateFlowHandle = {
     cancel: () => {
@@ -109,6 +135,11 @@ function watchUpdateProgress(
       if (timer !== undefined) {
         window.clearTimeout(timer);
         timer = undefined;
+      }
+    },
+    trackAttempt: (attemptID: string) => {
+      if (attemptID) {
+        activeAttemptID = attemptID;
       }
     },
   };
@@ -130,14 +161,14 @@ function watchUpdateProgress(
     if (cancelled) {
       return;
     }
-    if (Date.now() - startedAt > updateFlowTimeoutMs) {
+    if (Date.now() - watcherStartedAt > updateFlowTimeoutMs) {
       finishWithError("Update progress timed out. Check LANnventory service status and the persisted update state before retrying.");
       return;
     }
 
     try {
       const progress = await apiGetUpdateProgress();
-      if (matchesAttempt(progress, targetVersion, startedAt, activeAttemptID)) {
+      if (matchesAttempt(progress, targetVersion, activeAttemptID, baselineAttemptID, baselineKnown)) {
         if (!activeAttemptID && progress.attemptId) {
           activeAttemptID = progress.attemptId;
         }
@@ -199,8 +230,9 @@ function watchUpdateProgress(
 function matchesAttempt(
   progress: UpdateProgress,
   targetVersion: string,
-  flowStartedAt: number,
   activeAttemptID: string,
+  baselineAttemptID: string,
+  baselineKnown: boolean,
 ): boolean {
   if (activeAttemptID) {
     return progress.attemptId === activeAttemptID;
@@ -211,9 +243,13 @@ function matchesAttempt(
   if (targetVersion && !sameVersion(progress.targetVersion, targetVersion)) {
     return false;
   }
-
-  const attemptStartedAt = parseTime(progress.startedAt);
-  return attemptStartedAt !== null && attemptStartedAt >= flowStartedAt - attemptClockToleranceMs;
+  if (!progress.attemptId) {
+    return false;
+  }
+  if (baselineKnown) {
+    return progress.attemptId !== baselineAttemptID;
+  }
+  return progress.status === "running";
 }
 
 export function stageMessage(progress: UpdateProgress): string {
@@ -247,11 +283,6 @@ function disconnectMessage(progress?: UpdateProgress): string {
     return "LANnventory restarted; waiting for the health check to complete…";
   }
   return "LANnventory is temporarily unreachable while the update continues…";
-}
-
-function parseTime(value: string): number | null {
-  const parsed = Date.parse(value);
-  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function sameVersion(left: string, right: string): boolean {
